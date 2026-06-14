@@ -22,7 +22,7 @@ import type {
   FunnelAnalysisConfig,
   AnalysisWorkspace,
 } from '../../../../src/client/types/analysisConfig'
-import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../../../src/client/types'
+import type { ChartType, ChartAxisConfig, ChartDisplayConfig, CubeQuery } from '../../../../src/client/types'
 
 // ============================================================================
 // Test Setup
@@ -461,7 +461,7 @@ describe('CoreSlice', () => {
       const config = store.getState().save() as QueryAnalysisConfig
 
       expect(config.query).toBeDefined()
-      expect(config.query.measures).toContain('Sales.revenue')
+      expect((config.query as CubeQuery).measures).toContain('Sales.revenue')
     })
   })
 

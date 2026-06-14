@@ -4,7 +4,7 @@ import {
   pivotTableData,
   getMeasureType
 } from '../../src/client/utils/pivotUtils'
-import type { CubeMeta } from '../../src/client/hooks/useCubeMeta'
+import type { CubeMeta } from '../../src/client/types'
 
 describe('pivotUtils', () => {
   describe('hasTimeDimensionForPivot', () => {

@@ -3,10 +3,10 @@
  * Tests rendering, ref API, and basic interactions
  */
 
-import React, { createRef } from 'react'
+import { createRef } from 'react'
 import { render, waitFor, act, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { CubeResultSet } from '../../../src/client/types'
+import type { CubeResultSet, CubeQuery } from '../../../src/client/types'
 import { STORAGE_KEY } from '../../../src/client/components/AnalysisBuilder/utils/storageUtils'
 
 // Mock useCubeMeta/useCubeFeatures
@@ -525,7 +525,7 @@ describe('AnalysisBuilder', () => {
 
   describe('initial config', () => {
     it('should render with initialQuery having filters', () => {
-      const initialQuery = {
+      const initialQuery: CubeQuery = {
         measures: ['Employees.count'],
         dimensions: ['Employees.department'],
         filters: [

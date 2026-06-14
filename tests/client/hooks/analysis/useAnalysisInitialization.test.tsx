@@ -8,7 +8,7 @@
 
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAnalysisInitialization } from '../../../../src/client/hooks/useAnalysisInitialization'
 import { AnalysisBuilderStoreProvider } from '../../../../src/client/stores/analysisBuilderStore'
@@ -576,7 +576,7 @@ describe('useAnalysisInitialization', () => {
           wrapper: createWrapper(),
           initialProps: {
             isValid: true,
-            query: { measures: ['Employees.count'] },
+            query: { measures: ['Employees.count'] } as CubeQuery,
           },
         }
       )

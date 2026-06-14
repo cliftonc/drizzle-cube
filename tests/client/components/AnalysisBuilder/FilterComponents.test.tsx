@@ -14,7 +14,7 @@ import userEvent from '@testing-library/user-event'
 import AnalysisFilterSection from '../../../../src/client/components/AnalysisBuilder/AnalysisFilterSection'
 import AnalysisFilterGroup from '../../../../src/client/components/AnalysisBuilder/AnalysisFilterGroup'
 import AnalysisFilterItem from '../../../../src/client/components/AnalysisBuilder/AnalysisFilterItem'
-import type { Filter, SimpleFilter, GroupFilter } from '../../../../src/client/types'
+import type { Filter, SimpleFilter, GroupFilter, DashboardFilter, DashboardConfig } from '../../../../src/client/types'
 import type { MetaResponse } from '../../../../src/client/shared/types'
 
 // Mock the filter values hook
@@ -28,14 +28,14 @@ vi.mock('../../../../src/client/hooks/useFilterValues', () => ({
 }))
 
 // Mock schema for field metadata
-const mockSchema: MetaResponse = {
+const mockSchema = {
   cubes: [
     {
       name: 'Users',
       title: 'Users',
       measures: [
-        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
-        { name: 'Users.totalRevenue', type: 'number', title: 'Total Revenue', shortTitle: 'Revenue', aggType: 'sum' },
+        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count' },
+        { name: 'Users.totalRevenue', type: 'number', title: 'Total Revenue', shortTitle: 'Revenue' },
       ],
       dimensions: [
         { name: 'Users.name', type: 'string', title: 'User Name', shortTitle: 'Name' },
@@ -48,7 +48,7 @@ const mockSchema: MetaResponse = {
       name: 'Orders',
       title: 'Orders',
       measures: [
-        { name: 'Orders.count', type: 'number', title: 'Order Count', shortTitle: 'Count', aggType: 'count' },
+        { name: 'Orders.count', type: 'number', title: 'Order Count', shortTitle: 'Count' },
       ],
       dimensions: [
         { name: 'Orders.status', type: 'string', title: 'Order Status', shortTitle: 'Status' },
@@ -56,7 +56,7 @@ const mockSchema: MetaResponse = {
       ],
     },
   ],
-}
+} as unknown as MetaResponse
 
 // =======================
 // AnalysisFilterSection Tests
@@ -1429,7 +1429,7 @@ describe('filterUtils (Client Utils)', () => {
     it('should return empty array when no filter mapping', () => {
       const dashboardFilters = [
         { id: 'filter1', filter: { member: 'Users.name', operator: 'equals', values: ['John'] } },
-      ]
+      ] as unknown as DashboardFilter[]
       const result = getApplicableDashboardFilters(dashboardFilters, undefined)
       expect(result).toEqual([])
     })
@@ -1439,7 +1439,7 @@ describe('filterUtils (Client Utils)', () => {
         { id: 'filter1', filter: { member: 'Users.name', operator: 'equals', values: ['John'] } },
         { id: 'filter2', filter: { member: 'Users.status', operator: 'equals', values: [] } },
         { id: 'filter3', filter: { member: 'Users.age', operator: 'gt', values: [25] } },
-      ]
+      ] as unknown as DashboardFilter[]
       const result = getApplicableDashboardFilters(dashboardFilters, ['filter1', 'filter3'])
 
       expect(result).toHaveLength(2)
@@ -1448,7 +1448,7 @@ describe('filterUtils (Client Utils)', () => {
     it('should include set/notSet operators without values', () => {
       const dashboardFilters = [
         { id: 'filter1', filter: { member: 'Users.name', operator: 'set', values: [] } },
-      ]
+      ] as unknown as DashboardFilter[]
       const result = getApplicableDashboardFilters(dashboardFilters, ['filter1'])
 
       expect(result).toHaveLength(1)
@@ -1457,7 +1457,7 @@ describe('filterUtils (Client Utils)', () => {
     it('should include inDateRange with dateRange property', () => {
       const dashboardFilters = [
         { id: 'filter1', filter: { member: 'Users.createdAt', operator: 'inDateRange', dateRange: 'this month', values: [] } },
-      ]
+      ] as unknown as DashboardFilter[]
       const result = getApplicableDashboardFilters(dashboardFilters, ['filter1'])
 
       expect(result).toHaveLength(1)
@@ -1466,60 +1466,60 @@ describe('filterUtils (Client Utils)', () => {
 
   describe('mergeDashboardAndPortletFilters', () => {
     it('should return portlet filters when no dashboard filters', () => {
-      const portletFilters = [{ member: 'Users.name', operator: 'equals', values: ['John'] }]
+      const portletFilters = [{ member: 'Users.name', operator: 'equals', values: ['John'] }] as unknown as Filter[]
       const result = mergeDashboardAndPortletFilters([], portletFilters)
 
       expect(result).toEqual(portletFilters)
     })
 
     it('should return dashboard filters when no portlet filters', () => {
-      const dashboardFilters = [{ member: 'Users.name', operator: 'equals', values: ['John'] }]
+      const dashboardFilters = [{ member: 'Users.name', operator: 'equals', values: ['John'] }] as unknown as Filter[]
       const result = mergeDashboardAndPortletFilters(dashboardFilters, undefined)
 
       expect(result).toEqual(dashboardFilters)
     })
 
     it('should merge with AND logic in server format by default', () => {
-      const dashboardFilters = [{ member: 'Users.name', operator: 'equals', values: ['John'] }]
-      const portletFilters = [{ member: 'Users.status', operator: 'equals', values: ['active'] }]
+      const dashboardFilters = [{ member: 'Users.name', operator: 'equals', values: ['John'] }] as unknown as Filter[]
+      const portletFilters = [{ member: 'Users.status', operator: 'equals', values: ['active'] }] as unknown as Filter[]
       const result = mergeDashboardAndPortletFilters(dashboardFilters, portletFilters)
 
       expect(result).toHaveLength(1)
-      expect(result[0]).toHaveProperty('and')
+      expect(result![0]).toHaveProperty('and')
     })
 
     it('should merge with AND logic in client format', () => {
-      const dashboardFilters = [{ member: 'Users.name', operator: 'equals', values: ['John'] }]
-      const portletFilters = [{ member: 'Users.status', operator: 'equals', values: ['active'] }]
+      const dashboardFilters = [{ member: 'Users.name', operator: 'equals', values: ['John'] }] as unknown as Filter[]
+      const portletFilters = [{ member: 'Users.status', operator: 'equals', values: ['active'] }] as unknown as Filter[]
       const result = mergeDashboardAndPortletFilters(dashboardFilters, portletFilters, 'client')
 
       expect(result).toHaveLength(1)
-      expect(result[0]).toHaveProperty('type', 'and')
-      expect(result[0]).toHaveProperty('filters')
+      expect(result![0]).toHaveProperty('type', 'and')
+      expect(result![0]).toHaveProperty('filters')
     })
   })
 
   describe('validateFilterForCube', () => {
     it('should return true when no cube metadata', () => {
-      const filter = { member: 'Users.name', operator: 'equals', values: ['John'] }
+      const filter = { member: 'Users.name', operator: 'equals', values: ['John'] } as unknown as Filter
       const result = validateFilterForCube(filter, null)
       expect(result).toBe(true)
     })
 
     it('should return true when filter member exists in measures', () => {
-      const filter = { member: 'Users.count', operator: 'gt', values: [10] }
+      const filter = { member: 'Users.count', operator: 'gt', values: [10] } as unknown as Filter
       const result = validateFilterForCube(filter, mockSchema)
       expect(result).toBe(true)
     })
 
     it('should return true when filter member exists in dimensions', () => {
-      const filter = { member: 'Users.name', operator: 'equals', values: ['John'] }
+      const filter = { member: 'Users.name', operator: 'equals', values: ['John'] } as unknown as Filter
       const result = validateFilterForCube(filter, mockSchema)
       expect(result).toBe(true)
     })
 
     it('should return false when filter member does not exist', () => {
-      const filter = { member: 'Unknown.field', operator: 'equals', values: ['test'] }
+      const filter = { member: 'Unknown.field', operator: 'equals', values: ['test'] } as unknown as Filter
       const result = validateFilterForCube(filter, mockSchema)
       expect(result).toBe(false)
     })
@@ -1549,7 +1549,7 @@ describe('filterUtils (Client Utils)', () => {
     it('should return invalid filter IDs when filter field not in schema', () => {
       const dashboardFilters = [
         { id: 'filter1', filter: { member: 'Unknown.field', operator: 'equals', values: ['test'] } },
-      ]
+      ] as unknown as DashboardFilter[]
       const result = validatePortletFilterMapping(dashboardFilters, ['filter1'], mockSchema)
       expect(result.isValid).toBe(false)
       expect(result.invalidFilterIds).toContain('filter1')
@@ -1575,7 +1575,7 @@ describe('filterUtils (Client Utils)', () => {
           isUniversalTime: true,
           filter: { member: 'Time.date', operator: 'inDateRange', dateRange: 'this month', values: [] },
         },
-      ]
+      ] as unknown as DashboardFilter[]
       const timeDimensions = [
         { dimension: 'Users.createdAt', granularity: 'day' },
         { dimension: 'Orders.orderedAt', granularity: 'month' },
@@ -1583,8 +1583,8 @@ describe('filterUtils (Client Utils)', () => {
       const result = applyUniversalTimeFilters(dashboardFilters, ['filter1'], timeDimensions)
 
       expect(result).toHaveLength(2)
-      expect(result[0].dateRange).toBe('this month')
-      expect(result[1].dateRange).toBe('this month')
+      expect(result![0].dateRange).toBe('this month')
+      expect(result![1].dateRange).toBe('this month')
     })
 
     it('should handle dateRange in values for backward compatibility', () => {
@@ -1594,11 +1594,11 @@ describe('filterUtils (Client Utils)', () => {
           isUniversalTime: true,
           filter: { member: 'Time.date', operator: 'inDateRange', values: ['this quarter'] },
         },
-      ]
+      ] as unknown as DashboardFilter[]
       const timeDimensions = [{ dimension: 'Users.createdAt', granularity: 'day' }]
       const result = applyUniversalTimeFilters(dashboardFilters, ['filter1'], timeDimensions)
 
-      expect(result[0].dateRange).toBe('this quarter')
+      expect(result![0].dateRange).toBe('this quarter')
     })
   })
 
@@ -1621,7 +1621,7 @@ describe('filterUtils (Client Utils)', () => {
             },
           },
         ],
-      }
+      } as unknown as DashboardConfig
       const result = extractDashboardFields(dashboardConfig)
 
       expect(result.measures.has('Users.count')).toBe(true)
@@ -1648,7 +1648,7 @@ describe('filterUtils (Client Utils)', () => {
             },
           },
         ],
-      }
+      } as unknown as DashboardConfig
       const result = extractDashboardFields(dashboardConfig)
 
       expect(result.measures.has('Users.count')).toBe(true)
@@ -1675,7 +1675,7 @@ describe('filterUtils (Client Utils)', () => {
             },
           },
         ],
-      }
+      } as unknown as DashboardConfig
       const result = extractDashboardFields(dashboardConfig)
 
       expect(result.timeDimensions.has('Events.timestamp')).toBe(true)
@@ -1700,7 +1700,7 @@ describe('filterUtils (Client Utils)', () => {
             },
           },
         ],
-      }
+      } as unknown as DashboardConfig
       const result = extractDashboardFields(dashboardConfig)
 
       expect(result.dimensions.has('Users.status')).toBe(true)
@@ -1711,7 +1711,7 @@ describe('filterUtils (Client Utils)', () => {
         portlets: [
           { id: 'invalid' }, // Missing analysisConfig
         ],
-      }
+      } as unknown as DashboardConfig
       // Should not throw
       expect(() => extractDashboardFields(dashboardConfig)).not.toThrow()
     })

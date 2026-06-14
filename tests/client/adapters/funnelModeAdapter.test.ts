@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import { funnelModeAdapter, type FunnelSliceState } from '../../../src/client/adapters/funnelModeAdapter'
 import type { FunnelAnalysisConfig, ChartConfig } from '../../../src/client/types/analysisConfig'
+import type { ServerFunnelQuery } from '../../../src/client/types/funnel'
 
 describe('funnelModeAdapter', () => {
   describe('createInitial', () => {
@@ -176,11 +177,11 @@ describe('funnelModeAdapter', () => {
 
       expect(config.version).toBe(1)
       expect(config.analysisType).toBe('funnel')
-      expect(config.query.funnel.bindingKey).toBe('Events.userId')
-      expect(config.query.funnel.timeDimension).toBe('Events.timestamp')
-      expect(config.query.funnel.steps).toHaveLength(2)
-      expect(config.query.funnel.steps[0].name).toBe('Page View')
-      expect(config.query.funnel.steps[1].timeToConvert).toBe('P7D')
+      expect((config.query as ServerFunnelQuery).funnel.bindingKey).toBe('Events.userId')
+      expect((config.query as ServerFunnelQuery).funnel.timeDimension).toBe('Events.timestamp')
+      expect((config.query as ServerFunnelQuery).funnel.steps).toHaveLength(2)
+      expect((config.query as ServerFunnelQuery).funnel.steps[0].name).toBe('Page View')
+      expect((config.query as ServerFunnelQuery).funnel.steps[1].timeToConvert).toBe('P7D')
     })
 
     it('should save multi-cube funnel with array binding key', () => {
@@ -201,7 +202,7 @@ describe('funnelModeAdapter', () => {
 
       const config = funnelModeAdapter.save(state, charts, 'chart')
 
-      expect(config.query.funnel.bindingKey).toEqual([
+      expect((config.query as ServerFunnelQuery).funnel.bindingKey).toEqual([
         { cube: 'Events', dimension: 'userId' },
         { cube: 'Orders', dimension: 'customerId' },
       ])
@@ -220,7 +221,7 @@ describe('funnelModeAdapter', () => {
 
       const config = funnelModeAdapter.save(state, {}, 'chart')
 
-      expect(config.query.funnel.steps[0].cube).toBeUndefined()
+      expect((config.query as ServerFunnelQuery).funnel.steps[0].cube).toBeUndefined()
     })
   })
 

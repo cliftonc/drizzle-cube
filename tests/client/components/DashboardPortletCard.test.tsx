@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import React from 'react'
 
 // Mock AnalyticsPortlet - complex child component
@@ -57,7 +57,8 @@ vi.mock('../../../src/client/utils/thumbnail', () => ({
 }))
 
 import DashboardPortletCard from '../../../src/client/components/DashboardPortletCard'
-import type { PortletConfig } from '../../../src/client/types'
+import type { PortletConfig, DashboardLayoutMode } from '../../../src/client/types'
+import type { HTMLAttributes } from 'react'
 import type { AnalysisConfig } from '../../../src/client/types/analysisConfig'
 import { DashboardStoreProvider, useDashboardStore } from '../../../src/client/stores/dashboardStore'
 import { CubeFeaturesProvider } from '../../../src/client/providers/CubeFeaturesProvider'
@@ -108,7 +109,8 @@ const createMockPortlet = (overrides?: Partial<PortletConfig>): PortletConfig =>
 const createDefaultProps = () => ({
   portlet: createMockPortlet(),
   editable: true,
-  layoutMode: 'grid' as const,
+  layoutMode: 'grid' as DashboardLayoutMode,
+  containerProps: undefined as HTMLAttributes<HTMLDivElement> | undefined,
   setPortletRef: vi.fn(),
   setPortletComponentRef: vi.fn(),
   callbacks: {

@@ -9,15 +9,15 @@
  * - Style classes
  */
 
-import React from 'react'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
 import { DrillBreadcrumb } from '../../../../src/client/components/DrillBreadcrumb'
 import type { DrillPathEntry } from '../../../../src/client/types/drill'
 
 describe('DrillBreadcrumb - Extended Tests', () => {
-  let onNavigate: ReturnType<typeof vi.fn>
-  let onLevelClick: ReturnType<typeof vi.fn>
+  let onNavigate: Mock<() => void>
+  let onLevelClick: Mock<(index: number) => void>
 
   beforeEach(() => {
     onNavigate = vi.fn()

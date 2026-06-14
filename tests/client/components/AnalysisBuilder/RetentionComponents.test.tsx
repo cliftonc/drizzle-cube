@@ -6,8 +6,8 @@
  * - RetentionModeContent.tsx: 85%+
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RetentionConfigPanel, {
   DateRangeSelector,
@@ -30,11 +30,12 @@ const mockSchemaWithEventStream: CubeMeta = {
           timeDimension: 'Events.timestamp',
         },
       },
+      segments: [],
       measures: [
-        { name: 'Events.count', type: 'number', title: 'Event Count', shortTitle: 'Count', aggType: 'count' },
+        { name: 'Events.count', type: 'number', title: 'Event Count', shortTitle: 'Count' },
       ],
       dimensions: [
-        { name: 'Events.userId', type: 'string', title: 'User ID', shortTitle: 'User ID', meta: { bindingKey: true } },
+        { name: 'Events.userId', type: 'string', title: 'User ID', shortTitle: 'User ID' },
         { name: 'Events.eventType', type: 'string', title: 'Event Type', shortTitle: 'Event Type' },
         { name: 'Events.timestamp', type: 'time', title: 'Timestamp', shortTitle: 'Timestamp' },
         { name: 'Events.country', type: 'string', title: 'Country', shortTitle: 'Country' },
@@ -44,8 +45,9 @@ const mockSchemaWithEventStream: CubeMeta = {
     {
       name: 'Users',
       title: 'Users',
+      segments: [],
       measures: [
-        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
+        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count' },
       ],
       dimensions: [
         { name: 'Users.id', type: 'string', title: 'ID', shortTitle: 'ID' },
@@ -62,8 +64,9 @@ const mockSchemaWithoutEventStream: CubeMeta = {
     {
       name: 'Users',
       title: 'Users',
+      segments: [],
       measures: [
-        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
+        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count' },
       ],
       dimensions: [
         { name: 'Users.id', type: 'string', title: 'ID', shortTitle: 'ID' },
@@ -674,7 +677,7 @@ describe('RetentionConfigPanel', () => {
 
     it('should handle binding key as array', () => {
       const bindingKey: FunnelBindingKey = {
-        dimension: [{ dimension: 'Events.userId', label: 'User' }],
+        dimension: [{ cube: 'Events', dimension: 'Events.userId' }],
       }
 
       render(
@@ -787,7 +790,6 @@ describe('RetentionModeContent', () => {
     })
 
     it('should call onDateRangeChange when date range changes', async () => {
-      const user = userEvent.setup()
       const onDateRangeChange = vi.fn()
 
       render(

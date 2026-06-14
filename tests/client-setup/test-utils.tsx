@@ -1,4 +1,4 @@
-import React, { type ReactElement, type ReactNode } from 'react'
+import { type ReactElement, type ReactNode } from 'react'
 import { render, type RenderOptions } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CubeProvider } from '../../src/client/providers/CubeProvider'

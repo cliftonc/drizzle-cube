@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FieldSearchModal from '../../../../src/client/components/AnalysisBuilder/FieldSearchModal'
 import type { MetaResponse } from '../../../../src/client/shared/types'
-import type { FieldSearchModalProps, FieldType } from '../../../../src/client/components/AnalysisBuilder/types'
+import type { FieldSearchModalProps } from '../../../../src/client/components/AnalysisBuilder/types'
 
 // Mock localStorage for recent fields
 const localStorageMock = (() => {
@@ -30,9 +30,11 @@ const mockSchema: MetaResponse = {
     {
       name: 'Users',
       title: 'Users',
+      description: '',
+      segments: [],
       measures: [
-        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
-        { name: 'Users.totalRevenue', type: 'number', title: 'Total Revenue', shortTitle: 'Revenue', aggType: 'sum' },
+        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count' },
+        { name: 'Users.totalRevenue', type: 'number', title: 'Total Revenue', shortTitle: 'Revenue' },
       ],
       dimensions: [
         { name: 'Users.name', type: 'string', title: 'User Name', shortTitle: 'Name' },
@@ -43,9 +45,11 @@ const mockSchema: MetaResponse = {
     {
       name: 'Orders',
       title: 'Orders',
+      description: '',
+      segments: [],
       measures: [
-        { name: 'Orders.count', type: 'number', title: 'Order Count', shortTitle: 'Count', aggType: 'count' },
-        { name: 'Orders.total', type: 'number', title: 'Order Total', shortTitle: 'Total', aggType: 'sum' },
+        { name: 'Orders.count', type: 'number', title: 'Order Count', shortTitle: 'Count' },
+        { name: 'Orders.total', type: 'number', title: 'Order Total', shortTitle: 'Total' },
       ],
       dimensions: [
         { name: 'Orders.status', type: 'string', title: 'Order Status', shortTitle: 'Status' },
@@ -536,6 +540,8 @@ describe('FieldSearchModal', () => {
           {
             name: 'Users',
             title: 'Users',
+            description: '',
+            segments: [],
             measures: [],
             dimensions: [
               { name: 'Users.name', type: 'string', title: 'User Name', shortTitle: 'Name' },
@@ -561,8 +567,10 @@ describe('FieldSearchModal', () => {
           {
             name: 'Users',
             title: 'Users',
+            description: '',
+            segments: [],
             measures: [
-              { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
+              { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count' },
             ],
             dimensions: [],
           },

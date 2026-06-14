@@ -12,7 +12,6 @@
  * - colorField: Determines bubble color (optional)
  */
 
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import BubbleChart from '../../../../src/client/components/charts/BubbleChart'
@@ -501,7 +500,9 @@ describe('BubbleChart', () => {
     it('should use custom color palette when provided', () => {
       const customPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff'],
+        gradient: ['#ffcccc', '#ff6666', '#ff0000'],
       }
 
       const { container } = render(
@@ -519,6 +520,7 @@ describe('BubbleChart', () => {
     it('should use custom gradient palette for numeric color field', () => {
       const customPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff'],
         gradient: ['#ffcccc', '#ff6666', '#ff0000'],
       }

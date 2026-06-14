@@ -5,7 +5,6 @@
  * and null/undefined handling.
  */
 
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import KpiNumber from '../../../../src/client/components/charts/KpiNumber'

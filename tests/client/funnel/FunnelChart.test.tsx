@@ -9,7 +9,6 @@
  * - Custom labels and display options
  */
 
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import FunnelChart from '../../../src/client/components/charts/FunnelChart'
@@ -147,7 +146,7 @@ describe('FunnelChart', () => {
     })
 
     it('should render vertical orientation when specified', () => {
-      const { container } = render(
+      render(
         <FunnelChart
           data={sampleFunnelData}
           displayConfig={{ funnelOrientation: 'vertical' }}
@@ -192,7 +191,10 @@ describe('FunnelChart', () => {
   describe('color palette', () => {
     it('should use custom colors when provided', () => {
       const customColors = {
+        name: 'custom',
+        label: 'Custom',
         colors: ['#FF0000', '#00FF00', '#0000FF'],
+        gradient: ['#FF0000', '#00FF00', '#0000FF'],
       }
 
       const { container } = render(

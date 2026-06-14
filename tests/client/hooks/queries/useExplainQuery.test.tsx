@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import {
@@ -53,7 +53,10 @@ describe('useExplainQuery', () => {
   }
 
   // Mock explain result
-  const mockExplainResult: ExplainResult = {
+  // Cast through unknown: this fixture mirrors the raw server JSON payload
+  // (id/nodeType/relation/warnings/rawPlan/string sql) rather than the
+  // normalized client ExplainResult shape; it is returned verbatim by MSW.
+  const mockExplainResult = {
     operations: [
       {
         id: 1,
@@ -72,7 +75,7 @@ describe('useExplainQuery', () => {
     rawPlan: 'Seq Scan on employees (cost=0.00..10.50 rows=100 width=40)',
     sql: 'SELECT * FROM employees WHERE organisation_id = $1',
     databaseType: 'postgres',
-  }
+  } as unknown as ExplainResult
 
   beforeEach(() => {
     server.resetHandlers()
@@ -141,11 +144,8 @@ describe('useExplainQuery', () => {
     })
 
     it('should execute explain with analyze option', async () => {
-      let receivedAnalyze = false
       server.use(
-        http.post('*/cubejs-api/v1/explain', async ({ request }) => {
-          const body = await request.json() as { options?: { analyze?: boolean } }
-          receivedAnalyze = body.options?.analyze ?? false
+        http.post('*/cubejs-api/v1/explain', async () => {
           return HttpResponse.json(mockExplainResult)
         })
       )
@@ -281,7 +281,7 @@ describe('useExplainQuery', () => {
       })
 
       await waitFor(() => {
-        expect(result.current.explainResult?.rawPlan).toBeDefined()
+        expect((result.current.explainResult as unknown as { rawPlan?: string })?.rawPlan).toBeDefined()
       })
     })
 

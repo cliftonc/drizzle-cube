@@ -3,7 +3,6 @@
  */
 
 import type { DatabaseExecutor } from '../../../src/server/types'
-import type { TestSchema as _TestSchema } from '../schema'
 
 /**
  * Database connection interface for testing

@@ -9,7 +9,7 @@ import {
   useMultiCubeLoadQuery,
   createMultiQueryKey,
 } from '../../../../src/client/hooks/queries/useMultiCubeLoadQuery'
-import type { MultiQueryConfig, CubeQuery } from '../../../../src/client/types'
+import type { MultiQueryConfig } from '../../../../src/client/types'
 
 describe('useMultiCubeLoadQuery', () => {
   // Valid multi-query config with 2 queries
@@ -567,7 +567,7 @@ describe('useMultiCubeLoadQuery', () => {
         expect(result.current.data).not.toBeNull()
       })
 
-      const previousData = result.current.data
+      result.current.data
 
       // Change config
       const newConfig: MultiQueryConfig = {

@@ -2,7 +2,6 @@
  * Tests for GaugeChart component
  */
 
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import GaugeChart from '../../../src/client/components/charts/GaugeChart'
@@ -27,10 +26,6 @@ const singleRow = [{ 'Metrics.value': 75, 'Metrics.max': 100 }]
 
 const valueConfig = {
   yAxis: ['Metrics.value'],
-}
-
-const fullConfig = {
-  yAxis: ['Metrics.value', 'Metrics.max'],
 }
 
 describe('GaugeChart', () => {

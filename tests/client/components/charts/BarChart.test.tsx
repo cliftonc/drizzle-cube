@@ -7,7 +7,7 @@
 
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import BarChart from '../../../../src/client/components/charts/BarChart'
 
 
@@ -514,7 +514,9 @@ describe('BarChart', () => {
     it('should use custom color palette when provided', () => {
       const customPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff'],
+        gradient: ['#ff0000', '#00ff00', '#0000ff'],
       }
 
       render(

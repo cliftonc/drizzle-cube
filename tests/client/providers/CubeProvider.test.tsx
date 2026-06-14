@@ -12,9 +12,9 @@
  * - Re-render optimization
  */
 
-import React, { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { render, renderHook, waitFor, act, screen } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -27,8 +27,6 @@ import {
   createCubeQueryClient
 } from '../../../src/client/providers/CubeProvider'
 import { CubeApiProvider } from '../../../src/client/providers/CubeApiProvider'
-import { CubeMetaProvider } from '../../../src/client/providers/CubeMetaProvider'
-import { CubeFeaturesProvider } from '../../../src/client/providers/CubeFeaturesProvider'
 import type { CubeApiOptions, FeaturesConfig, DashboardLayoutMode } from '../../../src/client/types'
 import {
   server,
@@ -1452,7 +1450,7 @@ describe('CubeProvider', () => {
     })
 
     it('should preserve existing features when updating', async () => {
-      const { wrapper } = createHookWrapper({ features: { enableAI: false, editToolbar: 'top' } })
+      const { wrapper } = createHookWrapper({ features: { enableAI: false, editToolbar: 'top' } as unknown as Record<string, boolean> })
       const { result } = renderHook(() => useCubeFeatures(), { wrapper })
 
       expect(result.current.features.enableAI).toBe(false)

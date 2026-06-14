@@ -14,21 +14,22 @@
  * - Sorts chart types alphabetically by label
  */
 
-import React from 'react'
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
 import ChartTypeSelector from '../../../../src/client/components/ChartTypeSelector'
 import type { ChartType } from '../../../../src/client/types'
+import type { ChartAvailabilityMap } from '../../../../src/client/shared/chartDefaults'
 
 // ============================================================================
 // ChartTypeSelector Tests
 // ============================================================================
 
 describe('ChartTypeSelector', () => {
-  let onTypeChange: ReturnType<typeof vi.fn>
+  let onTypeChange: Mock<(type: ChartType) => void>
 
   beforeEach(() => {
-    onTypeChange = vi.fn()
+    onTypeChange = vi.fn<(type: ChartType) => void>()
   })
 
   afterEach(() => {
@@ -252,7 +253,7 @@ describe('ChartTypeSelector', () => {
             pie: { available: false, reason: 'Requires at least one dimension' },
             bar: { available: true },
             line: { available: true }
-          }}
+          } as unknown as ChartAvailabilityMap}
         />
       )
 
@@ -277,7 +278,7 @@ describe('ChartTypeSelector', () => {
           onTypeChange={onTypeChange}
           availability={{
             pie: { available: false, reason: 'Requires at least one dimension' }
-          }}
+          } as unknown as ChartAvailabilityMap}
         />
       )
 
@@ -308,7 +309,7 @@ describe('ChartTypeSelector', () => {
           onTypeChange={onTypeChange}
           availability={{
             pie: { available: false, reason: unavailableReason }
-          }}
+          } as unknown as ChartAvailabilityMap}
         />
       )
 
@@ -397,7 +398,7 @@ describe('ChartTypeSelector', () => {
       const selectedButton = lineChartTexts[lineChartTexts.length > 1 ? 1 : 0]?.closest('button')
 
       // Check for the selection indicator dot
-      const indicator = selectedButton?.querySelector('.dc\\:rounded-full')
+      selectedButton?.querySelector('.dc\\:rounded-full')
       // Indicator may or may not be present depending on implementation
     })
   })
@@ -405,7 +406,7 @@ describe('ChartTypeSelector', () => {
   describe('chart type labels', () => {
     it('should display correct labels for various chart types', async () => {
       const chartTypes: ChartType[] = ['bar', 'line', 'pie', 'area', 'scatter', 'radar']
-      const expectedLabels: Record<ChartType, string> = {
+      const expectedLabels: Record<string, string> = {
         activityGrid: 'Activity Grid',
         area: 'Area Chart',
         bar: 'Bar Chart',
@@ -550,7 +551,7 @@ describe('ChartTypeSelector', () => {
           availability={{
             pie: { available: false, reason: 'Disabled' }
             // Other chart types not specified
-          }}
+          } as unknown as ChartAvailabilityMap}
         />
       )
 

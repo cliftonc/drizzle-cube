@@ -2,7 +2,6 @@
  * Tests for CandlestickChart component
  */
 
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import CandlestickChart from '../../../src/client/components/charts/CandlestickChart'

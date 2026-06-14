@@ -12,7 +12,6 @@
  * - Multiple display styles: bars or trapezoid funnel
  */
 
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import FunnelChart from '../../../../src/client/components/charts/FunnelChart'
@@ -20,7 +19,7 @@ import type { FunnelChartData } from '../../../../src/client/types/funnel'
 
 // Sample funnel data (standard format from useFunnelQuery)
 const mockFunnelData: FunnelChartData[] = [
-  { name: 'Page View', value: 1000, percentage: 100, stepIndex: 0 },
+  { name: 'Page View', value: 1000, percentage: 100, conversionRate: null, stepIndex: 0 },
   { name: 'Add to Cart', value: 450, percentage: 45, conversionRate: 45, stepIndex: 1 },
   { name: 'Checkout', value: 200, percentage: 20, conversionRate: 44.4, stepIndex: 2 },
   { name: 'Purchase', value: 150, percentage: 15, conversionRate: 75, stepIndex: 3 },
@@ -32,6 +31,7 @@ const mockFunnelDataWithTime: FunnelChartData[] = [
     name: 'Sign Up',
     value: 1000,
     percentage: 100,
+    conversionRate: null,
     stepIndex: 0,
   },
   {
@@ -58,7 +58,7 @@ const mockFunnelDataWithTime: FunnelChartData[] = [
 
 // Minimal funnel data (2 steps)
 const mockMinimalFunnel: FunnelChartData[] = [
-  { name: 'Start', value: 100, percentage: 100, stepIndex: 0 },
+  { name: 'Start', value: 100, percentage: 100, conversionRate: null, stepIndex: 0 },
   { name: 'End', value: 50, percentage: 50, conversionRate: 50, stepIndex: 1 },
 ]
 
@@ -75,7 +75,7 @@ describe('FunnelChart', () => {
 
   describe('basic rendering - bars style (default)', () => {
     it('should render funnel chart with valid data', () => {
-      const { container } = render(<FunnelChart data={mockFunnelData} />)
+      render(<FunnelChart data={mockFunnelData} />)
 
       // Should render step names
       expect(screen.getByText('Page View')).toBeInTheDocument()
@@ -169,7 +169,7 @@ describe('FunnelChart', () => {
 
     describe('funnel style (trapezoid)', () => {
       it('should render Recharts funnel when funnelStyle is funnel', () => {
-        const { container } = render(
+        render(
           <FunnelChart
             data={mockFunnelData}
             displayConfig={{ funnelStyle: 'funnel' }}
@@ -187,7 +187,7 @@ describe('FunnelChart', () => {
   describe('orientation modes', () => {
     describe('horizontal orientation (default)', () => {
       it('should render steps vertically stacked with horizontal bars', () => {
-        const { container } = render(
+        render(
           <FunnelChart
             data={mockFunnelData}
             displayConfig={{ funnelOrientation: 'horizontal' }}
@@ -215,7 +215,7 @@ describe('FunnelChart', () => {
 
     describe('vertical orientation', () => {
       it('should render steps horizontally with vertical bars', () => {
-        const { container } = render(
+        render(
           <FunnelChart
             data={mockFunnelData}
             displayConfig={{ funnelOrientation: 'vertical' }}
@@ -398,10 +398,12 @@ describe('FunnelChart', () => {
     it('should use custom color palette when provided', () => {
       const customPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00'],
+        gradient: ['#ffcccc', '#ff6666', '#ff0000'],
       }
 
-      const { container } = render(
+      render(
         <FunnelChart data={mockFunnelData} colorPalette={customPalette} />
       )
 
@@ -443,7 +445,7 @@ describe('FunnelChart', () => {
 
     it('should handle zero values in steps', () => {
       const zeroData: FunnelChartData[] = [
-        { name: 'Start', value: 100, percentage: 100, stepIndex: 0 },
+        { name: 'Start', value: 100, percentage: 100, conversionRate: null, stepIndex: 0 },
         { name: 'Middle', value: 0, percentage: 0, conversionRate: 0, stepIndex: 1 },
         { name: 'End', value: 0, percentage: 0, conversionRate: 0, stepIndex: 2 },
       ]
@@ -457,7 +459,7 @@ describe('FunnelChart', () => {
 
     it('should handle large numbers', () => {
       const largeData: FunnelChartData[] = [
-        { name: 'Start', value: 1000000, percentage: 100, stepIndex: 0 },
+        { name: 'Start', value: 1000000, percentage: 100, conversionRate: null, stepIndex: 0 },
         { name: 'End', value: 500000, percentage: 50, conversionRate: 50, stepIndex: 1 },
       ]
 
@@ -473,7 +475,7 @@ describe('FunnelChart', () => {
         name: `Step ${i + 1}`,
         value: 1000 - i * 100,
         percentage: ((1000 - i * 100) / 1000) * 100,
-        conversionRate: i === 0 ? undefined : 90,
+        conversionRate: i === 0 ? null : 90,
         stepIndex: i,
       }))
 
@@ -492,7 +494,7 @@ describe('FunnelChart', () => {
 
     it('should handle single step (should still render)', () => {
       const singleStep: FunnelChartData[] = [
-        { name: 'Only Step', value: 100, percentage: 100, stepIndex: 0 },
+        { name: 'Only Step', value: 100, percentage: 100, conversionRate: null, stepIndex: 0 },
       ]
 
       render(<FunnelChart data={singleStep} />)
@@ -502,7 +504,7 @@ describe('FunnelChart', () => {
 
     it('should handle decimal percentages', () => {
       const decimalData: FunnelChartData[] = [
-        { name: 'Start', value: 1000, percentage: 100, stepIndex: 0 },
+        { name: 'Start', value: 1000, percentage: 100, conversionRate: null, stepIndex: 0 },
         { name: 'End', value: 333, percentage: 33.3, conversionRate: 33.3, stepIndex: 1 },
       ]
 
@@ -515,7 +517,7 @@ describe('FunnelChart', () => {
 
   describe('funnel style with Recharts', () => {
     it('should render Recharts funnel with tooltip', () => {
-      const { container } = render(
+      render(
         <FunnelChart
           data={mockFunnelData}
           displayConfig={{ funnelStyle: 'funnel' }}
@@ -563,7 +565,7 @@ describe('FunnelChart', () => {
 
     it('should handle 0% overall conversion', () => {
       const zeroConversion: FunnelChartData[] = [
-        { name: 'Start', value: 100, percentage: 100, stepIndex: 0 },
+        { name: 'Start', value: 100, percentage: 100, conversionRate: null, stepIndex: 0 },
         { name: 'End', value: 0, percentage: 0, conversionRate: 0, stepIndex: 1 },
       ]
 

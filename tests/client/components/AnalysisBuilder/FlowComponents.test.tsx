@@ -6,8 +6,8 @@
  * - FlowModeContent.tsx: 85%+
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FlowConfigPanel, { type FlowConfigPanelProps } from '../../../../src/client/components/AnalysisBuilder/FlowConfigPanel'
 import FlowModeContent, { type FlowModeContentProps } from '../../../../src/client/components/AnalysisBuilder/FlowModeContent'
@@ -27,27 +27,29 @@ const mockSchemaWithEventStream: CubeMeta = {
         },
       },
       measures: [
-        { name: 'Events.count', type: 'number', title: 'Event Count', shortTitle: 'Count', aggType: 'count' },
+        { name: 'Events.count', type: 'number', title: 'Event Count', shortTitle: 'Count' },
       ],
       dimensions: [
-        { name: 'Events.userId', type: 'string', title: 'User ID', shortTitle: 'User ID', meta: { bindingKey: true } },
+        { name: 'Events.userId', type: 'string', title: 'User ID', shortTitle: 'User ID' },
         { name: 'Events.eventType', type: 'string', title: 'Event Type', shortTitle: 'Event Type' },
         { name: 'Events.timestamp', type: 'time', title: 'Timestamp', shortTitle: 'Timestamp' },
         { name: 'Events.page', type: 'string', title: 'Page', shortTitle: 'Page' },
         { name: 'Events.country', type: 'string', title: 'Country', shortTitle: 'Country' },
       ],
+      segments: [],
     },
     {
       name: 'Users',
       title: 'Users',
       measures: [
-        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
+        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count' },
       ],
       dimensions: [
         { name: 'Users.id', type: 'string', title: 'ID', shortTitle: 'ID' },
         { name: 'Users.name', type: 'string', title: 'Name', shortTitle: 'Name' },
         { name: 'Users.createdAt', type: 'time', title: 'Created At', shortTitle: 'Created' },
       ],
+      segments: [],
     },
   ],
 }
@@ -59,13 +61,14 @@ const mockSchemaWithoutEventStream: CubeMeta = {
       name: 'Users',
       title: 'Users',
       measures: [
-        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
+        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count' },
       ],
       dimensions: [
         { name: 'Users.id', type: 'string', title: 'ID', shortTitle: 'ID' },
         { name: 'Users.name', type: 'string', title: 'Name', shortTitle: 'Name' },
         { name: 'Users.createdAt', type: 'time', title: 'Created At', shortTitle: 'Created' },
       ],
+      segments: [],
     },
   ],
 }
@@ -396,7 +399,6 @@ describe('FlowConfigPanel', () => {
     })
 
     it('should show cube label in collapsed summary', async () => {
-      const user = userEvent.setup()
       const bindingKey: FunnelBindingKey = { dimension: 'Events.userId' }
 
       render(
@@ -436,7 +438,7 @@ describe('FlowConfigPanel', () => {
 
     it('should handle binding key as array with dimension objects', () => {
       const bindingKey: FunnelBindingKey = {
-        dimension: [{ dimension: 'Events.userId', label: 'User' }],
+        dimension: [{ cube: 'Events', dimension: 'Events.userId' }],
       }
 
       render(

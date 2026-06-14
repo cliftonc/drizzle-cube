@@ -454,7 +454,9 @@ describe('TreeMapChart', () => {
     it('should use custom color palette when provided', () => {
       const customPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00'],
+        gradient: ['#ffcccc', '#ff6666', '#ff0000'],
       }
 
       render(
@@ -471,7 +473,9 @@ describe('TreeMapChart', () => {
     it('should use custom palette for categorical series', () => {
       const customPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff'],
+        gradient: ['#ffcccc', '#ff6666', '#ff0000'],
       }
 
       render(
@@ -488,7 +492,9 @@ describe('TreeMapChart', () => {
     it('should handle single-color palette', () => {
       const singleColorPalette = {
         name: 'mono',
+        label: 'Mono',
         colors: ['#3366cc'],
+        gradient: ['#3366cc'],
       }
 
       render(

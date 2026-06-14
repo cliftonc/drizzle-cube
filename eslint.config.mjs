@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 import reactHooks from "eslint-plugin-react-hooks";
+import unusedImports from "eslint-plugin-unused-imports";
 import globals from "globals";
 
 export default [
@@ -141,16 +142,20 @@ export default [
       }
     },
     plugins: {
-      "@typescript-eslint": tseslint
+      "@typescript-eslint": tseslint,
+      "unused-imports": unusedImports
     },
     rules: {
       "no-unused-vars": "off",
+      // Auto-removable unused-import rule for test files (eslint --fix deletes them).
+      // Scoped to tests only — production uses the `_`-prefix convention for
+      // intentional side-effect imports (e.g. d3 `transition`), which this rule would strip.
+      "unused-imports/no-unused-imports": "error",
       "@typescript-eslint/no-unused-vars": ["warn", {
         argsIgnorePattern: "^_",
         varsIgnorePattern: "^_"
       }],
       "@typescript-eslint/no-explicit-any": "off",
-      // Allow unused imports in test files as they're often for type-only imports
       "no-undef": "error"
     }
   },

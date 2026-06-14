@@ -15,10 +15,11 @@
  * - Theme-aware coloring
  */
 
-import React from 'react'
-import { render, screen, waitFor, act } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import ActivityGridChart from '../../../../src/client/components/charts/ActivityGridChart'
+import type { ChartAxisConfig } from '../../../../src/client/types'
+import type { ColorPalette } from '../../../../src/client/utils/colorPalettes'
 
 // Mock the useCubeFieldLabel hook
 vi.mock('../../../../src/client/hooks/useCubeFieldLabel', () => ({
@@ -39,7 +40,7 @@ vi.mock('../../../../src/client/hooks/useCubeFieldLabel', () => ({
 // Mock theme utilities
 vi.mock('../../../../src/client/theme', () => ({
   getTheme: () => 'light',
-  watchThemeChanges: (callback: (theme: string) => void) => {
+  watchThemeChanges: (_callback: (theme: string) => void) => {
     // Return a cleanup function
     return () => {}
   },
@@ -159,7 +160,7 @@ const mockHourlyData = [
 const basicChartConfig = {
   dateField: 'Activity.date',
   valueField: 'Activity.count',
-}
+} as unknown as ChartAxisConfig
 
 // Query object for day granularity
 const dayQueryObject = {
@@ -330,7 +331,7 @@ describe('ActivityGridChart', () => {
       render(
         <ActivityGridChart
           data={mockDailyData}
-          chartConfig={{ valueField: 'Activity.count' }}
+          chartConfig={{ valueField: 'Activity.count' } as unknown as ChartAxisConfig}
           queryObject={dayQueryObject}
         />
       )
@@ -343,7 +344,7 @@ describe('ActivityGridChart', () => {
       render(
         <ActivityGridChart
           data={mockDailyData}
-          chartConfig={{ dateField: 'Activity.date' }}
+          chartConfig={{ dateField: 'Activity.date' } as unknown as ChartAxisConfig}
           queryObject={dayQueryObject}
         />
       )
@@ -568,8 +569,9 @@ describe('ActivityGridChart', () => {
 
   describe('color palette support', () => {
     it('should use custom gradient colors when provided', () => {
-      const customPalette = {
+      const customPalette: ColorPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff'],
         gradient: ['#ffcccc', '#ff9999', '#ff6666', '#ff3333', '#ff0000'],
       }
@@ -782,7 +784,7 @@ describe('ActivityGridChart', () => {
       const arrayConfig = {
         dateField: ['Activity.date', 'Activity.otherDate'],
         valueField: 'Activity.count',
-      }
+      } as unknown as ChartAxisConfig
 
       const { container } = render(
         <ActivityGridChart

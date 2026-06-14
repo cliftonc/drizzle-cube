@@ -490,7 +490,7 @@ describe('useScrollDetection', () => {
       })
 
       expect(result.current).toBe(true)
-      const initialUpdateCount = stateUpdateCount
+      stateUpdateCount
 
       // Scroll to different position but still past threshold
       Object.defineProperty(container, 'scrollTop', { value: 100, writable: true })

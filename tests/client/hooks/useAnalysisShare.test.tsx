@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useAnalysisShare } from '../../../src/client/hooks/useAnalysisShare'
 import type { AnalysisConfig } from '../../../src/client/types/analysisConfig'
@@ -315,7 +315,7 @@ describe('useAnalysisShare', () => {
     })
 
     it('should handle funnel analysis type', async () => {
-      const funnelConfig: AnalysisConfig = {
+      const funnelConfig = {
         version: 1,
         analysisType: 'funnel',
         activeView: 'chart',
@@ -337,8 +337,8 @@ describe('useAnalysisShare', () => {
               dateRange: 'last 7 days',
             },
           },
-        } as unknown,
-      }
+        },
+      } as unknown as AnalysisConfig
 
       const { result } = renderHook(() =>
         useAnalysisShare({

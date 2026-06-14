@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AnalysisResultsPanel from '../../../../src/client/components/AnalysisBuilder/AnalysisResultsPanel'
 import type { AnalysisResultsPanelProps, ExecutionStatus } from '../../../../src/client/components/AnalysisBuilder/types'
@@ -59,7 +59,7 @@ describe('AnalysisResultsPanel', () => {
     onActiveViewChange: vi.fn(),
     displayLimit: 100,
     onDisplayLimitChange: vi.fn(),
-    hasMetrics: true,
+    schema: null,
   }
 
   beforeEach(() => {
@@ -129,7 +129,6 @@ describe('AnalysisResultsPanel', () => {
           {...defaultProps}
           executionStatus="idle"
           executionResults={null}
-          hasMetrics={false}
         />
       )
 
@@ -143,7 +142,6 @@ describe('AnalysisResultsPanel', () => {
           {...defaultProps}
           executionStatus="idle"
           executionResults={null}
-          hasMetrics={false}
           enableAI={true}
           onAIToggle={vi.fn()}
         />
@@ -161,7 +159,6 @@ describe('AnalysisResultsPanel', () => {
           {...defaultProps}
           executionStatus="idle"
           executionResults={null}
-          hasMetrics={false}
           enableAI={true}
           onAIToggle={onAIToggle}
         />
@@ -182,7 +179,6 @@ describe('AnalysisResultsPanel', () => {
           executionStatus="success"
           executionResults={[]}
           activeView="chart"
-          hasMetrics={true}
           allQueries={[{ measures: ['Users.count'], dimensions: [] }]}
         />
       )
@@ -326,7 +322,7 @@ describe('AnalysisResultsPanel', () => {
       render(<AnalysisResultsPanel {...defaultProps} />)
 
       // Debug button should be visible in the toolbar
-      const debugButton = screen.queryByRole('button', { name: /debug/i })
+      screen.queryByRole('button', { name: /debug/i })
       // The button exists but may use an icon
     })
 
@@ -338,7 +334,7 @@ describe('AnalysisResultsPanel', () => {
           {...defaultProps}
           debugDataPerQuery={[
             {
-              sql: 'SELECT * FROM users',
+              sql: { sql: 'SELECT * FROM users', params: [] },
               analysis: null,
               loading: false,
               error: null,
@@ -397,7 +393,7 @@ describe('AnalysisResultsPanel', () => {
         <AnalysisResultsPanel
           {...defaultProps}
           canShare={true}
-          shareButtonState="success"
+          shareButtonState="copied"
           onShareClick={vi.fn()}
         />
       )
@@ -462,7 +458,6 @@ describe('AnalysisResultsPanel', () => {
           executionStatus="idle"
           executionResults={null}
           needsRefresh={true}
-          hasMetrics={true}
           onRefreshClick={vi.fn()}
           allQueries={[{ measures: ['Users.count'], dimensions: [] }]}
         />
@@ -551,7 +546,6 @@ describe('AnalysisResultsPanel', () => {
           analysisType="funnel"
           executionStatus="idle"
           executionResults={null}
-          hasMetrics={false}
           allQueries={[]}
           funnelServerQuery={null}
         />
@@ -568,7 +562,6 @@ describe('AnalysisResultsPanel', () => {
           isFunnelMode={true}
           executionStatus="idle"
           executionResults={null}
-          hasMetrics={false}
           allQueries={[]}
           funnelServerQuery={null}
         />
@@ -586,7 +579,6 @@ describe('AnalysisResultsPanel', () => {
           analysisType="flow"
           executionStatus="idle"
           executionResults={null}
-          hasMetrics={false}
           allQueries={[]}
           flowServerQuery={null}
         />
@@ -604,7 +596,6 @@ describe('AnalysisResultsPanel', () => {
           analysisType="retention"
           executionStatus="idle"
           executionResults={null}
-          hasMetrics={false}
           allQueries={[]}
           retentionServerQuery={null}
         />
@@ -619,7 +610,7 @@ describe('AnalysisResultsPanel', () => {
       render(
         <AnalysisResultsPanel
           {...defaultProps}
-          colorPalette={['#FF0000', '#00FF00', '#0000FF']}
+          colorPalette={{ name: 'default', label: 'Default', colors: ['#FF0000', '#00FF00', '#0000FF'], gradient: ['#FF0000', '#00FF00', '#0000FF'] }}
           currentPaletteName="default"
           onColorPaletteChange={vi.fn()}
         />
@@ -676,7 +667,6 @@ describe('AnalysisResultsPanel', () => {
           {...defaultProps}
           executionStatus="idle"
           executionResults={null}
-          hasMetrics={true}
           allQueries={[{ measures: ['Users.count'], dimensions: [] }]}
           needsRefresh={false}
         />
@@ -696,7 +686,7 @@ describe('AnalysisResultsPanel', () => {
           {...defaultProps}
           debugDataPerQuery={[
             {
-              sql: 'SELECT * FROM users WHERE id = 1',
+              sql: { sql: 'SELECT * FROM users WHERE id = 1', params: [] },
               analysis: null,
               loading: false,
               error: null,
@@ -723,7 +713,7 @@ describe('AnalysisResultsPanel', () => {
           {...defaultProps}
           debugDataPerQuery={[
             {
-              sql: 'SELECT COUNT(*) FROM users',
+              sql: { sql: 'SELECT COUNT(*) FROM users', params: [] },
               analysis: null,
               loading: false,
               error: null,
@@ -769,7 +759,7 @@ describe('AnalysisResultsPanel', () => {
               sql: null,
               analysis: null,
               loading: false,
-              error: 'Failed to generate SQL',
+              error: new Error('Failed to generate SQL'),
             },
           ]}
         />
@@ -791,8 +781,8 @@ describe('AnalysisResultsPanel', () => {
           onActiveTableChange={vi.fn()}
           perQueryResults={[mockResults, mockResults.slice(0, 2)]}
           debugDataPerQuery={[
-            { sql: 'SELECT * FROM table1', analysis: null, loading: false, error: null },
-            { sql: 'SELECT * FROM table2', analysis: null, loading: false, error: null },
+            { sql: { sql: 'SELECT * FROM table1', params: [] }, analysis: null, loading: false, error: null },
+            { sql: { sql: 'SELECT * FROM table2', params: [] }, analysis: null, loading: false, error: null },
           ]}
         />
       )
@@ -862,7 +852,6 @@ describe('AnalysisResultsPanel', () => {
           analysisType="funnel"
           executionStatus="success"
           executionResults={[{ step: 1, count: 100 }]}
-          hasMetrics={true}
           funnelServerQuery={{
             bindingKey: 'Users.id',
             timeDimension: 'Users.createdAt',
@@ -873,6 +862,7 @@ describe('AnalysisResultsPanel', () => {
           }}
           funnelDebugData={{
             sql: { sql: 'SELECT step, count FROM funnel', params: [] },
+            analysis: null,
             loading: false,
             error: null,
             modeMetadata: {
@@ -909,7 +899,6 @@ describe('AnalysisResultsPanel', () => {
           analysisType="flow"
           executionStatus="success"
           executionResults={[{ source: 'A', target: 'B', value: 10 }]}
-          hasMetrics={true}
           flowServerQuery={{
             bindingKey: 'Users.id',
             timeDimension: 'Users.createdAt',
@@ -920,6 +909,7 @@ describe('AnalysisResultsPanel', () => {
           }}
           flowDebugData={{
             sql: { sql: 'SELECT source, target, count FROM flow', params: [] },
+            analysis: null,
             loading: false,
             error: null,
             modeMetadata: {
@@ -952,7 +942,6 @@ describe('AnalysisResultsPanel', () => {
           analysisType="retention"
           executionStatus="success"
           executionResults={[{ cohort: '2024-01', period: 0, retained: 100 }]}
-          hasMetrics={true}
           retentionServerQuery={{
             bindingKey: 'Users.id',
             timeDimension: 'Users.createdAt',
@@ -961,6 +950,7 @@ describe('AnalysisResultsPanel', () => {
           }}
           retentionDebugData={{
             sql: { sql: 'SELECT cohort, period, count FROM retention', params: [] },
+            analysis: null,
             loading: false,
             error: null,
           }}
@@ -988,7 +978,6 @@ describe('AnalysisResultsPanel', () => {
           enableAI={false}
           executionStatus="idle"
           executionResults={null}
-          hasMetrics={false}
         />
       )
 
@@ -1004,7 +993,6 @@ describe('AnalysisResultsPanel', () => {
           analysisType="funnel"
           executionStatus="idle"
           executionResults={null}
-          hasMetrics={false}
           allQueries={[]}
           funnelServerQuery={null}
         />
@@ -1023,7 +1011,6 @@ describe('AnalysisResultsPanel', () => {
           analysisType="flow"
           executionStatus="idle"
           executionResults={null}
-          hasMetrics={false}
           allQueries={[]}
           flowServerQuery={null}
         />
@@ -1083,11 +1070,10 @@ describe('AnalysisResultsPanel', () => {
         <AnalysisResultsPanel
           {...defaultProps}
           chartType="sankey"
-          displayConfig={{ flowVisualization: 'sunburst', showLegend: true, showGrid: true, showTooltip: true }}
+          displayConfig={{ flowVisualization: 'sunburst', showLegend: true, showGrid: true, showTooltip: true } as ChartDisplayConfig}
           analysisType="flow"
           executionStatus="success"
           executionResults={[{ source: 'A', target: 'B', value: 10 }]}
-          hasMetrics={true}
         />
       )
 
@@ -1118,8 +1104,7 @@ describe('AnalysisResultsPanel', () => {
           chartType="retentionHeatmap"
           executionStatus="success"
           executionResults={[{ cohort: '2024-01', period: 0, retained: 100 }]}
-          retentionChartData={retentionChartData}
-          hasMetrics={true}
+          retentionChartData={retentionChartData as unknown as AnalysisResultsPanelProps['retentionChartData']}
         />
       )
 
@@ -1141,7 +1126,7 @@ describe('AnalysisResultsPanel', () => {
           executionResults={null}
           debugDataPerQuery={[
             {
-              sql: 'SELECT * FROM slow_query',
+              sql: { sql: 'SELECT * FROM slow_query', params: [] },
               analysis: null,
               loading: false,
               error: null,
@@ -1171,7 +1156,6 @@ describe('AnalysisResultsPanel', () => {
           analysisType="funnel"
           executionStatus="success"
           executionResults={[{ step: 1, count: 100 }]}
-          hasMetrics={true}
           funnelExecutedQueries={[
             { measures: ['Users.count'], dimensions: ['Users.id'], filters: [] },
             { measures: ['Users.count'], dimensions: ['Users.id'], filters: [{ member: 'Users.id', operator: 'equals', values: ['1', '2'] }] },
@@ -1202,7 +1186,6 @@ describe('AnalysisResultsPanel', () => {
           executionStatus="idle"
           executionResults={null}
           needsRefresh={true}
-          hasMetrics={true}
           onRefreshClick={vi.fn()}
           allQueries={[{ measures: ['Users.count'], dimensions: [] }]}
         />
@@ -1219,7 +1202,6 @@ describe('AnalysisResultsPanel', () => {
           executionStatus="idle"
           executionResults={null}
           needsRefresh={true}
-          hasMetrics={true}
           onRefreshClick={vi.fn()}
           allQueries={[{ measures: ['Users.count'], dimensions: [] }]}
         />
@@ -1238,7 +1220,6 @@ describe('AnalysisResultsPanel', () => {
           executionStatus="idle"
           executionResults={null}
           needsRefresh={true}
-          hasMetrics={true}
           onRefreshClick={onRefreshClick}
           allQueries={[{ measures: ['Users.count'], dimensions: [] }]}
         />

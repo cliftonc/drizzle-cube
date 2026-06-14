@@ -16,7 +16,7 @@ import { useDrillInteraction } from '../../../src/client/hooks/useDrillInteracti
 import type { CubeQuery, CubeMeta } from '../../../src/client/types'
 import type { ChartDataPointClickEvent } from '../../../src/client/types/drill'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type MockFn = ((query: CubeQuery) => void) & { mock: { calls: any[][] } }
 
 // ============================================================================

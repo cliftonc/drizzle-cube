@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
@@ -34,6 +34,7 @@ vi.mock('../../../src/client/components/AnalysisBuilderLazy', () => {
 
 import PortletAnalysisModal from '../../../src/client/components/PortletAnalysisModal'
 import type { PortletConfig } from '../../../src/client/types'
+import type { ColorPalette } from '../../../src/client/utils/colorPalettes'
 
 // Create a valid analysis config for testing
 const createMockAnalysisConfig = (overrides?: Partial<AnalysisConfig>): AnalysisConfig => ({
@@ -52,7 +53,7 @@ const createMockAnalysisConfig = (overrides?: Partial<AnalysisConfig>): Analysis
     dimensions: ['Sales.category']
   },
   ...overrides
-})
+} as AnalysisConfig)
 
 // Create mock portlet config
 const createMockPortlet = (overrides?: Partial<PortletConfig>): PortletConfig => ({
@@ -84,7 +85,8 @@ describe('PortletAnalysisModal', () => {
     onSave: vi.fn(),
     portlet: null as PortletConfig | null,
     title: 'Add Portlet',
-    submitText: 'Save'
+    submitText: 'Save',
+    colorPalette: undefined as ColorPalette | undefined
   })
 
   describe('create mode', () => {
@@ -510,7 +512,8 @@ describe('PortletAnalysisModal', () => {
       props.colorPalette = {
         name: 'custom',
         label: 'Custom',
-        colors: ['#ff0000', '#00ff00']
+        colors: ['#ff0000', '#00ff00'],
+        gradient: ['#ff0000', '#00ff00']
       }
 
       render(<PortletAnalysisModal {...props} />)

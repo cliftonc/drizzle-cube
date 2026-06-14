@@ -176,6 +176,7 @@ describe('AnalysisAxisDropZone', () => {
         shortTitle: 'name',
         cubeName: 'Users',
         type: 'dimension',
+        measureType: undefined,
       })
 
       render(
@@ -194,6 +195,7 @@ describe('AnalysisAxisDropZone', () => {
         shortTitle: 'createdAt',
         cubeName: 'Users',
         type: 'timeDimension',
+        measureType: undefined,
       })
 
       render(
@@ -578,12 +580,14 @@ describe('AnalysisAxisDropZone', () => {
           shortTitle: 'name',
           cubeName: 'Users',
           type: 'dimension',
+          measureType: undefined,
         })
         .mockReturnValueOnce({
           title: 'name',
           shortTitle: 'name',
           cubeName: 'Products',
           type: 'dimension',
+          measureType: undefined,
         })
 
       render(

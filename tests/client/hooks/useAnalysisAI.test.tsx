@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../client-setup/msw-server'
 
@@ -16,8 +16,8 @@ vi.mock('../../../src/client/providers/CubeApiProvider', () => ({
 
 import { useAnalysisAI } from '../../../src/client/hooks/useAnalysisAI'
 import type { AnalysisBuilderState } from '../../../src/client/components/AnalysisBuilder/types'
-import type { ChartType, ChartAxisConfig, ChartDisplayConfig, CubeQuery } from '../../../src/client/types'
-import type { AnalysisConfig, AnalysisType } from '../../../src/client/types/analysisConfig'
+import type { ChartAxisConfig, ChartDisplayConfig, CubeQuery } from '../../../src/client/types'
+import type { AnalysisConfig } from '../../../src/client/types/analysisConfig'
 
 // ============================================================================
 // Test Data
@@ -27,12 +27,16 @@ const createMockState = (): AnalysisBuilderState => ({
   metrics: [{ id: 'metric-1', field: 'Employees.count', label: 'A' }],
   breakdowns: [{ id: 'breakdown-1', field: 'Employees.name', isTimeDimension: false }],
   filters: [],
+  validationStatus: 'idle',
+  validationError: null,
 })
 
 const emptyState: AnalysisBuilderState = {
   metrics: [],
   breakdowns: [],
   filters: [],
+  validationStatus: 'idle',
+  validationError: null,
 }
 
 const mockChartConfig: ChartAxisConfig = {

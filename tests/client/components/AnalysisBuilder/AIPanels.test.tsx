@@ -1044,7 +1044,7 @@ describe('ExecutionPlanPanel', () => {
       await user.click(checkbox)
 
       // Rerender with loading state
-      const { rerender } = render(
+      render(
         <ExecutionPlanPanel
           {...defaultProps}
           explainLoading={true}

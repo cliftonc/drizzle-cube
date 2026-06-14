@@ -315,7 +315,6 @@ describe('EditModeFilterList', () => {
     })
 
     it('should show add buttons in mobile header', async () => {
-      const user = userEvent.setup()
       const onAddFilter = vi.fn()
 
       render(<EditModeFilterList {...defaultProps} onAddFilter={onAddFilter} />)
@@ -388,7 +387,7 @@ describe('EditModeFilterList', () => {
     })
 
     it('should have primary color styling for add filter button', () => {
-      const { container } = render(<EditModeFilterList {...defaultProps} />)
+      render(<EditModeFilterList {...defaultProps} />)
 
       // Add filter button should have primary background styling
       // Check for buttons with primary color inline styles

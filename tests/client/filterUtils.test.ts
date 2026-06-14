@@ -156,22 +156,26 @@ describe('filterUtils', () => {
       cubes: [
         {
           name: 'Sales',
+          title: 'Sales',
+          segments: [],
           measures: [
-            { name: 'Sales.count', type: 'count' },
-            { name: 'Sales.total', type: 'sum' }
+            { name: 'Sales.count', title: 'Sales.count', shortTitle: 'Sales.count', type: 'count' },
+            { name: 'Sales.total', title: 'Sales.total', shortTitle: 'Sales.total', type: 'sum' }
           ],
           dimensions: [
-            { name: 'Sales.category', type: 'string' },
-            { name: 'Sales.region', type: 'string' }
+            { name: 'Sales.category', title: 'Sales.category', shortTitle: 'Sales.category', type: 'string' },
+            { name: 'Sales.region', title: 'Sales.region', shortTitle: 'Sales.region', type: 'string' }
           ]
         },
         {
           name: 'Products',
+          title: 'Products',
+          segments: [],
           measures: [
-            { name: 'Products.count', type: 'count' }
+            { name: 'Products.count', title: 'Products.count', shortTitle: 'Products.count', type: 'count' }
           ],
           dimensions: [
-            { name: 'Products.name', type: 'string' }
+            { name: 'Products.name', title: 'Products.name', shortTitle: 'Products.name', type: 'string' }
           ]
         }
       ]
@@ -230,10 +234,12 @@ describe('filterUtils', () => {
       cubes: [
         {
           name: 'Sales',
+          title: 'Sales',
+          segments: [],
           measures: [],
           dimensions: [
-            { name: 'Sales.category', type: 'string' },
-            { name: 'Sales.region', type: 'string' }
+            { name: 'Sales.category', title: 'Sales.category', shortTitle: 'Sales.category', type: 'string' },
+            { name: 'Sales.region', title: 'Sales.region', shortTitle: 'Sales.region', type: 'string' }
           ]
         }
       ]

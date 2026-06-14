@@ -13,9 +13,9 @@
  * - Sorts palettes alphabetically by label
  */
 
-import React from 'react'
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
 import ColorPaletteSelector from '../../../../src/client/components/ColorPaletteSelector'
 import { COLOR_PALETTES, getColorPalette } from '../../../../src/client/utils/colorPalettes'
 
@@ -24,7 +24,7 @@ import { COLOR_PALETTES, getColorPalette } from '../../../../src/client/utils/co
 // ============================================================================
 
 describe('ColorPaletteSelector', () => {
-  let onPaletteChange: ReturnType<typeof vi.fn>
+  let onPaletteChange: Mock<(paletteName: string) => void>
 
   beforeEach(() => {
     onPaletteChange = vi.fn()

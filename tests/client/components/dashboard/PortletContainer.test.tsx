@@ -42,7 +42,7 @@ const renderWithTestProviders = (ui: React.ReactElement) => {
 
 // Mock AnalyticsPortlet to avoid IntersectionObserver issues and isolate PortletContainer tests
 vi.mock('../../../../src/client/components/AnalyticsPortlet', () => ({
-  default: vi.fn(({ query, chartType, title, onDebugDataReady }) => {
+  default: vi.fn(({ query, chartType }) => {
     // Parse query to display in test
     let queryDisplay = 'empty query'
     try {

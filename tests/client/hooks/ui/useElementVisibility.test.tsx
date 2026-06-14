@@ -5,7 +5,7 @@
 
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { useRef, type RefObject } from 'react'
+import { useRef } from 'react'
 import { useElementVisibility } from '../../../../src/client/hooks/useElementVisibility'
 
 // Helper to create a mock element
@@ -518,15 +518,7 @@ describe('useElementVisibility', () => {
         toJSON: () => ({})
       }))
 
-      // Trigger scroll check by simulating scroll
-      let scrollHandler: EventListener | null = null
-      vi.spyOn(window, 'addEventListener').mockImplementation(
-        (type, handler) => {
-          if (type === 'scroll') {
-            scrollHandler = handler as EventListener
-          }
-        }
-      )
+      vi.spyOn(window, 'addEventListener').mockImplementation(() => {})
     })
   })
 

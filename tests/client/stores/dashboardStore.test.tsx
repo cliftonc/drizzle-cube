@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import React, { type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import {
   createDashboardStore,
   DashboardStoreProvider,
@@ -360,7 +360,7 @@ describe('DashboardStore', () => {
           { id: 'portlet-2', title: 'Portlet 2', query: '{}', chartType: 'line', w: 6, h: 4, x: 0, y: 0 },
         ],
       },
-    ]
+    ] as unknown as RowLayout[]
 
     describe('setDraftRows', () => {
       it('should set draft rows', () => {
@@ -376,7 +376,7 @@ describe('DashboardStore', () => {
 
       it('should replace previous draft rows', () => {
         store.getState().setDraftRows(sampleRows)
-        const newRows: RowLayout[] = [{ id: 'row-new', portlets: [] }]
+        const newRows: RowLayout[] = [{ id: 'row-new', portlets: [] }] as unknown as RowLayout[]
         store.getState().setDraftRows(newRows)
         expect(store.getState().draftRows).toEqual(newRows)
       })
@@ -637,7 +637,7 @@ describe('DashboardStore', () => {
       store.getState().setEditMode(true)
       store.getState().setSelectedFilterId('filter-1')
       store.getState().openPortletModal({ id: '1', title: 'Test', query: '{}', chartType: 'bar', w: 6, h: 4, x: 0, y: 0 })
-      store.getState().setDraftRows([{ id: 'row-1', portlets: [] }])
+      store.getState().setDraftRows([{ id: 'row-1', portlets: [] }] as unknown as RowLayout[])
       store.getState().setIsDraggingPortlet(true)
       store.getState().setIsInitialized(true)
       store.getState().setDebugData('portlet-1', {
@@ -722,7 +722,7 @@ describe('DashboardStore', () => {
 
     describe('selectLayoutState', () => {
       it('should return layout state', () => {
-        const rows: RowLayout[] = [{ id: 'row-1', portlets: [] }]
+        const rows: RowLayout[] = [{ id: 'row-1', portlets: [] }] as unknown as RowLayout[]
         const layout = [{ i: 'p-1', x: 0, y: 0, w: 6, h: 4 }]
         const dragState: DragState = { rowIndex: 0, colIndex: 0, portletId: 'p-1' }
 

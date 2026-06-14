@@ -67,18 +67,15 @@ function createDragOverEvent(clientX: number, clientY: number): Event {
 }
 
 describe('useDragAutoScroll', () => {
-  let rafCallback: FrameRequestCallback | null = null
   let originalRequestAnimationFrame: typeof requestAnimationFrame
   let originalCancelAnimationFrame: typeof cancelAnimationFrame
 
   beforeEach(() => {
-    rafCallback = null
     originalRequestAnimationFrame = window.requestAnimationFrame
     originalCancelAnimationFrame = window.cancelAnimationFrame
 
     // Mock requestAnimationFrame
-    window.requestAnimationFrame = vi.fn((callback) => {
-      rafCallback = callback
+    window.requestAnimationFrame = vi.fn(() => {
       return 1
     }) as unknown as typeof requestAnimationFrame
 

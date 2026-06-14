@@ -61,8 +61,6 @@ const mockGridSettings: DashboardGridSettings = {
   rowHeight: 80,
   minW: 2,
   minH: 2,
-  margin: [10, 10],
-  containerPadding: [10, 10],
 }
 
 const mockPortlet: PortletConfig = {
@@ -88,15 +86,11 @@ const mockPortlet2: PortletConfig = {
 }
 
 const mockConfig: DashboardConfig = {
-  id: 'test-dashboard',
-  name: 'Test Dashboard',
   portlets: [mockPortlet],
   layoutMode: 'grid',
 }
 
 const mockConfigWithMultiplePortlets: DashboardConfig = {
-  id: 'test-dashboard',
-  name: 'Test Dashboard',
   portlets: [mockPortlet, mockPortlet2],
   layoutMode: 'grid',
 }
@@ -104,15 +98,13 @@ const mockConfigWithMultiplePortlets: DashboardConfig = {
 const mockDashboardFilters: DashboardFilter[] = [
   {
     id: 'filter-1',
-    dimension: 'Employees.department',
     label: 'Department',
-    type: 'single',
+    filter: { member: 'Employees.department', operator: 'equals', values: [] },
   },
   {
     id: 'filter-2',
-    dimension: 'Employees.status',
     label: 'Status',
-    type: 'multi',
+    filter: { member: 'Employees.status', operator: 'equals', values: [] },
   },
 ]
 

@@ -211,8 +211,8 @@ describe('multiQueryUtils', () => {
 
       const result = mergeResultsConcat(resultSets, queries, labels)
 
-      expect(result[0].__queryLabel).toBe('Revenue')
-      expect(result[1].__queryLabel).toBe('Costs')
+      expect((result[0] as any).__queryLabel).toBe('Revenue')
+      expect((result[1] as any).__queryLabel).toBe('Costs')
     })
 
     it('should handle multiple rows per result set', () => {
@@ -245,7 +245,7 @@ describe('multiQueryUtils', () => {
       const result = mergeResultsConcat(resultSets, queries)
 
       expect(result).toHaveLength(1)
-      expect(result[0].__queryIndex).toBe(1)
+      expect((result[0] as any).__queryIndex).toBe(1)
     })
 
     it('should handle single result set', () => {
@@ -274,8 +274,8 @@ describe('multiQueryUtils', () => {
 
       const result = mergeResultsConcat(resultSets, queries, labels)
 
-      expect(result[0].__queryLabel).toBe('Custom')
-      expect(result[1].__queryLabel).toBe('Query 2')
+      expect((result[0] as any).__queryLabel).toBe('Custom')
+      expect((result[1] as any).__queryLabel).toBe('Query 2')
     })
 
     it('should preserve all original row properties', () => {
@@ -381,9 +381,9 @@ describe('multiQueryUtils', () => {
 
       const result = mergeResultsByKey(resultSets, queries, ['date'])
 
-      expect(result[0].date).toBe('2024-01')
-      expect(result[1].date).toBe('2024-02')
-      expect(result[2].date).toBe('2024-03')
+      expect((result[0] as any).date).toBe('2024-01')
+      expect((result[1] as any).date).toBe('2024-02')
+      expect((result[2] as any).date).toBe('2024-03')
     })
 
     it('should use first value when same measure exists in multiple queries', () => {
@@ -399,7 +399,7 @@ describe('multiQueryUtils', () => {
       const result = mergeResultsByKey(resultSets, queries, ['date'])
 
       // First query's value wins
-      expect(result[0]['Sales.revenue']).toBe(100)
+      expect((result[0] as any)['Sales.revenue']).toBe(100)
     })
 
     it('should handle null and undefined key values', () => {
@@ -425,7 +425,7 @@ describe('multiQueryUtils', () => {
       const result = mergeResultsByKey(resultSets, queries, ['date'])
 
       expect(result).toHaveLength(1)
-      expect(result[0].date).toBe('2024-01')
+      expect((result[0] as any).date).toBe('2024-01')
     })
 
     it('should handle undefined measures', () => {
@@ -451,7 +451,7 @@ describe('multiQueryUtils', () => {
 
       const result = mergeResultsByKey(resultSets, queries, ['date'])
 
-      expect(result[0].extra).toBe('from-first')
+      expect((result[0] as any).extra).toBe('from-first')
     })
 
     it('should handle many result sets', () => {

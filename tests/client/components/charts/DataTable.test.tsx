@@ -5,9 +5,8 @@
  * DataTable is a pure presentational component that receives data as props.
  */
 
-import React from 'react'
-import { render, screen, within } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
 import DataTable from '../../../../src/client/components/charts/DataTable'
 
 // Mock the CubeProvider hooks to avoid context dependencies
@@ -52,14 +51,6 @@ const mockData = [
   { 'Users.name': 'Bob', 'Users.count': 5, 'Users.revenue': 750.25 },
   { 'Users.name': 'Charlie', 'Users.count': 15, 'Users.revenue': 2250.75 },
 ]
-
-// Helper to create larger dataset for pagination tests
-const createMockData = (count: number) =>
-  Array.from({ length: count }, (_, i) => ({
-    'Users.name': `User ${i + 1}`,
-    'Users.count': Math.floor(Math.random() * 100),
-    'Users.revenue': Math.floor(Math.random() * 10000) / 100,
-  }))
 
 describe('DataTable', () => {
   describe('rendering', () => {

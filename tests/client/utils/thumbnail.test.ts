@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { ThumbnailFeatureConfig } from '../../../src/client/types'
 
 // We need to test the module, but it relies on dynamic imports
 // So we'll test the exported functions directly
@@ -270,7 +271,7 @@ describe('thumbnail configuration options', () => {
   })
 
   it('should use default values when not specified', () => {
-    const config = { enabled: true }
+    const config: ThumbnailFeatureConfig = { enabled: true }
 
     // Default values as documented
     expect(config.width).toBeUndefined() // Will use 1600 at runtime

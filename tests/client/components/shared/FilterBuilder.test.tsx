@@ -13,7 +13,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import FilterBuilder from '../../../../src/client/components/shared/FilterBuilder'
-import type { Filter, SimpleFilter, GroupFilter } from '../../../../src/client/types'
+import type { Filter, GroupFilter } from '../../../../src/client/types'
 import type { MetaResponse } from '../../../../src/client/shared/types'
 import { renderWithProviders } from '../../../client-setup/test-utils'
 

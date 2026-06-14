@@ -1,13 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import FloatingEditToolbar from '../../../src/client/components/FloatingEditToolbar'
 import type { DashboardLayoutMode } from '../../../src/client/types'
 
 describe('FloatingEditToolbar', () => {
   const createDefaultProps = () => ({
     isEditBarVisible: false,
-    position: 'right' as const,
+    position: 'right' as 'left' | 'right',
     isEditMode: false,
     onEditModeToggle: vi.fn(),
     layoutMode: 'grid' as DashboardLayoutMode,

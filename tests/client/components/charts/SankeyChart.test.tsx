@@ -318,7 +318,9 @@ describe('SankeyChart', () => {
     it('should use custom color palette when provided', () => {
       const customPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff'],
+        gradient: ['#ff0000', '#00ff00', '#0000ff'],
       }
 
       render(<SankeyChart data={[bidirectionalFlowData]} colorPalette={customPalette} />)
@@ -329,7 +331,9 @@ describe('SankeyChart', () => {
     it('should cycle through custom palette colors based on absolute layer', () => {
       const shortPalette = {
         name: 'short',
+        label: 'Short',
         colors: ['#ff0000', '#00ff00'],
+        gradient: ['#ff0000', '#00ff00'],
       }
 
       render(<SankeyChart data={[deepFlowData]} colorPalette={shortPalette} />)

@@ -14,7 +14,7 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import RetentionCombinedChart from '../../../../src/client/components/charts/RetentionCombinedChart'
-import type { RetentionResultRow, RetentionChartData } from '../../../../src/client/types/retention'
+import type { RetentionResultRow } from '../../../../src/client/types/retention'
 
 // Mock ChartContainer to avoid ResponsiveContainer issues in tests
 vi.mock('../../../../src/client/components/charts/ChartContainer', () => ({
@@ -50,26 +50,26 @@ const mockMultiSeriesRows: RetentionResultRow[] = [
 ]
 
 // RetentionChartData format
-const mockSingleSeriesChartData: RetentionChartData = {
+const mockSingleSeriesChartData: any = {
   rows: mockSingleSeriesRows,
   periods: [0, 1, 2, 3, 4],
 }
 
-const mockMultiSeriesChartData: RetentionChartData = {
+const mockMultiSeriesChartData: any = {
   rows: mockMultiSeriesRows,
   periods: [0, 1, 2],
   breakdownValues: ['US', 'UK'],
 }
 
 // Chart data with granularity
-const mockChartDataWithGranularity: RetentionChartData = {
+const mockChartDataWithGranularity: any = {
   rows: mockSingleSeriesRows,
   periods: [0, 1, 2, 3, 4],
   granularity: 'week',
 }
 
 // Chart data with binding key label
-const mockChartDataWithBindingKey: RetentionChartData = {
+const mockChartDataWithBindingKey: any = {
   rows: mockSingleSeriesRows,
   periods: [0, 1, 2, 3, 4],
   bindingKeyLabel: 'userId',
@@ -88,7 +88,7 @@ describe('RetentionCombinedChart', () => {
     })
 
     it('should render with default height of 100%', () => {
-      const { container } = render(
+      render(
         <RetentionCombinedChart data={mockSingleSeriesRows} />
       )
 
@@ -307,7 +307,7 @@ describe('RetentionCombinedChart', () => {
 
   describe('granularity formatting', () => {
     it('should format periods with day granularity', () => {
-      const dayData: RetentionChartData = {
+      const dayData: any = {
         rows: mockSingleSeriesRows,
         periods: [0, 1, 2, 3, 4],
         granularity: 'day',
@@ -337,7 +337,7 @@ describe('RetentionCombinedChart', () => {
     })
 
     it('should format periods with month granularity', () => {
-      const monthData: RetentionChartData = {
+      const monthData: any = {
         rows: mockSingleSeriesRows,
         periods: [0, 1, 2, 3, 4],
         granularity: 'month',
@@ -425,7 +425,9 @@ describe('RetentionCombinedChart', () => {
     it('should use custom color palette when provided', () => {
       const customPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff'],
+        gradient: ['#ff0000', '#00ff00', '#0000ff'],
       }
 
       render(
@@ -502,7 +504,7 @@ describe('RetentionCombinedChart', () => {
 
   describe('edge cases', () => {
     it('should handle single period data', () => {
-      const singlePeriod: RetentionChartData = {
+      const singlePeriod: any = {
         rows: [{ period: 0, cohortSize: 100, retainedUsers: 100, retentionRate: 1.0 }],
         periods: [0],
       }
@@ -513,7 +515,7 @@ describe('RetentionCombinedChart', () => {
     })
 
     it('should handle zero retention rates', () => {
-      const zeroRetention: RetentionChartData = {
+      const zeroRetention: any = {
         rows: [
           { period: 0, cohortSize: 100, retainedUsers: 100, retentionRate: 1.0 },
           { period: 1, cohortSize: 100, retainedUsers: 0, retentionRate: 0 },
@@ -534,7 +536,7 @@ describe('RetentionCombinedChart', () => {
     })
 
     it('should handle large cohort sizes', () => {
-      const largeCohort: RetentionChartData = {
+      const largeCohort: any = {
         rows: [
           { period: 0, cohortSize: 1000000, retainedUsers: 1000000, retentionRate: 1.0 },
           { period: 1, cohortSize: 1000000, retainedUsers: 650000, retentionRate: 0.65 },
@@ -561,7 +563,7 @@ describe('RetentionCombinedChart', () => {
         retentionRate: Math.max((100 - i * 8) / 100, 0.05),
       }))
 
-      const chartData: RetentionChartData = {
+      const chartData: any = {
         rows: manyPeriods,
         periods: Array.from({ length: 12 }, (_, i) => i),
       }
@@ -578,7 +580,7 @@ describe('RetentionCombinedChart', () => {
         { period: 1, cohortSize: 50, retainedUsers: 30, retentionRate: 0.6, breakdownValue: segment },
       ])
 
-      const chartData: RetentionChartData = {
+      const chartData: any = {
         rows: manySegments,
         periods: [0, 1],
         breakdownValues: segments,
@@ -651,7 +653,7 @@ describe('RetentionCombinedChart', () => {
   describe('invalid data handling', () => {
     it('should show error message when chart data cannot be rendered', () => {
       // Empty chart data after transformation
-      const emptyChartData: RetentionChartData = {
+      const emptyChartData: any = {
         rows: [],
         periods: [],
       }

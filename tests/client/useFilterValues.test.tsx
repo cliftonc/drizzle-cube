@@ -4,9 +4,10 @@
  */
 
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, Mock } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useFilterValues } from '../../src/client/hooks/useFilterValues'
 import { useCubeLoadQuery } from '../../src/client/hooks/queries/useCubeLoadQuery'
+import type { CubeResultSet } from '../../src/client/types'
 
 // Mock the useCubeLoadQuery hook
 vi.mock('../../src/client/hooks/queries/useCubeLoadQuery', () => ({
@@ -16,7 +17,7 @@ vi.mock('../../src/client/hooks/queries/useCubeLoadQuery', () => ({
 const mockUseCubeLoadQuery = vi.mocked(useCubeLoadQuery)
 
 // Mock console.error to avoid noise during error tests
-const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+vi.spyOn(console, 'error').mockImplementation(() => {})
 
 describe('useFilterValues', () => {
   let mockResultSet: any
@@ -47,7 +48,10 @@ describe('useFilterValues', () => {
       debouncedQuery: null,
       isValidQuery: false,
       refetch: vi.fn(),
-      clearCache: vi.fn()
+      clearCache: vi.fn(),
+      needsRefresh: false,
+      executeQuery: vi.fn(),
+      warnings: undefined
     })
   })
 
@@ -111,7 +115,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: true,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -134,7 +141,7 @@ describe('useFilterValues', () => {
       }
 
       mockUseCubeLoadQuery.mockReturnValue({
-        resultSet: resultSetWithNulls,
+        resultSet: resultSetWithNulls as unknown as CubeResultSet,
         rawData: rawDataResult,
         isLoading: false,
         isFetching: false,
@@ -143,7 +150,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: true,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result } = renderHook(() => useFilterValues('Users.status'))
@@ -164,7 +174,7 @@ describe('useFilterValues', () => {
       }
 
       mockUseCubeLoadQuery.mockReturnValue({
-        resultSet: mixedDataResultSet,
+        resultSet: mixedDataResultSet as unknown as CubeResultSet,
         rawData: rawDataResult,
         isLoading: false,
         isFetching: false,
@@ -173,7 +183,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: true,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result } = renderHook(() => useFilterValues('Orders.amount'))
@@ -194,7 +207,7 @@ describe('useFilterValues', () => {
       }
 
       mockUseCubeLoadQuery.mockReturnValue({
-        resultSet: booleanResultSet,
+        resultSet: booleanResultSet as unknown as CubeResultSet,
         rawData: rawDataResult,
         isLoading: false,
         isFetching: false,
@@ -203,7 +216,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: true,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result } = renderHook(() => useFilterValues('Users.isActive'))
@@ -224,7 +240,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: false,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -249,7 +268,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: true,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -273,7 +295,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: false,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -293,7 +318,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: false,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -314,7 +342,7 @@ describe('useFilterValues', () => {
       }
 
       mockUseCubeLoadQuery.mockReturnValue({
-        resultSet: brokenResultSet,
+        resultSet: brokenResultSet as unknown as CubeResultSet,
         rawData: rawDataResult,
         isLoading: false,
         isFetching: false,
@@ -323,7 +351,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: true,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -365,7 +396,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: true,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result, rerender } = renderHook(() => useFilterValues('Users.name'))
@@ -397,7 +431,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: true,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result, rerender } = renderHook(() => useFilterValues('Users.name'))
@@ -421,7 +458,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: true,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       rerender()
@@ -620,7 +660,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: false,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -682,13 +725,16 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: true,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       const { result, rerender } = renderHook(
         ({ fieldName }) => useFilterValues(fieldName),
         {
-          initialProps: { fieldName: 'Users.name' }
+          initialProps: { fieldName: 'Users.name' as string | null }
         }
       )
 
@@ -705,7 +751,10 @@ describe('useFilterValues', () => {
         debouncedQuery: null,
         isValidQuery: false,
         refetch: vi.fn(),
-        clearCache: vi.fn()
+        clearCache: vi.fn(),
+        needsRefresh: false,
+        executeQuery: vi.fn(),
+        warnings: undefined
       })
 
       rerender({ fieldName: null })

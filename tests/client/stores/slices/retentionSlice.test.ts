@@ -9,7 +9,7 @@ import {
   type AnalysisBuilderStore,
 } from '../../../../src/client/stores/analysisBuilderStore'
 import type { StoreApi } from 'zustand'
-import type { Filter } from '../../../../src/client/types'
+import type { Filter, SimpleFilter } from '../../../../src/client/types'
 import {
   RETENTION_MIN_PERIODS,
   RETENTION_MAX_PERIODS,
@@ -262,7 +262,7 @@ describe('RetentionSlice', () => {
         ]
         store.getState().setRetentionCohortFilters(newFilters)
         expect(store.getState().retentionCohortFilters).toHaveLength(1)
-        expect(store.getState().retentionCohortFilters[0].member).toBe('Events.source')
+        expect((store.getState().retentionCohortFilters[0] as SimpleFilter).member).toBe('Events.source')
       })
 
       it('should clear filters when empty array provided', () => {
@@ -303,7 +303,7 @@ describe('RetentionSlice', () => {
         store.getState().removeRetentionCohortFilter(0)
 
         expect(store.getState().retentionCohortFilters).toHaveLength(1)
-        expect(store.getState().retentionCohortFilters[0].member).toBe('Events.country')
+        expect((store.getState().retentionCohortFilters[0] as SimpleFilter).member).toBe('Events.country')
       })
 
       it('should handle removing non-existent index gracefully', () => {
@@ -323,7 +323,7 @@ describe('RetentionSlice', () => {
         }
         store.getState().updateRetentionCohortFilter(0, updatedFilter)
 
-        expect(store.getState().retentionCohortFilters[0].values).toEqual(['purchase'])
+        expect((store.getState().retentionCohortFilters[0] as SimpleFilter).values).toEqual(['purchase'])
       })
 
       it('should not update if index does not exist', () => {
@@ -335,7 +335,7 @@ describe('RetentionSlice', () => {
         }
         store.getState().updateRetentionCohortFilter(5, updatedFilter)
 
-        expect(store.getState().retentionCohortFilters[0].values).toEqual(['signup'])
+        expect((store.getState().retentionCohortFilters[0] as SimpleFilter).values).toEqual(['signup'])
       })
     })
   })
@@ -367,7 +367,7 @@ describe('RetentionSlice', () => {
         ]
         store.getState().setRetentionActivityFilters(newFilters)
         expect(store.getState().retentionActivityFilters).toHaveLength(1)
-        expect(store.getState().retentionActivityFilters[0].member).toBe('Events.action')
+        expect((store.getState().retentionActivityFilters[0] as SimpleFilter).member).toBe('Events.action')
       })
     })
 
@@ -402,7 +402,7 @@ describe('RetentionSlice', () => {
         store.getState().removeRetentionActivityFilter(0)
 
         expect(store.getState().retentionActivityFilters).toHaveLength(1)
-        expect(store.getState().retentionActivityFilters[0].values).toEqual(['page_view'])
+        expect((store.getState().retentionActivityFilters[0] as SimpleFilter).values).toEqual(['page_view'])
       })
     })
 
@@ -416,7 +416,7 @@ describe('RetentionSlice', () => {
         }
         store.getState().updateRetentionActivityFilter(0, updatedFilter)
 
-        expect(store.getState().retentionActivityFilters[0].values).toEqual(['checkout'])
+        expect((store.getState().retentionActivityFilters[0] as SimpleFilter).values).toEqual(['checkout'])
       })
 
       it('should not update if index does not exist', () => {
@@ -428,7 +428,7 @@ describe('RetentionSlice', () => {
         }
         store.getState().updateRetentionActivityFilter(5, updatedFilter)
 
-        expect(store.getState().retentionActivityFilters[0].values).toEqual(['login'])
+        expect((store.getState().retentionActivityFilters[0] as SimpleFilter).values).toEqual(['login'])
       })
     })
   })
@@ -942,12 +942,12 @@ describe('RetentionSlice', () => {
       // Remove middle filter
       store.getState().removeRetentionCohortFilter(1)
       expect(store.getState().retentionCohortFilters).toHaveLength(2)
-      expect(store.getState().retentionCohortFilters[1].values).toEqual(['pro'])
+      expect((store.getState().retentionCohortFilters[1] as SimpleFilter).values).toEqual(['pro'])
 
       // Remove first filter
       store.getState().removeRetentionCohortFilter(0)
       expect(store.getState().retentionCohortFilters).toHaveLength(1)
-      expect(store.getState().retentionCohortFilters[0].values).toEqual(['pro'])
+      expect((store.getState().retentionCohortFilters[0] as SimpleFilter).values).toEqual(['pro'])
     })
 
     it('should build query with all optional fields populated', () => {

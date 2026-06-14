@@ -31,26 +31,28 @@ const mockMeta: CubeMeta = {
       name: 'Signups',
       title: 'Signups',
       measures: [
-        { name: 'Signups.count', type: 'count', title: 'Count' },
+        { name: 'Signups.count', type: 'count', title: 'Count', shortTitle: 'Count' },
       ],
       dimensions: [
-        { name: 'Signups.userId', type: 'string', title: 'User ID' },
-        { name: 'Signups.email', type: 'string', title: 'Email' },
-        { name: 'Signups.createdAt', type: 'time', title: 'Created At' },
+        { name: 'Signups.userId', type: 'string', title: 'User ID', shortTitle: 'User ID' },
+        { name: 'Signups.email', type: 'string', title: 'Email', shortTitle: 'Email' },
+        { name: 'Signups.createdAt', type: 'time', title: 'Created At', shortTitle: 'Created At' },
       ],
+      segments: [],
     },
     {
       name: 'Purchases',
       title: 'Purchases',
       measures: [
-        { name: 'Purchases.count', type: 'count', title: 'Count' },
-        { name: 'Purchases.totalAmount', type: 'sum', title: 'Total Amount' },
+        { name: 'Purchases.count', type: 'count', title: 'Count', shortTitle: 'Count' },
+        { name: 'Purchases.totalAmount', type: 'sum', title: 'Total Amount', shortTitle: 'Total Amount' },
       ],
       dimensions: [
-        { name: 'Purchases.customerId', type: 'string', title: 'Customer ID' },
-        { name: 'Purchases.productId', type: 'number', title: 'Product ID' },
-        { name: 'Purchases.orderDate', type: 'time', title: 'Order Date' },
+        { name: 'Purchases.customerId', type: 'string', title: 'Customer ID', shortTitle: 'Customer ID' },
+        { name: 'Purchases.productId', type: 'number', title: 'Product ID', shortTitle: 'Product ID' },
+        { name: 'Purchases.orderDate', type: 'time', title: 'Order Date', shortTitle: 'Order Date' },
       ],
+      segments: [],
     },
   ],
 }
@@ -524,8 +526,8 @@ describe('funnelValidation utilities', () => {
           {
             name: 'NoDims',
             title: 'No Dimensions',
-            measures: [{ name: 'NoDims.count', type: 'count', title: 'Count' }],
-          },
+            measures: [{ name: 'NoDims.count', type: 'count', title: 'Count', shortTitle: 'Count' }],
+          } as CubeMeta['cubes'][number],
         ],
       }
 

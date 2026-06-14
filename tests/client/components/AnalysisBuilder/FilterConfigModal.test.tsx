@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import FilterConfigModal from '../../../../src/client/components/AnalysisBuilder/FilterConfigModal'
 import type { SimpleFilter } from '../../../../src/client/types'
 import type { MetaResponse } from '../../../../src/client/shared/types'
-import { renderWithProviders } from '../../../client-setup/test-utils'
 
 // Mock useFilterValues hook
 vi.mock('../../../../src/client/hooks/useFilterValues', () => ({
@@ -17,7 +16,8 @@ vi.mock('../../../../src/client/hooks/useFilterValues', () => ({
 }))
 
 // Mock schema with different field types
-const mockSchema: MetaResponse = {
+// Cast through unknown: fixtures carry an extra `aggType` field for realism.
+const mockSchema = {
   cubes: [
     {
       name: 'Users',
@@ -34,7 +34,7 @@ const mockSchema: MetaResponse = {
       ],
     },
   ],
-}
+} as unknown as MetaResponse
 
 describe('FilterConfigModal', () => {
   const defaultFilter: SimpleFilter = {
@@ -991,7 +991,7 @@ describe('FilterConfigModal', () => {
 
   describe('field icon display', () => {
     it('should show dimension icon for string dimension', () => {
-      const { container } = render(<FilterConfigModal {...defaultProps} />)
+      render(<FilterConfigModal {...defaultProps} />)
 
       // Check for the field icon container
       const fieldDisplay = screen.getByText('Field').closest('div')?.parentElement
@@ -1005,7 +1005,7 @@ describe('FilterConfigModal', () => {
         values: [],
       }
 
-      const { container } = render(<FilterConfigModal {...defaultProps} filter={dateFilter} />)
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} />)
 
       // Field display section should exist
       expect(screen.getByText('Field')).toBeInTheDocument()
@@ -1018,7 +1018,7 @@ describe('FilterConfigModal', () => {
         values: [],
       }
 
-      const { container } = render(<FilterConfigModal {...defaultProps} filter={measureFilter} />)
+      render(<FilterConfigModal {...defaultProps} filter={measureFilter} />)
 
       // Field display section should exist
       expect(screen.getByText('Field')).toBeInTheDocument()
