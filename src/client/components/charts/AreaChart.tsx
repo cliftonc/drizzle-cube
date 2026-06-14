@@ -1,12 +1,22 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useTranslation } from '../../hooks/useTranslation'
-import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
+import { ComposedChart, Area, XAxis, CartesianGrid } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import AngledXAxisTick from './AngledXAxisTick'
-import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
-import { transformChartDataWithSeries, formatAxisValue } from '../../utils/chartUtils'
-import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
+import { resolveChartAxisFields } from './chartAxisResolution'
+import {
+  getDualAxisInfo,
+  getYAxisChartMargins,
+  withTargetData,
+  renderDualYAxes,
+  renderChartTargetLines,
+  makeCartesianTooltipFormatter,
+  renderHoverLegend
+} from './chartScaffolding'
+import { CHART_COLORS } from '../../utils/chartConstants'
+import { transformChartDataWithSeries } from '../../utils/chartUtils'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
@@ -24,7 +34,35 @@ const AreaChart = React.memo(function AreaChart({
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
   const getFieldLabel = useCubeFieldLabel()
-  
+
+  // Resolve + validate axis fields (hooks-first to satisfy React rules)
+  const { xAxisField, yAxisFields, seriesFields, errorCode } = useMemo(
+    () => resolveChartAxisFields(chartConfig),
+    [chartConfig]
+  )
+
+  // Dual Y-axis support: extract yAxisAssignment from chartConfig
+  const yAxisAssignment = useMemo(() =>
+    chartConfig?.yAxisAssignment || {},
+    [chartConfig?.yAxisAssignment]
+  )
+
+  // Use shared function to transform data and handle series
+  // (empty arrays when config is invalid — early returns happen after hooks)
+  const { data: chartData, seriesKeys } = useMemo(() => {
+    if (errorCode || !data || data.length === 0 || !xAxisField) {
+      return { data: [], seriesKeys: [] }
+    }
+    return transformChartDataWithSeries(
+      data,
+      xAxisField,
+      yAxisFields,
+      queryObject,
+      seriesFields,
+      getFieldLabel
+    )
+  }, [data, xAxisField, yAxisFields, queryObject, seriesFields, getFieldLabel, errorCode])
+
   try {
     // Determine stacking from stackType (new) or stacked (legacy)
     const stackType = displayConfig?.stackType ?? (displayConfig?.stacked ? 'normal' : 'none')
@@ -45,64 +83,12 @@ const AreaChart = React.memo(function AreaChart({
     const rightYAxisFormat = displayConfig?.rightYAxisFormat
 
     if (!data || data.length === 0) {
-      return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
-            <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.area')}</div>
-          </div>
-        </div>
-      )
+      return <ChartEmptyState height={height} hint={t('chart.runtime.noDataHint.area')} />
     }
 
-    // Validate chartConfig - support both legacy and new formats
-    let xAxisField: string
-    let yAxisFields: string[]
-    let seriesFields: string[] = []
-    
-    if (chartConfig?.xAxis && chartConfig?.yAxis) {
-      // New format
-      xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis
-      yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
-      seriesFields = chartConfig.series || []
-    } else if (chartConfig?.x && chartConfig?.y) {
-      // Legacy format
-      xAxisField = chartConfig.x
-      yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
-    } else {
-      return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
-            <div className="dc:text-xs">{t('chart.runtime.configErrorHint.axisInvalid')}</div>
-          </div>
-        </div>
-      )
+    if (errorCode) {
+      return <ChartConfigError height={height} hint={t(`chart.runtime.configErrorHint.${errorCode}`)} />
     }
-
-    if (!xAxisField || !yAxisFields || yAxisFields.length === 0) {
-      return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
-            <div className="dc:text-xs">{t('chart.runtime.configErrorHint.axisFields')}</div>
-          </div>
-        </div>
-      )
-    }
-
-    // Use shared function to transform data and handle series
-    const { data: chartData, seriesKeys } = transformChartDataWithSeries(
-      data,
-      xAxisField,
-      yAxisFields,
-      queryObject,
-      seriesFields,
-      getFieldLabel
-    )
-
-    // Dual Y-axis support: extract yAxisAssignment from chartConfig
-    const yAxisAssignment = chartConfig?.yAxisAssignment || {}
 
     // Build mapping from series key (label) to original field name
     const seriesKeyToField: Record<string, string> = {}
@@ -111,12 +97,9 @@ const AreaChart = React.memo(function AreaChart({
       seriesKeyToField[label] = field
     })
 
-    // Determine if we need a right Y-axis
-    const hasRightAxis = yAxisFields.some((field) => yAxisAssignment[field] === 'right')
-
-    // Get fields for left and right axes for labels
-    const leftAxisFields = yAxisFields.filter((f) => (yAxisAssignment[f] || 'left') === 'left')
-    const rightAxisFields = yAxisFields.filter((f) => yAxisAssignment[f] === 'right')
+    // Dual Y-axis derivation + margins (shared scaffolding)
+    const axisInfo = getDualAxisInfo(yAxisFields, yAxisAssignment)
+    const { hasRightAxis } = axisInfo
 
     // Disable stacking when dual Y-axis is used (areas on different axes can't be stacked)
     const effectiveShouldStack = shouldStack && !hasRightAxis
@@ -126,34 +109,19 @@ const AreaChart = React.memo(function AreaChart({
     const showLegend = safeDisplayConfig.showLegend
 
     // Use custom chart margins with extra space for Y-axis labels
-    const chartMargins = {
-      ...CHART_MARGINS,
-      left: 40, // Space for left Y-axis label
-      right: hasRightAxis ? 40 : 20 // Extra space for right Y-axis label if needed
-    }
-    
+    const chartMargins = getYAxisChartMargins(hasRightAxis)
+
     // Process target values and add to chart data
-    const targetValues = parseTargetValues(displayConfig?.target || '')
-    const spreadTargets = spreadTargetValues(targetValues, chartData.length)
-    
-    // Add target data to chart data if targets exist
-    let enhancedChartData = chartData
-    if (spreadTargets.length > 0) {
-      enhancedChartData = chartData.map((dataPoint, index) => ({
-        ...dataPoint,
-        __target: spreadTargets[index] || null
-      }))
-    }
-    
+    const { spreadTargets, enhancedChartData } = withTargetData(chartData, displayConfig?.target)
+
     // Validate transformed data
     if (!chartData || chartData.length === 0) {
       return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noValidData')}</div>
-            <div className="dc:text-xs text-dc-text-secondary">No valid data points for area chart after transformation</div>
-          </div>
-        </div>
+        <ChartEmptyState
+          height={height}
+          titleKey="chart.runtime.noValidData"
+          hint="No valid data points for area chart after transformation"
+        />
       )
     }
 
@@ -165,84 +133,25 @@ const AreaChart = React.memo(function AreaChart({
         <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />}
           <XAxis dataKey="name" type="category" tick={<AngledXAxisTick />} height={60} interval={showAllXLabels ? 0 : undefined} />
-          <YAxis
-            yAxisId="left"
-            orientation="left"
-            tick={{ fontSize: 12 }}
-            tickFormatter={
-              effectiveIsPercentStack
-                ? (v) => `${(v * 100).toFixed(0)}%`
-                : leftYAxisFormat
-                  ? (value) => formatAxisValue(value, leftYAxisFormat)
-                  : undefined
-            }
-            domain={effectiveIsPercentStack ? [0, 1] : undefined}
-            label={
-              effectiveIsPercentStack
-                ? undefined
-                : leftAxisFields.length > 0
-                  ? {
-                      value: leftYAxisFormat?.label || getFieldLabel(leftAxisFields[0]),
-                      angle: -90,
-                      position: 'left',
-                      style: { textAnchor: 'middle', fontSize: '12px' }
-                    }
-                  : undefined
-            }
-          />
-          {hasRightAxis && (
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              tick={{ fontSize: 12 }}
-              tickFormatter={rightYAxisFormat ? (value) => formatAxisValue(value, rightYAxisFormat) : undefined}
-              label={
-                rightAxisFields.length > 0
-                  ? {
-                      value: rightYAxisFormat?.label || getFieldLabel(rightAxisFields[0]),
-                      angle: 90,
-                      position: 'right',
-                      style: { textAnchor: 'middle', fontSize: '12px' }
-                    }
-                  : undefined
-              }
-            />
-          )}
+          {renderDualYAxes(axisInfo, getFieldLabel, leftYAxisFormat, rightYAxisFormat, effectiveIsPercentStack)}
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip
-              formatter={(value: any, name: any) => {
-                // Handle null values in tooltip
-                if (value === null || value === undefined) {
-                  return ['No data', name]
-                }
-                if (name === 'Target') {
-                  // Use left Y-axis format for target values
-                  return [formatAxisValue(value, leftYAxisFormat), 'Target Value']
-                }
-                // Format as percentage when using percent stacking
-                if (effectiveIsPercentStack && typeof value === 'number') {
-                  return [`${(value * 100).toFixed(1)}%`, name]
-                }
-                // Determine which axis format to use based on series name
-                const originalField = seriesKeyToField[name]
-                const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
-                const formatConfig = axisId === 'right' ? rightYAxisFormat : leftYAxisFormat
-                return [formatAxisValue(value, formatConfig), name]
-              }}
+              formatter={makeCartesianTooltipFormatter({
+                leftYAxisFormat,
+                rightYAxisFormat,
+                yAxisAssignment,
+                resolveField: (name) => seriesKeyToField[name],
+                isPercentStack: effectiveIsPercentStack
+              })}
             />
           )}
-          {showLegend && (
-            <Legend 
-              wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-              iconType="rect"
-              iconSize={8}
-              layout="horizontal"
-              align="center"
-              verticalAlign="bottom"
-              onMouseEnter={(o) => setHoveredLegend(String(o.dataKey || ''))}
-              onMouseLeave={() => setHoveredLegend(null)}
-            />
-          )}
+          {renderHoverLegend({
+            show: showLegend,
+            iconType: 'rect',
+            paddingTop: 10,
+            onHover: setHoveredLegend,
+            onLeave: () => setHoveredLegend(null)
+          })}
           {seriesKeys.map((seriesKey, index) => {
             // Look up the original field name to get its axis assignment
             const originalField = seriesKeyToField[seriesKey]
@@ -312,48 +221,12 @@ const AreaChart = React.memo(function AreaChart({
               />
             )
           })}
-          {spreadTargets.length > 0 && (
-            <>
-              {/* White background line */}
-              <Line
-                type="monotone"
-                dataKey="__target"
-                yAxisId="left"
-                stroke="#ffffff"
-                strokeWidth={2}
-                dot={false}
-                activeDot={false}
-                connectNulls={false}
-              />
-              {/* Grey dashed line on top */}
-              <Line
-                type="monotone"
-                dataKey="__target"
-                yAxisId="left"
-                name="Target"
-                stroke="#8B5CF6"
-                strokeWidth={2}
-                strokeDasharray="2 3"
-                dot={false}
-                activeDot={false}
-                connectNulls={false}
-              />
-            </>
-          )}
+          {renderChartTargetLines(spreadTargets)}
         </ComposedChart>
       </ChartContainer>
     )
   } catch (error) {
-    // 'AreaChart rendering error
-    return (
-      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.chartError', { chartType: 'Area Chart' })}</div>
-          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : t('chart.runtime.unknownError')}</div>
-          <div className="dc:text-xs text-dc-text-muted">{t('chart.runtime.checkConfig')}</div>
-        </div>
-      </div>
-    )
+    return <ChartRenderError height={height} chartType="Area Chart" error={error} />
   }
 })
 

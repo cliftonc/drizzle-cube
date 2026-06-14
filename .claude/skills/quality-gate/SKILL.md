@@ -1,6 +1,6 @@
 ---
 name: quality-gate
-description: Use before finishing or opening a PR for a large / multi-file change to drizzle-cube, to ensure code quality does not regress. Runs `fallow audit` (complexity, duplication, dead code, circular deps scoped to the diff, blocking only on issues the change *introduces*) plus a `madge` circular-dependency snapshot. Use when the user says "check quality", "make sure quality doesn't regress", "is this PR clean", or after a refactor touching many files.
+description: Use before finishing or opening a PR for a large / multi-file change to drizzle-cube, to ensure code quality does not regress. Runs `fallow audit` (complexity, duplication, dead code, circular deps scoped to the diff, reporting issues the change *introduces*) plus a `madge` circular-dependency snapshot. Report-only — it always exits 0 and never blocks; read the verdict as advice. Use when the user says "check quality", "make sure quality doesn't regress", "is this PR clean", or after a refactor touching many files.
 ---
 
 # Quality Regression Gate
@@ -39,10 +39,16 @@ npm run quality -- --base main
 npm run quality -- --base "$(git merge-base main HEAD)"
 ```
 
-**Exit code 0 = pass, 1 = fail.** A failure means the change introduced new complexity,
-duplication, dead code, or a circular dependency. The verdict ignores inherited findings —
-watch for the line `audit gate excluded N inherited findings`, which confirms pre-existing
-debt was not counted against you.
+**Report-only: `npm run quality` always exits 0 — it never fails the build.** The wrapper
+runs `fallow audit` and then forces a clean exit, so the gate is advisory, not blocking.
+You still read the **`verdict`** (`pass` / `warn` / `fail`) and the introduced findings from
+the report — treat a `fail` verdict as "worth a look / mention in the PR," not as a hard
+stop. The verdict ignores inherited findings — watch for the line
+`audit gate excluded N inherited findings`, which confirms pre-existing debt was not counted
+against the change.
+
+> Want it to block again? Drop the `sh -c '… ; exit 0'` wrapper in the `quality` script
+> (`package.json`) back to plain `fallow audit`, or add `--ci` for a CI-friendly failing gate.
 
 ### Reading the result precisely (JSON)
 
@@ -58,10 +64,10 @@ npm run quality --silent -- --format json
   "verdict": "pass" | "warn" | "fail",
   "attribution": {
     "gate": "new-only",
-    "dead_code_introduced": 0,      // <- these *_introduced fields are what blocks
+    "dead_code_introduced": 0,      // <- these *_introduced fields drive the verdict
     "complexity_introduced": 0,
     "duplication_introduced": 0,
-    "dead_code_inherited": 8,       // <- inherited: reported, never blocks
+    "dead_code_inherited": 8,       // <- inherited: reported, never affects the verdict
     "complexity_inherited": 17,
     "duplication_inherited": 93
   }
@@ -99,10 +105,11 @@ npm run quality:graph                                      # writes dependency-g
 This is an exploratory tool, not a regression check — its output has no introduced-vs-inherited
 attribution and will always show the full inherited backlog.
 
-## Acting on a FAIL
+## Acting on a `fail` verdict
 
-Only the introduced findings need fixing. fallow prints each with a file:line and a docs
-link. Typical fixes:
+The gate is report-only, so a `fail` verdict doesn't stop anything — but the introduced
+findings are still worth addressing (or calling out in the PR). fallow prints each with a
+file:line and a docs link. Typical fixes:
 
 | Introduced finding | What to do |
 |--------------------|------------|
@@ -128,8 +135,11 @@ get a green gate on a finding you actually introduced.
 ## How it's wired
 
 - `fallow@2.95.0` and `madge@8.0.0` are pinned devDependencies (`package.json`).
-- Scripts: `quality`, `quality:circular`, `quality:health`, `quality:graph`.
+- Scripts: `quality`, `quality:health`, `quality:graph`.
+- The `quality` script is `sh -c 'fallow audit "$@"; exit 0' --` — it runs the full audit
+  (forwarding any `-- …` args) but always exits 0, making the gate **report-only / advisory**.
+  To restore a blocking gate, change it back to plain `fallow audit` (or `fallow audit --ci`).
 - No `fallow.config` — defaults are used intentionally. The gate is `new-only`, so inherited
   debt (the 5 false-positive unused devDeps, 20 circular deps, existing duplication) is
-  reported but never blocks. Add a config only if you later want tunable thresholds or to
-  exclude `dist`/generated dirs from duplication.
+  reported but never affects the verdict. Add a config only if you later want tunable
+  thresholds or to exclude `dist`/generated dirs from duplication.

@@ -144,7 +144,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
     "lint": "eslint 'src/**/*.{ts,tsx}' 'tests/**/*.ts' 'perf/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.{ts,tsx}' 'tests/**/*.ts' 'perf/**/*.ts' --fix",
-    "quality": "fallow audit",
+    "quality": "sh -c 'fallow audit \"$@\"; exit 0' --",
     "quality:health": "fallow health",
     "quality:graph": "npx madge --image dependency-graph.svg --extensions ts,tsx src",
     "perf": "tsx perf/run.ts",

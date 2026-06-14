@@ -1,4 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { requiresMeasure } from '../../charts/chartConfigHelpers'
 
 /**
  * Configuration for the KPI Number chart type
@@ -7,10 +8,7 @@ export const kpiNumberConfig: ChartTypeConfig = {
   label: 'chart.kpiNumber.label',
   description: 'chart.kpiNumber.description',
   useCase: 'chart.kpiNumber.useCase',
-  isAvailable: ({ measureCount }) => {
-    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
-    return { available: true }
-  },
+  isAvailable: requiresMeasure,
   dropZones: [
     {
       key: 'yAxis',

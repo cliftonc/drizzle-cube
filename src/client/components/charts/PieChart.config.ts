@@ -1,4 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { requiresMeasureAndDimension, valueFormatDisplayOption } from '../../charts/chartConfigHelpers'
 
 /**
  * Configuration for the pie chart type
@@ -8,11 +9,7 @@ export const pieChartConfig: ChartTypeConfig = {
   description: 'chart.pie.description',
   useCase: 'chart.pie.useCase',
   clickableElements: { slice: true },
-  isAvailable: ({ measureCount, dimensionCount }) => {
-    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
-    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
-    return { available: true }
-  },
+  isAvailable: requiresMeasureAndDimension,
   dropZones: [
     {
       key: 'xAxis',
@@ -49,11 +46,6 @@ export const pieChartConfig: ChartTypeConfig = {
         { value: '80%', label: 'chart.configText.80_percent' },
       ]
     },
-    {
-      key: 'leftYAxisFormat',
-      label: 'chart.option.valueFormat.label',
-      type: 'axisFormat',
-      description: 'chart.option.valueFormat.description'
-    }
+    valueFormatDisplayOption()
   ]
 }

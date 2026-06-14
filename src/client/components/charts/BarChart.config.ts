@@ -1,4 +1,11 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import {
+  requiresMeasureAndDimension,
+  stackTypeDisplayOption,
+  targetDisplayOption,
+  leftYAxisFormatDisplayOption,
+  rightYAxisFormatDisplayOption
+} from '../../charts/chartConfigHelpers'
 
 /**
  * Configuration for the bar chart type
@@ -8,11 +15,7 @@ export const barChartConfig: ChartTypeConfig = {
   description: 'chart.bar.description',
   useCase: 'chart.bar.useCase',
   clickableElements: { bar: true },
-  isAvailable: ({ measureCount, dimensionCount }) => {
-    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
-    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
-    return { available: true }
-  },
+  isAvailable: requiresMeasureAndDimension,
   dropZones: [
     {
       key: 'xAxis',
@@ -42,36 +45,9 @@ export const barChartConfig: ChartTypeConfig = {
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'showAllXLabels', 'hideHeader'],
   displayOptionsConfig: [
-    {
-      key: 'stackType',
-      label: 'chart.option.stacking.label',
-      type: 'select',
-      defaultValue: 'none',
-      options: [
-        { value: 'none', label: 'chart.option.accentBorder.none' },
-        { value: 'normal', label: 'chart.option.stacking.stacked' },
-        { value: 'percent', label: 'chart.option.stacking.percent' }
-      ],
-      description: 'chart.configText.how_to_stack_multiple_bar_series'
-    },
-    {
-      key: 'target',
-      label: 'chart.option.target.label',
-      type: 'string',
-      placeholder: 'e.g., 100 or 50,75 for spread',
-      description: 'chart.option.target.description'
-    },
-    {
-      key: 'leftYAxisFormat',
-      label: 'chart.option.leftYAxisFormat.label',
-      type: 'axisFormat',
-      description: 'chart.option.leftYAxisFormat.description'
-    },
-    {
-      key: 'rightYAxisFormat',
-      label: 'chart.option.rightYAxisFormat.label',
-      type: 'axisFormat',
-      description: 'chart.option.rightYAxisFormat.description'
-    }
+    stackTypeDisplayOption('chart.configText.how_to_stack_multiple_bar_series'),
+    targetDisplayOption,
+    leftYAxisFormatDisplayOption,
+    rightYAxisFormatDisplayOption
   ]
 }

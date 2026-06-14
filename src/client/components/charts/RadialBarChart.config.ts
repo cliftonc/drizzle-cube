@@ -1,4 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { requiresMeasureAndDimension, valueFormatDisplayOption } from '../../charts/chartConfigHelpers'
 
 /**
  * Configuration for the radial bar chart type
@@ -7,11 +8,7 @@ export const radialBarChartConfig: ChartTypeConfig = {
   label: 'chart.radialBar.label',
   description: 'chart.radialBar.description',
   useCase: 'chart.radialBar.useCase',
-  isAvailable: ({ measureCount, dimensionCount }) => {
-    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
-    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
-    return { available: true }
-  },
+  isAvailable: requiresMeasureAndDimension,
   dropZones: [
     {
       key: 'xAxis',
@@ -33,11 +30,6 @@ export const radialBarChartConfig: ChartTypeConfig = {
   ],
   displayOptions: ['showLegend', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
-    {
-      key: 'leftYAxisFormat',
-      label: 'chart.option.valueFormat.label',
-      type: 'axisFormat',
-      description: 'chart.option.valueFormat.description'
-    }
+    valueFormatDisplayOption()
   ]
 }
