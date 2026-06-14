@@ -1,12 +1,88 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
+import { resolveChartAxisFields } from './chartAxisResolution'
 import { CHART_COLORS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import type { ChartProps } from '../../types'
+import type { ChartProps, CubeQuery } from '../../types'
+
+interface PieSlice {
+  name: string
+  value: number
+}
+
+/**
+ * Build pie slices from query data, supporting both series-based (dimension
+ * slices) and standard measure-based pies. Returns the slices that survive
+ * value filtering plus the pre-filter count (so the caller can explain how
+ * many points were dropped). Pure — extracted to keep `PieChart` simple.
+ */
+function buildPieData(
+  data: any[],
+  xField: string,
+  yAxisFields: string[],
+  seriesFields: string[],
+  queryObject: CubeQuery | undefined,
+  getFieldLabel: (field: string) => string
+): { pieData: PieSlice[]; originalLength: number } {
+  let pieData: PieSlice[]
+
+  if (seriesFields.length > 0) {
+    // Use series-based transformation for dimension-based pie slices
+    const { data: chartData } = transformChartDataWithSeries(
+      data,
+      xField,
+      yAxisFields,
+      queryObject,
+      seriesFields,
+      getFieldLabel
+    )
+
+    // Convert series data to pie format
+    pieData = []
+    if (chartData.length > 0) {
+      const firstRow = chartData[0]
+      Object.keys(firstRow).forEach(key => {
+        if (key !== 'name' && typeof firstRow[key] === 'number') {
+          pieData.push({ name: String(key), value: firstRow[key] })
+        }
+      })
+    }
+  } else {
+    // Standard measure-based pie chart
+    const granularity = getFieldGranularity(queryObject, xField)
+    pieData = data.map(item => {
+      let name = formatTimeValue(item[xField], granularity) || String(item[xField]) || 'Unknown'
+      // Handle boolean values with better labels
+      if (typeof item[xField] === 'boolean') {
+        name = item[xField] ? 'Active' : 'Inactive'
+      } else if (name === 'true' || name === 'false') {
+        name = name === 'true' ? 'Active' : 'Inactive'
+      }
+      return {
+        name,
+        value: typeof item[yAxisFields[0]] === 'string'
+          ? parseFloat(item[yAxisFields[0]])
+          : (item[yAxisFields[0]] || 0)
+      }
+    })
+  }
+
+  // Filter out invalid values (null, undefined, NaN, or non-positive)
+  const originalLength = pieData.length
+  pieData = pieData.filter(item =>
+    item.value != null &&
+    !isNaN(item.value) &&
+    item.value !== 0 &&
+    item.value > 0
+  )
+
+  return { pieData, originalLength }
+}
 
 const PieChart = React.memo(function PieChart({
   data,
@@ -22,7 +98,13 @@ const PieChart = React.memo(function PieChart({
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
   const getFieldLabel = useCubeFieldLabel()
-  
+
+  // Resolve + validate axis fields (hooks-first to satisfy React rules)
+  const { xAxisField, yAxisFields, seriesFields, errorCode } = useMemo(
+    () => resolveChartAxisFields(chartConfig),
+    [chartConfig]
+  )
+
   try {
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
@@ -32,120 +114,40 @@ const PieChart = React.memo(function PieChart({
     }
 
     if (!data || data.length === 0) {
-      return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
-            <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.pie')}</div>
-          </div>
-        </div>
-      )
+      return <ChartEmptyState height={height} hint={t('chart.runtime.noDataHint.pie')} />
     }
 
-    let pieData: Array<{name: string, value: number}>
-
-    // Validate chartConfig - support both legacy and new formats
-    let xAxisField: string
-    let yAxisFields: string[]
-    let seriesFields: string[] = []
-    
-    if (chartConfig?.xAxis && chartConfig?.yAxis) {
-      // New format
-      xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis
-      yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
-      seriesFields = chartConfig.series || []
-    } else if (chartConfig?.x && chartConfig?.y) {
-      // Legacy format
-      xAxisField = chartConfig.x
-      yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
-    } else {
-      return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
-            <div className="dc:text-xs">{t('chart.runtime.configErrorHint.pieAxis')}</div>
-          </div>
-        </div>
-      )
+    if (errorCode) {
+      // Pie surfaces a pie-specific message for the "invalid config" case
+      const hintKey = errorCode === 'axisInvalid'
+        ? 'chart.runtime.configErrorHint.pieAxis'
+        : 'chart.runtime.configErrorHint.axisFields'
+      return <ChartConfigError height={height} hint={t(hintKey)} />
     }
 
-    if (!xAxisField || !yAxisFields || yAxisFields.length === 0) {
-      return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
-            <div className="dc:text-xs">{t('chart.runtime.configErrorHint.axisFields')}</div>
-          </div>
-        </div>
-      )
-    }
+    // The errorCode guard above guarantees xAxisField is defined here
+    const xField = xAxisField as string
 
-    if (seriesFields.length > 0) {
-      // Use series-based transformation for dimension-based pie slices
-      const { data: chartData } = transformChartDataWithSeries(
-        data,
-        xAxisField,
-        yAxisFields,
-        queryObject,
-        seriesFields,
-        getFieldLabel
-      )
-      
-      // Convert series data to pie format
-      pieData = []
-      if (chartData.length > 0) {
-        const firstRow = chartData[0]
-        Object.keys(firstRow).forEach(key => {
-          if (key !== 'name' && typeof firstRow[key] === 'number') {
-            pieData.push({
-              name: String(key),
-              value: firstRow[key]
-            })
-          }
-        })
-      }
-    } else {
-      // Standard measure-based pie chart
-      const granularity = getFieldGranularity(queryObject, xAxisField)
-      pieData = data.map(item => {
-        let name = formatTimeValue(item[xAxisField], granularity) || String(item[xAxisField]) || 'Unknown'
-        // Handle boolean values with better labels
-        if (typeof item[xAxisField] === 'boolean') {
-          name = item[xAxisField] ? 'Active' : 'Inactive'
-        } else if (name === 'true' || name === 'false') {
-          name = name === 'true' ? 'Active' : 'Inactive'
-        }
-        return {
-          name,
-          value: typeof item[yAxisFields[0]] === 'string' 
-            ? parseFloat(item[yAxisFields[0]]) 
-            : (item[yAxisFields[0]] || 0)
-        }
-      })
-    }
-
-    // Filter out invalid values (null, undefined, NaN, or zero)
-    const originalLength = pieData.length
-    pieData = pieData.filter(item => 
-      item.value != null && 
-      !isNaN(item.value) && 
-      item.value !== 0 && 
-      item.value > 0
+    const { pieData, originalLength } = buildPieData(
+      data,
+      xField,
+      yAxisFields,
+      seriesFields,
+      queryObject,
+      getFieldLabel
     )
-    
+
     if (pieData.length === 0) {
       return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noValidData')}</div>
-            <div className="dc:text-xs text-dc-text-secondary">
-              {originalLength > 0
-                ? `Filtered out ${originalLength} data points (zero or invalid values)`
-                : 'No data points to display in pie chart'
-              }
-            </div>
-          </div>
-        </div>
+        <ChartEmptyState
+          height={height}
+          titleKey="chart.runtime.noValidData"
+          hint={
+            originalLength > 0
+              ? `Filtered out ${originalLength} data points (zero or invalid values)`
+              : 'No data points to display in pie chart'
+          }
+        />
       )
     }
   
@@ -207,16 +209,7 @@ const PieChart = React.memo(function PieChart({
       </ChartContainer>
     )
   } catch (error) {
-    // 'PieChart rendering error
-    return (
-      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.chartError', { chartType: 'Pie Chart' })}</div>
-          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : t('chart.runtime.unknownError')}</div>
-          <div className="dc:text-xs text-dc-text-muted">{t('chart.runtime.checkConfig')}</div>
-        </div>
-      </div>
-    )
+    return <ChartRenderError height={height} chartType="Pie Chart" error={error} />
   }
 })
 

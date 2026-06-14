@@ -1,4 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { requiresMeasureAndDimension, valueFormatDisplayOption } from '../../charts/chartConfigHelpers'
 
 /**
  * Configuration for the treemap chart type
@@ -7,11 +8,7 @@ export const treemapChartConfig: ChartTypeConfig = {
   label: 'chart.treemap.label',
   description: 'chart.treemap.description',
   useCase: 'chart.treemap.useCase',
-  isAvailable: ({ measureCount, dimensionCount }) => {
-    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
-    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
-    return { available: true }
-  },
+  isAvailable: requiresMeasureAndDimension,
   dropZones: [
     {
       key: 'xAxis',
@@ -42,12 +39,7 @@ export const treemapChartConfig: ChartTypeConfig = {
   ],
   displayOptions: ['showLegend', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
-    {
-      key: 'leftYAxisFormat',
-      label: 'chart.option.valueFormat.label',
-      type: 'axisFormat',
-      description: 'chart.configText.number_formatting_for_size_values'
-    }
+    valueFormatDisplayOption('chart.configText.number_formatting_for_size_values')
   ],
   clickableElements: { cell: true }
 }

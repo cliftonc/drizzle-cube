@@ -1,4 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { requiresMeasureAndDimension } from '../../charts/chartConfigHelpers'
 
 /**
  * Configuration for the waterfall chart type
@@ -8,11 +9,7 @@ export const waterfallChartConfig: ChartTypeConfig = {
   description: 'chart.waterfall.description',
   useCase: 'chart.waterfall.useCase',
   clickableElements: { bar: true },
-  isAvailable: ({ measureCount, dimensionCount }) => {
-    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
-    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
-    return { available: true }
-  },
+  isAvailable: requiresMeasureAndDimension,
   displayOptions: ['showTooltip', 'hideHeader'],
   dropZones: [
     {

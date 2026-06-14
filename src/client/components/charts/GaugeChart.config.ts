@@ -1,4 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { requiresMeasure } from '../../charts/chartConfigHelpers'
 
 /**
  * Configuration for the gauge chart type
@@ -9,10 +10,7 @@ export const gaugeChartConfig: ChartTypeConfig = {
   useCase: 'chart.gauge.useCase',
   clickableElements: {},
   displayOptions: ['hideHeader'],
-  isAvailable: ({ measureCount }) => {
-    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
-    return { available: true }
-  },
+  isAvailable: requiresMeasure,
   dropZones: [
     {
       key: 'yAxis',

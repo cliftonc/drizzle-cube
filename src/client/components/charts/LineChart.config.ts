@@ -1,4 +1,11 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import {
+  requiresMeasureAndDimension,
+  connectNullsDisplayOption,
+  targetDisplayOption,
+  leftYAxisFormatDisplayOption,
+  rightYAxisFormatDisplayOption
+} from '../../charts/chartConfigHelpers'
 
 /**
  * Configuration for the line chart type
@@ -8,11 +15,7 @@ export const lineChartConfig: ChartTypeConfig = {
   description: 'chart.line.description',
   useCase: 'chart.line.useCase',
   clickableElements: { point: true },
-  isAvailable: ({ measureCount, dimensionCount }) => {
-    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
-    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
-    return { available: true }
-  },
+  isAvailable: requiresMeasureAndDimension,
   dropZones: [
     {
       key: 'xAxis',
@@ -42,20 +45,8 @@ export const lineChartConfig: ChartTypeConfig = {
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'showAllXLabels', 'hideHeader'],
   displayOptionsConfig: [
-    {
-      key: 'connectNulls',
-      label: 'chart.option.connectNulls.label',
-      type: 'boolean',
-      defaultValue: false,
-      description: 'chart.option.connectNulls.description'
-    },
-    {
-      key: 'target',
-      label: 'chart.option.target.label',
-      type: 'string',
-      placeholder: 'e.g., 100 or 50,75 for spread',
-      description: 'chart.option.target.description'
-    },
+    connectNullsDisplayOption,
+    targetDisplayOption,
     {
       key: 'priorPeriodStyle',
       label: 'chart.option.priorPeriodStyle.label',
@@ -78,17 +69,7 @@ export const lineChartConfig: ChartTypeConfig = {
       step: 0.1,
       description: 'chart.option.priorPeriodOpacity.description'
     },
-    {
-      key: 'leftYAxisFormat',
-      label: 'chart.option.leftYAxisFormat.label',
-      type: 'axisFormat',
-      description: 'chart.option.leftYAxisFormat.description'
-    },
-    {
-      key: 'rightYAxisFormat',
-      label: 'chart.option.rightYAxisFormat.label',
-      type: 'axisFormat',
-      description: 'chart.option.rightYAxisFormat.description'
-    }
+    leftYAxisFormatDisplayOption,
+    rightYAxisFormatDisplayOption
   ]
 }

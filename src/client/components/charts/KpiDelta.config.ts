@@ -1,4 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { requiresMeasureAndDimension } from '../../charts/chartConfigHelpers'
 
 /**
  * Configuration for the KPI Delta chart type
@@ -7,11 +8,7 @@ export const kpiDeltaConfig: ChartTypeConfig = {
   label: 'chart.kpiDelta.label',
   description: 'chart.kpiDelta.description',
   useCase: 'chart.kpiDelta.useCase',
-  isAvailable: ({ measureCount, dimensionCount }) => {
-    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
-    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
-    return { available: true }
-  },
+  isAvailable: requiresMeasureAndDimension,
   dropZones: [
     {
       key: 'yAxis',
