@@ -65,14 +65,9 @@ jobs:
           name: perf-results
           path: perf-results/
 
-      # Fork PRs run with a read-only token, so the sticky comment is limited
-      # to same-repo PRs; fork contributors still get the job summary + artifact.
-      - name: Post sticky PR comment
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          header: perf-benchmarks
-          path: perf-results/summary.md
+      # Note: the full "⚡ Performance benchmarks" report is intentionally NOT posted
+      # as a PR comment — it's available in the job summary above and the uploaded
+      # artifact. (gh-pages history + regression alerts below are unaffected.)
 
       # Persist history to the gh-pages branch (dev/bench/) on pushes to main only,
       # so trends accumulate outside the code branches — no circular commits to source.
