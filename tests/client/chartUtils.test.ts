@@ -15,7 +15,7 @@ import {
   transformChartData,
   transformChartDataWithSeries
 } from '../../src/client/utils/chartUtils'
-import type { FieldLabelMap } from '../../src/client/hooks/useCubeMeta'
+import type { FieldLabelMap } from '../../src/client/types'
 
 describe('chartUtils', () => {
   describe('isValidNumericValue', () => {

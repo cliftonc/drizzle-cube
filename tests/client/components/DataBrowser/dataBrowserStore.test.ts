@@ -12,7 +12,7 @@ function createWrapper(props: { defaultPageSize?: number; defaultCube?: string }
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return React.createElement(
       DataBrowserStoreProvider,
-      { ...props },
+      { ...props, children },
       children
     )
   }

@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createRef, type RefObject } from 'react'
+import { type RefObject } from 'react'
 import FilterValuePopover from '../../../../src/client/components/DashboardFilters/FilterValuePopover'
 import type { SimpleFilter, CubeMeta } from '../../../../src/client/types'
-import { renderWithProviders } from '../../../client-setup/test-utils'
 
 // Mock FilterValueSelector since FilterValuePopover delegates to it
 vi.mock('../../../../src/client/components/shared/FilterValueSelector', () => ({
@@ -54,13 +53,14 @@ describe('FilterValuePopover', () => {
       {
         name: 'Users',
         title: 'Users',
+        segments: [],
         measures: [
-          { name: 'Users.count', type: 'number', title: 'Count', aggType: 'count' }
+          { name: 'Users.count', type: 'number', title: 'Count', shortTitle: 'Count' }
         ],
         dimensions: [
-          { name: 'Users.name', type: 'string', title: 'Name' },
-          { name: 'Users.status', type: 'string', title: 'Status' },
-          { name: 'Users.createdAt', type: 'time', title: 'Created At' }
+          { name: 'Users.name', type: 'string', title: 'Name', shortTitle: 'Name' },
+          { name: 'Users.status', type: 'string', title: 'Status', shortTitle: 'Status' },
+          { name: 'Users.createdAt', type: 'time', title: 'Created At', shortTitle: 'Created At' }
         ]
       }
     ]
@@ -94,7 +94,7 @@ describe('FilterValuePopover', () => {
 
   const createDefaultProps = () => ({
     filter: createMockFilter(),
-    schema: mockSchema,
+    schema: mockSchema as CubeMeta | null,
     onValuesChange: vi.fn(),
     onClose: vi.fn(),
     anchorRef

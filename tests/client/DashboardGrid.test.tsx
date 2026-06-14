@@ -4,11 +4,12 @@
  */
 
 import React from 'react'
-import { render, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import DashboardGrid from '../../src/client/components/DashboardGrid'
 import { DashboardStoreProvider } from '../../src/client/stores/dashboardStore'
-import type { DashboardConfig, PortletConfig, DashboardFilter } from '../../src/client/types'
+import type { DashboardConfig, PortletConfig } from '../../src/client/types'
+import type { DashboardDisplayMode } from '../../src/client/hooks/useResponsiveDashboard'
 
 // Mock CubeProvider context - DashboardGrid uses useCubeFeatures for features
 vi.mock('../../src/client/providers/CubeProvider', () => ({
@@ -73,7 +74,7 @@ vi.mock('react-grid-layout', () => ({
 let mockResponsiveState = {
   containerRef: vi.fn(),
   containerWidth: 1200,
-  displayMode: 'desktop' as const,
+  displayMode: 'desktop' as DashboardDisplayMode,
   scaleFactor: 1,
   isEditable: true,
   designWidth: 1200
@@ -89,7 +90,7 @@ vi.mock('../../src/client/providers/ScrollContainerContext', () => ({
 
 // Mock child components
 vi.mock('../../src/client/components/AnalyticsPortlet', () => ({
-  default: React.forwardRef((props: any, ref) => <div data-testid="analytics-portlet" data-query={props.query} />)
+  default: React.forwardRef((props: any, _ref) => <div data-testid="analytics-portlet" data-query={props.query} />)
 }))
 
 vi.mock('../../src/client/components/PortletFilterConfigModal', () => ({

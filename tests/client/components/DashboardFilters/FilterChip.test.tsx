@@ -6,7 +6,7 @@
  * actions in edit mode.
  */
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import FilterChip from '../../../../src/client/components/DashboardFilters/FilterChip'
@@ -323,7 +323,7 @@ describe('FilterChip', () => {
     it('should stop propagation when edit button is clicked', async () => {
       const user = userEvent.setup()
       const onEdit = vi.fn()
-      const chipOnClick = vi.fn()
+      vi.fn()
 
       render(<FilterChip {...defaultProps} isEditMode={true} onEdit={onEdit} />)
 

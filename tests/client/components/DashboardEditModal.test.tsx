@@ -162,7 +162,6 @@ describe('DashboardEditModal', () => {
     })
 
     it('should not call onSave if validation fails', async () => {
-      const user = userEvent.setup()
       const props = createDefaultProps()
       props.initialName = ''
 

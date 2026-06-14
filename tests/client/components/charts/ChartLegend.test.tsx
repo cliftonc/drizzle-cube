@@ -8,7 +8,6 @@
  * that provides consistent styling and visibility control.
  */
 
-import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -275,15 +274,8 @@ describe('ChartLegend', () => {
 
     it('should support series highlighting pattern', () => {
       // Common pattern: highlight series on legend hover
-      let highlightedSeries: string | null = null
-
-      const handleMouseEnter = (o: any) => {
-        highlightedSeries = o?.dataKey || null
-      }
-
-      const handleMouseLeave = () => {
-        highlightedSeries = null
-      }
+      const handleMouseEnter = () => {}
+      const handleMouseLeave = () => {}
 
       render(
         <ChartLegend

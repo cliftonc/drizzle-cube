@@ -410,7 +410,12 @@ describe('MobileStackedLayout', () => {
 
     it('should pass colorPalette prop', () => {
       const config = createTestConfig([createTestPortlet()])
-      const colorPalette: ColorPalette = ['#ff0000', '#00ff00', '#0000ff']
+      const colorPalette: ColorPalette = {
+        name: 'custom',
+        label: 'Custom',
+        colors: ['#ff0000', '#00ff00', '#0000ff'],
+        gradient: ['#ffcccc', '#ff6666', '#ff0000'],
+      }
 
       render(
         <MobileStackedLayout
@@ -426,7 +431,7 @@ describe('MobileStackedLayout', () => {
     it('should pass dashboardFilters prop', () => {
       const config = createTestConfig([createTestPortlet()])
       const filters: DashboardFilter[] = [
-        { id: 'f1', field: 'date', operator: 'inDateRange', values: ['2024-01-01', '2024-12-31'] }
+        { id: 'f1', label: 'Date', filter: { member: 'date', operator: 'inDateRange', values: ['2024-01-01', '2024-12-31'] } }
       ]
 
       render(

@@ -2,7 +2,6 @@
  * Tests for BoxPlotChart component
  */
 
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import BoxPlotChart from '../../../src/client/components/charts/BoxPlotChart'
@@ -235,11 +234,11 @@ describe('BoxPlotChart', () => {
 
   describe('colorPalette prop', () => {
     it('should apply custom palette colors to box elements', () => {
-      const { container } = render(
+      render(
         <BoxPlotChart
           data={fiveMeasureData}
           chartConfig={fiveMeasureConfig}
-          colorPalette={{ colors: ['#ff0000', '#00ff00'] }}
+          colorPalette={{ name: 'custom', label: 'Custom', colors: ['#ff0000', '#00ff00'], gradient: ['#ff0000', '#00ff00'] }}
         />
       )
       // First box should get first palette color

@@ -10,15 +10,15 @@
  * - Complex option scenarios
  */
 
-import React from 'react'
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
 import { DrillMenu } from '../../../../src/client/components/DrillMenu'
 import type { DrillOption } from '../../../../src/client/types/drill'
 
 describe('DrillMenu - Extended Tests', () => {
-  let onSelect: ReturnType<typeof vi.fn>
-  let onClose: ReturnType<typeof vi.fn>
+  let onSelect: Mock<(option: DrillOption) => void>
+  let onClose: Mock<() => void>
   const defaultPosition = { x: 200, y: 200 }
 
   beforeEach(() => {

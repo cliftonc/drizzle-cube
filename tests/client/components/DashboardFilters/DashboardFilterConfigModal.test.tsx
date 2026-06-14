@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within, waitFor } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DashboardFilterConfigModal from '../../../../src/client/components/DashboardFilters/DashboardFilterConfigModal'
-import type { DashboardFilter, SimpleFilter } from '../../../../src/client/types'
+import type { DashboardFilter } from '../../../../src/client/types'
 import type { MetaResponse } from '../../../../src/client/shared/types'
-import { renderWithProviders } from '../../../client-setup/test-utils'
 
 // Mock useFilterValues hook
 vi.mock('../../../../src/client/hooks/useFilterValues', () => ({
@@ -67,8 +66,10 @@ describe('DashboardFilterConfigModal', () => {
       {
         name: 'Users',
         title: 'Users',
+        description: '',
+        segments: [],
         measures: [
-          { name: 'Users.count', type: 'number', title: 'Count', shortTitle: 'Count', aggType: 'count' }
+          { name: 'Users.count', type: 'number', title: 'Count', shortTitle: 'Count' }
         ],
         dimensions: [
           { name: 'Users.name', type: 'string', title: 'Name', shortTitle: 'Name' },
@@ -85,6 +86,8 @@ describe('DashboardFilterConfigModal', () => {
       {
         name: 'Users',
         title: 'Users',
+        description: '',
+        segments: [],
         measures: [],
         dimensions: [
           { name: 'Users.status', type: 'string', title: 'Status', shortTitle: 'Status' }
@@ -317,7 +320,6 @@ describe('DashboardFilterConfigModal', () => {
     })
 
     it('should show operators appropriate for string fields', async () => {
-      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<DashboardFilterConfigModal {...props} />)
@@ -332,7 +334,6 @@ describe('DashboardFilterConfigModal', () => {
     })
 
     it('should update operator when selected', async () => {
-      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<DashboardFilterConfigModal {...props} />)
@@ -388,7 +389,6 @@ describe('DashboardFilterConfigModal', () => {
     })
 
     it('should show number input for gt operator on number field', async () => {
-      const user = userEvent.setup()
       const props = createDefaultProps()
       // Use a filter that already has a number field with gt operator
       props.filter = createMockFilter({
@@ -440,7 +440,7 @@ describe('DashboardFilterConfigModal', () => {
 
       // Should show min/max inputs for between operator
       const minInput = screen.queryByPlaceholderText('Min')
-      const maxInput = screen.queryByPlaceholderText('Max')
+      screen.queryByPlaceholderText('Max')
       // The component renders these for between operator
       expect(minInput || screen.getByText('Default Value')).toBeTruthy()
     })

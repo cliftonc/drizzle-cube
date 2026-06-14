@@ -11,7 +11,7 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAnalysisChartDefaults } from '../../../../src/client/hooks/useAnalysisChartDefaults'
 import { AnalysisBuilderStoreProvider } from '../../../../src/client/stores/analysisBuilderStore'
-import type { ChartType, ChartAxisConfig, ChartDisplayConfig, CubeQuery } from '../../../../src/client/types'
+import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../../../src/client/types'
 import type { MetricItem, BreakdownItem } from '../../../../src/client/components/AnalysisBuilder/types'
 import type { ColorPalette } from '../../../../src/client/utils/colorPalettes'
 
@@ -657,7 +657,7 @@ describe('useAnalysisChartDefaults', () => {
           }),
         {
           wrapper: createWrapper(),
-          initialProps: { metrics: [] },
+          initialProps: { metrics: [] as MetricItem[] },
         }
       )
 
@@ -830,7 +830,7 @@ describe('useAnalysisChartDefaults', () => {
           }),
         {
           wrapper: createWrapper(),
-          initialProps: { metrics: [] },
+          initialProps: { metrics: [] as MetricItem[] },
         }
       )
 

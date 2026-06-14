@@ -396,7 +396,9 @@ describe('RadarChart', () => {
     it('should use custom color palette when provided', () => {
       const customPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff'],
+        gradient: ['#ff0000', '#00ff00', '#0000ff'],
       }
 
       const { container } = render(

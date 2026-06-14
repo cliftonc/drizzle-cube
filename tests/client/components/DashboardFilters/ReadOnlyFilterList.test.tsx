@@ -12,7 +12,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ReadOnlyFilterList from '../../../../src/client/components/DashboardFilters/ReadOnlyFilterList'
 import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../../../src/client/types'
 import type { MetaResponse } from '../../../../src/client/shared/types'
-import { renderWithProviders } from '../../../client-setup/test-utils'
 
 // Mock the child components to simplify testing
 vi.mock('../../../../src/client/components/shared/FilterItem', () => ({

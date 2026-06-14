@@ -7,13 +7,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FunnelConfigPanel from '../../../../src/client/components/AnalysisBuilder/FunnelConfigPanel'
 import FunnelModeContent from '../../../../src/client/components/AnalysisBuilder/FunnelModeContent'
 import FunnelStepList from '../../../../src/client/components/AnalysisBuilder/FunnelStepList'
 import FunnelStepCard from '../../../../src/client/components/AnalysisBuilder/FunnelStepCard'
-import type { CubeMeta, FunnelBindingKey, FunnelStepState, ChartDisplayConfig, Filter } from '../../../../src/client/types'
+import type { CubeMeta, FunnelBindingKey, FunnelStepState, ChartDisplayConfig } from '../../../../src/client/types'
 
 // Mock schema with eventStream metadata for funnel cubes
 const mockSchema: CubeMeta = {
@@ -22,8 +22,9 @@ const mockSchema: CubeMeta = {
       name: 'Events',
       title: 'Events',
       description: 'Event stream cube',
+      segments: [],
       measures: [
-        { name: 'Events.count', type: 'number', title: 'Event Count', shortTitle: 'Count', aggType: 'count' },
+        { name: 'Events.count', type: 'number', title: 'Event Count', shortTitle: 'Count' },
       ],
       dimensions: [
         { name: 'Events.userId', type: 'string', title: 'User ID', shortTitle: 'User' },
@@ -41,8 +42,9 @@ const mockSchema: CubeMeta = {
       name: 'Users',
       title: 'Users',
       description: 'Users cube without eventStream',
+      segments: [],
       measures: [
-        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
+        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count' },
       ],
       dimensions: [
         { name: 'Users.id', type: 'string', title: 'User ID', shortTitle: 'ID' },
@@ -1139,7 +1141,6 @@ describe('FunnelStepCard', () => {
     })
 
     it('should call onUpdate when filters change', async () => {
-      const user = userEvent.setup()
       const onUpdate = vi.fn()
 
       render(

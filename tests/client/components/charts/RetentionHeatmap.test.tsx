@@ -11,9 +11,8 @@
  * - Cells: Retention rate with color intensity based on percentage
  */
 
-import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import RetentionHeatmap from '../../../../src/client/components/charts/RetentionHeatmap'
 import type { RetentionResultRow, RetentionChartData } from '../../../../src/client/types/retention'
 
@@ -49,13 +48,6 @@ const mockSegmentedChartData: RetentionChartData = {
   rows: mockSegmentedRetentionRows,
   periods: [0, 1, 2],
   breakdownValues: ['US', 'UK'],
-}
-
-// RetentionChartData with granularity
-const mockChartDataWithGranularity: RetentionChartData = {
-  rows: mockRetentionRows,
-  periods: [0, 1, 2, 3, 4],
-  granularity: 'week',
 }
 
 describe('RetentionHeatmap', () => {
@@ -98,7 +90,7 @@ describe('RetentionHeatmap', () => {
     })
 
     it('should render column headers with period labels', () => {
-      render(<RetentionHeatmap data={mockRetentionChartData} />)
+      render(<RetentionHeatmap data={mockRetentionChartData as unknown as any[]} />)
 
       // Check for period column headers (P0, P1, P2, etc.)
       expect(screen.getByText('P0')).toBeInTheDocument()
@@ -107,7 +99,7 @@ describe('RetentionHeatmap', () => {
     })
 
     it('should render Cohort and Users column headers', () => {
-      render(<RetentionHeatmap data={mockRetentionChartData} />)
+      render(<RetentionHeatmap data={mockRetentionChartData as unknown as any[]} />)
 
       expect(screen.getByText('Cohort')).toBeInTheDocument()
       expect(screen.getByText('Users')).toBeInTheDocument()
@@ -139,7 +131,7 @@ describe('RetentionHeatmap', () => {
 
   describe('retention chart data format', () => {
     it('should render from RetentionChartData format', () => {
-      const { container } = render(<RetentionHeatmap data={mockRetentionChartData} />)
+      const { container } = render(<RetentionHeatmap data={mockRetentionChartData as unknown as any[]} />)
 
       const table = container.querySelector('table')
       expect(table).toBeInTheDocument()
@@ -157,7 +149,7 @@ describe('RetentionHeatmap', () => {
     })
 
     it('should handle segmented data with breakdown values', () => {
-      render(<RetentionHeatmap data={mockSegmentedChartData} />)
+      render(<RetentionHeatmap data={mockSegmentedChartData as unknown as any[]} />)
 
       // Should show segment names in cohort column
       expect(screen.getByText('US')).toBeInTheDocument()
@@ -167,7 +159,7 @@ describe('RetentionHeatmap', () => {
 
   describe('retention rate display', () => {
     it('should display retention rates as percentages', () => {
-      render(<RetentionHeatmap data={mockRetentionChartData} />)
+      render(<RetentionHeatmap data={mockRetentionChartData as unknown as any[]} />)
 
       // 100% (period 0), 65% (period 1), 45% (period 2), etc.
       // Note: 100% appears in both the data cell and the legend
@@ -177,7 +169,7 @@ describe('RetentionHeatmap', () => {
     })
 
     it('should display cohort sizes', () => {
-      render(<RetentionHeatmap data={mockRetentionChartData} />)
+      render(<RetentionHeatmap data={mockRetentionChartData as unknown as any[]} />)
 
       // Cohort size is 100
       expect(screen.getByText('100')).toBeInTheDocument()
@@ -198,7 +190,7 @@ describe('RetentionHeatmap', () => {
 
   describe('heatmap colors', () => {
     it('should apply background color to cells based on retention rate', () => {
-      const { container } = render(<RetentionHeatmap data={mockRetentionChartData} />)
+      const { container } = render(<RetentionHeatmap data={mockRetentionChartData as unknown as any[]} />)
 
       // Get cells in the table body
       const cells = container.querySelectorAll('tbody td')
@@ -213,7 +205,7 @@ describe('RetentionHeatmap', () => {
     })
 
     it('should show higher color intensity for higher retention rates', () => {
-      const { container } = render(<RetentionHeatmap data={mockRetentionChartData} />)
+      const { container } = render(<RetentionHeatmap data={mockRetentionChartData as unknown as any[]} />)
 
       // Get all data cells (skip header row and first two columns)
       const rows = container.querySelectorAll('tbody tr')
@@ -234,7 +226,7 @@ describe('RetentionHeatmap', () => {
 
   describe('tooltip behavior', () => {
     it('should show tooltip on cell hover', async () => {
-      const { container } = render(<RetentionHeatmap data={mockRetentionChartData} />)
+      const { container } = render(<RetentionHeatmap data={mockRetentionChartData as unknown as any[]} />)
 
       // Find a data cell (skip cohort and users columns)
       const cells = container.querySelectorAll('tbody td')
@@ -250,7 +242,7 @@ describe('RetentionHeatmap', () => {
     })
 
     it('should hide tooltip on mouse leave', async () => {
-      const { container } = render(<RetentionHeatmap data={mockRetentionChartData} />)
+      const { container } = render(<RetentionHeatmap data={mockRetentionChartData as unknown as any[]} />)
 
       const cells = container.querySelectorAll('tbody td')
       const dataCell = cells[2]
@@ -267,7 +259,7 @@ describe('RetentionHeatmap', () => {
 
   describe('legend display', () => {
     it('should show legend by default', () => {
-      const { container } = render(<RetentionHeatmap data={mockRetentionChartData} />)
+      const { container } = render(<RetentionHeatmap data={mockRetentionChartData as unknown as any[]} />)
 
       // Legend shows 0% to 100% color scale
       // Note: 0% and 100% may appear in data cells too, so check for the legend container
@@ -281,7 +273,7 @@ describe('RetentionHeatmap', () => {
     it('should hide legend when showLegend is false', () => {
       const { container } = render(
         <RetentionHeatmap
-          data={mockRetentionChartData}
+          data={mockRetentionChartData as unknown as any[]}
           displayConfig={{ showLegend: false }}
         />
       )
@@ -294,7 +286,7 @@ describe('RetentionHeatmap', () => {
 
   describe('granularity display', () => {
     it('should display period labels without granularity prefix by default', () => {
-      render(<RetentionHeatmap data={mockRetentionChartData} />)
+      render(<RetentionHeatmap data={mockRetentionChartData as unknown as any[]} />)
 
       expect(screen.getByText('P0')).toBeInTheDocument()
       expect(screen.getByText('P1')).toBeInTheDocument()
@@ -303,7 +295,7 @@ describe('RetentionHeatmap', () => {
 
   describe('segmented data', () => {
     it('should render multiple rows for segmented data', () => {
-      const { container } = render(<RetentionHeatmap data={mockSegmentedChartData} />)
+      const { container } = render(<RetentionHeatmap data={mockSegmentedChartData as unknown as any[]} />)
 
       const rows = container.querySelectorAll('tbody tr')
       // Should have 2 rows (US and UK segments)
@@ -311,14 +303,14 @@ describe('RetentionHeatmap', () => {
     })
 
     it('should display segment names as row labels', () => {
-      render(<RetentionHeatmap data={mockSegmentedChartData} />)
+      render(<RetentionHeatmap data={mockSegmentedChartData as unknown as any[]} />)
 
       expect(screen.getByText('US')).toBeInTheDocument()
       expect(screen.getByText('UK')).toBeInTheDocument()
     })
 
     it('should display correct cohort sizes for each segment', () => {
-      render(<RetentionHeatmap data={mockSegmentedChartData} />)
+      render(<RetentionHeatmap data={mockSegmentedChartData as unknown as any[]} />)
 
       // US has 60 users, UK has 40 users
       expect(screen.getByText('60')).toBeInTheDocument()
@@ -407,7 +399,7 @@ describe('RetentionHeatmap', () => {
         breakdownValues: segments,
       }
 
-      const { container } = render(<RetentionHeatmap data={chartData} />)
+      const { container } = render(<RetentionHeatmap data={chartData as unknown as any[]} />)
 
       const rows = container.querySelectorAll('tbody tr')
       expect(rows.length).toBe(5)
@@ -442,7 +434,7 @@ describe('RetentionHeatmap', () => {
         breakdownValues: ['A', 'B'],
       }
 
-      const { container } = render(<RetentionHeatmap data={chartData} />)
+      render(<RetentionHeatmap data={chartData as unknown as any[]} />)
 
       // Should render with dash for missing cell
       expect(screen.getByText('-')).toBeInTheDocument()
@@ -460,7 +452,7 @@ describe('RetentionHeatmap', () => {
         periods: [0],
       }
 
-      const { container } = render(<RetentionHeatmap data={chartData} />)
+      const { container } = render(<RetentionHeatmap data={chartData as unknown as any[]} />)
 
       const table = container.querySelector('table')
       expect(table).toBeInTheDocument()
@@ -470,7 +462,7 @@ describe('RetentionHeatmap', () => {
   describe('displayConfig options', () => {
     it('should handle empty displayConfig', () => {
       const { container } = render(
-        <RetentionHeatmap data={mockRetentionChartData} displayConfig={{}} />
+        <RetentionHeatmap data={mockRetentionChartData as unknown as any[]} displayConfig={{}} />
       )
 
       const table = container.querySelector('table')

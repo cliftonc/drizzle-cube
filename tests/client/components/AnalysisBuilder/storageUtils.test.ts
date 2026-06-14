@@ -306,7 +306,7 @@ describe('storageUtils', () => {
         activeView: 'chart'
       }
 
-      saveStateToStorage(state)
+      saveStateToStorage(state as Parameters<typeof saveStateToStorage>[0])
 
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
       expect(stored.filters[0].type).toBe('and')
@@ -435,7 +435,7 @@ describe('storageUtils', () => {
         activeView: 'chart'
       }
 
-      saveStateToStorage(originalState)
+      saveStateToStorage(originalState as Parameters<typeof saveStateToStorage>[0])
       const loadedState = loadStateFromStorage()
 
       expect(loadedState).toEqual(originalState)
@@ -466,7 +466,7 @@ describe('storageUtils', () => {
         activeView: 'chart'
       }
 
-      saveStateToStorage(stateWithNestedFilters)
+      saveStateToStorage(stateWithNestedFilters as Parameters<typeof saveStateToStorage>[0])
       const loaded = loadStateFromStorage()
 
       expect(loaded?.filters).toEqual(stateWithNestedFilters.filters)
@@ -487,7 +487,7 @@ describe('storageUtils', () => {
         activeView: 'chart'
       }
 
-      saveStateToStorage(stateWithSpecialChars)
+      saveStateToStorage(stateWithSpecialChars as Parameters<typeof saveStateToStorage>[0])
       const loaded = loadStateFromStorage()
 
       expect(loaded?.filters).toEqual(stateWithSpecialChars.filters)
@@ -552,8 +552,9 @@ describe('storageUtils', () => {
       saveStateToStorage(state)
       const loaded = loadStateFromStorage()
 
-      expect(loaded?.order?.['Employees.count']).toBe('asc')
-      expect(loaded?.order?.['Employees.name']).toBe('desc')
+      const loadedWithOrder = loaded as ({ order?: Record<string, 'asc' | 'desc'> } | null)
+      expect(loadedWithOrder?.order?.['Employees.count']).toBe('asc')
+      expect(loadedWithOrder?.order?.['Employees.name']).toBe('desc')
     })
   })
 

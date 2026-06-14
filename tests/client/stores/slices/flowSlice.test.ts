@@ -9,7 +9,7 @@ import {
   type AnalysisBuilderStore,
 } from '../../../../src/client/stores/analysisBuilderStore'
 import type { StoreApi } from 'zustand'
-import type { Filter } from '../../../../src/client/types'
+import type { Filter, SimpleFilter } from '../../../../src/client/types'
 import { FLOW_MIN_DEPTH, FLOW_MAX_DEPTH } from '../../../../src/client/types/flow'
 
 // ============================================================================
@@ -281,7 +281,7 @@ describe('FlowSlice', () => {
           { member: 'Events.action', operator: 'equals', values: ['click'] },
         ])
         expect(store.getState().startingStep.filters).toHaveLength(1)
-        expect(store.getState().startingStep.filters[0].member).toBe('Events.action')
+        expect((store.getState().startingStep.filters[0] as SimpleFilter).member).toBe('Events.action')
       })
 
       it('should preserve name when setting filters', () => {
@@ -349,7 +349,7 @@ describe('FlowSlice', () => {
         store.getState().removeStartingStepFilter(0)
 
         expect(store.getState().startingStep.filters).toHaveLength(1)
-        expect(store.getState().startingStep.filters[0].member).toBe('Events.category')
+        expect((store.getState().startingStep.filters[0] as SimpleFilter).member).toBe('Events.category')
       })
 
       it('should handle removing last filter', () => {
@@ -388,7 +388,7 @@ describe('FlowSlice', () => {
         }
         store.getState().updateStartingStepFilter(0, updatedFilter)
 
-        expect(store.getState().startingStep.filters[0].values).toEqual(['checkout'])
+        expect((store.getState().startingStep.filters[0] as SimpleFilter).values).toEqual(['checkout'])
       })
 
       it('should not update if index does not exist', () => {
@@ -405,7 +405,7 @@ describe('FlowSlice', () => {
         }
         store.getState().updateStartingStepFilter(5, updatedFilter)
 
-        expect(store.getState().startingStep.filters[0].values).toEqual(['purchase'])
+        expect((store.getState().startingStep.filters[0] as SimpleFilter).values).toEqual(['purchase'])
       })
 
       it('should update filter member correctly', () => {
@@ -422,8 +422,8 @@ describe('FlowSlice', () => {
         }
         store.getState().updateStartingStepFilter(0, updatedFilter)
 
-        expect(store.getState().startingStep.filters[0].member).toBe('Events.action')
-        expect(store.getState().startingStep.filters[0].operator).toBe('notEquals')
+        expect((store.getState().startingStep.filters[0] as SimpleFilter).member).toBe('Events.action')
+        expect((store.getState().startingStep.filters[0] as SimpleFilter).operator).toBe('notEquals')
       })
     })
   })
@@ -646,7 +646,7 @@ describe('FlowSlice', () => {
 
       expect(query?.flow.startingStep.name).toBe('Purchase')
       // Single filter is not wrapped in array
-      expect((query?.flow.startingStep.filter as Filter).member).toBe('Events.type')
+      expect((query?.flow.startingStep.filter as SimpleFilter).member).toBe('Events.type')
     })
 
     it('should include starting step with multiple filters', () => {
@@ -866,12 +866,12 @@ describe('FlowSlice', () => {
       // Remove middle filter
       store.getState().removeStartingStepFilter(1)
       expect(store.getState().startingStep.filters).toHaveLength(2)
-      expect(store.getState().startingStep.filters[1].member).toBe('Events.value')
+      expect((store.getState().startingStep.filters[1] as SimpleFilter).member).toBe('Events.value')
 
       // Remove first filter
       store.getState().removeStartingStepFilter(0)
       expect(store.getState().startingStep.filters).toHaveLength(1)
-      expect(store.getState().startingStep.filters[0].member).toBe('Events.value')
+      expect((store.getState().startingStep.filters[0] as SimpleFilter).member).toBe('Events.value')
     })
 
     it('should build query with all optional fields populated', () => {
@@ -946,10 +946,10 @@ describe('FlowSlice', () => {
       complexFilters.forEach((f) => store.getState().addStartingStepFilter(f))
 
       expect(store.getState().startingStep.filters).toHaveLength(4)
-      expect(store.getState().startingStep.filters[0].operator).toBe('equals')
-      expect(store.getState().startingStep.filters[1].operator).toBe('gte')
-      expect(store.getState().startingStep.filters[2].operator).toBe('notEquals')
-      expect(store.getState().startingStep.filters[3].operator).toBe('contains')
+      expect((store.getState().startingStep.filters[0] as SimpleFilter).operator).toBe('equals')
+      expect((store.getState().startingStep.filters[1] as SimpleFilter).operator).toBe('gte')
+      expect((store.getState().startingStep.filters[2] as SimpleFilter).operator).toBe('notEquals')
+      expect((store.getState().startingStep.filters[3] as SimpleFilter).operator).toBe('contains')
     })
   })
 

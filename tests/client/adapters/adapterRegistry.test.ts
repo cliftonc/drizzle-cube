@@ -10,6 +10,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { adapterRegistry } from '../../../src/client/adapters/adapterRegistry'
 import type { ModeAdapter, ValidationResult } from '../../../src/client/adapters/modeAdapter'
 import type { AnalysisConfig, AnalysisType, ChartConfig } from '../../../src/client/types/analysisConfig'
+import type { QuerySliceState } from '../../../src/client/stores/slices/querySlice'
+import type { FunnelSliceState } from '../../../src/client/stores/slices/funnelSlice'
+import type { FlowSliceState } from '../../../src/client/stores/slices/flowSlice'
+import type { RetentionSliceState } from '../../../src/client/types/retention'
 
 // ============================================================================
 // Mock Adapter for Testing Custom Registration
@@ -644,7 +648,7 @@ describe('adapterRegistry', () => {
   describe('integration', () => {
     it('should work correctly with built-in adapters through full workflow', () => {
       // Get query adapter
-      const queryAdapter = adapterRegistry.get('query')
+      const queryAdapter = adapterRegistry.get<QuerySliceState>('query')
 
       // Create initial state
       const initialState = queryAdapter.createInitial()
@@ -661,7 +665,7 @@ describe('adapterRegistry', () => {
 
     it('should work correctly with funnel adapter through full workflow', () => {
       // Get funnel adapter
-      const funnelAdapter = adapterRegistry.get('funnel')
+      const funnelAdapter = adapterRegistry.get<FunnelSliceState>('funnel')
 
       // Create initial state
       const initialState = funnelAdapter.createInitial()
@@ -679,7 +683,7 @@ describe('adapterRegistry', () => {
 
     it('should work correctly with flow adapter through full workflow', () => {
       // Get flow adapter
-      const flowAdapter = adapterRegistry.get('flow')
+      const flowAdapter = adapterRegistry.get<FlowSliceState>('flow')
 
       // Create initial state
       const initialState = flowAdapter.createInitial()
@@ -698,7 +702,7 @@ describe('adapterRegistry', () => {
 
     it('should work correctly with retention adapter through full workflow', () => {
       // Get retention adapter
-      const retentionAdapter = adapterRegistry.get('retention')
+      const retentionAdapter = adapterRegistry.get<RetentionSliceState>('retention')
 
       // Create initial state
       const initialState = retentionAdapter.createInitial()

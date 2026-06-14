@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AnalysisQueryPanel from '../../../../src/client/components/AnalysisBuilder/AnalysisQueryPanel'
-import type { AnalysisQueryPanelProps, MetricItem, BreakdownItem, QueryPanelTab } from '../../../../src/client/components/AnalysisBuilder/types'
+import type { AnalysisQueryPanelProps, MetricItem, BreakdownItem, QueryPanelTab, ValidationStatus } from '../../../../src/client/components/AnalysisBuilder/types'
+import type { MultiQueryValidationError } from '../../../../src/client/utils/multiQueryValidation'
 import type { MetaResponse } from '../../../../src/client/shared/types'
 import type { Filter, ChartAxisConfig, ChartDisplayConfig } from '../../../../src/client/types'
 
@@ -12,9 +13,11 @@ const mockSchema: MetaResponse = {
     {
       name: 'Users',
       title: 'Users',
+      description: 'Users',
+      segments: [],
       measures: [
-        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
-        { name: 'Users.totalRevenue', type: 'number', title: 'Total Revenue', shortTitle: 'Revenue', aggType: 'sum' },
+        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count' },
+        { name: 'Users.totalRevenue', type: 'number', title: 'Total Revenue', shortTitle: 'Revenue' },
       ],
       dimensions: [
         { name: 'Users.name', type: 'string', title: 'User Name', shortTitle: 'Name' },
@@ -507,7 +510,7 @@ describe('AnalysisQueryPanel', () => {
           onRemoveQuery={vi.fn()}
           multiQueryValidation={{
             isValid: false,
-            errors: [{ type: 'error', message: 'Duplicate metrics detected' }],
+            errors: [{ type: 'error', message: 'Duplicate metrics detected' } as unknown as MultiQueryValidationError],
             warnings: [],
           }}
         />
@@ -673,8 +676,8 @@ describe('AnalysisQueryPanel', () => {
       )
 
       // Labels should be visible - check using queryAllByText as labels may be styled differently
-      const labelA = screen.queryAllByText('A')
-      const labelB = screen.queryAllByText('B')
+      screen.queryAllByText('A')
+      screen.queryAllByText('B')
       // Labels may or may not be visible depending on implementation
       // Just verify metrics are displayed
       expect(screen.getByText('Count')).toBeInTheDocument()
@@ -684,7 +687,6 @@ describe('AnalysisQueryPanel', () => {
 
   describe('time dimension breakdowns', () => {
     it('should call onBreakdownGranularityChange when granularity changed', async () => {
-      const user = userEvent.setup()
       const onBreakdownGranularityChange = vi.fn()
       const timeBreakdowns: BreakdownItem[] = [
         { id: 'breakdown-time', field: 'Users.createdAt', isTimeDimension: true, granularity: 'day' },
@@ -775,7 +777,7 @@ describe('AnalysisQueryPanel', () => {
       render(
         <AnalysisQueryPanel
           {...defaultProps}
-          validationStatus="error"
+          validationStatus={'error' as unknown as ValidationStatus}
           validationError="Invalid query configuration"
         />
       )
@@ -967,7 +969,6 @@ describe('AnalysisQueryPanel', () => {
 
   describe('order change', () => {
     it('should call onOrderChange when order is updated', async () => {
-      const user = userEvent.setup()
       const onOrderChange = vi.fn()
 
       render(

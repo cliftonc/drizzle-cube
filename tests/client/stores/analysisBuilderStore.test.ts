@@ -18,6 +18,9 @@ import {
   type AnalysisBuilderStore,
 } from '../../../src/client/stores/analysisBuilderStore'
 import type { StoreApi } from 'zustand'
+import type { FunnelBindingKey } from '../../../src/client/types/funnel'
+import type { FunnelStepState } from '../../../src/client/types'
+import type { QueryPanelTab } from '../../../src/client/components/AnalysisBuilder/types'
 
 // ============================================================================
 // Test Setup
@@ -114,7 +117,7 @@ describe('AnalysisBuilderStore', () => {
       // Switch to funnel mode and setup state
       customStore.getState().setAnalysisType('funnel')
       customStore.getState().setFunnelCube('Events')
-      customStore.getState().setFunnelBindingKey('Events.userId')
+      customStore.getState().setFunnelBindingKey('Events.userId' as unknown as FunnelBindingKey)
       customStore.getState().setFunnelTimeDimension('Events.timestamp')
 
       const state = customStore.getState()
@@ -295,12 +298,12 @@ describe('AnalysisBuilderStore', () => {
         // Setup funnel state - first add steps since default is empty
         store.getState().setAnalysisType('funnel')
         store.getState().setFunnelCube('Events')
-        store.getState().setFunnelBindingKey('Events.userId')
+        store.getState().setFunnelBindingKey('Events.userId' as unknown as FunnelBindingKey)
         store.getState().setFunnelTimeDimension('Events.timestamp')
         store.getState().addFunnelStep()
         store.getState().addFunnelStep()
-        store.getState().updateFunnelStep(0, { name: 'Step 1', filterDimension: 'Events.type', filterValue: 'signup' })
-        store.getState().updateFunnelStep(1, { name: 'Step 2', filterDimension: 'Events.type', filterValue: 'purchase' })
+        store.getState().updateFunnelStep(0, { name: 'Step 1', filterDimension: 'Events.type', filterValue: 'signup' } as unknown as Partial<FunnelStepState>)
+        store.getState().updateFunnelStep(1, { name: 'Step 2', filterDimension: 'Events.type', filterValue: 'purchase' } as unknown as Partial<FunnelStepState>)
 
         // Save returns an AnalysisConfig
         const config = store.getState().save()
@@ -331,7 +334,7 @@ describe('AnalysisBuilderStore', () => {
         // Switch to funnel and setup
         store.getState().setAnalysisType('funnel')
         store.getState().setFunnelCube('Events')
-        store.getState().setFunnelBindingKey('Events.userId')
+        store.getState().setFunnelBindingKey('Events.userId' as unknown as FunnelBindingKey)
 
         // Save workspace
         const workspace = store.getState().saveWorkspace()
@@ -351,12 +354,12 @@ describe('AnalysisBuilderStore', () => {
         // Setup funnel mode
         store.getState().setAnalysisType('funnel')
         store.getState().setFunnelCube('Events')
-        store.getState().setFunnelBindingKey('Events.userId')
+        store.getState().setFunnelBindingKey('Events.userId' as unknown as FunnelBindingKey)
         store.getState().setFunnelTimeDimension('Events.timestamp')
         store.getState().addFunnelStep()
         store.getState().addFunnelStep()
-        store.getState().updateFunnelStep(0, { name: 'Step 1', filterDimension: 'Events.type', filterValue: 'signup' })
-        store.getState().updateFunnelStep(1, { name: 'Step 2', filterDimension: 'Events.type', filterValue: 'purchase' })
+        store.getState().updateFunnelStep(0, { name: 'Step 1', filterDimension: 'Events.type', filterValue: 'signup' } as unknown as Partial<FunnelStepState>)
+        store.getState().updateFunnelStep(1, { name: 'Step 2', filterDimension: 'Events.type', filterValue: 'purchase' } as unknown as Partial<FunnelStepState>)
 
         const workspace = store.getState().saveWorkspace()
 
@@ -693,9 +696,9 @@ describe('AnalysisBuilderStore', () => {
           name: 'Signup',
           filterDimension: 'Events.type',
           filterValue: 'signup'
-        })
+        } as unknown as Partial<FunnelStepState>)
 
-        const step = store.getState().funnelSteps[0]
+        const step = store.getState().funnelSteps[0] as FunnelStepState & { filterDimension?: string; filterValue?: string }
         expect(step.name).toBe('Signup')
         expect(step.filterDimension).toBe('Events.type')
         expect(step.filterValue).toBe('signup')
@@ -737,7 +740,7 @@ describe('AnalysisBuilderStore', () => {
 
       it('should setFunnelCube() clearing binding key and time dimension', () => {
         store.getState().setFunnelCube('Events')
-        store.getState().setFunnelBindingKey('Events.userId')
+        store.getState().setFunnelBindingKey('Events.userId' as unknown as FunnelBindingKey)
         store.getState().setFunnelTimeDimension('Events.timestamp')
 
         // Change cube
@@ -749,7 +752,7 @@ describe('AnalysisBuilderStore', () => {
       })
 
       it('should setFunnelBindingKey() with string format', () => {
-        store.getState().setFunnelBindingKey('Events.userId')
+        store.getState().setFunnelBindingKey('Events.userId' as unknown as FunnelBindingKey)
         expect(store.getState().funnelBindingKey).toBe('Events.userId')
       })
 
@@ -758,7 +761,7 @@ describe('AnalysisBuilderStore', () => {
           { cube: 'Events', dimension: 'Events.userId' },
           { cube: 'Users', dimension: 'Users.id' }
         ]
-        store.getState().setFunnelBindingKey(bindingKey)
+        store.getState().setFunnelBindingKey(bindingKey as unknown as FunnelBindingKey)
         expect(store.getState().funnelBindingKey).toEqual(bindingKey)
       })
 
@@ -779,7 +782,7 @@ describe('AnalysisBuilderStore', () => {
         expect(store.getState().isFunnelModeEnabled()).toBe(false)
 
         store.getState().setFunnelCube('Events')
-        store.getState().setFunnelBindingKey('Events.userId')
+        store.getState().setFunnelBindingKey('Events.userId' as unknown as FunnelBindingKey)
         store.getState().setFunnelTimeDimension('Events.timestamp')
         // Add funnel steps first since default is empty
         store.getState().addFunnelStep()
@@ -788,12 +791,12 @@ describe('AnalysisBuilderStore', () => {
           name: 'Step 1',
           filterDimension: 'Events.type',
           filterValue: 'signup'
-        })
+        } as unknown as Partial<FunnelStepState>)
         store.getState().updateFunnelStep(1, {
           name: 'Step 2',
           filterDimension: 'Events.type',
           filterValue: 'purchase'
-        })
+        } as unknown as Partial<FunnelStepState>)
 
         expect(store.getState().isFunnelModeEnabled()).toBe(true)
       })
@@ -838,10 +841,10 @@ describe('AnalysisBuilderStore', () => {
   // ==========================================================================
   describe('UISlice', () => {
     it('should setActiveTab()', () => {
-      store.getState().setActiveTab('filters')
+      store.getState().setActiveTab('filters' as unknown as QueryPanelTab)
       expect(store.getState().activeTab).toBe('filters')
 
-      store.getState().setActiveTab('metrics')
+      store.getState().setActiveTab('metrics' as unknown as QueryPanelTab)
       expect(store.getState().activeTab).toBe('metrics')
     })
 
@@ -1016,7 +1019,7 @@ describe('AnalysisBuilderStore', () => {
 
     it('selectFunnelState() returns funnel state', () => {
       store.getState().setFunnelCube('Events')
-      store.getState().setFunnelBindingKey('Events.userId')
+      store.getState().setFunnelBindingKey('Events.userId' as unknown as FunnelBindingKey)
       store.getState().addFunnelStep()
       store.getState().addFunnelStep()
 
@@ -1029,7 +1032,7 @@ describe('AnalysisBuilderStore', () => {
     })
 
     it('selectUIState() returns UI state', () => {
-      store.getState().setActiveTab('filters')
+      store.getState().setActiveTab('filters' as unknown as QueryPanelTab)
       store.getState().setActiveView('table')
       store.getState().openMetricsModal()
 
@@ -1074,7 +1077,7 @@ describe('AnalysisBuilderStore', () => {
       // Setup funnel mode
       store.getState().setAnalysisType('funnel')
       store.getState().setFunnelCube('Events')
-      store.getState().setFunnelBindingKey('Events.userId')
+      store.getState().setFunnelBindingKey('Events.userId' as unknown as FunnelBindingKey)
 
       // Clear current mode (funnel)
       store.getState().clearCurrentMode()

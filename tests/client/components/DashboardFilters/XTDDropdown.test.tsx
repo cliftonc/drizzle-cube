@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createRef, type RefObject } from 'react'
+import { type RefObject } from 'react'
 import XTDDropdown from '../../../../src/client/components/DashboardFilters/XTDDropdown'
 
 describe('XTDDropdown', () => {
@@ -243,7 +243,6 @@ describe('XTDDropdown', () => {
     })
 
     it('should not close when clicking inside dropdown', async () => {
-      const user = userEvent.setup()
       const props = createDefaultProps()
 
       render(<XTDDropdown {...props} />)

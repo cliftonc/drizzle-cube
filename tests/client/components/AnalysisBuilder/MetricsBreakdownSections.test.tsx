@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within, fireEvent } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MetricsSection from '../../../../src/client/components/AnalysisBuilder/MetricsSection'
 import MetricItemCard from '../../../../src/client/components/AnalysisBuilder/MetricItemCard'
@@ -35,10 +35,12 @@ const mockSchema: MetaResponse = {
     {
       name: 'Users',
       title: 'Users',
+      description: '',
+      segments: [],
       measures: [
-        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
-        { name: 'Users.totalRevenue', type: 'number', title: 'Total Revenue', shortTitle: 'Revenue', aggType: 'sum' },
-        { name: 'Users.avgOrderValue', type: 'number', title: 'Average Order Value', shortTitle: 'Avg Order', aggType: 'avg' },
+        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count' },
+        { name: 'Users.totalRevenue', type: 'number', title: 'Total Revenue', shortTitle: 'Revenue' },
+        { name: 'Users.avgOrderValue', type: 'number', title: 'Average Order Value', shortTitle: 'Avg Order' },
       ],
       dimensions: [
         { name: 'Users.name', type: 'string', title: 'User Name', shortTitle: 'Name' },
@@ -50,9 +52,11 @@ const mockSchema: MetaResponse = {
     {
       name: 'Orders',
       title: 'Orders',
+      description: '',
+      segments: [],
       measures: [
-        { name: 'Orders.count', type: 'number', title: 'Order Count', shortTitle: 'Orders', aggType: 'count' },
-        { name: 'Orders.totalAmount', type: 'number', title: 'Total Amount', shortTitle: 'Amount', aggType: 'sum' },
+        { name: 'Orders.count', type: 'number', title: 'Order Count', shortTitle: 'Orders' },
+        { name: 'Orders.totalAmount', type: 'number', title: 'Total Amount', shortTitle: 'Amount' },
       ],
       dimensions: [
         { name: 'Orders.status', type: 'string', title: 'Order Status', shortTitle: 'Status' },
@@ -75,30 +79,6 @@ const sampleBreakdowns: BreakdownItem[] = [
   { id: 'breakdown-2', field: 'Users.createdAt', isTimeDimension: true, granularity: 'day' },
   { id: 'breakdown-3', field: 'Users.country', isTimeDimension: false },
 ]
-
-// Helper to create drag event with dataTransfer
-function createDragEvent(type: string, data: Record<string, unknown> = {}) {
-  const event = new Event(type, { bubbles: true, cancelable: true })
-  Object.assign(event, {
-    dataTransfer: {
-      data: {} as Record<string, string>,
-      effectAllowed: 'move',
-      setData(format: string, value: string) {
-        this.data[format] = value
-      },
-      getData(format: string) {
-        return this.data[format]
-      },
-      setDragImage: vi.fn(),
-    },
-    clientX: 0,
-    clientY: 0,
-    preventDefault: vi.fn(),
-    stopPropagation: vi.fn(),
-    ...data,
-  })
-  return event
-}
 
 // ============================================================================
 // MetricsSection Tests
@@ -375,7 +355,6 @@ describe('MetricItemCard', () => {
     type: 'number',
     title: 'User Count',
     shortTitle: 'Count',
-    aggType: 'count',
   }
 
   const defaultProps: MetricItemCardProps = {
@@ -400,7 +379,7 @@ describe('MetricItemCard', () => {
         name: 'Users.count',
         type: 'number',
         title: 'User Count',
-        aggType: 'count',
+        shortTitle: '',
       }
 
       render(
@@ -625,7 +604,6 @@ describe('MetricItemCard', () => {
         type: 'number',
         title: 'Average Order Value',
         shortTitle: 'Avg Order',
-        aggType: 'avg',
       }
 
       render(

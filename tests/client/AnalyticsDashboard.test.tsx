@@ -3,7 +3,6 @@
  * Covers config rendering, filter merging, dirty state tracking, and save coordination
  */
 
-import React from 'react'
 import { render, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AnalyticsDashboard from '../../src/client/components/AnalyticsDashboard'

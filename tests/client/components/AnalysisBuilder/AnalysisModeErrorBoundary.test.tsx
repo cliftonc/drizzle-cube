@@ -5,8 +5,9 @@
  * mode switching in AnalysisBuilder.
  */
 
+import type { ReactElement } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AnalysisModeErrorBoundary } from '../../../../src/client/components/AnalysisBuilder/AnalysisModeErrorBoundary'
 
@@ -19,7 +20,7 @@ function ThrowingComponent({ shouldThrow = true }: { shouldThrow?: boolean }) {
 }
 
 // Component that throws a custom error
-function CustomErrorComponent({ message }: { message: string }) {
+function CustomErrorComponent({ message }: { message: string }): ReactElement {
   throw new Error(message)
 }
 
@@ -264,7 +265,7 @@ describe('AnalysisModeErrorBoundary', () => {
       const user = userEvent.setup()
 
       // Component that throws error without message
-      function EmptyErrorComponent() {
+      function EmptyErrorComponent(): ReactElement {
         throw new Error()
       }
 
@@ -338,7 +339,7 @@ describe('AnalysisModeErrorBoundary', () => {
     })
 
     it('should render refresh icon on Try Again button', () => {
-      const { container } = render(
+      render(
         <AnalysisModeErrorBoundary analysisType="query">
           <ThrowingComponent />
         </AnalysisModeErrorBoundary>

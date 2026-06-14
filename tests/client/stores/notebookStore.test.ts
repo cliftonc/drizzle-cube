@@ -379,9 +379,9 @@ describe('NotebookStore', () => {
         blocks: [],
         messages: [],
       })
-      expect((saved as Record<string, unknown>).isStreaming).toBeUndefined()
-      expect((saved as Record<string, unknown>).sessionId).toBeUndefined()
-      expect((saved as Record<string, unknown>).inputValue).toBeUndefined()
+      expect((saved as unknown as Record<string, unknown>).isStreaming).toBeUndefined()
+      expect((saved as unknown as Record<string, unknown>).sessionId).toBeUndefined()
+      expect((saved as unknown as Record<string, unknown>).inputValue).toBeUndefined()
     })
 
     it('should handle loading empty/missing fields', () => {
@@ -521,8 +521,7 @@ describe('NotebookStore', () => {
       const wrapper = ({ children }: { children: ReactNode }) =>
         React.createElement(
           NotebookStoreProvider,
-          { initialConfig: config },
-          children
+          { initialConfig: config, children }
         )
 
       const { result } = renderHook(

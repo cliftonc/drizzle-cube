@@ -1,15 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AnalysisChartConfigPanel from '../../../../src/client/components/AnalysisBuilder/AnalysisChartConfigPanel'
 import type { MetricItem, BreakdownItem } from '../../../../src/client/components/AnalysisBuilder/types'
 import type { ChartType, ChartAxisConfig } from '../../../../src/client/types'
 import type { MetaResponse } from '../../../../src/client/shared/types'
-import type { ChartAvailabilityMap } from '../../../../src/client/shared/chartDefaults'
+import type { ChartAvailabilityMap, ChartAvailability } from '../../../../src/client/shared/chartDefaults'
+
+// Build a complete ChartAvailabilityMap (all chart types available) with optional overrides
+const ALL_CHART_TYPES: string[] = [
+  'line', 'bar', 'pie', 'table', 'area', 'scatter', 'radar', 'radialBar',
+  'treemap', 'bubble', 'activityGrid', 'kpiNumber', 'kpiDelta', 'kpiText',
+  'markdown', 'funnel', 'sankey', 'sunburst', 'heatmap', 'retentionHeatmap',
+  'retentionCombined', 'boxPlot', 'waterfall', 'candlestick', 'measureProfile', 'gauge',
+]
+function fullAvailability(overrides: Record<string, ChartAvailability>): ChartAvailabilityMap {
+  const map: Record<string, ChartAvailability> = {}
+  for (const type of ALL_CHART_TYPES) {
+    map[type] = { available: true }
+  }
+  return { ...map, ...overrides } as ChartAvailabilityMap
+}
 
 // Mock useChartConfig hook
 vi.mock('../../../../src/client/charts/lazyChartConfigRegistry', () => ({
-  useChartConfig: vi.fn((chartType: string) => ({
+  useChartConfig: vi.fn((_chartType: string) => ({
     config: {
       skipQuery: false,
       dropZones: [
@@ -44,15 +59,17 @@ const mockSchema: MetaResponse = {
     {
       name: 'Users',
       title: 'Users',
+      description: 'Users',
       measures: [
-        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
-        { name: 'Users.totalRevenue', type: 'number', title: 'Total Revenue', shortTitle: 'Revenue', aggType: 'sum' },
+        { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count' },
+        { name: 'Users.totalRevenue', type: 'number', title: 'Total Revenue', shortTitle: 'Revenue' },
       ],
       dimensions: [
         { name: 'Users.name', type: 'string', title: 'User Name', shortTitle: 'Name' },
         { name: 'Users.status', type: 'string', title: 'Status', shortTitle: 'Status' },
         { name: 'Users.createdAt', type: 'time', title: 'Created At', shortTitle: 'Created' },
       ],
+      segments: [],
     },
   ],
 }
@@ -125,10 +142,10 @@ describe('AnalysisChartConfigPanel', () => {
     })
 
     it('should disable chart types marked as unavailable', () => {
-      const availability: ChartAvailabilityMap = {
+      const availability: ChartAvailabilityMap = fullAvailability({
         bar: { available: true },
         pie: { available: false, reason: 'Requires single dimension' },
-      }
+      })
 
       render(
         <AnalysisChartConfigPanel
@@ -383,7 +400,6 @@ describe('AnalysisChartConfigPanel', () => {
     })
 
     it('should call onChartConfigChange when Y-axis assignment changes', async () => {
-      const user = userEvent.setup()
       const onChartConfigChange = vi.fn()
 
       const chartConfig: ChartAxisConfig = {
@@ -522,11 +538,11 @@ describe('AnalysisChartConfigPanel', () => {
 
   describe('chart availability', () => {
     it('should show tooltips for unavailable charts explaining why', () => {
-      const availability: ChartAvailabilityMap = {
+      const availability: ChartAvailabilityMap = fullAvailability({
         bar: { available: true },
         pie: { available: false, reason: 'Pie chart requires exactly one dimension' },
         scatter: { available: false, reason: 'Scatter chart requires exactly two measures' },
-      }
+      })
 
       render(
         <AnalysisChartConfigPanel
@@ -540,9 +556,9 @@ describe('AnalysisChartConfigPanel', () => {
     })
 
     it('should show all chart types regardless of availability', () => {
-      const availability: ChartAvailabilityMap = {
+      const availability: ChartAvailabilityMap = fullAvailability({
         bar: { available: false, reason: 'Test reason' },
-      }
+      })
 
       render(
         <AnalysisChartConfigPanel
@@ -735,15 +751,14 @@ describe('AnalysisChartConfigPanel', () => {
   describe('multi-query chart configuration', () => {
     it('should handle multiple queries with different metrics', () => {
       const metricsWithQueryLabels: MetricItem[] = [
-        { id: 'metric-1', field: 'Users.count', label: 'A', queryIndex: 0 },
-        { id: 'metric-2', field: 'Users.totalRevenue', label: 'B', queryIndex: 1 },
+        { id: 'metric-1', field: 'Users.count', label: 'A' },
+        { id: 'metric-2', field: 'Users.totalRevenue', label: 'B' },
       ]
 
       render(
         <AnalysisChartConfigPanel
           {...defaultProps}
           metrics={metricsWithQueryLabels}
-          queryCount={2}
         />
       )
 

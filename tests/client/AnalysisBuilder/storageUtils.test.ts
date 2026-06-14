@@ -10,10 +10,23 @@ import type { AnalysisBuilderState, AnalysisBuilderStorageState } from '../../..
 const STORAGE_KEY = 'drizzle-cube-analysis-builder-state'
 
 /**
+ * Legacy execution fields that used to live on AnalysisBuilderState before
+ * server state was moved to TanStack Query. These tests still exercise them
+ * for backward-compat parsing, so model them locally.
+ */
+type LegacyAnalysisBuilderState = AnalysisBuilderState & {
+  executionStatus: string
+  executionResults: unknown
+  executionError: unknown
+  totalRowCount: number | null
+  resultsStale: boolean
+}
+
+/**
  * Create initial empty state
  * This function will be moved to utils/storageUtils.ts
  */
-function createInitialState(): AnalysisBuilderState {
+function createInitialState(): LegacyAnalysisBuilderState {
   return {
     metrics: [],
     breakdowns: [],
@@ -213,7 +226,7 @@ describe('storageUtils', () => {
             totalRowCount: null,
             resultsStale: false
           }
-        ],
+        ] as unknown as AnalysisBuilderState[],
         activeQueryIndex: 1,
         mergeStrategy: 'merge'
       }

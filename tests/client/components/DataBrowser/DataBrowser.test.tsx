@@ -3,9 +3,8 @@
  * Covers rendering, cube selection, sorting, pagination, and column management
  */
 
-import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DataBrowser from '../../../../src/client/components/DataBrowser'
 import type { CubeMeta } from '../../../../src/client/types'
@@ -17,10 +16,10 @@ const mockMeta: CubeMeta = {
       name: 'Employees',
       title: 'Employees',
       measures: [
-        { name: 'Employees.totalSalary', type: 'number', title: 'Total Salary', shortTitle: 'Total Salary', aggType: 'sum' },
+        { name: 'Employees.totalSalary', type: 'number', title: 'Total Salary', shortTitle: 'Total Salary' },
       ],
       dimensions: [
-        { name: 'Employees.id', type: 'number', title: 'ID', shortTitle: 'ID', primaryKey: true },
+        { name: 'Employees.id', type: 'number', title: 'ID', shortTitle: 'ID' },
         { name: 'Employees.name', type: 'string', title: 'Name', shortTitle: 'Name' },
         { name: 'Employees.email', type: 'string', title: 'Email', shortTitle: 'Email' },
       ],
@@ -31,7 +30,7 @@ const mockMeta: CubeMeta = {
       title: 'Departments',
       measures: [],
       dimensions: [
-        { name: 'Departments.id', type: 'number', title: 'ID', shortTitle: 'ID', primaryKey: true },
+        { name: 'Departments.id', type: 'number', title: 'ID', shortTitle: 'ID' },
         { name: 'Departments.name', type: 'string', title: 'Name', shortTitle: 'Name' },
       ],
       segments: [],

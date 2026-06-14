@@ -9,8 +9,7 @@
  * - Keyboard navigation and accessibility
  */
 
-import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import FunnelBindingKeySelector from '../../../src/client/components/AnalysisBuilder/FunnelBindingKeySelector'
@@ -29,7 +28,8 @@ vi.mock('../../../src/client/icons', () => ({
 }))
 
 // Sample metadata for testing
-const mockMeta: CubeMeta = {
+// Cast through unknown: fixtures omit `shortTitle`/`segments` not needed by this component.
+const mockMeta = {
   cubes: [
     {
       name: 'Users',
@@ -52,7 +52,7 @@ const mockMeta: CubeMeta = {
       ],
     },
   ],
-}
+} as unknown as CubeMeta
 
 describe('FunnelBindingKeySelector', () => {
   const defaultProps = {

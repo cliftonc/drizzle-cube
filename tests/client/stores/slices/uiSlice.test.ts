@@ -9,6 +9,7 @@ import {
   type AnalysisBuilderStore,
 } from '../../../../src/client/stores/analysisBuilderStore'
 import type { StoreApi } from 'zustand'
+import type { SimpleFilter } from '../../../../src/client/types'
 import {
   createInitialUIState,
   type UISliceState,
@@ -466,7 +467,7 @@ describe('UISlice', () => {
         store.getState().saveAIPreviousState()
 
         expect(store.getState().aiState.previousState?.filters).toHaveLength(1)
-        expect(store.getState().aiState.previousState?.filters[0].member).toBe(
+        expect((store.getState().aiState.previousState?.filters[0] as SimpleFilter).member).toBe(
           'Products.category'
         )
       })
@@ -546,7 +547,7 @@ describe('UISlice', () => {
         store.getState().restoreAIPreviousState()
 
         expect(store.getState().queryStates[0].filters).toHaveLength(1)
-        expect(store.getState().queryStates[0].filters[0].member).toBe('Products.category')
+        expect((store.getState().queryStates[0].filters[0] as SimpleFilter).member).toBe('Products.category')
       })
 
       it('should restore chart configuration to charts map', () => {

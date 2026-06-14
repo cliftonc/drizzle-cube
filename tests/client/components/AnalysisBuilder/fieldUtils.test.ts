@@ -22,7 +22,9 @@ import {
 import type { MetaResponse, MetaField } from '../../../../src/client/shared/types'
 
 // Mock schema for testing
-const mockSchema: MetaResponse = {
+// Note: cast through unknown because fixtures intentionally include an extra
+// `aggType` field and omit `shortTitle` on some fields to exercise fallback paths.
+const mockSchema = {
   cubes: [
     {
       name: 'Users',
@@ -55,10 +57,10 @@ const mockSchema: MetaResponse = {
       ],
     },
   ],
-}
+} as unknown as MetaResponse
 
 // Schema with minimal data
-const minimalSchema: MetaResponse = {
+const minimalSchema = {
   cubes: [
     {
       name: 'Simple',
@@ -71,7 +73,7 @@ const minimalSchema: MetaResponse = {
       ],
     },
   ],
-}
+} as unknown as MetaResponse
 
 describe('getCubeNameFromField', () => {
   it('should extract cube name from field name', () => {
@@ -182,62 +184,62 @@ describe('getFieldTitle', () => {
 
 describe('getFieldType', () => {
   it('should identify time dimension', () => {
-    const timeField: MetaField = { name: 'test.date', type: 'time', title: 'Date' }
+    const timeField = { name: 'test.date', type: 'time', title: 'Date' } as unknown as MetaField
     expect(getFieldType(timeField)).toBe('timeDimension')
   })
 
   it('should identify count measure', () => {
-    const countField: MetaField = { name: 'test.count', type: 'count', title: 'Count', aggType: 'count' }
+    const countField = { name: 'test.count', type: 'count', title: 'Count', aggType: 'count' } as unknown as MetaField
     expect(getFieldType(countField)).toBe('measure')
   })
 
   it('should identify countDistinct measure', () => {
-    const field: MetaField = { name: 'test.unique', type: 'countDistinct', title: 'Unique', aggType: 'countDistinct' }
+    const field = { name: 'test.unique', type: 'countDistinct', title: 'Unique', aggType: 'countDistinct' } as unknown as MetaField
     expect(getFieldType(field)).toBe('measure')
   })
 
   it('should identify sum measure', () => {
-    const field: MetaField = { name: 'test.total', type: 'sum', title: 'Total', aggType: 'sum' }
+    const field = { name: 'test.total', type: 'sum', title: 'Total', aggType: 'sum' } as unknown as MetaField
     expect(getFieldType(field)).toBe('measure')
   })
 
   it('should identify avg measure', () => {
-    const field: MetaField = { name: 'test.average', type: 'avg', title: 'Average', aggType: 'avg' }
+    const field = { name: 'test.average', type: 'avg', title: 'Average', aggType: 'avg' } as unknown as MetaField
     expect(getFieldType(field)).toBe('measure')
   })
 
   it('should identify min measure', () => {
-    const field: MetaField = { name: 'test.min', type: 'min', title: 'Min', aggType: 'min' }
+    const field = { name: 'test.min', type: 'min', title: 'Min', aggType: 'min' } as unknown as MetaField
     expect(getFieldType(field)).toBe('measure')
   })
 
   it('should identify max measure', () => {
-    const field: MetaField = { name: 'test.max', type: 'max', title: 'Max', aggType: 'max' }
+    const field = { name: 'test.max', type: 'max', title: 'Max', aggType: 'max' } as unknown as MetaField
     expect(getFieldType(field)).toBe('measure')
   })
 
   it('should identify runningTotal measure', () => {
-    const field: MetaField = { name: 'test.running', type: 'runningTotal', title: 'Running', aggType: 'runningTotal' }
+    const field = { name: 'test.running', type: 'runningTotal', title: 'Running', aggType: 'runningTotal' } as unknown as MetaField
     expect(getFieldType(field)).toBe('measure')
   })
 
   it('should identify countDistinctApprox measure', () => {
-    const field: MetaField = { name: 'test.approx', type: 'countDistinctApprox', title: 'Approx', aggType: 'countDistinctApprox' }
+    const field = { name: 'test.approx', type: 'countDistinctApprox', title: 'Approx', aggType: 'countDistinctApprox' } as unknown as MetaField
     expect(getFieldType(field)).toBe('measure')
   })
 
   it('should identify string dimension', () => {
-    const field: MetaField = { name: 'test.name', type: 'string', title: 'Name' }
+    const field = { name: 'test.name', type: 'string', title: 'Name' } as unknown as MetaField
     expect(getFieldType(field)).toBe('dimension')
   })
 
   it('should identify number dimension', () => {
-    const field: MetaField = { name: 'test.id', type: 'number', title: 'ID' }
+    const field = { name: 'test.id', type: 'number', title: 'ID' } as unknown as MetaField
     expect(getFieldType(field)).toBe('dimension')
   })
 
   it('should identify boolean dimension', () => {
-    const field: MetaField = { name: 'test.active', type: 'boolean', title: 'Active' }
+    const field = { name: 'test.active', type: 'boolean', title: 'Active' } as unknown as MetaField
     expect(getFieldType(field)).toBe('dimension')
   })
 })

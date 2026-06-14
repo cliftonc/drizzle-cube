@@ -5,7 +5,6 @@
  * KpiDelta shows the change between the last two values in a time series.
  */
 
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import KpiDelta from '../../../../src/client/components/charts/KpiDelta'

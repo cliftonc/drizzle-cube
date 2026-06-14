@@ -8,7 +8,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useDebounce } from '../../src/client/hooks/useDebounce'
 
 // Set up a simple React environment for hook testing
-import React from 'react'
 
 describe('useDebounce', () => {
   beforeEach(() => {
@@ -126,7 +125,7 @@ describe('useDebounce', () => {
       const { result, rerender } = renderHook(
         ({ value, delay }) => useDebounce(value, delay),
         {
-          initialProps: { value: null, delay: 300 }
+          initialProps: { value: null as null | undefined, delay: 300 }
         }
       )
 
@@ -336,7 +335,7 @@ describe('useDebounce', () => {
     it('should cleanup timer when component unmounts', () => {
       const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
 
-      const { result, rerender, unmount } = renderHook(
+      const { rerender, unmount } = renderHook(
         ({ value, delay }) => useDebounce(value, delay),
         {
           initialProps: { value: 'initial', delay: 300 }
@@ -354,7 +353,7 @@ describe('useDebounce', () => {
     })
 
     it('should not update state after unmount', () => {
-      const { result, rerender, unmount } = renderHook(
+      const { rerender, unmount } = renderHook(
         ({ value, delay }) => useDebounce(value, delay),
         {
           initialProps: { value: 'initial', delay: 300 }
@@ -378,7 +377,7 @@ describe('useDebounce', () => {
     it('should cleanup timer when value changes', () => {
       const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
 
-      const { result, rerender } = renderHook(
+      const { rerender } = renderHook(
         ({ value, delay }) => useDebounce(value, delay),
         {
           initialProps: { value: 'initial', delay: 300 }
@@ -402,7 +401,7 @@ describe('useDebounce', () => {
       const setTimeoutSpy = vi.spyOn(global, 'setTimeout')
       const initialCallCount = setTimeoutSpy.mock.calls.length
 
-      const { result, rerender } = renderHook(
+      const { rerender } = renderHook(
         ({ value, delay }) => useDebounce(value, delay),
         {
           initialProps: { value: 'same', delay: 300 }

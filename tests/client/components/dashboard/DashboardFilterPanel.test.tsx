@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DashboardFilterPanel from '../../../../src/client/components/DashboardFilterPanel'
 import type { DashboardFilter, CubeMeta, DashboardConfig } from '../../../../src/client/types'
@@ -707,7 +707,6 @@ describe('DashboardFilterPanel', () => {
     })
 
     it('should handle filter with no member in filter definition', async () => {
-      const user = userEvent.setup()
       const filtersWithEmptyMember: DashboardFilter[] = [{
         id: 'empty-member',
         label: 'Empty Member Filter',

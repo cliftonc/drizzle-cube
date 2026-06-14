@@ -3,7 +3,6 @@
  * Covers row-based dashboard layout with drag and drop, resize functionality
  */
 
-import React from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -458,7 +457,7 @@ describe('RowManagedLayout', () => {
     })
 
     it('should add dragging class when activeDropKey is set', () => {
-      const { container, rerender } = render(
+      const { container } = render(
         <RowManagedLayout {...defaultProps} canEdit={true} isDragging={false} />
       )
 

@@ -12,6 +12,7 @@ import {
   type LegacyFunnelMultiQuery,
 } from '../../../src/client/utils/configMigration'
 import type { QueryAnalysisConfig, FunnelAnalysisConfig } from '../../../src/client/types/analysisConfig'
+import type { CubeQuery } from '../../../src/client/types'
 
 describe('configMigration', () => {
   describe('migrateLegacyPortlet', () => {
@@ -31,7 +32,7 @@ describe('configMigration', () => {
       expect(config.version).toBe(1)
       expect(config.analysisType).toBe('query')
       expect(config.charts.query?.chartType).toBe('bar')
-      expect((config as QueryAnalysisConfig).query.measures).toEqual(['Employees.count'])
+      expect(((config as QueryAnalysisConfig).query as CubeQuery).measures).toEqual(['Employees.count'])
     })
 
     it('should migrate MultiQueryConfig (non-funnel)', () => {

@@ -1,6 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import CompactFilterBar from '../../../../src/client/components/DashboardFilters/CompactFilterBar'
 import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../../../src/client/types'
 
@@ -54,13 +54,11 @@ vi.mock('../../../../src/client/components/DashboardFilters/XTDDropdown', () => 
   default: function MockXTDDropdown({
     isOpen,
     onClose,
-    onSelect,
-    currentXTD
+    onSelect
   }: {
     isOpen: boolean
     onClose: () => void
     onSelect: (xtd: string) => void
-    currentXTD: string | null
   }) {
     if (!isOpen) return null
     return (

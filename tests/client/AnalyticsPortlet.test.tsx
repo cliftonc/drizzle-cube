@@ -7,7 +7,7 @@ import React, { createRef } from 'react'
 import { render, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AnalyticsPortlet from '../../src/client/components/AnalyticsPortlet'
-import type { CubeResultSet } from '../../src/client/types'
+import type { CubeResultSet, ChartAxisConfig } from '../../src/client/types'
 
 // Mock react-intersection-observer
 let mockInView = true
@@ -163,9 +163,9 @@ vi.mock('../../src/client/components/LoadingIndicator', () => ({
 
 // Mock filterUtils
 vi.mock('../../src/client/utils/filterUtils', () => ({
-  getApplicableDashboardFilters: vi.fn((filters, mapping) => filters || []),
+  getApplicableDashboardFilters: vi.fn((filters, _mapping) => filters || []),
   mergeDashboardAndPortletFilters: vi.fn((dashboardFilters, portletFilters) => [...(dashboardFilters || []), ...(portletFilters || [])]),
-  applyUniversalTimeFilters: vi.fn((dashboardFilters, mapping, timeDimensions) => timeDimensions || [])
+  applyUniversalTimeFilters: vi.fn((_dashboardFilters, _mapping, timeDimensions) => timeDimensions || [])
 }))
 
 // Mock shared/utils (cleanQueryForServer)
@@ -587,7 +587,7 @@ describe('AnalyticsPortlet', () => {
         <AnalyticsPortlet
           query={JSON.stringify({ measures: ['Test.count'] })}
           chartType="markdown"
-          chartConfig={{ content: 'Hello World' }}
+          chartConfig={{ content: 'Hello World' } as ChartAxisConfig}
         />
       )
 

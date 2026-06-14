@@ -45,10 +45,8 @@ vi.mock('../../../../src/client/providers/CubeApiProvider', () => ({
   CubeApiProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-let capturedGridLayoutProps: any = null
 vi.mock('react-grid-layout', () => ({
   default: (props: any) => {
-    capturedGridLayoutProps = props
     return <div data-testid="grid-layout">{props.children}</div>
   },
   verticalCompactor: { compact: () => [] }
@@ -115,7 +113,6 @@ function createTestConfig(portletCount = 2): DashboardConfig {
 describe('DashboardProvider / composable pieces', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    capturedGridLayoutProps = null
     mockResponsiveState = {
       containerRef: vi.fn(),
       containerWidth: 1200,

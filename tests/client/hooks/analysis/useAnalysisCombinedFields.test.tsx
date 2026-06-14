@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useAnalysisCombinedFields } from '../../../../src/client/hooks/useAnalysisCombinedFields'
 import type { AnalysisBuilderState } from '../../../../src/client/components/AnalysisBuilder/types'
-import type { FilterOperator, Filter } from '../../../../src/client/types'
+import type { FilterOperator } from '../../../../src/client/types'
 
 // Helper to create a mock query state
 function createQueryState(

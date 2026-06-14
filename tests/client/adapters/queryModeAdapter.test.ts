@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import { queryModeAdapter, type QuerySliceState } from '../../../src/client/adapters/queryModeAdapter'
 import type { QueryAnalysisConfig, ChartConfig } from '../../../src/client/types/analysisConfig'
-import type { CubeQuery, MultiQueryConfig } from '../../../src/client/types'
+import type { CubeQuery, MultiQueryConfig, SimpleFilter } from '../../../src/client/types'
 
 describe('queryModeAdapter', () => {
   describe('createInitial', () => {
@@ -309,7 +309,7 @@ describe('queryModeAdapter', () => {
 
       // Check filters match
       expect(loadedState.queryStates[0].filters).toHaveLength(1)
-      expect(loadedState.queryStates[0].filters[0].member).toBe('Employees.active')
+      expect((loadedState.queryStates[0].filters[0] as SimpleFilter).member).toBe('Employees.active')
 
       // Check order matches
       expect(loadedState.queryStates[0].order).toEqual({ 'Employees.count': 'desc' })

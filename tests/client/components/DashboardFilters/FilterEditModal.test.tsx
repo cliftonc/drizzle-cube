@@ -49,7 +49,9 @@ vi.mock('../../../../src/client/components/DashboardFilters/DashboardFilterConfi
 }))
 
 describe('FilterEditModal', () => {
-  const mockSchema: CubeMeta = {
+  // Cast through unknown: fixtures carry an extra `aggType` field and omit
+  // `shortTitle`/`segments` that this component does not require.
+  const mockSchema = {
     cubes: [
       {
         name: 'Users',
@@ -76,9 +78,10 @@ describe('FilterEditModal', () => {
         ]
       }
     ]
-  }
+  } as unknown as CubeMeta
 
-  const mockDashboardConfig: DashboardConfig = {
+  // Cast: fixture includes `id`/`title` for realism though not on DashboardConfig.
+  const mockDashboardConfig = {
     id: 'test-dashboard',
     title: 'Test Dashboard',
     portlets: [
@@ -96,7 +99,7 @@ describe('FilterEditModal', () => {
         h: 4
       }
     ]
-  }
+  } as unknown as DashboardConfig
 
   const createMockFilter = (overrides?: Partial<DashboardFilter>): DashboardFilter => ({
     id: 'filter-1',
@@ -120,7 +123,7 @@ describe('FilterEditModal', () => {
           title: m.title || m.name,
           type: m.type,
           shortTitle: m.title || m.name,
-          aggType: m.aggType
+          aggType: (m as { aggType?: string }).aggType
         })),
         dimensions: cube.dimensions.map(d => ({
           name: d.name,
@@ -129,12 +132,12 @@ describe('FilterEditModal', () => {
           shortTitle: d.title || d.name
         }))
       }))
-    }
+    } as unknown as MetaResponse
   }
 
   const createDefaultProps = () => ({
     filter: createMockFilter(),
-    schema: mockSchema,
+    schema: mockSchema as CubeMeta | null,
     dashboardConfig: mockDashboardConfig,
     isOpen: true,
     onSave: vi.fn(),

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AnalysisDisplayConfigPanel from '../../../../src/client/components/AnalysisBuilder/AnalysisDisplayConfigPanel'
 import type { ChartType, ChartDisplayConfig, ColorPalette } from '../../../../src/client/types'
@@ -14,7 +14,7 @@ import { useChartConfig } from '../../../../src/client/charts/lazyChartConfigReg
 
 // Mock AxisFormatControls
 vi.mock('../../../../src/client/components/charts/AxisFormatControls', () => ({
-  AxisFormatControls: ({ axisLabel, value, onChange }: any) => (
+  AxisFormatControls: ({ axisLabel, onChange }: any) => (
     <div data-testid={`axis-format-${axisLabel.toLowerCase().replace(/\s+/g, '-')}`}>
       <span>{axisLabel}</span>
       <button onClick={() => onChange({ unit: 'currency' })}>Change Format</button>
@@ -27,7 +27,9 @@ const mockedUseChartConfig = vi.mocked(useChartConfig)
 describe('AnalysisDisplayConfigPanel', () => {
   const mockColorPalette: ColorPalette = {
     name: 'Default',
+    label: 'Default',
     colors: ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe'],
+    gradient: ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088fe'],
   }
 
   const defaultProps = {
@@ -689,7 +691,7 @@ describe('AnalysisDisplayConfigPanel', () => {
       render(
         <AnalysisDisplayConfigPanel
           {...defaultProps}
-          displayConfig={{ customLabels: ['Label 1', 'Label 2', 'Label 3'] }}
+          displayConfig={{ customLabels: ['Label 1', 'Label 2', 'Label 3'] } as unknown as ChartDisplayConfig}
         />
       )
 
@@ -751,7 +753,7 @@ describe('AnalysisDisplayConfigPanel', () => {
       render(
         <AnalysisDisplayConfigPanel
           {...defaultProps}
-          displayConfig={{ customLabels: ['Test'] }}
+          displayConfig={{ customLabels: ['Test'] } as unknown as ChartDisplayConfig}
           onDisplayConfigChange={onDisplayConfigChange}
         />
       )

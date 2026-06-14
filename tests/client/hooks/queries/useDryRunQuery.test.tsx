@@ -23,12 +23,6 @@ describe('useDryRunQuery', () => {
     dimensions: ['Employees.name'],
   }
 
-  // Another valid query for multi-query tests
-  const secondQuery: CubeQuery = {
-    measures: ['Departments.count'],
-    dimensions: ['Departments.name'],
-  }
-
   // Mock dry run response
   const mockDryRunResponse = {
     sql: {
@@ -43,22 +37,6 @@ describe('useDryRunQuery', () => {
       complexity: 'low',
     },
     query: validQuery,
-  }
-
-  // Second mock response for multi-query tests
-  const mockSecondDryRunResponse = {
-    sql: {
-      sql: 'SELECT "departments"."name", COUNT(*) FROM "departments" GROUP BY 1',
-      params: [],
-    },
-    analysis: {
-      measures: ['Departments.count'],
-      dimensions: ['Departments.name'],
-      filters: [],
-      timeDimensions: [],
-      complexity: 'low',
-    },
-    query: secondQuery,
   }
 
   beforeEach(() => {
@@ -132,7 +110,7 @@ describe('useDryRunQuery', () => {
       expect(result.current.debugData.sql?.sql).toBe(mockDryRunResponse.sql.sql)
       expect(result.current.debugData.sql?.params).toEqual([])
       expect(result.current.debugData.analysis).not.toBeNull()
-      expect(result.current.debugData.analysis?.measures).toEqual(['Employees.count'])
+      expect((result.current.debugData.analysis as { measures?: string[] } | null)?.measures).toEqual(['Employees.count'])
       expect(result.current.debugData.error).toBeNull()
     })
 

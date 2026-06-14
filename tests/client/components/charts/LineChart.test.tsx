@@ -7,7 +7,7 @@
 
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import LineChart from '../../../../src/client/components/charts/LineChart'
 
 
@@ -90,7 +90,7 @@ describe('LineChart', () => {
     })
 
     it('should render with default height of 100%', () => {
-      const { container } = render(
+      render(
         <LineChart data={mockData} chartConfig={basicChartConfig} />
       )
 
@@ -98,7 +98,7 @@ describe('LineChart', () => {
     })
 
     it('should respect custom numeric height', () => {
-      const { container } = render(
+      render(
         <LineChart data={mockData} chartConfig={basicChartConfig} height={400} />
       )
 
@@ -471,7 +471,9 @@ describe('LineChart', () => {
     it('should use custom color palette when provided', () => {
       const customPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff'],
+        gradient: ['#ff0000', '#00ff00', '#0000ff'],
       }
 
       render(

@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
 import { BatchCoordinator } from '../../src/client/client/BatchCoordinator'
 import type { CubeQuery, CubeResultSet } from '../../src/client/types'
 
@@ -27,7 +28,7 @@ function createMockQuery(measures: string[] = ['Test.count']): CubeQuery {
 }
 
 describe('BatchCoordinator', () => {
-  let mockBatchExecutor: ReturnType<typeof vi.fn>
+  let mockBatchExecutor: Mock<(queries: CubeQuery[]) => Promise<CubeResultSet[]>>
 
   beforeEach(() => {
     vi.useFakeTimers()

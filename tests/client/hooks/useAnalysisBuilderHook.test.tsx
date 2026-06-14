@@ -15,7 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useAnalysisBuilder } from '../../../src/client/hooks/useAnalysisBuilderHook'
 import { AnalysisBuilderStoreProvider } from '../../../src/client/stores/analysisBuilderStore'
-import type { CubeMeta, CubeQuery } from '../../../src/client/types'
+import type { CubeMeta, CubeQuery, SimpleFilter } from '../../../src/client/types'
 
 // ============================================================================
 // Mock Setup
@@ -634,7 +634,7 @@ describe('useAnalysisBuilder', () => {
       })
 
       expect(result.current.queryState.filters).toHaveLength(1)
-      expect(result.current.queryState.filters[0].member).toBe('Employees.department')
+      expect((result.current.queryState.filters[0] as SimpleFilter).member).toBe('Employees.department')
     })
 
     it('actions.setOrder() should set sort order', () => {

@@ -16,7 +16,6 @@
  * - Last entry is not clickable (current level)
  */
 
-import React from 'react'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { DrillMenu } from '../../../src/client/components/DrillMenu'
@@ -24,13 +23,13 @@ import { DrillBreadcrumb } from '../../../src/client/components/DrillBreadcrumb'
 import type { DrillOption, DrillPathEntry } from '../../../src/client/types/drill'
 
 // Mock function types for proper casting
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type MockSelectFn = ((option: DrillOption) => void) & { mock: { calls: any[][] } }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type MockCloseFn = (() => void) & { mock: { calls: any[][] } }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type MockNavigateFn = (() => void) & { mock: { calls: any[][] } }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type MockLevelClickFn = ((index: number) => void) & { mock: { calls: any[][] } }
 
 // ============================================================================

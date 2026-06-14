@@ -4,7 +4,7 @@
  */
 
 import React from 'react'
-import { render, renderHook, waitFor, act } from '@testing-library/react'
+import { render, renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { CubeProvider, useCubeContext } from '../../src/client/providers/CubeProvider'
 import { createCubeClient } from '../../src/client/client/CubeClient'
@@ -15,8 +15,18 @@ vi.mock('../../src/client/client/CubeClient', () => ({
   createCubeClient: vi.fn()
 }))
 
-// Mock the useCubeMetaQuery hook which is used by CubeMetaProvider
-const mockUseCubeMetaQuery = vi.fn(() => ({
+// Mock the useCubeMetaQuery hook which is used by CubeMetaProvider.
+// Loosely typed because individual tests override `meta`/`error` with partial
+// fixtures and string errors to exercise the provider's passthrough behaviour.
+interface MockMetaQueryResult {
+  meta: unknown
+  labelMap: Record<string, string>
+  isLoading: boolean
+  error: unknown
+  getFieldLabel: (field: string) => string
+  refetch: () => void
+}
+const mockUseCubeMetaQuery = vi.fn((): MockMetaQueryResult => ({
   meta: { cubes: [] },
   labelMap: {},
   isLoading: false,
@@ -70,7 +80,7 @@ describe('CubeProvider', () => {
       }
 
       const TestComponent = () => {
-        const context = useCubeContext()
+        useCubeContext()
         return <div data-testid="test">rendered</div>
       }
 
@@ -252,7 +262,7 @@ describe('CubeProvider', () => {
         return <div>test</div>
       }
 
-      const { rerender } = render(
+      render(
         <CubeProvider apiOptions={{ apiUrl: '/initial' }} token="initial-token">
           <TestComponent />
         </CubeProvider>
@@ -284,8 +294,8 @@ describe('CubeProvider', () => {
 
     it('should provide metadata values from useCubeMetaQuery hook', () => {
       const mockMeta = { cubes: [{ name: 'TestCube' }] }
-      const mockLabelMap = { 'TestCube.field': 'Test Field' }
-      const mockGetFieldLabel = vi.fn((field) => mockLabelMap[field] || field)
+      const mockLabelMap: Record<string, string> = { 'TestCube.field': 'Test Field' }
+      const mockGetFieldLabel = vi.fn((field: string) => mockLabelMap[field] || field)
       const mockRefetch = vi.fn()
 
       mockUseCubeMetaQuery.mockReturnValue({

@@ -16,7 +16,7 @@
  */
 
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import SunburstChart from '../../../../src/client/components/charts/SunburstChart'
 import type { FlowChartData, SankeyNode, SankeyLink } from '../../../../src/client/types/flow'
@@ -418,7 +418,9 @@ describe('SunburstChart', () => {
     it('should use custom color palette when provided', () => {
       const customPalette = {
         name: 'custom',
+        label: 'Custom',
         colors: ['#ff0000', '#00ff00', '#0000ff'],
+        gradient: ['#ff0000', '#00ff00', '#0000ff'],
       }
 
       const { container } = render(
@@ -468,7 +470,9 @@ describe('SunburstChart', () => {
 
       const shortPalette = {
         name: 'short',
+        label: 'Short',
         colors: ['#ff0000', '#00ff00', '#0000ff'],
+        gradient: ['#ff0000', '#00ff00', '#0000ff'],
       }
 
       const { container } = render(

@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { retentionModeAdapter } from '../../../src/client/adapters/retentionModeAdapter'
-import type { RetentionSliceState } from '../../../src/client/types/retention'
+import type { RetentionSliceState, ServerRetentionQuery } from '../../../src/client/types/retention'
 import type { RetentionAnalysisConfig, ChartConfig, AnalysisType } from '../../../src/client/types/analysisConfig'
 
 describe('retentionModeAdapter', () => {
@@ -212,12 +212,12 @@ describe('retentionModeAdapter', () => {
       expect(config.version).toBe(1)
       expect(config.analysisType).toBe('retention')
       expect(config.activeView).toBe('chart')
-      expect(config.query.retention.timeDimension).toBe('Events.timestamp')
-      expect(config.query.retention.bindingKey).toBe('Events.userId')
-      expect(config.query.retention.dateRange).toEqual({ start: '2024-01-01', end: '2024-12-31' })
-      expect(config.query.retention.granularity).toBe('week')
-      expect(config.query.retention.periods).toBe(12)
-      expect(config.query.retention.retentionType).toBe('classic')
+      expect((config.query as ServerRetentionQuery).retention.timeDimension).toBe('Events.timestamp')
+      expect((config.query as ServerRetentionQuery).retention.bindingKey).toBe('Events.userId')
+      expect((config.query as ServerRetentionQuery).retention.dateRange).toEqual({ start: '2024-01-01', end: '2024-12-31' })
+      expect((config.query as ServerRetentionQuery).retention.granularity).toBe('week')
+      expect((config.query as ServerRetentionQuery).retention.periods).toBe(12)
+      expect((config.query as ServerRetentionQuery).retention.retentionType).toBe('classic')
     })
 
     it('should save state with filters', () => {
@@ -236,10 +236,10 @@ describe('retentionModeAdapter', () => {
 
       const config = retentionModeAdapter.save(state, {}, 'chart')
 
-      expect(config.query.retention.cohortFilters).toEqual(
+      expect((config.query as ServerRetentionQuery).retention.cohortFilters).toEqual(
         { member: 'Events.type', operator: 'equals', values: ['signup'] }
       )
-      expect(config.query.retention.activityFilters).toEqual(
+      expect((config.query as ServerRetentionQuery).retention.activityFilters).toEqual(
         { member: 'Events.type', operator: 'equals', values: ['login'] }
       )
     })
@@ -263,7 +263,7 @@ describe('retentionModeAdapter', () => {
 
       const config = retentionModeAdapter.save(state, {}, 'chart')
 
-      expect(config.query.retention.breakdownDimensions).toEqual([
+      expect((config.query as ServerRetentionQuery).retention.breakdownDimensions).toEqual([
         'Events.country',
         'Events.plan'
       ])
