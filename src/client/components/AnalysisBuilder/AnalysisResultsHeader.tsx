@@ -6,6 +6,12 @@
  * clear, schema, debug) and the large-dataset performance warning. Extracted to
  * keep the panel's renderHeader flat. Behaviour and markup are identical to the
  * previous inline rendering.
+ *
+ * Props are grouped into cohesive named slices instead of a flat bag, and each
+ * sub-component receives only the slice it needs:
+ *   - `summary`  → results state / row-count line + debug-error indicator
+ *   - `toolbar`  → action handlers and their transient state
+ *   - `display`  → view / visibility flags driving which controls render
  */
 
 import { getIcon } from '../../icons'
@@ -25,19 +31,20 @@ const SchemaGraphIcon = getIcon('schemaGraph')
 
 type Row = Record<string, unknown>
 
-export interface ResultsHeaderProps {
+/** Results state + row counts that drive the status line, warning and error dot. */
+export interface ResultsSummary {
   executionResults: Row[] | null | undefined
   executionStatus: string
   totalRowCount: number | null
   resultsStale: boolean
-  activeView: string
-  showDebug: boolean
-  setShowDebug: (v: boolean) => void
-  showSchema: boolean
-  setShowSchema: (v: boolean) => void
+  executionError: unknown
+  debugDataPerQuery: Array<{ error?: unknown }>
+}
+
+/** Action handlers and their transient state for the toolbar buttons. */
+export interface ResultsToolbarActions {
   displayLimit: number
   onDisplayLimitChange?: (limit: number) => void
-  enableAI?: boolean
   isAIOpen?: boolean
   onAIToggle?: () => void
   onColorPaletteChange?: (palette: string) => void
@@ -53,20 +60,35 @@ export interface ResultsHeaderProps {
   onClearClick?: () => void
   canClear: boolean
   setIsClearConfirmOpen: (v: boolean) => void
+  setShowDebug: (v: boolean) => void
+  setShowSchema: (v: boolean) => void
+}
+
+/** View / visibility flags deciding which controls render. */
+export interface ResultsDisplayFlags {
+  activeView: string
+  showDebug: boolean
+  showSchema: boolean
+  enableAI?: boolean
   isFunnelMode: boolean
   showSchemaDiagram: boolean
-  executionError: unknown
-  debugDataPerQuery: Array<{ error?: unknown }>
+}
+
+export interface ResultsHeaderProps {
+  summary: ResultsSummary
+  toolbar: ResultsToolbarActions
+  display: ResultsDisplayFlags
 }
 
 function ResultsHeaderStatus({
-  executionResults,
-  executionStatus,
-  totalRowCount,
-  resultsStale,
+  summary,
   hasResults,
-}: ResultsHeaderProps & { hasResults: boolean }) {
+}: {
+  summary: ResultsSummary
+  hasResults: boolean
+}) {
   const { t } = useTranslation()
+  const { executionResults, executionStatus, totalRowCount, resultsStale } = summary
   return (
     <div className="dc:flex dc:items-center">
       {executionStatus === 'refreshing' ? (
@@ -104,7 +126,11 @@ function ResultsHeaderStatus({
   )
 }
 
-function ShareButton({ onShareClick, shareButtonState, canShare }: ResultsHeaderProps) {
+function ShareButton({
+  onShareClick,
+  shareButtonState,
+  canShare,
+}: Pick<ResultsToolbarActions, 'onShareClick' | 'shareButtonState' | 'canShare'>) {
   const { t } = useTranslation()
   if (!onShareClick) return null
   return (
@@ -147,7 +173,7 @@ function RefreshButton({
   isRefreshing,
   showCacheBustIndicator,
   setIsHoveringRefresh,
-}: ResultsHeaderProps) {
+}: Pick<ResultsToolbarActions, 'onRefreshClick' | 'canRefresh' | 'isRefreshing' | 'showCacheBustIndicator' | 'setIsHoveringRefresh'>) {
   if (!onRefreshClick || !canRefresh) return null
   return (
     <button
@@ -170,18 +196,16 @@ function RefreshButton({
   )
 }
 
-function ResultsHeaderToolbar(props: ResultsHeaderProps & { hasResults: boolean }) {
+function ResultsHeaderToolbar({
+  summary,
+  toolbar,
+  display,
+  hasResults,
+}: ResultsHeaderProps & { hasResults: boolean }) {
   const { t } = useTranslation()
   const {
-    hasResults,
-    activeView,
-    showDebug,
-    setShowDebug,
-    showSchema,
-    setShowSchema,
     displayLimit,
     onDisplayLimitChange,
-    enableAI,
     isAIOpen,
     onAIToggle,
     onColorPaletteChange,
@@ -189,11 +213,11 @@ function ResultsHeaderToolbar(props: ResultsHeaderProps & { hasResults: boolean 
     onClearClick,
     canClear,
     setIsClearConfirmOpen,
-    isFunnelMode,
-    showSchemaDiagram,
-    executionError,
-    debugDataPerQuery,
-  } = props
+    setShowDebug,
+    setShowSchema,
+  } = toolbar
+  const { activeView, showDebug, showSchema, enableAI, isFunnelMode, showSchemaDiagram } = display
+  const { executionError, debugDataPerQuery } = summary
 
   return (
     <div className="dc:flex dc:items-center dc:gap-2">
@@ -236,10 +260,20 @@ function ResultsHeaderToolbar(props: ResultsHeaderProps & { hasResults: boolean 
       )}
 
       {/* Share Button */}
-      <ShareButton {...props} />
+      <ShareButton
+        onShareClick={toolbar.onShareClick}
+        shareButtonState={toolbar.shareButtonState}
+        canShare={toolbar.canShare}
+      />
 
       {/* Refresh Button - Shift+click bypasses cache */}
-      <RefreshButton {...props} />
+      <RefreshButton
+        onRefreshClick={toolbar.onRefreshClick}
+        canRefresh={toolbar.canRefresh}
+        isRefreshing={toolbar.isRefreshing}
+        showCacheBustIndicator={toolbar.showCacheBustIndicator}
+        setIsHoveringRefresh={toolbar.setIsHoveringRefresh}
+      />
 
       {/* Clear Button */}
       {onClearClick && canClear && (
@@ -294,19 +328,19 @@ function ResultsHeaderToolbar(props: ResultsHeaderProps & { hasResults: boolean 
   )
 }
 
-export default function ResultsHeader(props: ResultsHeaderProps) {
+export default function ResultsHeader({ summary, toolbar, display }: ResultsHeaderProps) {
   const { t } = useTranslation()
-  const { executionResults, totalRowCount } = props
+  const { executionResults, totalRowCount } = summary
   const hasResults = !!executionResults && executionResults.length > 0
 
   return (
     <div className="dc:px-4 dc:py-2 dc:border-b border-dc-border bg-dc-surface-secondary dc:flex-shrink-0">
       <div className="dc:flex dc:items-center dc:justify-between">
         {/* Left side: Status and row count */}
-        <ResultsHeaderStatus {...props} hasResults={hasResults} />
+        <ResultsHeaderStatus summary={summary} hasResults={hasResults} />
 
         {/* Right side: Display limit (table only) and Debug toggle */}
-        <ResultsHeaderToolbar {...props} hasResults={hasResults} />
+        <ResultsHeaderToolbar summary={summary} toolbar={toolbar} display={display} hasResults={hasResults} />
       </div>
 
       {/* Performance Warning */}

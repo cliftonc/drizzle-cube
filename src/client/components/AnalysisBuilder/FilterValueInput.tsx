@@ -6,6 +6,14 @@
  * between, date, number, dimension combo-box, or plain text). The date-range and
  * combo-box variants are further split into their own sub-components to keep each
  * piece flat. Behaviour and markup are identical to the previous inline rendering.
+ *
+ * The props are organised into a small set of cohesive groups instead of a flat
+ * bag of state + setters. Each leaf input receives only the focused group(s) it
+ * needs:
+ *   - `field`      — which control to render (filter + operator metadata)
+ *   - `dateRange`  — date-range selector state and its handlers
+ *   - `combo`      — async distinct-value combo-box state and its handlers
+ *   - `inputs`     — handlers for the plain between/date/number/text inputs
  */
 
 import type { ChangeEvent, MouseEvent, KeyboardEvent, RefObject } from 'react'
@@ -25,83 +33,99 @@ type OperatorMeta = {
   supportsMultipleValues?: boolean
 } | undefined
 
-export interface FilterValueInputProps {
+/** Which control to render: the filter being edited and its operator metadata. */
+export interface FilterFieldContext {
   filter: SimpleFilter
   operatorMeta: OperatorMeta
   shouldShowDateRange: boolean
   shouldShowComboBox: boolean
-  // Date range
-  rangeType: DateRangeType
-  numberValue: number
-  dateRangeLabel: string
-  isDateRangeDropdownOpen: boolean
-  setIsOperatorDropdownOpen: (open: boolean) => void
-  setIsValueDropdownOpen: (open: boolean) => void
-  setIsDateRangeDropdownOpen: (open: boolean) => void
-  handleRangeTypeChange: (rangeType: DateRangeType) => void
-  handleNumberValueChange: (value: number) => void
-  handleCustomStartDate: (e: ChangeEvent<HTMLInputElement>) => void
-  handleCustomEndDate: (e: ChangeEvent<HTMLInputElement>) => void
-  // Between/number/date/text
-  handleBetweenStartInput: (e: ChangeEvent<HTMLInputElement>) => void
-  handleBetweenEndInput: (e: ChangeEvent<HTMLInputElement>) => void
-  handleDateInput: (e: ChangeEvent<HTMLInputElement>) => void
-  handleDirectInput: (e: ChangeEvent<HTMLInputElement>) => void
-  // Combo box
-  isValueDropdownOpen: boolean
-  distinctValues: unknown[]
-  valuesLoading: boolean
-  valuesError: unknown
-  searchText: string
-  setSearchText: (text: string) => void
-  highlightedIndex: number
-  setHighlightedIndex: (index: number) => void
-  valueListRef: RefObject<HTMLDivElement>
-  handleValueSelect: (value: unknown, event?: MouseEvent | { shiftKey: boolean }) => void
-  handleValueRemove: (value: unknown) => void
-  handleValueKeyDown: (e: KeyboardEvent) => void
 }
 
-function DateRangeInput(props: FilterValueInputProps) {
+/** State + handlers for the date-range selector (inDateRange on time fields). */
+export interface DateRangeGroup {
+  rangeType: DateRangeType
+  numberValue: number
+  label: string
+  isOpen: boolean
+  onToggle: (open: boolean) => void
+  onRangeTypeChange: (rangeType: DateRangeType) => void
+  onNumberValueChange: (value: number) => void
+  onCustomStartDate: (e: ChangeEvent<HTMLInputElement>) => void
+  onCustomEndDate: (e: ChangeEvent<HTMLInputElement>) => void
+  /** Close sibling dropdowns when this one opens. */
+  onOpen: () => void
+}
+
+/** Async distinct-value combo-box state + handlers (equals/in on dimensions). */
+export interface ComboBoxGroup {
+  isOpen: boolean
+  options: unknown[]
+  loading: boolean
+  error: unknown
+  searchText: string
+  highlightedIndex: number
+  listRef: RefObject<HTMLDivElement>
+  onSearchTextChange: (text: string) => void
+  onHighlightedIndexChange: (index: number) => void
+  onSelect: (value: unknown, event?: MouseEvent | { shiftKey: boolean }) => void
+  onRemove: (value: unknown) => void
+  onKeyDown: (e: KeyboardEvent) => void
+  /** Open the combo-box, closing sibling dropdowns. */
+  onOpen: () => void
+}
+
+/** Handlers for the plain between/date/number/text inputs. */
+export interface SimpleInputHandlers {
+  onBetweenStart: (e: ChangeEvent<HTMLInputElement>) => void
+  onBetweenEnd: (e: ChangeEvent<HTMLInputElement>) => void
+  onDate: (e: ChangeEvent<HTMLInputElement>) => void
+  onDirect: (e: ChangeEvent<HTMLInputElement>) => void
+}
+
+export interface FilterValueInputProps {
+  field: FilterFieldContext
+  dateRange: DateRangeGroup
+  combo: ComboBoxGroup
+  inputs: SimpleInputHandlers
+}
+
+function DateRangeInput({ filter, dateRange }: { filter: SimpleFilter; dateRange: DateRangeGroup }) {
   const { t } = useTranslation()
   const {
-    filter,
     rangeType,
     numberValue,
-    dateRangeLabel,
-    isDateRangeDropdownOpen,
-    setIsOperatorDropdownOpen,
-    setIsValueDropdownOpen,
-    setIsDateRangeDropdownOpen,
-    handleRangeTypeChange,
-    handleNumberValueChange,
-    handleCustomStartDate,
-    handleCustomEndDate
-  } = props
+    label,
+    isOpen,
+    onToggle,
+    onRangeTypeChange,
+    onNumberValueChange,
+    onCustomStartDate,
+    onCustomEndDate,
+    onOpen
+  } = dateRange
   return (
     <div className="dc:space-y-2">
       {/* Range type dropdown */}
       <div className="dc:relative">
         <button
           onClick={() => {
-            setIsOperatorDropdownOpen(false)
-            setIsValueDropdownOpen(false)
-            setIsDateRangeDropdownOpen(!isDateRangeDropdownOpen)
+            onOpen()
+            onToggle(!isOpen)
           }}
           className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
         >
-          <span className="dc:truncate">{dateRangeLabel}</span>
+          <span className="dc:truncate">{label}</span>
           <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
-            isDateRangeDropdownOpen ? 'dc:rotate-180' : ''
+            isOpen ? 'dc:rotate-180' : ''
           }`} />
         </button>
 
-        {isDateRangeDropdownOpen && (
+        {isOpen && (
           <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
             {DATE_RANGE_OPTIONS.map((option) => (
               <button
                 key={option.value}
-                onClick={() => handleRangeTypeChange(option.value)}
+                onClick={() => onRangeTypeChange(option.value)}
                 className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover ${
                   option.value === rangeType ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
                 }`}
@@ -121,7 +145,7 @@ function DateRangeInput(props: FilterValueInputProps) {
             min="1"
             max="1000"
             value={numberValue}
-            onChange={(e) => handleNumberValueChange(Math.max(1, parseInt(e.target.value) || 1))}
+            onChange={(e) => onNumberValueChange(Math.max(1, parseInt(e.target.value) || 1))}
             className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text dc:w-20"
           />
           <span className="dc:text-sm text-dc-text-muted">
@@ -136,14 +160,14 @@ function DateRangeInput(props: FilterValueInputProps) {
           <input
             type="date"
             value={Array.isArray(filter.dateRange) ? filter.dateRange[0] : ''}
-            onChange={handleCustomStartDate}
+            onChange={onCustomStartDate}
             className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
           />
           <span className="dc:text-sm text-dc-text-muted">{t('filter.modal.dateTo')}</span>
           <input
             type="date"
             value={Array.isArray(filter.dateRange) ? filter.dateRange[1] : ''}
-            onChange={handleCustomEndDate}
+            onChange={onCustomEndDate}
             className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
           />
         </div>
@@ -152,37 +176,29 @@ function DateRangeInput(props: FilterValueInputProps) {
   )
 }
 
-function ComboBoxValuesList(props: FilterValueInputProps) {
+function ComboBoxValuesList({ filter, combo }: { filter: SimpleFilter; combo: ComboBoxGroup }) {
   const { t } = useTranslation()
-  const {
-    filter,
-    distinctValues,
-    valuesLoading,
-    valuesError,
-    highlightedIndex,
-    valueListRef,
-    handleValueSelect
-  } = props
+  const { options, loading, error, highlightedIndex, listRef, onSelect } = combo
 
-  if (valuesLoading) {
+  if (loading) {
     return <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">{t('filter.modal.loading')}</div>
   }
-  if (valuesError) {
-    return <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-error">{t('filter.modal.errorPrefix')}{String(valuesError)}</div>
+  if (error) {
+    return <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-error">{t('filter.modal.errorPrefix')}{String(error)}</div>
   }
-  if (distinctValues.length === 0) {
+  if (options.length === 0) {
     return <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">{t('filter.modal.noValues')}</div>
   }
 
   return (
-    <div ref={valueListRef} className="dc:max-h-40 dc:overflow-y-auto">
-      {distinctValues.map((value, index) => {
+    <div ref={listRef} className="dc:max-h-40 dc:overflow-y-auto">
+      {options.map((value, index) => {
         const isSelected = filter.values?.includes(value)
         const isHighlighted = index === highlightedIndex
         return (
           <button
             key={`${value}-${index}`}
-            onClick={(e) => handleValueSelect(value, e)}
+            onClick={(e) => onSelect(value, e)}
             className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm dc:transition-colors ${
               isHighlighted ? 'bg-dc-surface-hover' : ''
             } ${
@@ -198,22 +214,26 @@ function ComboBoxValuesList(props: FilterValueInputProps) {
   )
 }
 
-function ComboBoxInput(props: FilterValueInputProps) {
+function ComboBoxInput({
+  filter,
+  operatorMeta,
+  combo
+}: {
+  filter: SimpleFilter
+  operatorMeta: OperatorMeta
+  combo: ComboBoxGroup
+}) {
   const { t } = useTranslation()
   const {
-    filter,
-    operatorMeta,
-    isValueDropdownOpen,
-    valuesLoading,
+    isOpen,
+    loading,
     searchText,
-    setSearchText,
-    setHighlightedIndex,
-    setIsOperatorDropdownOpen,
-    setIsValueDropdownOpen,
-    setIsDateRangeDropdownOpen,
-    handleValueRemove,
-    handleValueKeyDown
-  } = props
+    onSearchTextChange,
+    onHighlightedIndexChange,
+    onRemove,
+    onKeyDown,
+    onOpen
+  } = combo
 
   return (
     <div className="dc:space-y-2">
@@ -227,7 +247,7 @@ function ComboBoxInput(props: FilterValueInputProps) {
             >
               <span className="dc:max-w-[150px] dc:truncate">{String(value)}</span>
               <button
-                onClick={() => handleValueRemove(value)}
+                onClick={() => onRemove(value)}
                 className="hover:text-dc-danger"
               >
                 <CloseIcon className="dc:w-3.5 dc:h-3.5" />
@@ -241,21 +261,19 @@ function ComboBoxInput(props: FilterValueInputProps) {
       <div className="dc:relative">
         <button
           onClick={() => {
-            setIsOperatorDropdownOpen(false)
-            setIsDateRangeDropdownOpen(false)
-            setIsValueDropdownOpen(!isValueDropdownOpen)
+            onOpen()
           }}
           className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
         >
           <span className="text-dc-text-muted dc:truncate">
-            {valuesLoading ? t('filter.modal.loading') : t('filter.modal.selectValue')}
+            {loading ? t('filter.modal.loading') : t('filter.modal.selectValue')}
           </span>
           <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
-            isValueDropdownOpen ? 'dc:rotate-180' : ''
+            isOpen ? 'dc:rotate-180' : ''
           }`} />
         </button>
 
-        {isValueDropdownOpen && (
+        {isOpen && (
           <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-56 dc:overflow-hidden">
             {/* Search input with keyboard navigation */}
             <div className="dc:p-2 dc:border-b border-dc-border">
@@ -263,10 +281,10 @@ function ComboBoxInput(props: FilterValueInputProps) {
                 type="text"
                 value={searchText}
                 onChange={(e) => {
-                  setSearchText(e.target.value)
-                  setHighlightedIndex(-1)
+                  onSearchTextChange(e.target.value)
+                  onHighlightedIndexChange(-1)
                 }}
-                onKeyDown={handleValueKeyDown}
+                onKeyDown={onKeyDown}
                 placeholder={t('filter.modal.search')}
                 className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
                 autoFocus
@@ -274,7 +292,7 @@ function ComboBoxInput(props: FilterValueInputProps) {
             </div>
 
             {/* Values list */}
-            <ComboBoxValuesList {...props} />
+            <ComboBoxValuesList filter={filter} combo={combo} />
           </div>
         )}
       </div>
@@ -289,18 +307,10 @@ function ComboBoxInput(props: FilterValueInputProps) {
   )
 }
 
-export default function FilterValueInput(props: FilterValueInputProps) {
+export default function FilterValueInput({ field, dateRange, combo, inputs }: FilterValueInputProps) {
   const { t } = useTranslation()
-  const {
-    filter,
-    operatorMeta,
-    shouldShowDateRange,
-    shouldShowComboBox,
-    handleBetweenStartInput,
-    handleBetweenEndInput,
-    handleDateInput,
-    handleDirectInput
-  } = props
+  const { filter, operatorMeta, shouldShowDateRange, shouldShowComboBox } = field
+  const { onBetweenStart, onBetweenEnd, onDate, onDirect } = inputs
 
   // No value required for set/notSet
   if (!operatorMeta?.requiresValues) {
@@ -313,7 +323,7 @@ export default function FilterValueInput(props: FilterValueInputProps) {
 
   // Date range selector for inDateRange on time fields
   if (shouldShowDateRange) {
-    return <DateRangeInput {...props} />
+    return <DateRangeInput filter={filter} dateRange={dateRange} />
   }
 
   // Between/notBetween range inputs
@@ -323,7 +333,7 @@ export default function FilterValueInput(props: FilterValueInputProps) {
         <input
           type="number"
           value={filter.values?.[0] ?? ''}
-          onChange={handleBetweenStartInput}
+          onChange={onBetweenStart}
           placeholder={t('filter.modal.min')}
           className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
         />
@@ -331,7 +341,7 @@ export default function FilterValueInput(props: FilterValueInputProps) {
         <input
           type="number"
           value={filter.values?.[1] ?? ''}
-          onChange={handleBetweenEndInput}
+          onChange={onBetweenEnd}
           placeholder={t('filter.modal.max')}
           className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
         />
@@ -345,7 +355,7 @@ export default function FilterValueInput(props: FilterValueInputProps) {
       <input
         type="date"
         value={filter.values?.[0] || ''}
-        onChange={handleDateInput}
+        onChange={onDate}
         className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
       />
     )
@@ -357,7 +367,7 @@ export default function FilterValueInput(props: FilterValueInputProps) {
       <input
         type="number"
         value={filter.values?.[0] ?? ''}
-        onChange={handleDirectInput}
+        onChange={onDirect}
         placeholder={t('filter.modal.enterNumber')}
         className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
       />
@@ -366,7 +376,7 @@ export default function FilterValueInput(props: FilterValueInputProps) {
 
   // Combo box for equals/notEquals/in/notIn on dimensions
   if (shouldShowComboBox) {
-    return <ComboBoxInput {...props} />
+    return <ComboBoxInput filter={filter} operatorMeta={operatorMeta} combo={combo} />
   }
 
   // Default: text input
@@ -374,7 +384,7 @@ export default function FilterValueInput(props: FilterValueInputProps) {
     <input
       type="text"
       value={filter.values?.[0] ?? ''}
-      onChange={handleDirectInput}
+      onChange={onDirect}
       placeholder={t('filter.modal.enterValue')}
       className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text placeholder-dc-text-muted"
     />

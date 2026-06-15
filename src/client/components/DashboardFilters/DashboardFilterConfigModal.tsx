@@ -68,7 +68,6 @@ export default function DashboardFilterConfigModal({
   if (!isOpen) return null
 
   const {
-    containerRef,
     localLabel,
     setLocalLabel,
     localFilter,
@@ -76,42 +75,23 @@ export default function DashboardFilterConfigModal({
     setShowAllFields,
     showFieldSearch,
     setShowFieldSearch,
-    isOperatorDropdownOpen,
-    setIsOperatorDropdownOpen,
-    isValueDropdownOpen,
-    setIsValueDropdownOpen,
-    isDateRangeDropdownOpen,
-    setIsDateRangeDropdownOpen,
-    rangeType,
-    numberValue,
-    searchText,
-    setSearchText,
-    activeSchema,
-    isTimeField,
-    isMeasureField,
-    operatorMeta,
-    availableOperators,
-    shouldShowDateRange,
-    shouldShowComboBox,
-    distinctValues,
-    valuesLoading,
-    valuesError,
-    operatorLabel,
-    dateRangeLabel,
+    field,
+    dropdowns,
+    values,
+    dateRange,
     handleFieldSelected,
     handleOperatorChange,
-    handleValueSelect,
-    handleValueRemove,
     handleDirectInput,
     handleBetweenStartInput,
     handleBetweenEndInput,
     handleDateInput,
-    handleRangeTypeChange,
-    handleNumberValueChange,
-    handleCustomStartDate,
-    handleCustomEndDate,
     handleSave
   } = modal
+
+  const { containerRef, isOperatorDropdownOpen, setIsOperatorDropdownOpen, isValueDropdownOpen, setIsValueDropdownOpen, isDateRangeDropdownOpen, setIsDateRangeDropdownOpen } = dropdowns
+  const { activeSchema, isTimeField, isMeasureField, operatorMeta, availableOperators, operatorLabel, shouldShowDateRange, shouldShowComboBox } = field
+  const { distinctValues, valuesLoading, valuesError, searchText, setSearchText, handleValueSelect, handleValueRemove } = values
+  const { rangeType, numberValue, dateRangeLabel, handleRangeTypeChange, handleNumberValueChange, handleCustomStartDate, handleCustomEndDate } = dateRange
 
   const showFieldSection = !initialFilter.isUniversalTime
   const showOperatorSection = localFilter.member && !initialFilter.isUniversalTime

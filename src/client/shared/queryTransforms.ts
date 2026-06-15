@@ -5,7 +5,51 @@
  */
 
 import type { CubeQuery, Filter, SimpleFilter, GroupFilter } from '../types'
-import { cleanQuery } from './utils'
+
+/**
+ * Clean query object by removing empty arrays.
+ *
+ * Leaf helper kept here (rather than in shared/utils.ts) so that
+ * `transformQueryForUIImpl` can use it without creating an import cycle back
+ * into utils.ts. Re-exported from utils.ts to keep existing import paths stable.
+ */
+export function cleanQuery(query: CubeQuery): CubeQuery {
+  const cleanedQuery: CubeQuery = {}
+
+  if (query.measures && query.measures.length > 0) {
+    cleanedQuery.measures = query.measures
+  }
+
+  if (query.dimensions && query.dimensions.length > 0) {
+    cleanedQuery.dimensions = query.dimensions
+  }
+
+  if (query.timeDimensions && query.timeDimensions.length > 0) {
+    cleanedQuery.timeDimensions = query.timeDimensions
+  }
+
+  if (query.filters && query.filters.length > 0) {
+    cleanedQuery.filters = query.filters
+  }
+
+  if (query.order) {
+    cleanedQuery.order = query.order
+  }
+
+  if (query.limit) {
+    cleanedQuery.limit = query.limit
+  }
+
+  if (query.offset) {
+    cleanedQuery.offset = query.offset
+  }
+
+  if (query.segments && query.segments.length > 0) {
+    cleanedQuery.segments = query.segments
+  }
+
+  return cleanedQuery
+}
 
 /**
  * Transform a single filter from server/API format to UI format.

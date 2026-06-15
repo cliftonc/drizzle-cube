@@ -16,6 +16,7 @@ import { useExplainAI } from '../../hooks/queries/useExplainAI'
 import type { CubeQuery } from '../../types'
 import { ExecutionPlanPanel } from './ExecutionPlanPanel'
 import ResultsHeader from './AnalysisResultsHeader'
+import type { ResultsSummary, ResultsToolbarActions, ResultsDisplayFlags } from './AnalysisResultsHeader'
 import { generateExecutionPlanMarkdown } from './utils/executionPlanMarkdown'
 import { resolveDebugData, isChartViewEnabled, chartViewButtonTitle, computeHasResults, selectTableData, flowLinkNames, computeIsMultiQuery } from './utils/resultsPanelDerive'
 import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
@@ -1265,41 +1266,51 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     </div>
   )
 
+  // Header prop groups — cohesive slices passed to ResultsHeader (see its
+  // ResultsSummary / ResultsToolbarActions / ResultsDisplayFlags types).
+  const headerSummary: ResultsSummary = {
+    executionResults,
+    executionStatus,
+    totalRowCount,
+    resultsStale,
+    executionError,
+    debugDataPerQuery,
+  }
+
+  const headerToolbar: ResultsToolbarActions = {
+    displayLimit,
+    onDisplayLimitChange,
+    isAIOpen,
+    onAIToggle,
+    onColorPaletteChange,
+    currentPaletteName,
+    onShareClick,
+    shareButtonState,
+    canShare,
+    onRefreshClick,
+    canRefresh,
+    isRefreshing,
+    showCacheBustIndicator,
+    setIsHoveringRefresh,
+    onClearClick,
+    canClear,
+    setIsClearConfirmOpen,
+    setShowDebug,
+    setShowSchema,
+  }
+
+  const headerDisplay: ResultsDisplayFlags = {
+    activeView,
+    showDebug,
+    showSchema,
+    enableAI,
+    isFunnelMode,
+    showSchemaDiagram: !!features.showSchemaDiagram,
+  }
+
   // Render header - shown whenever we have query content
   const renderHeader = () => (
-    <ResultsHeader
-      executionResults={executionResults}
-      executionStatus={executionStatus}
-      totalRowCount={totalRowCount}
-      resultsStale={resultsStale}
-      activeView={activeView}
-      showDebug={showDebug}
-      setShowDebug={setShowDebug}
-      showSchema={showSchema}
-      setShowSchema={setShowSchema}
-      displayLimit={displayLimit}
-      onDisplayLimitChange={onDisplayLimitChange}
-      enableAI={enableAI}
-      isAIOpen={isAIOpen}
-      onAIToggle={onAIToggle}
-      onColorPaletteChange={onColorPaletteChange}
-      currentPaletteName={currentPaletteName}
-      onShareClick={onShareClick}
-      shareButtonState={shareButtonState}
-      canShare={canShare}
-      onRefreshClick={onRefreshClick}
-      canRefresh={canRefresh}
-      isRefreshing={isRefreshing}
-      showCacheBustIndicator={showCacheBustIndicator}
-      setIsHoveringRefresh={setIsHoveringRefresh}
-      onClearClick={onClearClick}
-      canClear={canClear}
-      setIsClearConfirmOpen={setIsClearConfirmOpen}
-      isFunnelMode={isFunnelMode}
-      showSchemaDiagram={!!features.showSchemaDiagram}
-      executionError={executionError}
-      debugDataPerQuery={debugDataPerQuery}
-    />
+    <ResultsHeader summary={headerSummary} toolbar={headerToolbar} display={headerDisplay} />
   )
 
   // "Needs refresh" banner for manual refresh mode

@@ -1,26 +1,32 @@
 /**
  * useDashboardFilterConfigModal
  *
- * State + effects + handlers backing DashboardFilterConfigModal. Extracted from
- * the component so the render stays flat. Behaviour is identical to the previous
- * inline implementation — same state, same effects, same handlers.
+ * Thin orchestrator behind DashboardFilterConfigModal. It owns the small core
+ * editing state (label + filter) and derives field/operator metadata, then
+ * composes three focused sub-hooks, each owning a single state+effect concern:
+ *
+ *   - useFilterDropdowns   — which popover (operator/value/date-range) is open
+ *   - useFilterValueFetch  — combo-box value search + distinct-value fetching
+ *   - useDateRangeState    — date-range preset / "last N" state + sync
+ *
+ * The remaining field/operator/save handlers stay here. The return is grouped
+ * into sub-objects by concern (`dropdowns`, `values`, `dateRange`, `field`)
+ * rather than one flat bag. Behaviour is identical to the previous inline
+ * implementation — same state, same effects, same handlers.
  */
 
-import { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react'
+import { useState, useEffect, useCallback, ChangeEvent } from 'react'
 import { useTranslation } from '../../hooks/useTranslation'
 import type { DashboardFilter, SimpleFilter, FilterOperator } from '../../types'
-import type { MetaResponse, DateRangeType, MetaField } from '../../shared/types'
+import type { MetaResponse, MetaField } from '../../shared/types'
 import type { FieldType } from '../AnalysisBuilder/types'
 import { FILTER_OPERATORS, DATE_RANGE_OPTIONS } from '../../shared/types'
-import {
-  getAvailableOperators,
-  convertDateRangeTypeToValue,
-  requiresNumberInput
-} from '../../shared/utils'
+import { getAvailableOperators } from '../../shared/utils'
 import { findFieldInSchema, getFieldTitle } from '../AnalysisBuilder/utils'
-import { useFilterValues } from '../../hooks/useFilterValues'
-import { useDebounce } from '../../hooks/useDebounce'
-import { deriveRangeFromDateRange, computeDirectInputValues } from './dashboardFilterConfigModalUtils'
+import { computeDirectInputValues } from './dashboardFilterConfigModalUtils'
+import { useFilterDropdowns } from './useFilterDropdowns'
+import { useFilterValueFetch } from './useFilterValueFetch'
+import { useDateRangeState } from './useDateRangeState'
 
 interface UseDashboardFilterConfigModalParams {
   initialFilter: DashboardFilter
@@ -39,23 +45,15 @@ export function useDashboardFilterConfigModal({
 }: UseDashboardFilterConfigModalParams) {
   const { t } = useTranslation()
 
-  // Local state for editing
+  // Core editing state
   const [localLabel, setLocalLabel] = useState(initialFilter.label)
   const [localFilter, setLocalFilter] = useState<SimpleFilter>(initialFilter.filter as SimpleFilter)
   const [showAllFields, setShowAllFields] = useState(false)
   const [showFieldSearch, setShowFieldSearch] = useState(false)
 
-  // Dropdown state
-  const [isOperatorDropdownOpen, setIsOperatorDropdownOpen] = useState(false)
-  const [isValueDropdownOpen, setIsValueDropdownOpen] = useState(false)
-  const [isDateRangeDropdownOpen, setIsDateRangeDropdownOpen] = useState(false)
-
-  // Date range state
-  const [rangeType, setRangeType] = useState<DateRangeType>('this_month')
-  const [numberValue, setNumberValue] = useState(1)
-  const [searchText, setSearchText] = useState('')
-
-  const containerRef = useRef<HTMLDivElement>(null)
+  // Which popover dropdown is open + the click-outside container.
+  const dropdowns = useFilterDropdowns()
+  const { setIsOperatorDropdownOpen, setIsValueDropdownOpen, setIsDateRangeDropdownOpen } = dropdowns
 
   // Schema to use based on toggle
   const activeSchema = showAllFields ? fullSchema : filteredSchema
@@ -67,9 +65,6 @@ export function useDashboardFilterConfigModal({
       setLocalFilter(initialFilter.filter as SimpleFilter)
     }
   }, [initialFilter, isOpen])
-
-  // Debounce search text for API calls
-  const debouncedSearchText = useDebounce(searchText, 300)
 
   // Get field info
   const fieldInfo = findFieldInSchema(localFilter.member, activeSchema)
@@ -96,51 +91,23 @@ export function useDashboardFilterConfigModal({
     return comboOperators.includes(localFilter.operator) && isDimensionField && !isTimeField
   })()
 
-  // Fetch distinct values for combo box
-  const {
-    values: distinctValues,
-    loading: valuesLoading,
-    error: valuesError,
-    searchValues
-  } = useFilterValues(localFilter.member, shouldShowComboBox)
+  // Combo-box value search + distinct-value fetching.
+  const values = useFilterValueFetch({
+    localFilter,
+    setLocalFilter,
+    operatorMeta,
+    shouldShowComboBox,
+    isValueDropdownOpen: dropdowns.isValueDropdownOpen,
+    setIsValueDropdownOpen
+  })
 
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOperatorDropdownOpen(false)
-        setIsValueDropdownOpen(false)
-        setIsDateRangeDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // Load values when dropdown opens
-  useEffect(() => {
-    if (isValueDropdownOpen && shouldShowComboBox && searchValues) {
-      searchValues('', true)
-    }
-  }, [isValueDropdownOpen, shouldShowComboBox, searchValues])
-
-  // Search when debounced text changes
-  useEffect(() => {
-    if (isValueDropdownOpen && shouldShowComboBox && searchValues && debouncedSearchText !== undefined) {
-      searchValues(debouncedSearchText)
-    }
-  }, [debouncedSearchText, isValueDropdownOpen, shouldShowComboBox, searchValues])
-
-  // Sync rangeType state with filter.dateRange
-  useEffect(() => {
-    if (!shouldShowDateRange) return
-    const derived = deriveRangeFromDateRange(localFilter.dateRange)
-    if (!derived) return
-    setRangeType(derived.rangeType)
-    if (derived.numberValue !== undefined) {
-      setNumberValue(derived.numberValue)
-    }
-  }, [localFilter.dateRange, shouldShowDateRange])
+  // Date-range preset / "last N" state + sync effect.
+  const dateRange = useDateRangeState({
+    localFilter,
+    setLocalFilter,
+    shouldShowDateRange,
+    setIsDateRangeDropdownOpen
+  })
 
   // Handle field selection from FieldSearchModal
   const handleFieldSelected = useCallback((field: MetaField, _fieldType: FieldType) => {
@@ -165,27 +132,7 @@ export function useDashboardFilterConfigModal({
       values: []
     })
     setIsOperatorDropdownOpen(false)
-  }, [localFilter.member])
-
-  // Handle value selection from combo box
-  const handleValueSelect = useCallback((value: unknown) => {
-    const values = localFilter.values || []
-    if (operatorMeta?.supportsMultipleValues) {
-      if (!values.includes(value)) {
-        setLocalFilter({ ...localFilter, values: [...values, value] })
-      }
-    } else {
-      setLocalFilter({ ...localFilter, values: [value] })
-      setIsValueDropdownOpen(false)
-    }
-    setSearchText('')
-  }, [localFilter, operatorMeta?.supportsMultipleValues])
-
-  // Handle value removal
-  const handleValueRemove = useCallback((valueToRemove: unknown) => {
-    const values = (localFilter.values || []).filter((v: unknown) => v !== valueToRemove)
-    setLocalFilter({ ...localFilter, values })
-  }, [localFilter])
+  }, [localFilter.member, setIsOperatorDropdownOpen])
 
   // Handle direct text/number input
   const handleDirectInput = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -215,48 +162,6 @@ export function useDashboardFilterConfigModal({
     setLocalFilter({ ...localFilter, values: value ? [value] : [] })
   }, [localFilter])
 
-  // Handle date range type change
-  const handleRangeTypeChange = useCallback((newRangeType: DateRangeType) => {
-    setRangeType(newRangeType)
-    setIsDateRangeDropdownOpen(false)
-
-    let dateRange: string | string[]
-    if (newRangeType === 'custom') {
-      const today = new Date().toISOString().split('T')[0]
-      dateRange = [today, today]
-    } else if (requiresNumberInput(newRangeType)) {
-      dateRange = convertDateRangeTypeToValue(newRangeType, numberValue)
-    } else {
-      dateRange = convertDateRangeTypeToValue(newRangeType)
-    }
-
-    setLocalFilter({ ...localFilter, dateRange } as SimpleFilter)
-  }, [localFilter, numberValue])
-
-  // Handle number value change for "last N days/weeks/etc"
-  const handleNumberValueChange = useCallback((value: number) => {
-    setNumberValue(value)
-    if (requiresNumberInput(rangeType)) {
-      const dateRange = convertDateRangeTypeToValue(rangeType, value)
-      setLocalFilter({ ...localFilter, dateRange } as SimpleFilter)
-    }
-  }, [localFilter, rangeType])
-
-  // Handle custom date range inputs
-  const handleCustomStartDate = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const start = e.target.value
-    const currentRange = Array.isArray(localFilter.dateRange) ? localFilter.dateRange : [localFilter.dateRange || '', '']
-    const end = currentRange[1] || start
-    setLocalFilter({ ...localFilter, dateRange: [start, end] } as SimpleFilter)
-  }, [localFilter])
-
-  const handleCustomEndDate = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const end = e.target.value
-    const currentRange = Array.isArray(localFilter.dateRange) ? localFilter.dateRange : ['', localFilter.dateRange || '']
-    const start = currentRange[0] || end
-    setLocalFilter({ ...localFilter, dateRange: [start, end] } as SimpleFilter)
-  }, [localFilter])
-
   // Handle save
   const handleSave = useCallback(() => {
     if (!localLabel.trim()) {
@@ -284,12 +189,10 @@ export function useDashboardFilterConfigModal({
   const operatorLabel = t(availableOperators.find(op => op.operator === localFilter.operator)?.label || localFilter.operator)
 
   // Get current date range label
-  const dateRangeLabel = t(DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'filter.modal.selectRange')
+  const dateRangeLabel = t(DATE_RANGE_OPTIONS.find(opt => opt.value === dateRange.rangeType)?.label || 'filter.modal.selectRange')
 
   return {
-    // refs
-    containerRef,
-    // state
+    // Core editing state
     localLabel,
     setLocalLabel,
     localFilter,
@@ -297,43 +200,29 @@ export function useDashboardFilterConfigModal({
     setShowAllFields,
     showFieldSearch,
     setShowFieldSearch,
-    isOperatorDropdownOpen,
-    setIsOperatorDropdownOpen,
-    isValueDropdownOpen,
-    setIsValueDropdownOpen,
-    isDateRangeDropdownOpen,
-    setIsDateRangeDropdownOpen,
-    rangeType,
-    numberValue,
-    searchText,
-    setSearchText,
-    // derived
-    activeSchema,
-    isTimeField,
-    isMeasureField,
-    fieldTitle,
-    operatorMeta,
-    availableOperators,
-    shouldShowDateRange,
-    shouldShowComboBox,
-    distinctValues,
-    valuesLoading,
-    valuesError,
-    operatorLabel,
-    dateRangeLabel,
-    // handlers
+    // Derived field/operator metadata
+    field: {
+      activeSchema,
+      isTimeField,
+      isMeasureField,
+      fieldTitle,
+      operatorMeta,
+      availableOperators,
+      operatorLabel,
+      shouldShowDateRange,
+      shouldShowComboBox
+    },
+    // Sub-hook concerns
+    dropdowns,
+    values,
+    dateRange: { ...dateRange, dateRangeLabel },
+    // Field/operator/value/save handlers owned here
     handleFieldSelected,
     handleOperatorChange,
-    handleValueSelect,
-    handleValueRemove,
     handleDirectInput,
     handleBetweenStartInput,
     handleBetweenEndInput,
     handleDateInput,
-    handleRangeTypeChange,
-    handleNumberValueChange,
-    handleCustomStartDate,
-    handleCustomEndDate,
     handleSave
   }
 }

@@ -5,7 +5,10 @@
 import type { CubeQuery, Filter, SimpleFilter, GroupFilter } from '../types'
 import type { MetaField, MetaResponse } from './types'
 import { FILTER_OPERATORS } from './types'
-import { transformFilterFromServer, transformQueryForUIImpl } from './queryTransforms'
+import { cleanQuery, transformFilterFromServer, transformQueryForUIImpl } from './queryTransforms'
+
+// Re-exported from queryTransforms (its canonical home) to keep import paths stable.
+export { cleanQuery }
 
 // ============================================================================
 // Filter type guards
@@ -168,47 +171,6 @@ export function hasQueryContent(query: CubeQuery): boolean {
     (query.dimensions && query.dimensions.length > 0) ||
     (query.timeDimensions && query.timeDimensions.length > 0)
   )
-}
-
-/**
- * Clean query object by removing empty arrays
- */
-export function cleanQuery(query: CubeQuery): CubeQuery {
-  const cleanedQuery: CubeQuery = {}
-
-  if (query.measures && query.measures.length > 0) {
-    cleanedQuery.measures = query.measures
-  }
-
-  if (query.dimensions && query.dimensions.length > 0) {
-    cleanedQuery.dimensions = query.dimensions
-  }
-
-  if (query.timeDimensions && query.timeDimensions.length > 0) {
-    cleanedQuery.timeDimensions = query.timeDimensions
-  }
-
-  if (query.filters && query.filters.length > 0) {
-    cleanedQuery.filters = query.filters
-  }
-
-  if (query.order) {
-    cleanedQuery.order = query.order
-  }
-
-  if (query.limit) {
-    cleanedQuery.limit = query.limit
-  }
-
-  if (query.offset) {
-    cleanedQuery.offset = query.offset
-  }
-
-  if (query.segments && query.segments.length > 0) {
-    cleanedQuery.segments = query.segments
-  }
-
-  return cleanedQuery
 }
 
 /**

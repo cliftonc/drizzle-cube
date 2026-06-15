@@ -9,7 +9,7 @@
  * - Multi-value support
  */
 
-import React, { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo, ChangeEvent } from 'react'
 import { getIcon } from '../../icons'
 import type { SimpleFilter, FilterOperator } from '../../types'
 import type { MetaResponse, DateRangeType } from '../../shared/types'
@@ -23,8 +23,14 @@ import {
   requiresNumberInput
 } from '../../shared/utils'
 import { findFieldInSchema, getFieldTitle } from './utils'
-import { deriveRangeFromDateRange } from './filterConfigModalUtils'
+import { deriveRangeFromDateRange, resolveValueKeyboardAction } from './filterConfigModalUtils'
 import FilterValueInput from './FilterValueInput'
+import type {
+  FilterFieldContext,
+  DateRangeGroup,
+  ComboBoxGroup,
+  SimpleInputHandlers
+} from './FilterValueInput'
 import { useFilterValues } from '../../hooks/useFilterValues'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useTranslation } from '../../hooks/useTranslation'
@@ -231,35 +237,18 @@ export default function FilterConfigModal({
     setFilter({ ...filter, values })
   }, [filter])
 
-  // Handle keyboard navigation in value dropdown
+  // Handle keyboard navigation in value dropdown (decision is pure + tested)
   const handleValueKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!isValueDropdownOpen || distinctValues.length === 0) return
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault()
-        setHighlightedIndex(prev =>
-          prev < distinctValues.length - 1 ? prev + 1 : 0
-        )
-        break
-      case 'ArrowUp':
-        e.preventDefault()
-        setHighlightedIndex(prev =>
-          prev > 0 ? prev - 1 : distinctValues.length - 1
-        )
-        break
-      case 'Enter':
-        e.preventDefault()
-        if (highlightedIndex >= 0 && highlightedIndex < distinctValues.length) {
-          handleValueSelect(distinctValues[highlightedIndex], { shiftKey: e.shiftKey })
-        }
-        break
-      case 'Escape':
-        e.preventDefault()
-        setIsValueDropdownOpen(false)
-        setHighlightedIndex(-1)
-        break
-    }
+    const action = resolveValueKeyboardAction(
+      e.key, isValueDropdownOpen, distinctValues.length, highlightedIndex
+    )
+    if (action.type === 'none') return
+    e.preventDefault()
+    if (action.type === 'highlight') return setHighlightedIndex(action.index)
+    if (action.type === 'select') return handleValueSelect(distinctValues[action.index], { shiftKey: e.shiftKey })
+    // 'close'
+    setIsValueDropdownOpen(false)
+    setHighlightedIndex(-1)
   }, [isValueDropdownOpen, distinctValues, highlightedIndex, handleValueSelect])
 
   // Handle direct text/number input
@@ -345,6 +334,58 @@ export default function FilterConfigModal({
 
   // Get current date range label
   const dateRangeLabel = t(DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'filter.modal.selectRange')
+
+  // Group the value-input props into cohesive bundles for FilterValueInput.
+  // Each leaf input receives only the focused group(s) it needs.
+  const fieldContext: FilterFieldContext = {
+    filter,
+    operatorMeta,
+    shouldShowDateRange,
+    shouldShowComboBox
+  }
+
+  const dateRangeGroup: DateRangeGroup = {
+    rangeType,
+    numberValue,
+    label: dateRangeLabel,
+    isOpen: isDateRangeDropdownOpen,
+    onToggle: setIsDateRangeDropdownOpen,
+    onRangeTypeChange: handleRangeTypeChange,
+    onNumberValueChange: handleNumberValueChange,
+    onCustomStartDate: handleCustomStartDate,
+    onCustomEndDate: handleCustomEndDate,
+    onOpen: useCallback(() => {
+      setIsOperatorDropdownOpen(false)
+      setIsValueDropdownOpen(false)
+    }, [])
+  }
+
+  const comboGroup: ComboBoxGroup = {
+    isOpen: isValueDropdownOpen,
+    options: distinctValues,
+    loading: valuesLoading,
+    error: valuesError,
+    searchText,
+    highlightedIndex,
+    listRef: valueListRef,
+    onSearchTextChange: setSearchText,
+    onHighlightedIndexChange: setHighlightedIndex,
+    onSelect: handleValueSelect,
+    onRemove: handleValueRemove,
+    onKeyDown: handleValueKeyDown,
+    onOpen: useCallback(() => {
+      setIsOperatorDropdownOpen(false)
+      setIsDateRangeDropdownOpen(false)
+      setIsValueDropdownOpen(prev => !prev)
+    }, [])
+  }
+
+  const inputHandlers: SimpleInputHandlers = useMemo(() => ({
+    onBetweenStart: handleBetweenStartInput,
+    onBetweenEnd: handleBetweenEndInput,
+    onDate: handleDateInput,
+    onDirect: handleDirectInput
+  }), [handleBetweenStartInput, handleBetweenEndInput, handleDateInput, handleDirectInput])
 
   // Get icon for field type
   const FieldIcon = isTimeField ? TimeDimensionIcon : isMeasureField ? MeasureIcon : DimensionIcon
@@ -447,37 +488,10 @@ export default function FilterConfigModal({
                 {t('filter.modal.valueLabel')}
               </label>
               <FilterValueInput
-                filter={filter}
-                operatorMeta={operatorMeta}
-                shouldShowDateRange={shouldShowDateRange}
-                shouldShowComboBox={shouldShowComboBox}
-                rangeType={rangeType}
-                numberValue={numberValue}
-                dateRangeLabel={dateRangeLabel}
-                isDateRangeDropdownOpen={isDateRangeDropdownOpen}
-                setIsOperatorDropdownOpen={setIsOperatorDropdownOpen}
-                setIsValueDropdownOpen={setIsValueDropdownOpen}
-                setIsDateRangeDropdownOpen={setIsDateRangeDropdownOpen}
-                handleRangeTypeChange={handleRangeTypeChange}
-                handleNumberValueChange={handleNumberValueChange}
-                handleCustomStartDate={handleCustomStartDate}
-                handleCustomEndDate={handleCustomEndDate}
-                handleBetweenStartInput={handleBetweenStartInput}
-                handleBetweenEndInput={handleBetweenEndInput}
-                handleDateInput={handleDateInput}
-                handleDirectInput={handleDirectInput}
-                isValueDropdownOpen={isValueDropdownOpen}
-                distinctValues={distinctValues}
-                valuesLoading={valuesLoading}
-                valuesError={valuesError}
-                searchText={searchText}
-                setSearchText={setSearchText}
-                highlightedIndex={highlightedIndex}
-                setHighlightedIndex={setHighlightedIndex}
-                valueListRef={valueListRef}
-                handleValueSelect={handleValueSelect}
-                handleValueRemove={handleValueRemove}
-                handleValueKeyDown={handleValueKeyDown}
+                field={fieldContext}
+                dateRange={dateRangeGroup}
+                combo={comboGroup}
+                inputs={inputHandlers}
               />
             </div>
           </div>
