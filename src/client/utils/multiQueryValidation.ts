@@ -239,14 +239,28 @@ export function validateMultiQueryConfig(
 }
 
 /**
+ * Count how many fields (measures + dimensions + time dimensions) a query has.
+ */
+function countQueryFields(query: CubeQuery): number {
+  return (
+    (query.measures?.length || 0) +
+    (query.dimensions?.length || 0) +
+    (query.timeDimensions?.length || 0)
+  )
+}
+
+/**
  * Check if a multi-query configuration is valid for execution
  */
 export function isMultiQueryValid(queries: CubeQuery[]): boolean {
-  return queries.filter(q =>
-    (q.measures?.length || 0) +
-    (q.dimensions?.length || 0) +
-    (q.timeDimensions?.length || 0) > 0
-  ).length >= 2
+  return queries.filter(q => countQueryFields(q) > 0).length >= 2
+}
+
+/**
+ * Pluralize a count into "N thing" / "N things".
+ */
+function pluralize(count: number, singular: string): string {
+  return `${count} ${singular}${count === 1 ? '' : 's'}`
 }
 
 /**
@@ -260,11 +274,11 @@ export function getValidationSummary(result: MultiQueryValidationResult): string
   const parts: string[] = []
 
   if (result.errors.length > 0) {
-    parts.push(`${result.errors.length} error${result.errors.length > 1 ? 's' : ''}`)
+    parts.push(pluralize(result.errors.length, 'error'))
   }
 
   if (result.warnings.length > 0) {
-    parts.push(`${result.warnings.length} warning${result.warnings.length > 1 ? 's' : ''}`)
+    parts.push(pluralize(result.warnings.length, 'warning'))
   }
 
   return parts.join(', ')

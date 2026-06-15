@@ -86,117 +86,151 @@ export class FunnelQueryBuilder {
       errors.push(t('server.validation.funnel.minSteps'))
     }
 
-    // Validate binding key
+    this.validateBindingKey(config, cubes, errors)
+    this.validateTimeDimension(config, cubes, errors)
+
+    for (let i = 0; i < config.steps.length; i++) {
+      this.validateStep(config, config.steps[i], i, cubes, errors)
+    }
+
+    return { isValid: errors.length === 0, errors }
+  }
+
+  /** Validate the funnel binding key (single member or per-cube mappings). */
+  private validateBindingKey(
+    config: FunnelQueryConfig,
+    cubes: Map<string, Cube>,
+    errors: string[]
+  ): void {
     if (typeof config.bindingKey === 'string') {
       const [cubeName, dimName] = config.bindingKey.split('.')
       if (!cubeName || !dimName) {
         errors.push(t('server.validation.funnel.invalidBindingKeyFormat', { bindingKey: config.bindingKey }))
-      } else {
-        const cube = cubes.get(cubeName)
-        if (!cube) {
-          errors.push(t('server.validation.funnel.bindingKeyCubeNotFound', { cubeName }))
-        } else if (!cube.dimensions?.[dimName]) {
-          errors.push(t('server.validation.funnel.bindingKeyDimNotFound', { dimName, cubeName }))
-        }
+        return
       }
-    } else if (Array.isArray(config.bindingKey)) {
+      const cube = cubes.get(cubeName)
+      if (!cube) {
+        errors.push(t('server.validation.funnel.bindingKeyCubeNotFound', { cubeName }))
+      } else if (!cube.dimensions?.[dimName]) {
+        errors.push(t('server.validation.funnel.bindingKeyDimNotFound', { dimName, cubeName }))
+      }
+      return
+    }
+
+    if (Array.isArray(config.bindingKey)) {
       for (const mapping of config.bindingKey) {
         const cube = cubes.get(mapping.cube)
         if (!cube) {
           errors.push(t('server.validation.funnel.bindingKeyMappingCubeNotFound', { cubeName: mapping.cube }))
+          continue
+        }
+        const [, dimName] = mapping.dimension.split('.')
+        if (!cube.dimensions?.[dimName]) {
+          errors.push(t('server.validation.funnel.bindingKeyDimNotFound', { dimName, cubeName: mapping.cube }))
+        }
+      }
+    }
+  }
+
+  /** Validate the funnel time dimension member. */
+  private validateTimeDimension(
+    config: FunnelQueryConfig,
+    cubes: Map<string, Cube>,
+    errors: string[]
+  ): void {
+    if (typeof config.timeDimension !== 'string') return
+
+    const [cubeName, dimName] = config.timeDimension.split('.')
+    if (!cubeName || !dimName) {
+      errors.push(t('server.validation.funnel.invalidTimeDimFormat', { timeDimension: config.timeDimension }))
+      return
+    }
+    const cube = cubes.get(cubeName)
+    if (!cube) {
+      errors.push(t('server.validation.funnel.timeDimCubeNotFound', { cubeName }))
+    } else if (!cube.dimensions?.[dimName]) {
+      errors.push(t('server.validation.funnel.timeDimNotFound', { dimName, cubeName }))
+    }
+  }
+
+  /** Validate a single funnel step (name, cube, filters, timeToConvert). */
+  private validateStep(
+    config: FunnelQueryConfig,
+    step: FunnelStep,
+    i: number,
+    cubes: Map<string, Cube>,
+    errors: string[]
+  ): void {
+    if (!step.name) {
+      errors.push(t('server.validation.funnel.stepMustHaveName', { step: i }))
+    }
+
+    // For multi-cube steps, validate cube exists
+    if ('cube' in step && step.cube && !cubes.get(step.cube)) {
+      errors.push(t('server.validation.funnel.stepCubeNotFound', { step: i, cube: step.cube }))
+    }
+
+    // Validate filters reference valid dimensions (NOT measures) + cross-cube join paths
+    if (step.filter) {
+      this.validateStepFilters(config, step, i, cubes, errors)
+    }
+
+    // Validate timeToConvert format (ISO 8601 duration)
+    if (step.timeToConvert && i > 0) {
+      const durationPattern = /^P(?:\d+Y)?(?:\d+M)?(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$/
+      if (!durationPattern.test(step.timeToConvert)) {
+        errors.push(t('server.validation.funnel.stepTimeToConvertFormat', { step: i, value: step.timeToConvert }))
+      }
+    }
+  }
+
+  /** Validate the member filters of a single funnel step. */
+  private validateStepFilters(
+    config: FunnelQueryConfig,
+    step: FunnelStep,
+    i: number,
+    cubes: Map<string, Cube>,
+    errors: string[]
+  ): void {
+    // Determine the step's cube for cross-cube validation
+    let stepCubeName: string | undefined
+    if ('cube' in step && step.cube) {
+      stepCubeName = step.cube
+    } else if (typeof config.bindingKey === 'string') {
+      [stepCubeName] = config.bindingKey.split('.')
+    }
+
+    const resolver = stepCubeName ? new JoinPathResolver(cubes) : null
+    const stepFilters = Array.isArray(step.filter) ? step.filter : [step.filter!]
+
+    for (const filter of stepFilters) {
+      if (!('member' in filter)) continue
+      const [filterCubeName, filterField] = (filter as FilterCondition).member.split('.')
+      const filterCube = cubes.get(filterCubeName)
+
+      if (!filterCube) {
+        errors.push(t('server.validation.funnel.stepFilterCubeNotFound', { step: i, cubeName: filterCubeName }))
+        continue
+      }
+
+      // Check if it's a dimension
+      if (!filterCube.dimensions?.[filterField]) {
+        // Check if it's a measure - provide helpful error message
+        if (filterCube.measures?.[filterField]) {
+          errors.push(t('server.validation.funnel.stepFilterIsMeasure', { step: i, member: `${filterCubeName}.${filterField}` }))
         } else {
-          const [, dimName] = mapping.dimension.split('.')
-          if (!cube.dimensions?.[dimName]) {
-            errors.push(t('server.validation.funnel.bindingKeyDimNotFound', { dimName, cubeName: mapping.cube }))
-          }
+          errors.push(t('server.validation.funnel.stepFilterMemberNotFound', { step: i, field: filterField, cubeName: filterCubeName }))
+        }
+      }
+
+      // For cross-cube filters, validate that a join path exists
+      if (stepCubeName && filterCubeName !== stepCubeName && resolver) {
+        const joinPath = resolver.findPath(stepCubeName, filterCubeName)
+        if (!joinPath || joinPath.length === 0) {
+          errors.push(t('server.validation.funnel.stepFilterNoJoinPath', { step: i, member: `${filterCubeName}.${filterField}`, stepCube: stepCubeName }))
         }
       }
     }
-
-    // Validate time dimension
-    if (typeof config.timeDimension === 'string') {
-      const [cubeName, dimName] = config.timeDimension.split('.')
-      if (!cubeName || !dimName) {
-        errors.push(t('server.validation.funnel.invalidTimeDimFormat', { timeDimension: config.timeDimension }))
-      } else {
-        const cube = cubes.get(cubeName)
-        if (!cube) {
-          errors.push(t('server.validation.funnel.timeDimCubeNotFound', { cubeName }))
-        } else if (!cube.dimensions?.[dimName]) {
-          errors.push(t('server.validation.funnel.timeDimNotFound', { dimName, cubeName }))
-        }
-      }
-    }
-
-    // Validate steps
-    for (let i = 0; i < config.steps.length; i++) {
-      const step = config.steps[i]
-
-      if (!step.name) {
-        errors.push(t('server.validation.funnel.stepMustHaveName', { step: i }))
-      }
-
-      // For multi-cube steps, validate cube exists
-      if ('cube' in step && step.cube) {
-        const cube = cubes.get(step.cube)
-        if (!cube) {
-          errors.push(t('server.validation.funnel.stepCubeNotFound', { step: i, cube: step.cube }))
-        }
-      }
-
-      // Validate filters reference valid dimensions (NOT measures)
-      // Also validate join paths for cross-cube filters
-      if (step.filter) {
-        // Determine the step's cube for cross-cube validation
-        let stepCubeName: string | undefined
-        if ('cube' in step && step.cube) {
-          stepCubeName = step.cube
-        } else if (typeof config.bindingKey === 'string') {
-          [stepCubeName] = config.bindingKey.split('.')
-        }
-
-        const resolver = stepCubeName ? new JoinPathResolver(cubes) : null
-
-        const stepFilters = Array.isArray(step.filter) ? step.filter : [step.filter]
-        for (const filter of stepFilters) {
-          if ('member' in filter) {
-            const [filterCubeName, filterField] = (filter as FilterCondition).member.split('.')
-            const filterCube = cubes.get(filterCubeName)
-            if (!filterCube) {
-              errors.push(t('server.validation.funnel.stepFilterCubeNotFound', { step: i, cubeName: filterCubeName }))
-            } else {
-              // Check if it's a dimension
-              if (!filterCube.dimensions?.[filterField]) {
-                // Check if it's a measure - provide helpful error message
-                if (filterCube.measures?.[filterField]) {
-                  errors.push(t('server.validation.funnel.stepFilterIsMeasure', { step: i, member: `${filterCubeName}.${filterField}` }))
-                } else {
-                  errors.push(t('server.validation.funnel.stepFilterMemberNotFound', { step: i, field: filterField, cubeName: filterCubeName }))
-                }
-              }
-
-              // For cross-cube filters, validate that a join path exists
-              if (stepCubeName && filterCubeName !== stepCubeName && resolver) {
-                const joinPath = resolver.findPath(stepCubeName, filterCubeName)
-                if (!joinPath || joinPath.length === 0) {
-                  errors.push(t('server.validation.funnel.stepFilterNoJoinPath', { step: i, member: `${filterCubeName}.${filterField}`, stepCube: stepCubeName }))
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Validate timeToConvert format (ISO 8601 duration)
-      if (step.timeToConvert && i > 0) {
-        const durationPattern = /^P(?:\d+Y)?(?:\d+M)?(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$/
-        if (!durationPattern.test(step.timeToConvert)) {
-          errors.push(t('server.validation.funnel.stepTimeToConvertFormat', { step: i, value: step.timeToConvert }))
-        }
-      }
-    }
-
-    return { isValid: errors.length === 0, errors }
   }
 
   /**
@@ -272,33 +306,35 @@ export class FunnelQueryBuilder {
 
       // Add time metrics if requested
       if (config.includeTimeMetrics && i > 0) {
-        result.avgSecondsToConvert = aggRow[`step_${i}_avg_seconds`] !== null
-          ? Number(aggRow[`step_${i}_avg_seconds`])
-          : null
-        result.minSecondsToConvert = aggRow[`step_${i}_min_seconds`] !== null
-          ? Number(aggRow[`step_${i}_min_seconds`])
-          : null
-        result.maxSecondsToConvert = aggRow[`step_${i}_max_seconds`] !== null
-          ? Number(aggRow[`step_${i}_max_seconds`])
-          : null
-
-        // Median/P90 may be null for databases that don't support PERCENTILE_CONT
-        if (aggRow[`step_${i}_median_seconds`] !== undefined) {
-          result.medianSecondsToConvert = aggRow[`step_${i}_median_seconds`] !== null
-            ? Number(aggRow[`step_${i}_median_seconds`])
-            : null
-        }
-        if (aggRow[`step_${i}_p90_seconds`] !== undefined) {
-          result.p90SecondsToConvert = aggRow[`step_${i}_p90_seconds`] !== null
-            ? Number(aggRow[`step_${i}_p90_seconds`])
-            : null
-        }
+        this.applyTimeMetrics(result, aggRow, i)
       }
 
       results.push(result)
     }
 
     return results
+  }
+
+  /** Attach the per-step conversion-time metrics to a funnel result row. */
+  private applyTimeMetrics(
+    result: FunnelResultRow,
+    aggRow: Record<string, unknown>,
+    i: number
+  ): void {
+    const numOrNull = (key: string): number | null =>
+      aggRow[key] !== null ? Number(aggRow[key]) : null
+
+    result.avgSecondsToConvert = numOrNull(`step_${i}_avg_seconds`)
+    result.minSecondsToConvert = numOrNull(`step_${i}_min_seconds`)
+    result.maxSecondsToConvert = numOrNull(`step_${i}_max_seconds`)
+
+    // Median/P90 may be null for databases that don't support PERCENTILE_CONT
+    if (aggRow[`step_${i}_median_seconds`] !== undefined) {
+      result.medianSecondsToConvert = numOrNull(`step_${i}_median_seconds`)
+    }
+    if (aggRow[`step_${i}_p90_seconds`] !== undefined) {
+      result.p90SecondsToConvert = numOrNull(`step_${i}_p90_seconds`)
+    }
   }
 
   /**
@@ -486,45 +522,58 @@ export class FunnelQueryBuilder {
     const isClientGroupFilter = 'type' in filter && ('filters' in filter) && (filter.type === 'and' || filter.type === 'or')
 
     if (isServerLogicalFilter || isClientGroupFilter) {
-      const subConditions: SQL[] = []
-      let isAndFilter: boolean
+      return this.buildLogicalFilterCondition(filter, isClientGroupFilter, baseCube, cubes, context)
+    }
 
-      if (isClientGroupFilter) {
-        // Client format: { type: 'and' | 'or', filters: [...] }
-        const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
-        isAndFilter = groupFilter.type === 'and'
-        for (const subFilter of groupFilter.filters || []) {
-          const condition = this.buildFilterCondition(subFilter, baseCube, cubes, context)
-          if (condition) {
-            subConditions.push(condition)
-          }
-        }
-      } else {
-        // Server format: { and: [...] } or { or: [...] }
-        const logicalFilter = filter as LogicalFilter
-        isAndFilter = 'and' in logicalFilter && !!logicalFilter.and
-        const filterList = logicalFilter.and || logicalFilter.or || []
-        for (const subFilter of filterList) {
-          const condition = this.buildFilterCondition(subFilter, baseCube, cubes, context)
-          if (condition) {
-            subConditions.push(condition)
-          }
-        }
-      }
+    return this.buildSimpleFilterCondition(filter as FilterCondition, baseCube, cubes, context)
+  }
 
-      if (subConditions.length === 0) return null
-      if (subConditions.length === 1) return subConditions[0]
+  /** Combine a logical/group filter's sub-conditions into a single SQL condition. */
+  private buildLogicalFilterCondition(
+    filter: Filter,
+    isClientGroupFilter: boolean,
+    baseCube: Cube,
+    cubes: Map<string, Cube>,
+    context: QueryContext
+  ): SQL | null {
+    let isAndFilter: boolean
+    let filterList: Filter[]
 
-      if (isAndFilter) {
-        return and(...subConditions) as SQL
-      } else {
-        // OR conditions
-        return sql`(${sql.join(subConditions, sql` OR `)})`
+    if (isClientGroupFilter) {
+      // Client format: { type: 'and' | 'or', filters: [...] }
+      const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
+      isAndFilter = groupFilter.type === 'and'
+      filterList = groupFilter.filters || []
+    } else {
+      // Server format: { and: [...] } or { or: [...] }
+      const logicalFilter = filter as LogicalFilter
+      isAndFilter = 'and' in logicalFilter && !!logicalFilter.and
+      filterList = logicalFilter.and || logicalFilter.or || []
+    }
+
+    const subConditions: SQL[] = []
+    for (const subFilter of filterList) {
+      const condition = this.buildFilterCondition(subFilter, baseCube, cubes, context)
+      if (condition) {
+        subConditions.push(condition)
       }
     }
 
-    // Handle simple filter condition
-    const simpleFilter = filter as FilterCondition
+    if (subConditions.length === 0) return null
+    if (subConditions.length === 1) return subConditions[0]
+
+    return isAndFilter
+      ? and(...subConditions) as SQL
+      : sql`(${sql.join(subConditions, sql` OR `)})`
+  }
+
+  /** Build a simple (member) filter condition, validating values and cross-cube join paths. */
+  private buildSimpleFilterCondition(
+    simpleFilter: FilterCondition,
+    baseCube: Cube,
+    cubes: Map<string, Cube>,
+    context: QueryContext
+  ): SQL | null {
     const [filterCubeName, dimName] = simpleFilter.member.split('.')
 
     // For date range filters with dateRange property, empty values is OK

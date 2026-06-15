@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useTranslation } from '../../hooks/useTranslation'
-import { LineChart as RechartsLineChart, Line, XAxis, CartesianGrid } from 'recharts'
+import { LineChart as RechartsLineChart, XAxis, CartesianGrid } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import AngledXAxisTick from './AngledXAxisTick'
@@ -15,15 +15,14 @@ import {
   makeCartesianTooltipFormatter,
   renderHoverLegend
 } from './chartScaffolding'
-import { CHART_COLORS } from '../../utils/chartConstants'
-import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
 import {
-  isComparisonData,
-  getPeriodLabels,
-  transformForOverlayMode,
-  isPriorPeriodSeries,
-  getPriorPeriodStrokeDashArray
-} from '../../utils/comparisonUtils'
+  makeComparisonTickFormatter,
+  makeComparisonLabelFormatter,
+  buildSeriesKeyToFieldMap,
+  makeSeriesKeyResolver,
+  buildTimeSeriesData,
+  renderLineSeries
+} from './cartesianChartHelpers'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
@@ -60,14 +59,10 @@ const LineChart = React.memo(function LineChart({
   // Build mapping from series key (label) to original field name (memoized to prevent object recreation)
   // This is needed because seriesKeys use display labels, not field names
   // MUST be called before any early returns to satisfy React hooks rules
-  const seriesKeyToField = useMemo(() => {
-    const mapping: Record<string, string> = {}
-    yAxisFields.forEach((field) => {
-      const label = getFieldLabel(field)
-      mapping[label] = field
-    })
-    return mapping
-  }, [yAxisFields, getFieldLabel])
+  const seriesKeyToField = useMemo(
+    () => buildSeriesKeyToFieldMap(yAxisFields, getFieldLabel),
+    [yAxisFields, getFieldLabel]
+  )
 
   try {
     const safeDisplayConfig = {
@@ -94,56 +89,16 @@ const LineChart = React.memo(function LineChart({
     // The errorCode guard above guarantees xAxisField is defined here
     const xAxisField = resolvedXAxisField as string
 
-    // Check if this is comparison data (has __periodIndex metadata)
-    const hasComparisonData = isComparisonData(data)
     const priorPeriodStyle = displayConfig?.priorPeriodStyle || 'dashed'
     const priorPeriodOpacity = displayConfig?.priorPeriodOpacity ?? 0.5
-    const periodLabels = hasComparisonData ? getPeriodLabels(data) : []
 
-    // Transform data based on comparison mode
-    let chartData: any[]
-    let seriesKeys: string[]
-    let effectiveXAxisKey = 'name' // Default X-axis key after transformation
+    // Shape data (comparison overlay vs standard transform) via shared helper.
+    const { chartData, seriesKeys, effectiveXAxisKey, hasComparisonData, periodLabels } =
+      buildTimeSeriesData({ data, xAxisField, yAxisFields, seriesFields, queryObject, getFieldLabel })
 
-    if (hasComparisonData) {
-      // For comparison data, always use overlay transformation to align by period day index
-      // Both 'separate' and 'overlay' modes use the same data transformation,
-      // they differ only in styling (dashed lines, opacity for prior periods in overlay mode)
-      const overlayResult = transformForOverlayMode(data, yAxisFields, xAxisField, getFieldLabel)
-      chartData = overlayResult.data
-      seriesKeys = overlayResult.seriesKeys
-      effectiveXAxisKey = '__periodDayIndex'
-    } else {
-      // Standard mode: use normal transformation
-      const standardResult = transformChartDataWithSeries(
-        data,
-        xAxisField,
-        yAxisFields,
-        queryObject,
-        seriesFields,
-        getFieldLabel
-      )
-      chartData = standardResult.data
-      seriesKeys = standardResult.seriesKeys
-    }
-
-    // Helper to find field from series key, handling comparison suffixes like "(Current)" and "(Prior)"
-    const findFieldFromSeriesKey = (seriesKey: string): string | undefined => {
-      // Direct match first
-      if (seriesKeyToField[seriesKey]) {
-        return seriesKeyToField[seriesKey]
-      }
-      // For comparison data, strip the period suffix and any dimension prefix
-      // Series keys look like: "Label (Current)", "Label (Prior)", or "DimValue - Label (Current)"
-
-      // Guard against excessive input length to prevent ReDoS
-      if (seriesKey.length > 1000) return undefined
-      const withoutSuffix = seriesKey.replace(/\s*\((Current|Prior)\)$/, '')
-      // Check if it has a dimension prefix (contains " - ")
-      const parts = withoutSuffix.split(' - ')
-      const measureLabel = parts[parts.length - 1] // Last part is the measure label
-      return seriesKeyToField[measureLabel]
-    }
+    // Resolve series key → measure field, handling comparison suffixes
+    // ("(Current)"/"(Prior)") and dimension prefixes ("DimValue - Label").
+    const findFieldFromSeriesKey = makeSeriesKeyResolver(seriesKeyToField)
 
     // Dual Y-axis derivation + margins (shared scaffolding)
     const axisInfo = getDualAxisInfo(yAxisFields, yAxisAssignment)
@@ -179,18 +134,7 @@ const LineChart = React.memo(function LineChart({
             dataKey={effectiveXAxisKey}
             type="category"
             tick={<AngledXAxisTick tickFormatter={
-              hasComparisonData
-                ? (value: string | number, index: number) => {
-                    // For comparison data, show the date from the current period
-                    // formatted according to the query's granularity
-                    const row = chartData[index]
-                    if (row?.__displayDate) {
-                      const granularity = getFieldGranularity(queryObject, xAxisField)
-                      return formatTimeValue(row.__displayDate, granularity)
-                    }
-                    return `Period ${Number(value) + 1}`
-                  }
-                : undefined
+              makeComparisonTickFormatter(hasComparisonData, chartData, queryObject, xAxisField)
             } />}
             height={60}
             interval={showAllXLabels ? 0 : undefined}
@@ -205,20 +149,7 @@ const LineChart = React.memo(function LineChart({
                 resolveField: findFieldFromSeriesKey
               })}
               labelFormatter={
-                hasComparisonData
-                  ? (label: any, payload: any) => {
-                      // For comparison data, show the date from the current period
-                      // formatted according to the query's granularity
-                      if (payload && payload.length > 0) {
-                        const row = payload[0]?.payload
-                        if (row?.__displayDate) {
-                          const granularity = getFieldGranularity(queryObject, xAxisField)
-                          return formatTimeValue(row.__displayDate, granularity)
-                        }
-                      }
-                      return `Period ${Number(label) + 1}`
-                    }
-                  : undefined
+                makeComparisonLabelFormatter(hasComparisonData, queryObject, xAxisField)
               }
             />
           )}
@@ -229,96 +160,19 @@ const LineChart = React.memo(function LineChart({
             onHover: setHoveredLegend,
             onLeave: () => setHoveredLegend(null)
           })}
-          {seriesKeys.map((seriesKey, index) => {
-            // Look up the original field name to get its axis assignment
-            const originalField = findFieldFromSeriesKey(seriesKey)
-            const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
-
-            // Determine if this is a prior period series (for styling)
-            const isPriorPeriod = hasComparisonData && isPriorPeriodSeries(seriesKey, periodLabels)
-            const strokeDashArray = isPriorPeriod ? getPriorPeriodStrokeDashArray(priorPeriodStyle) : undefined
-            const opacity = isPriorPeriod ? priorPeriodOpacity : 1
-
-            // When drill is enabled, show persistent dots for better click targets
-            const lineColor = (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
-              CHART_COLORS[index % CHART_COLORS.length]
-
-            return (
-              <Line
-                key={seriesKey}
-                type="monotone"
-                dataKey={seriesKey}
-                yAxisId={axisId}
-                stroke={lineColor}
-                strokeWidth={isPriorPeriod ? 1.5 : 2}
-                strokeDasharray={strokeDashArray}
-                dot={isPriorPeriod ? false : (props: any) => {
-                  const { cx, cy, payload, key } = props
-                  if (cx === undefined || cy === undefined) return null
-
-                  const handleClick = (event: React.MouseEvent) => {
-                    event.stopPropagation()
-                    event.preventDefault()
-                    if (onDataPointClick) {
-                      onDataPointClick({
-                        dataPoint: payload,
-                        clickedField: originalField || seriesKey,
-                        xValue: payload.name,
-                        position: { x: event.clientX, y: event.clientY },
-                        nativeEvent: event
-                      })
-                    }
-                  }
-
-                  // When drill is enabled, render clickable dots with background to mask grid
-                  if (drillEnabled && onDataPointClick) {
-                    return (
-                      <g key={key}>
-                        {/* Background to mask grid lines - uses theme surface color */}
-                        <circle
-                          cx={cx}
-                          cy={cy}
-                          r={6}
-                          fill="var(--dc-surface)"
-                          style={{ pointerEvents: 'none' }}
-                        />
-                        {/* Visible dot with click handler */}
-                        <circle
-                          cx={cx}
-                          cy={cy}
-                          r={4}
-                          fill="var(--dc-surface)"
-                          stroke={lineColor}
-                          strokeWidth={2}
-                          cursor="pointer"
-                          onClick={(e: React.MouseEvent<SVGCircleElement>) => {
-                            handleClick(e as unknown as React.MouseEvent)
-                          }}
-                        />
-                      </g>
-                    )
-                  }
-
-                  // Non-drill mode: simple small dot
-                  return (
-                    <circle
-                      key={key}
-                      cx={cx}
-                      cy={cy}
-                      r={3}
-                      fill={lineColor}
-                    />
-                  )
-                }}
-                activeDot={false}
-                strokeOpacity={
-                  hoveredLegend
-                    ? (hoveredLegend === seriesKey ? 1 : 0.3)
-                    : opacity
-                }
-                connectNulls={safeDisplayConfig.connectNulls}
-              />
-            )
+          {renderLineSeries({
+            seriesKeys,
+            colorPalette,
+            resolveField: findFieldFromSeriesKey,
+            yAxisAssignment,
+            hoveredLegend,
+            connectNulls: safeDisplayConfig.connectNulls,
+            drillEnabled,
+            onDataPointClick,
+            hasComparisonData,
+            periodLabels,
+            priorPeriodStyle,
+            priorPeriodOpacity
           })}
           {renderChartTargetLines(spreadTargets)}
         </RechartsLineChart>

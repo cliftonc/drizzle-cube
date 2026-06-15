@@ -35,6 +35,68 @@ import {
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300
 
+/** Derive the funnel execution status from a TanStack Query result. */
+function deriveFunnelStatus(q: {
+  isError: boolean
+  isLoading: boolean
+  isSuccess: boolean
+}): FunnelExecutionResult['status'] {
+  if (q.isError) return 'error'
+  if (q.isLoading) return 'executing'
+  if (q.isSuccess) return 'success'
+  return 'idle'
+}
+
+/** Build a single FunnelStepResult from a chart-data entry. */
+function buildFunnelStepResult(
+  data: FunnelChartData,
+  index: number,
+  firstCount: number,
+  config: FunnelConfig | null | undefined,
+  executionTime: number
+): FunnelStepResult {
+  return {
+    stepIndex: index,
+    stepName: data.name,
+    // Get step ID from config, or generate one for prebuilt queries
+    stepId: config?.steps?.[index]?.id || `step-${index}`,
+    data: [], // Raw data not available from server funnel
+    bindingKeyValues: [], // Not available from server funnel
+    bindingKeyTotalCount: 0,
+    count: data.value,
+    conversionRate: data.conversionRate !== null ? data.conversionRate / 100 : null,
+    cumulativeConversionRate: firstCount > 0 ? data.value / firstCount : 0,
+    executionTime,
+    error: null,
+  }
+}
+
+/**
+ * Build an effective FunnelConfig for the result object. Prefers the debounced
+ * config; otherwise synthesizes one from the prebuilt server query.
+ */
+function buildEffectiveFunnelConfig(
+  debouncedConfig: FunnelConfig | null | undefined,
+  prebuiltServerQuery: UseFunnelQueryOptions['prebuiltServerQuery']
+): FunnelConfig {
+  if (debouncedConfig) return debouncedConfig
+  return {
+    id: 'prebuilt-funnel',
+    name: 'Funnel Analysis',
+    bindingKey: {
+      dimension: typeof prebuiltServerQuery?.funnel?.bindingKey === 'string'
+        ? prebuiltServerQuery.funnel.bindingKey
+        : prebuiltServerQuery?.funnel?.bindingKey?.[0]?.dimension || ''
+    },
+    steps: (prebuiltServerQuery?.funnel?.steps || []).map((s, i) => ({
+      id: `step-${i}`,
+      name: s.name,
+      query: { filters: s.filter ? [s.filter as unknown as import('../../types').Filter] : [] },
+      timeToConvert: s.timeToConvert || undefined,
+    })),
+  }
+}
+
 /**
  * Check if a FunnelConfig is valid for execution
  */
@@ -270,21 +332,11 @@ export function useFunnelQuery(
     if (!chartData.length) return []
 
     const firstCount = chartData[0]?.value || 0
+    const executionTime = queryResult.data?.executionTime || 0
 
-    return chartData.map((data, index) => ({
-      stepIndex: index,
-      stepName: data.name,
-      // Get step ID from config, or generate one for prebuilt queries
-      stepId: debouncedConfig?.steps?.[index]?.id || `step-${index}`,
-      data: [], // Raw data not available from server funnel
-      bindingKeyValues: [], // Not available from server funnel
-      bindingKeyTotalCount: 0,
-      count: data.value,
-      conversionRate: data.conversionRate !== null ? data.conversionRate / 100 : null,
-      cumulativeConversionRate: firstCount > 0 ? data.value / firstCount : 0,
-      executionTime: queryResult.data?.executionTime || 0,
-      error: null,
-    }))
+    return chartData.map((data, index) =>
+      buildFunnelStepResult(data, index, firstCount, debouncedConfig, executionTime)
+    )
   }, [chartData, debouncedConfig, queryResult.data?.executionTime])
 
   // Build full result for compatibility
@@ -297,21 +349,7 @@ export function useFunnelQuery(
     const lastCount = chartData[chartData.length - 1]?.value || 0
 
     // Create a config object (use debouncedConfig if available, else synthesize from prebuilt)
-    const effectiveConfig: FunnelConfig = debouncedConfig || {
-      id: 'prebuilt-funnel',
-      name: 'Funnel Analysis',
-      bindingKey: {
-        dimension: typeof prebuiltServerQuery?.funnel?.bindingKey === 'string'
-          ? prebuiltServerQuery.funnel.bindingKey
-          : prebuiltServerQuery?.funnel?.bindingKey?.[0]?.dimension || ''
-      },
-      steps: (prebuiltServerQuery?.funnel?.steps || []).map((s, i) => ({
-        id: `step-${i}`,
-        name: s.name,
-        query: { filters: s.filter ? [s.filter as unknown as import('../../types').Filter] : [] },
-        timeToConvert: s.timeToConvert || undefined,
-      })),
-    }
+    const effectiveConfig = buildEffectiveFunnelConfig(debouncedConfig, prebuiltServerQuery)
 
     const fullResult: FunnelExecutionResult = {
       config: effectiveConfig,
@@ -323,13 +361,7 @@ export function useFunnelQuery(
         totalExecutionTime: queryResult.data?.executionTime || 0,
       },
       chartData,
-      status: queryResult.isError
-        ? 'error'
-        : queryResult.isLoading
-          ? 'executing'
-          : queryResult.isSuccess
-            ? 'success'
-            : 'idle',
+      status: deriveFunnelStatus(queryResult),
       error: queryResult.error as Error | null,
       currentStepIndex: null,
     }
@@ -343,13 +375,7 @@ export function useFunnelQuery(
   }, [debouncedConfig, prebuiltServerQuery, chartData, stepResults, queryResult, onComplete])
 
   // Determine current status
-  const status: FunnelExecutionResult['status'] = queryResult.isError
-    ? 'error'
-    : queryResult.isLoading
-      ? 'executing'
-      : queryResult.isSuccess
-        ? 'success'
-        : 'idle'
+  const status: FunnelExecutionResult['status'] = deriveFunnelStatus(queryResult)
 
   /**
    * Manually execute/refetch the funnel query

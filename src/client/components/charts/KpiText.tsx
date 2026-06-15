@@ -2,6 +2,14 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import DataHistogram from '../DataHistogram'
+import {
+  extractValueFields,
+  extractValues,
+  computeKpiStats,
+  formatKpiNumber,
+  processKpiTemplate,
+  resolveValueColor
+} from './kpiTextHelpers'
 import type { ChartProps } from '../../types'
 
 const KpiText = React.memo(function KpiText({
@@ -84,17 +92,8 @@ const KpiText = React.memo(function KpiText({
   }
 
   // Extract value field from chart config - handle both string and array formats
-  let valueFields: string[] = []
-  if (chartConfig?.yAxis) {
-    // Handle both string and array formats
-    if (typeof chartConfig.yAxis === 'string') {
-      valueFields = [chartConfig.yAxis]
-    } else if (Array.isArray(chartConfig.yAxis)) {
-      valueFields = chartConfig.yAxis
-    }
-  }
-  
-  
+  const valueFields = extractValueFields(chartConfig?.yAxis)
+
   if (valueFields.length === 0) {
     return (
       <div
@@ -116,28 +115,9 @@ const KpiText = React.memo(function KpiText({
   }
 
   const valueField = valueFields[0] // Use first measure field
-  
-  // Debug logging (remove in production)
-  
+
   // Extract values for the selected field
-  const values = data
-    .map(row => {
-      // Try direct field access first
-      if (row[valueField] !== undefined) {
-        return row[valueField]
-      }
-      
-      // If not found, try finding the first available field as fallback
-      const availableFields = Object.keys(row)
-      if (availableFields.length > 0) {
-        // Field not found, using fallback
-        return row[availableFields[0]]
-      }
-      
-      return undefined
-    })
-    .filter(val => val !== null && val !== undefined)
-  
+  const values = extractValues(data as Record<string, any>[], valueField)
 
   if (values.length === 0) {
     return (
@@ -160,100 +140,25 @@ const KpiText = React.memo(function KpiText({
   }
 
   // Calculate statistics for numeric values
-  const numericValues = values
-    .map(val => Number(val))
-    .filter(val => !isNaN(val))
-
-  let mainValue: any
-  let min: number | null = null
-  let max: number | null = null
-  let showStats = false
-
-  if (numericValues.length > 0) {
-    if (values.length === 1) {
-      mainValue = values[0]
-    } else {
-      // Calculate average for multiple numeric values
-      const sum = numericValues.reduce((acc, val) => acc + val, 0)
-      const avg = sum / numericValues.length
-      mainValue = avg
-      min = Math.min(...numericValues)
-      max = Math.max(...numericValues)
-      showStats = true
-    }
-  } else {
-    // Non-numeric values - just use the first one or concatenate if multiple
-    mainValue = values.length === 1 ? values[0] : values.join(', ')
-  }
+  const { mainValue, min, max, showStats } = computeKpiStats(values)
 
   // Format number with appropriate units and decimals
-  const formatNumber = (value: number | null | undefined): string => {
-    // If custom formatValue is provided, use it exclusively
-    if (displayConfig.formatValue) {
-      return displayConfig.formatValue(value)
-    }
-
-    // Null handling: Show placeholder for missing data
-    if (value === null || value === undefined) {
-      return '—'
-    }
-
-    const decimals = displayConfig.decimals ?? 2
-
-    if (Math.abs(value) >= 1e9) {
-      return (value / 1e9).toFixed(decimals) + 'B'
-    } else if (Math.abs(value) >= 1e6) {
-      return (value / 1e6).toFixed(decimals) + 'M'
-    } else if (Math.abs(value) >= 1e3) {
-      return (value / 1e3).toFixed(decimals) + 'K'
-    } else {
-      return value.toFixed(decimals)
-    }
-  }
-
-  // Process template string
-  const processTemplate = (template: string, value: any): string => {
-    try {
-      // Create template variables
-      const templateVars = {
-        value: typeof value === 'number' ? formatNumber(value) : String(value),
-        rawValue: value,
-        field: valueField,
-        fieldLabel: getFieldLabel(valueField),
-        min: min !== null ? formatNumber(min) : '',
-        max: max !== null ? formatNumber(max) : '',
-        count: values.length
-      }
-
-      // Simple template replacement using ${variable} syntax
-      return template.replace(/\$\{(\w+)\}/g, (match, varName) => {
-        if (varName in templateVars) {
-          return String(templateVars[varName as keyof typeof templateVars])
-        }
-        return match
-      })
-    } catch {
-      // Error processing template
-      return String(value)
-    }
-  }
+  const formatNumber = (value: number | null | undefined): string =>
+    formatKpiNumber(value, { formatValue: displayConfig.formatValue, decimals: displayConfig.decimals })
 
   const template = displayConfig.template || '${fieldLabel}: ${value}'
-  const displayText = processTemplate(template, mainValue)
+  const displayText = processKpiTemplate(template, {
+    value: mainValue,
+    valueField,
+    fieldLabel: getFieldLabel(valueField),
+    min,
+    max,
+    count: values.length,
+    formatNumber
+  })
 
   // Get color from palette by index, default to first color in palette
-  const getValueColor = (): string => {
-    if (displayConfig.valueColorIndex !== undefined && colorPalette?.colors) {
-      const colorIndex = displayConfig.valueColorIndex
-      if (colorIndex >= 0 && colorIndex < colorPalette.colors.length) {
-        return colorPalette.colors[colorIndex]
-      }
-    }
-    // Default to first color in palette if available, otherwise fallback to dark gray
-    return colorPalette?.colors?.[0] || '#1f2937'
-  }
-
-  const valueColor = getValueColor()
+  const valueColor = resolveValueColor(displayConfig.valueColorIndex, colorPalette)
 
   return (
     <div 

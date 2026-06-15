@@ -175,40 +175,60 @@ function SankeyNode({
   )
 }
 
+/** Shared tooltip card wrapper for the Sankey tooltip variants. */
+function SankeyTooltipCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-dc-surface dc:border border-dc-border dc:rounded-md dc:px-3 dc:py-2 dc:shadow-lg dc:text-sm">
+      {children}
+    </div>
+  )
+}
+
+/** Entity count row shared by both tooltip variants. */
+function SankeyEntityCount({ value }: { value: number }) {
+  return (
+    <div className="text-dc-text-secondary dc:mt-1">
+      <span className="dc:font-medium">{value.toLocaleString()}</span> entities
+    </div>
+  )
+}
+
+interface SankeyTooltipDatum {
+  name: string
+  value: number
+  source?: { name: string }
+  target?: { name: string }
+}
+
 /**
- * Custom tooltip for Sankey chart
+ * Custom tooltip for Sankey chart. Renders a link variant (source → target)
+ * when both endpoints are present, otherwise a node variant.
  */
 function SankeyTooltip({ active, payload }: {
   active?: boolean
-  payload?: Array<{ payload: { name: string; value: number; source?: { name: string }; target?: { name: string } } }>
+  payload?: Array<{ payload: SankeyTooltipDatum }>
 }) {
   if (!active || !payload || payload.length === 0) return null
 
   const data = payload[0].payload
+  const { source, target } = data
 
-  // Check if this is a link (has source/target) or a node
-  if (data.source && data.target) {
+  if (source && target) {
     return (
-      <div className="bg-dc-surface dc:border border-dc-border dc:rounded-md dc:px-3 dc:py-2 dc:shadow-lg dc:text-sm">
+      <SankeyTooltipCard>
         <div className="dc:font-medium text-dc-text">
-          {data.source.name} → {data.target.name}
+          {source.name} → {target.name}
         </div>
-        <div className="text-dc-text-secondary dc:mt-1">
-          <span className="dc:font-medium">{data.value.toLocaleString()}</span> entities
-        </div>
-      </div>
+        <SankeyEntityCount value={data.value} />
+      </SankeyTooltipCard>
     )
   }
 
   return (
-    <div className="bg-dc-surface dc:border border-dc-border dc:rounded-md dc:px-3 dc:py-2 dc:shadow-lg dc:text-sm">
+    <SankeyTooltipCard>
       <div className="dc:font-medium text-dc-text">{data.name}</div>
-      {data.value !== undefined && (
-        <div className="text-dc-text-secondary dc:mt-1">
-          <span className="dc:font-medium">{data.value.toLocaleString()}</span> entities
-        </div>
-      )}
-    </div>
+      {data.value !== undefined && <SankeyEntityCount value={data.value} />}
+    </SankeyTooltipCard>
   )
 }
 

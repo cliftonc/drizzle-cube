@@ -4,6 +4,52 @@
  */
 
 import type { ExplainOperation, ExplainResult, ExplainSummary } from '../types/executor'
+import { type ExplainStackEntry, pushOperationToTree } from './explain-tree'
+
+/** Mutable accumulator for summary stats gathered while walking the plan. */
+interface PostgresPlanState {
+  operations: ExplainOperation[]
+  usedIndexes: string[]
+  hasSequentialScans: boolean
+  planningTime: number | undefined
+  executionTime: number | undefined
+  totalCost: number | undefined
+  stack: ExplainStackEntry[]
+}
+
+/**
+ * Process a single output line, updating plan state in place.
+ * Handles timing lines and operation lines (with tree nesting).
+ */
+function processPostgresLine(line: string, state: PostgresPlanState): void {
+  const planningMatch = line.match(/Planning Time:\s*([\d.]+)\s*ms/i)
+  if (planningMatch) {
+    state.planningTime = parseFloat(planningMatch[1])
+    return
+  }
+
+  const executionMatch = line.match(/Execution Time:\s*([\d.]+)\s*ms/i)
+  if (executionMatch) {
+    state.executionTime = parseFloat(executionMatch[1])
+    return
+  }
+
+  const operation = parsePostgresOperationLine(line)
+  if (!operation) return
+
+  if (operation.type.includes('Seq Scan')) {
+    state.hasSequentialScans = true
+  }
+  if (operation.index) {
+    state.usedIndexes.push(operation.index)
+  }
+  if (state.operations.length === 0 && operation.estimatedCost !== undefined) {
+    state.totalCost = operation.estimatedCost
+  }
+
+  const indent = line.search(/\S/)
+  pushOperationToTree(state.stack, state.operations, operation, indent)
+}
 
 /**
  * Parse PostgreSQL EXPLAIN output (text format)
@@ -22,81 +68,31 @@ export function parsePostgresExplain(
   rawOutput: string[],
   sqlQuery: { sql: string; params?: unknown[] }
 ): ExplainResult {
-  const operations: ExplainOperation[] = []
-  const usedIndexes: string[] = []
-  let hasSequentialScans = false
-  let planningTime: number | undefined
-  let executionTime: number | undefined
-  let totalCost: number | undefined
-
-  // Stack for building hierarchical structure based on indentation
-  const stack: { indent: number; op: ExplainOperation }[] = []
+  const state: PostgresPlanState = {
+    operations: [],
+    usedIndexes: [],
+    hasSequentialScans: false,
+    planningTime: undefined,
+    executionTime: undefined,
+    totalCost: undefined,
+    stack: [],
+  }
 
   for (const line of rawOutput) {
-    // Check for timing information
-    const planningMatch = line.match(/Planning Time:\s*([\d.]+)\s*ms/i)
-    if (planningMatch) {
-      planningTime = parseFloat(planningMatch[1])
-      continue
-    }
-
-    const executionMatch = line.match(/Execution Time:\s*([\d.]+)\s*ms/i)
-    if (executionMatch) {
-      executionTime = parseFloat(executionMatch[1])
-      continue
-    }
-
-    // Parse operation lines
-    const operation = parsePostgresOperationLine(line)
-    if (operation) {
-      // Track sequential scans and indexes
-      if (operation.type.includes('Seq Scan')) {
-        hasSequentialScans = true
-      }
-      if (operation.index) {
-        usedIndexes.push(operation.index)
-      }
-
-      // Track total cost (from root operation)
-      if (operations.length === 0 && operation.estimatedCost !== undefined) {
-        totalCost = operation.estimatedCost
-      }
-
-      // Calculate indentation level
-      const indent = line.search(/\S/)
-
-      // Pop stack until we find a parent with less indentation
-      while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
-        stack.pop()
-      }
-
-      if (stack.length === 0) {
-        // Root level operation
-        operations.push(operation)
-      } else {
-        // Child operation
-        const parent = stack[stack.length - 1].op
-        if (!parent.children) {
-          parent.children = []
-        }
-        parent.children.push(operation)
-      }
-
-      stack.push({ indent, op: operation })
-    }
+    processPostgresLine(line, state)
   }
 
   const summary: ExplainSummary = {
     database: 'postgres',
-    planningTime,
-    executionTime,
-    totalCost,
-    hasSequentialScans,
-    usedIndexes: [...new Set(usedIndexes)], // Deduplicate
+    planningTime: state.planningTime,
+    executionTime: state.executionTime,
+    totalCost: state.totalCost,
+    hasSequentialScans: state.hasSequentialScans,
+    usedIndexes: [...new Set(state.usedIndexes)], // Deduplicate
   }
 
   return {
-    operations,
+    operations: state.operations,
     summary,
     raw: rawOutput.join('\n'),
     sql: sqlQuery,

@@ -87,104 +87,142 @@ export class FlowQueryBuilder {
       return { isValid: false, errors, warnings }
     }
 
-    // Validate binding key
-    if (typeof config.bindingKey === 'string') {
-      const [cubeName, dimName] = config.bindingKey.split('.')
-      if (!cubeName || !dimName) {
-        errors.push(t('server.validation.flow.invalidBindingKeyFormat', { bindingKey: config.bindingKey }))
-      } else {
-        const cube = cubes.get(cubeName)
-        if (!cube) {
-          errors.push(t('server.validation.flow.bindingKeyCubeNotFound', { cubeName }))
-        } else if (!cube.dimensions?.[dimName]) {
-          errors.push(t('server.validation.flow.bindingKeyDimNotFound', { dimName, cubeName }))
-        }
-      }
-    } else if (Array.isArray(config.bindingKey)) {
-      for (const mapping of config.bindingKey) {
-        const cube = cubes.get(mapping.cube)
-        if (!cube) {
-          errors.push(t('server.validation.flow.bindingKeyMappingCubeNotFound', { cubeName: mapping.cube }))
-        } else {
-          const [, dimName] = mapping.dimension.split('.')
-          if (!cube.dimensions?.[dimName]) {
-            errors.push(t('server.validation.flow.bindingKeyDimNotFound', { dimName, cubeName: mapping.cube }))
-          }
-        }
-      }
-    }
+    this.validateBindingKey(config, cubes, errors)
 
     // Validate time dimension
     if (typeof config.timeDimension === 'string') {
-      const [cubeName, dimName] = config.timeDimension.split('.')
-      if (!cubeName || !dimName) {
-        errors.push(t('server.validation.flow.invalidTimeDimFormat', { timeDimension: config.timeDimension }))
-      } else {
-        const cube = cubes.get(cubeName)
-        if (!cube) {
-          errors.push(t('server.validation.flow.timeDimCubeNotFound', { cubeName }))
-        } else if (!cube.dimensions?.[dimName]) {
-          errors.push(t('server.validation.flow.timeDimNotFound', { dimName, cubeName }))
-        }
-      }
+      this.validateMemberDimension(config.timeDimension, cubes, errors, {
+        invalidFormat: () => t('server.validation.flow.invalidTimeDimFormat', { timeDimension: config.timeDimension as string }),
+        cubeNotFound: (cubeName) => t('server.validation.flow.timeDimCubeNotFound', { cubeName }),
+        dimNotFound: (dimName, cubeName) => t('server.validation.flow.timeDimNotFound', { dimName, cubeName })
+      })
     }
 
     // Validate event dimension
     if (config.eventDimension) {
-      const [cubeName, dimName] = config.eventDimension.split('.')
-      if (!cubeName || !dimName) {
-        errors.push(t('server.validation.flow.invalidEventDimFormat', { eventDimension: config.eventDimension }))
-      } else {
-        const cube = cubes.get(cubeName)
-        if (!cube) {
-          errors.push(t('server.validation.flow.eventDimCubeNotFound', { cubeName }))
-        } else if (!cube.dimensions?.[dimName]) {
-          errors.push(t('server.validation.flow.eventDimNotFound', { dimName, cubeName }))
-        }
-      }
+      this.validateMemberDimension(config.eventDimension, cubes, errors, {
+        invalidFormat: () => t('server.validation.flow.invalidEventDimFormat', { eventDimension: config.eventDimension as string }),
+        cubeNotFound: (cubeName) => t('server.validation.flow.eventDimCubeNotFound', { cubeName }),
+        dimNotFound: (dimName, cubeName) => t('server.validation.flow.eventDimNotFound', { dimName, cubeName })
+      })
     } else {
       errors.push(t('server.validation.flow.eventDimRequired'))
     }
 
-    // Validate starting step
-    if (!config.startingStep) {
-      errors.push(t('server.validation.flow.startingStepRequired'))
-    } else {
-      if (!config.startingStep.filter) {
-        errors.push(t('server.validation.flow.startingStepFilterRequired'))
-      }
-      if (!config.startingStep.name) {
-        warnings.push(t('server.validation.flow.startingStepNameMissing'))
-      }
+    this.validateStartingStep(config, errors, warnings)
+    this.validateDepthBounds(config, errors, warnings)
+    this.validateJoinStrategy(config, supportsLateral, errors)
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+    }
+  }
+
+  /**
+   * Validate a `Cube.dimension` member string: format, cube existence, and
+   * dimension existence. i18n message factories let each call site supply its
+   * own keys while sharing the branch structure.
+   */
+  private validateMemberDimension(
+    member: string,
+    cubes: Map<string, Cube>,
+    errors: string[],
+    messages: {
+      invalidFormat: () => string
+      cubeNotFound: (cubeName: string) => string
+      dimNotFound: (dimName: string, cubeName: string) => string
+    }
+  ): void {
+    const [cubeName, dimName] = member.split('.')
+    if (!cubeName || !dimName) {
+      errors.push(messages.invalidFormat())
+      return
+    }
+    const cube = cubes.get(cubeName)
+    if (!cube) {
+      errors.push(messages.cubeNotFound(cubeName))
+    } else if (!cube.dimensions?.[dimName]) {
+      errors.push(messages.dimNotFound(dimName, cubeName))
+    }
+  }
+
+  /** Validate the flow binding key (single member or per-cube mappings). */
+  private validateBindingKey(
+    config: FlowQueryConfig,
+    cubes: Map<string, Cube>,
+    errors: string[]
+  ): void {
+    if (typeof config.bindingKey === 'string') {
+      this.validateMemberDimension(config.bindingKey, cubes, errors, {
+        invalidFormat: () => t('server.validation.flow.invalidBindingKeyFormat', { bindingKey: config.bindingKey as string }),
+        cubeNotFound: (cubeName) => t('server.validation.flow.bindingKeyCubeNotFound', { cubeName }),
+        dimNotFound: (dimName, cubeName) => t('server.validation.flow.bindingKeyDimNotFound', { dimName, cubeName })
+      })
+      return
     }
 
-    // Validate depth bounds
+    if (Array.isArray(config.bindingKey)) {
+      for (const mapping of config.bindingKey) {
+        const cube = cubes.get(mapping.cube)
+        if (!cube) {
+          errors.push(t('server.validation.flow.bindingKeyMappingCubeNotFound', { cubeName: mapping.cube }))
+          continue
+        }
+        const [, dimName] = mapping.dimension.split('.')
+        if (!cube.dimensions?.[dimName]) {
+          errors.push(t('server.validation.flow.bindingKeyDimNotFound', { dimName, cubeName: mapping.cube }))
+        }
+      }
+    }
+  }
+
+  /** Validate the flow starting step (required + filter + name warning). */
+  private validateStartingStep(
+    config: FlowQueryConfig,
+    errors: string[],
+    warnings: string[]
+  ): void {
+    if (!config.startingStep) {
+      errors.push(t('server.validation.flow.startingStepRequired'))
+      return
+    }
+    if (!config.startingStep.filter) {
+      errors.push(t('server.validation.flow.startingStepFilterRequired'))
+    }
+    if (!config.startingStep.name) {
+      warnings.push(t('server.validation.flow.startingStepNameMissing'))
+    }
+  }
+
+  /** Validate flow step-depth bounds and emit high-depth performance warnings. */
+  private validateDepthBounds(
+    config: FlowQueryConfig,
+    errors: string[],
+    warnings: string[]
+  ): void {
     if (config.stepsBefore < 0 || config.stepsBefore > 5) {
       errors.push(t('server.validation.flow.stepsBeforeRange', { value: config.stepsBefore }))
     }
     if (config.stepsAfter < 0 || config.stepsAfter > 5) {
       errors.push(t('server.validation.flow.stepsAfterRange', { value: config.stepsAfter }))
     }
-
-    // Performance warnings for high depth
     if (config.stepsBefore >= 4 || config.stepsAfter >= 4) {
       warnings.push(t('server.validation.flow.highStepDepthWarning'))
     }
+  }
 
-    // Validate join strategy
-    if (
-      config.joinStrategy &&
-      !['auto', 'lateral', 'window'].includes(config.joinStrategy)
-    ) {
+  /** Validate the flow join strategy and its engine support. */
+  private validateJoinStrategy(
+    config: FlowQueryConfig,
+    supportsLateral: boolean,
+    errors: string[]
+  ): void {
+    if (config.joinStrategy && !['auto', 'lateral', 'window'].includes(config.joinStrategy)) {
       errors.push(t('server.validation.flow.invalidJoinStrategy', { joinStrategy: config.joinStrategy }))
     } else if (config.joinStrategy === 'lateral' && !supportsLateral) {
       errors.push(t('server.validation.flow.lateralNotSupported'))
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
     }
   }
 
@@ -422,46 +460,16 @@ export class FlowQueryBuilder {
     // Handle logical filters (AND/OR)
     if ('and' in filter || 'or' in filter) {
       const logicalFilter = filter as LogicalFilter
-      const subConditions: SQL[] = []
       const filterList = logicalFilter.and || logicalFilter.or || []
-
-      for (const subFilter of filterList) {
-        const condition = this.buildFilterCondition(subFilter, cube, context)
-        if (condition) {
-          subConditions.push(condition)
-        }
-      }
-
-      if (subConditions.length === 0) return null
-      if (subConditions.length === 1) return subConditions[0]
-
-      if ('and' in filter) {
-        return and(...subConditions) as SQL
-      } else {
-        return sql`(${sql.join(subConditions, sql` OR `)})`
-      }
+      const subConditions = this.buildSubConditions(filterList, cube, context)
+      return this.combineConditions(subConditions, 'and' in filter)
     }
 
     // Handle client-style group filters
     if ('type' in filter && 'filters' in filter) {
       const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
-      const subConditions: SQL[] = []
-
-      for (const subFilter of groupFilter.filters || []) {
-        const condition = this.buildFilterCondition(subFilter, cube, context)
-        if (condition) {
-          subConditions.push(condition)
-        }
-      }
-
-      if (subConditions.length === 0) return null
-      if (subConditions.length === 1) return subConditions[0]
-
-      if (groupFilter.type === 'and') {
-        return and(...subConditions) as SQL
-      } else {
-        return sql`(${sql.join(subConditions, sql` OR `)})`
-      }
+      const subConditions = this.buildSubConditions(groupFilter.filters || [], cube, context)
+      return this.combineConditions(subConditions, groupFilter.type === 'and')
     }
 
     // Handle simple filter condition
@@ -480,6 +488,31 @@ export class FlowQueryBuilder {
       dimension,
       simpleFilter.dateRange
     )
+  }
+
+  /** Build the non-null sub-conditions of a logical/group filter. */
+  private buildSubConditions(
+    filterList: Filter[],
+    cube: Cube,
+    context: QueryContext
+  ): SQL[] {
+    const subConditions: SQL[] = []
+    for (const subFilter of filterList) {
+      const condition = this.buildFilterCondition(subFilter, cube, context)
+      if (condition) {
+        subConditions.push(condition)
+      }
+    }
+    return subConditions
+  }
+
+  /** Combine sub-conditions with AND/OR, collapsing the 0- and 1-element cases. */
+  private combineConditions(subConditions: SQL[], isAnd: boolean): SQL | null {
+    if (subConditions.length === 0) return null
+    if (subConditions.length === 1) return subConditions[0]
+    return isAnd
+      ? and(...subConditions) as SQL
+      : sql`(${sql.join(subConditions, sql` OR `)})`
   }
 
   // ============================================================================

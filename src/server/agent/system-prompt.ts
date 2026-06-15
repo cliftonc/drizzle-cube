@@ -10,6 +10,51 @@ import {
   DATE_FILTERING_PROMPT
 } from '../ai/mcp-prompts'
 
+/** Append the measures section for a cube to the summary lines. */
+function appendMeasureLines(lines: string[], cube: CubeMetadata): void {
+  if (!cube.measures || cube.measures.length === 0) return
+  lines.push('')
+  lines.push('**Measures:**')
+  for (const m of cube.measures) {
+    const desc = m.description ? ` - ${m.description}` : ''
+    lines.push(`- \`${cube.name}.${m.name}\` (${m.type})${desc}`)
+  }
+}
+
+/** Append the dimensions section for a cube to the summary lines. */
+function appendDimensionLines(lines: string[], cube: CubeMetadata): void {
+  if (!cube.dimensions || cube.dimensions.length === 0) return
+  lines.push('')
+  lines.push('**Dimensions:**')
+  for (const d of cube.dimensions) {
+    const desc = d.description ? ` - ${d.description}` : ''
+    lines.push(`- \`${cube.name}.${d.name}\` (${d.type})${desc}`)
+  }
+}
+
+/** Append the relationships (joins) section for a cube to the summary lines. */
+function appendRelationshipLines(lines: string[], cube: CubeMetadata): void {
+  if (!cube.relationships || cube.relationships.length === 0) return
+  lines.push('')
+  lines.push('**Joins:**')
+  for (const r of cube.relationships) {
+    lines.push(`- → \`${r.targetCube}\` (${r.relationship})`)
+  }
+}
+
+/** Append the event-stream metadata section for a cube to the summary lines. */
+function appendEventStreamLines(lines: string[], cube: CubeMetadata): void {
+  if (!cube.meta?.eventStream) return
+  lines.push('')
+  lines.push('**Event Stream:** Yes (supports funnel, flow, retention queries)')
+  if (cube.meta.eventStream.bindingKey) {
+    lines.push(`- Binding key: \`${cube.name}.${cube.meta.eventStream.bindingKey}\``)
+  }
+  if (cube.meta.eventStream.timeDimension) {
+    lines.push(`- Time dimension: \`${cube.name}.${cube.meta.eventStream.timeDimension}\``)
+  }
+}
+
 /**
  * Build a summary of cube metadata for the system prompt
  */
@@ -25,48 +70,10 @@ function buildCubeMetadataSummary(metadata: CubeMetadata[]): string {
     if (cube.description) {
       lines.push(cube.description)
     }
-
-    // Measures
-    if (cube.measures && cube.measures.length > 0) {
-      lines.push('')
-      lines.push('**Measures:**')
-      for (const m of cube.measures) {
-        const desc = m.description ? ` - ${m.description}` : ''
-        lines.push(`- \`${cube.name}.${m.name}\` (${m.type})${desc}`)
-      }
-    }
-
-    // Dimensions
-    if (cube.dimensions && cube.dimensions.length > 0) {
-      lines.push('')
-      lines.push('**Dimensions:**')
-      for (const d of cube.dimensions) {
-        const desc = d.description ? ` - ${d.description}` : ''
-        lines.push(`- \`${cube.name}.${d.name}\` (${d.type})${desc}`)
-      }
-    }
-
-    // Relationships (joins)
-    if (cube.relationships && cube.relationships.length > 0) {
-      lines.push('')
-      lines.push('**Joins:**')
-      for (const r of cube.relationships) {
-        lines.push(`- → \`${r.targetCube}\` (${r.relationship})`)
-      }
-    }
-
-    // Event stream metadata (funnel/flow/retention support)
-    if (cube.meta?.eventStream) {
-      lines.push('')
-      lines.push('**Event Stream:** Yes (supports funnel, flow, retention queries)')
-      if (cube.meta.eventStream.bindingKey) {
-        lines.push(`- Binding key: \`${cube.name}.${cube.meta.eventStream.bindingKey}\``)
-      }
-      if (cube.meta.eventStream.timeDimension) {
-        lines.push(`- Time dimension: \`${cube.name}.${cube.meta.eventStream.timeDimension}\``)
-      }
-    }
-
+    appendMeasureLines(lines, cube)
+    appendDimensionLines(lines, cube)
+    appendRelationshipLines(lines, cube)
+    appendEventStreamLines(lines, cube)
     lines.push('')
   }
 

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useTranslation } from '../../hooks/useTranslation'
-import { ComposedChart, Bar, XAxis, CartesianGrid, Cell } from 'recharts'
+import { ComposedChart, XAxis, CartesianGrid } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import AngledXAxisTick from './AngledXAxisTick'
@@ -15,8 +15,9 @@ import {
   makeCartesianTooltipFormatter,
   renderHoverLegend
 } from './chartScaffolding'
-import { CHART_COLORS, POSITIVE_COLOR, NEGATIVE_COLOR } from '../../utils/chartConstants'
-import { transformChartDataWithSeries, isValidNumericValue } from '../../utils/chartUtils'
+import { resolveStackMode, filterEmptyRows, resolveBarColoringMode } from './BarChart.helpers'
+import { BarSeries } from './BarSeries'
+import { transformChartDataWithSeries } from '../../utils/chartUtils'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
@@ -36,9 +37,7 @@ const BarChart = React.memo(function BarChart({
   const getFieldLabel = useCubeFieldLabel()
 
   // Determine stacking from stackType (new) or stacked (legacy)
-  const stackType = displayConfig?.stackType ?? (displayConfig?.stacked ? 'normal' : 'none')
-  const shouldStack = stackType !== 'none'
-  const isPercentStack = stackType === 'percent'
+  const { shouldStack, isPercentStack } = resolveStackMode(displayConfig)
 
   const safeDisplayConfig = {
     showLegend: displayConfig?.showLegend ?? true,
@@ -95,17 +94,10 @@ const BarChart = React.memo(function BarChart({
 
   // Null handling: Filter out data points where ALL measure values are null
   // This prevents rendering empty bars and makes the chart clearer
-  const { chartData, skippedCount } = useMemo(() => {
-    if (transformedData.length === 0 || seriesKeys.length === 0) {
-      return { chartData: [], skippedCount: 0 }
-    }
-    const filtered = transformedData.filter(row => {
-      // Keep the row if at least one series has a valid numeric value
-      return seriesKeys.some(key => isValidNumericValue(row[key]))
-    })
-    const skipped = transformedData.length - filtered.length
-    return { chartData: filtered, skippedCount: skipped }
-  }, [transformedData, seriesKeys])
+  const { chartData, skippedCount } = useMemo(
+    () => filterEmptyRows(transformedData, seriesKeys),
+    [transformedData, seriesKeys]
+  )
 
   // Now handle early returns AFTER all hooks
   try {
@@ -123,19 +115,9 @@ const BarChart = React.memo(function BarChart({
     const effectiveIsPercentStack = isPercentStack && !hasRightAxis
     const stackOffset = effectiveIsPercentStack ? 'expand' as const : undefined
 
-    // Check if we should use positive/negative coloring
-    // This is enabled when we have single series data with mixed positive/negative values
-    const usePositiveNegativeColoring = seriesKeys.length === 1 && chartData.some(row => {
-      const value = row[seriesKeys[0]]
-      return typeof value === 'number' && value < 0
-    })
-
-    // Color each bar by its x-axis category when there's a single measure and no series dimension.
-    // This gives each category a distinct color without needing to abuse the series field.
-    const useColorByCategory = seriesKeys.length === 1
-      && !usePositiveNegativeColoring
-      && !seriesFields.length
-      && chartData.length > 1
+    // Resolve special per-bar colouring modes (positive/negative + colour-by-category)
+    const { usePositiveNegativeColoring, useColorByCategory } =
+      resolveBarColoringMode(seriesKeys, chartData, seriesFields.length)
 
     // Determine if legend will be shown
     const showLegend = safeDisplayConfig.showLegend
@@ -195,55 +177,22 @@ const BarChart = React.memo(function BarChart({
             const originalField = seriesKeyToField[seriesKey]
             const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
             return (
-              <Bar
+              <BarSeries
                 key={seriesKey}
-                dataKey={seriesKey}
-                yAxisId={axisId}
+                seriesKey={seriesKey}
+                index={index}
+                originalField={originalField}
+                axisId={axisId}
                 stackId={effectiveShouldStack ? 'stack' : undefined}
-                fill={
-                  usePositiveNegativeColoring
-                    ? POSITIVE_COLOR
-                    : (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
-                      CHART_COLORS[index % CHART_COLORS.length]
-                }
-                fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
-                cursor={drillEnabled ? 'pointer' : undefined}
-                onClick={(barData: any, dataIndex: number, event: React.MouseEvent) => {
-                  if (onDataPointClick && drillEnabled && barData) {
-                    onDataPointClick({
-                      dataPoint: enhancedChartData[dataIndex] || barData,
-                      clickedField: originalField || seriesKey,
-                      xValue: barData.name,
-                      position: { x: event.clientX, y: event.clientY },
-                      nativeEvent: event
-                    })
-                  }
-                }}
-              >
-                {usePositiveNegativeColoring &&
-                  chartData.map((entry, entryIndex) => {
-                    const value = entry[seriesKey]
-                    const fillColor = typeof value === 'number' && value < 0 ? NEGATIVE_COLOR : POSITIVE_COLOR
-                    return (
-                      <Cell
-                        key={`cell-${entryIndex}`}
-                        fill={fillColor}
-                        fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
-                      />
-                    )
-                  })}
-                {useColorByCategory &&
-                  chartData.map((_entry, entryIndex) => {
-                    const colors = colorPalette?.colors || CHART_COLORS
-                    return (
-                      <Cell
-                        key={`cat-${entryIndex}`}
-                        fill={colors[entryIndex % colors.length]}
-                        fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
-                      />
-                    )
-                  })}
-              </Bar>
+                chartData={chartData}
+                enhancedChartData={enhancedChartData}
+                colorPalette={colorPalette}
+                hoveredLegend={hoveredLegend}
+                usePositiveNegativeColoring={usePositiveNegativeColoring}
+                useColorByCategory={useColorByCategory}
+                drillEnabled={drillEnabled}
+                onDataPointClick={onDataPointClick}
+              />
             )
           })}
           {renderChartTargetLines(spreadTargets)}

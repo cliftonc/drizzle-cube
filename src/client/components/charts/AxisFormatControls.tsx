@@ -235,8 +235,19 @@ interface MultiAxisFormatControlsProps {
   }
 }
 
+type AxisKey = 'xAxisFormat' | 'leftYAxisFormat' | 'rightYAxisFormat'
+
+interface AxisEntry {
+  show: boolean | undefined
+  key: AxisKey
+  labelKey: string
+  previewValue?: number
+}
+
 /**
- * Container component for multiple axis format controls
+ * Container component for multiple axis format controls. Each configured axis
+ * renders an `AxisFormatControls`; the per-axis entries are data-driven so the
+ * three branches collapse into a single map.
  */
 export function MultiAxisFormatControls({
   displayConfig,
@@ -244,47 +255,28 @@ export function MultiAxisFormatControls({
   showAxes = { leftYAxis: true, rightYAxis: true }
 }: MultiAxisFormatControlsProps) {
   const { t } = useTranslation()
+
+  const entries: AxisEntry[] = [
+    { show: showAxes.leftYAxis, key: 'leftYAxisFormat', labelKey: 'chart.runtime.axisFormat.leftYAxis' },
+    { show: showAxes.rightYAxis, key: 'rightYAxisFormat', labelKey: 'chart.runtime.axisFormat.rightYAxis' },
+    // Use a year-like number for X-axis preview
+    { show: showAxes.xAxis, key: 'xAxisFormat', labelKey: 'chart.runtime.axisFormat.xAxis', previewValue: 2024 }
+  ]
+
+  const updateAxis = (key: AxisKey, config: AxisFormatConfig) =>
+    onChange({ ...displayConfig, [key]: Object.keys(config).length > 0 ? config : undefined })
+
   return (
     <div className="dc:space-y-4">
-      {showAxes.leftYAxis && (
+      {entries.filter((entry) => entry.show).map((entry) => (
         <AxisFormatControls
-          axisLabel={t('chart.runtime.axisFormat.leftYAxis')}
-          value={displayConfig.leftYAxisFormat || {}}
-          onChange={(config) =>
-            onChange({
-              ...displayConfig,
-              leftYAxisFormat: Object.keys(config).length > 0 ? config : undefined
-            })
-          }
+          key={entry.key}
+          axisLabel={t(entry.labelKey)}
+          value={displayConfig[entry.key] || {}}
+          onChange={(config) => updateAxis(entry.key, config)}
+          previewValue={entry.previewValue}
         />
-      )}
-
-      {showAxes.rightYAxis && (
-        <AxisFormatControls
-          axisLabel={t('chart.runtime.axisFormat.rightYAxis')}
-          value={displayConfig.rightYAxisFormat || {}}
-          onChange={(config) =>
-            onChange({
-              ...displayConfig,
-              rightYAxisFormat: Object.keys(config).length > 0 ? config : undefined
-            })
-          }
-        />
-      )}
-
-      {showAxes.xAxis && (
-        <AxisFormatControls
-          axisLabel={t('chart.runtime.axisFormat.xAxis')}
-          value={displayConfig.xAxisFormat || {}}
-          onChange={(config) =>
-            onChange({
-              ...displayConfig,
-              xAxisFormat: Object.keys(config).length > 0 ? config : undefined
-            })
-          }
-          previewValue={2024} // Use a year-like number for X-axis preview
-        />
-      )}
+      ))}
     </div>
   )
 }

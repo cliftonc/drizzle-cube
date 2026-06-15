@@ -272,65 +272,107 @@ export function parseJsonRpc(body: unknown): JsonRpcRequest | null {
   return request
 }
 
+/** Resolved per-request MCP state shared by the method handlers. */
+interface McpDispatchState {
+  appEnabled?: boolean
+  serverName: string
+  prompts: MCPPrompt[]
+  resources: MCPResource[]
+  instructions: string
+}
+
+/** Build the `initialize` result, negotiating the protocol version. */
+function buildInitializeResult(params: unknown, state: McpDispatchState): unknown {
+  // MCP 2025-11-25: Client sends protocolVersion in params. If we support it,
+  // respond with the same version; otherwise respond with our latest supported.
+  const clientRequestedVersion = (params as any)?.protocolVersion as string | undefined
+  const responseVersion =
+    clientRequestedVersion && SUPPORTED_MCP_PROTOCOLS.includes(clientRequestedVersion)
+      ? clientRequestedVersion
+      : DEFAULT_MCP_PROTOCOL
+
+  return {
+    protocolVersion: responseVersion,
+    capabilities: {
+      tools: { listChanged: false },
+      resources: { listChanged: false },
+      prompts: { listChanged: false },
+      sampling: {}
+    },
+    sessionId: primeEventId(),
+    serverInfo: {
+      name: state.serverName,
+      // Use safe check for process.env to support edge runtimes (Cloudflare Workers, etc.)
+      version: typeof process !== 'undefined' ? process.env?.npm_package_version || 'dev' : 'worker'
+    },
+    // MCP spec: InitializeResult.instructions — the only server-authored
+    // string clients are expected to surface to the model. Tells the LLM
+    // it MUST call discover first and read the queryLanguageReference
+    // returned in that response before constructing any query.
+    instructions: state.instructions
+  }
+}
+
+/** Build the `resources/list` result. */
+function buildResourcesList(state: McpDispatchState): unknown {
+  return {
+    resources: state.resources.map(({ uri, name, description, mimeType }) => ({
+      uri,
+      name,
+      description,
+      mimeType
+    })),
+    nextCursor: ''
+  }
+}
+
+/** Build the `resources/read` result for the requested (or first) resource. */
+function buildResourceRead(params: unknown, state: McpDispatchState): unknown {
+  const uri = (params as any)?.uri as string | undefined
+  const resource = state.resources.find(r => r.uri === uri) || state.resources[0]
+  if (!resource) throw jsonRpcError(-32602, 'resource not found')
+  return {
+    contents: [
+      {
+        uri: resource.uri,
+        mimeType: resource.mimeType,
+        text: resource.text
+      }
+    ]
+  }
+}
+
+/** Build the `prompts/get` result for the requested (or first) prompt. */
+function buildPromptGet(params: unknown, state: McpDispatchState): unknown {
+  const name = (params as any)?.name as string | undefined
+  const prompt = state.prompts.find(p => p.name === name) || state.prompts[0]
+  if (!prompt) throw jsonRpcError(-32602, 'prompt not found')
+  return {
+    name: prompt.name,
+    description: prompt.description,
+    messages: prompt.messages
+  }
+}
+
 export async function dispatchMcpMethod(
   method: string,
   params: unknown,
   ctx: McpDispatchContext
 ): Promise<unknown> {
   const { appEnabled, appConfig } = ctx
-  const serverName = ctx.serverName ?? 'drizzle-cube'
-  const prompts = ctx.prompts ?? PROMPTS
   const baseResources = ctx.resources ?? RESOURCES
-  const instructions = ctx.instructions ?? getDefaultMcpInstructions()
-
-  // Add MCP App visualization resource when app mode is enabled
-  const resources = appEnabled ? [
-    ...baseResources,
-    ...getMcpAppResource(appConfig)
-  ] : baseResources
+  const state: McpDispatchState = {
+    appEnabled,
+    serverName: ctx.serverName ?? 'drizzle-cube',
+    prompts: ctx.prompts ?? PROMPTS,
+    // Add MCP App visualization resource when app mode is enabled
+    resources: appEnabled ? [...baseResources, ...getMcpAppResource(appConfig)] : baseResources,
+    instructions: ctx.instructions ?? getDefaultMcpInstructions()
+  }
 
   switch (method) {
-    case 'initialize': {
-      // MCP 2025-11-25: Client sends protocolVersion in params
-      // If we support it, respond with same version; otherwise respond with our latest supported
-      const clientRequestedVersion = (params as any)?.protocolVersion as string | undefined
-      let responseVersion: string
-
-      if (clientRequestedVersion && SUPPORTED_MCP_PROTOCOLS.includes(clientRequestedVersion)) {
-        // We support the client's requested version
-        responseVersion = clientRequestedVersion
-      } else {
-        // Fall back to our latest supported version (client will disconnect if unsupported)
-        responseVersion = DEFAULT_MCP_PROTOCOL
-      }
-
-      return {
-        protocolVersion: responseVersion,
-        capabilities: {
-          tools: {
-            listChanged: false
-          },
-          resources: {
-            listChanged: false
-          },
-          prompts: {
-            listChanged: false
-          },
-          sampling: {}
-        },
-        sessionId: primeEventId(),
-        serverInfo: {
-          name: serverName,
-          // Use safe check for process.env to support edge runtimes (Cloudflare Workers, etc.)
-          version: typeof process !== 'undefined' ? process.env?.npm_package_version || 'dev' : 'worker'
-        },
-        // MCP spec: InitializeResult.instructions — the only server-authored
-        // string clients are expected to surface to the model. Tells the LLM
-        // it MUST call discover first and read the queryLanguageReference
-        // returned in that response before constructing any query.
-        instructions
-      }
-    }
+    case 'initialize':
+      return buildInitializeResult(params, state)
 
     case 'list_tools':
     case 'tools/list':
@@ -341,59 +383,31 @@ export async function dispatchMcpMethod(
       return executeToolCall(params, ctx)
 
     case 'resources/list':
-      return {
-        resources: resources.map(({ uri, name, description, mimeType }) => ({
-          uri,
-          name,
-          description,
-          mimeType
-        })),
-        nextCursor: ''
-      }
+      return buildResourcesList(state)
 
     case 'resources/templates/list':
       return { resourceTemplates: [], nextCursor: '' }
 
-    case 'resources/read': {
-      const uri = (params as any)?.uri as string | undefined
-      const resource = resources.find(r => r.uri === uri) || resources[0]
-      if (!resource) throw jsonRpcError(-32602, 'resource not found')
-      return {
-        contents: [
-          {
-            uri: resource.uri,
-            mimeType: resource.mimeType,
-            text: resource.text
-          }
-        ]
-      }
-    }
+    case 'resources/read':
+      return buildResourceRead(params, state)
 
     case 'prompts/list':
       return {
-        prompts: prompts.map(({ name, description }) => ({ name, description })),
+        prompts: state.prompts.map(({ name, description }) => ({ name, description })),
         nextCursor: ''
       }
 
     case 'ping':
       return { }
 
-    // Handle the initialized notification (sent by client after receiving InitializeResult)
+    // Handle the initialized notification (sent by client after receiving
+    // InitializeResult). Client is indicating it's ready for normal operations;
+    // no response needed (this is a notification).
     case 'notifications/initialized':
-      // Client is indicating it's ready for normal operations
-      // No response needed (this is a notification)
       return {}
 
-    case 'prompts/get': {
-      const name = (params as any)?.name as string | undefined
-      const prompt = prompts.find(p => p.name === name) || prompts[0]
-      if (!prompt) throw jsonRpcError(-32602, 'prompt not found')
-      return {
-        name: prompt.name,
-        description: prompt.description,
-        messages: prompt.messages
-      }
-    }
+    case 'prompts/get':
+      return buildPromptGet(params, state)
 
     default:
       throw jsonRpcError(-32601, `Unknown MCP method: ${method}`)

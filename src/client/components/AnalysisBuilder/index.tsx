@@ -21,7 +21,7 @@
  * - Modal/portlet editing: No persistence, initializes from props
  */
 
-import { forwardRef, useImperativeHandle, useMemo } from 'react'
+import { forwardRef, useMemo, useCallback } from 'react'
 import { useCubeFeatures, useCubeMeta } from '../../providers/CubeProvider'
 import { AnalysisBuilderStoreProvider } from '../../stores/analysisBuilderStore'
 import { useAnalysisBuilder } from '../../hooks/useAnalysisBuilderHook'
@@ -38,6 +38,12 @@ import AnalysisResultsPanel from './AnalysisResultsPanel'
 import AnalysisQueryPanel from './AnalysisQueryPanel'
 import AnalysisAIPanel from './AnalysisAIPanel'
 import AnalysisModeErrorBoundary from './AnalysisModeErrorBoundary'
+import { useAnalysisBuilderImperativeHandle } from './hooks/useAnalysisBuilderImperativeHandle'
+import {
+  extractFunnelStateFromShare,
+  extractFlowStateFromShare,
+  extractRetentionStateFromShare
+} from './utils/shareStateUtils'
 import type { MetaResponse } from '../../shared/types'
 
 /**
@@ -194,47 +200,40 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
     // ========================================================================
     // Expose API via ref
     // ========================================================================
-    useImperativeHandle(
-      ref,
-      () => ({
-        getQueryConfig: analysis.getQueryConfig,
-        getChartConfig: analysis.getChartConfig,
-        getAnalysisType: analysis.getAnalysisType,
-        getFunnelState: () => {
-          // Read directly from store to ensure fresh values (same pattern as getQueryConfig/getChartConfig)
-          const state = storeApi.getState()
-          // Get funnel chart config from charts map (Phase 4 - use charts map)
-          const funnelConfig = state.charts.funnel || {
-            chartType: 'funnel' as const,
-            chartConfig: {},
-            displayConfig: { showLegend: true, showGrid: true, showTooltip: true },
-          }
-          return {
-            funnelCube: state.funnelCube,
-            funnelSteps: state.funnelSteps,
-            funnelTimeDimension: state.funnelTimeDimension,
-            funnelBindingKey: state.funnelBindingKey,
-            funnelChartType: funnelConfig.chartType,
-            funnelChartConfig: funnelConfig.chartConfig,
-            funnelDisplayConfig: funnelConfig.displayConfig,
-            activeFunnelStepIndex: state.activeFunnelStepIndex,
-          }
-        },
-        // Phase 3: Complete AnalysisConfig from store.save()
-        getAnalysisConfig: () => storeApi.getState().save(),
-        executeQuery: () => {
-          // Manual execute would refetch - for now just invalidate cache
-          // This could be enhanced to trigger a refetch
-        },
-        clearQuery: analysis.actions.clearQuery
-      }),
-      [
-        analysis.getQueryConfig,
-        analysis.getChartConfig,
-        analysis.getAnalysisType,
-        analysis.actions.clearQuery,
-        storeApi
-      ]
+    useAnalysisBuilderImperativeHandle(ref, {
+      getQueryConfig: analysis.getQueryConfig,
+      getChartConfig: analysis.getChartConfig,
+      getAnalysisType: analysis.getAnalysisType,
+      clearQuery: analysis.actions.clearQuery,
+      storeApi
+    })
+
+    // ========================================================================
+    // Render-time derived values
+    // ========================================================================
+
+    // Display config depends on the active analysis mode
+    const resultsDisplayConfig =
+      analysis.analysisType === 'flow'
+        ? analysis.flowDisplayConfig
+        : analysis.analysisType === 'funnel'
+          ? analysis.funnelDisplayConfig
+          : analysis.displayConfig
+
+    // Toggle a metric/breakdown from schema-visualization field clicks
+    const handleSchemaFieldClick = useCallback(
+      (cubeName: string, fieldName: string, fieldType: string) => {
+        const fullName = `${cubeName}.${fieldName}`
+        if (fieldType === 'measure') {
+          analysis.actions.toggleMetric(fullName)
+        } else {
+          // Look up whether it's a time dimension from schema
+          const cube = (meta as MetaResponse | null)?.cubes?.find((c) => c.name === cubeName)
+          const dim = cube?.dimensions?.find((d) => d.name === fullName)
+          analysis.actions.toggleBreakdown(fullName, dim?.type === 'time')
+        }
+      },
+      [meta, analysis.actions]
     )
 
     // ========================================================================
@@ -271,13 +270,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               resultsStale={analysis.isLoading && analysis.executionResults !== null}
               chartType={analysis.chartType}
               chartConfig={analysis.chartConfig}
-              displayConfig={
-                analysis.analysisType === 'flow'
-                  ? analysis.flowDisplayConfig
-                  : analysis.analysisType === 'funnel'
-                    ? analysis.funnelDisplayConfig
-                    : analysis.displayConfig
-              }
+              displayConfig={resultsDisplayConfig}
               colorPalette={analysis.colorPalette}
               // Only show palette selector in standalone mode (not when editing portlet)
               currentPaletteName={!externalColorPalette ? analysis.localPaletteName : undefined}
@@ -334,17 +327,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
                 ...analysis.queryState.metrics.map((m) => m.field),
                 ...analysis.effectiveBreakdowns.map((b) => b.field),
               ]}
-              onSchemaFieldClick={(cubeName, fieldName, fieldType) => {
-                const fullName = `${cubeName}.${fieldName}`
-                if (fieldType === 'measure') {
-                  analysis.actions.toggleMetric(fullName)
-                } else {
-                  // Look up whether it's a time dimension from schema
-                  const cube = (meta as MetaResponse | null)?.cubes?.find(c => c.name === cubeName)
-                  const dim = cube?.dimensions?.find(d => d.name === fullName)
-                  analysis.actions.toggleBreakdown(fullName, dim?.type === 'time')
-                }
-              }}
+              onSchemaFieldClick={handleSchemaFieldClick}
             />
           </div>
         </div>
@@ -525,106 +508,10 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     const initialActiveViewFromShare = sharedState?.activeView
     const initialAnalysisTypeFromShare = sharedState?.analysisType
 
-    // Phase 3: Extract funnel state from AnalysisConfig format
-    // For funnel mode, funnel config is in query.funnel, chart config is in charts.funnel
-    const initialFunnelStateFromShare = (() => {
-      if (!sharedState || sharedState.analysisType !== 'funnel') return undefined
-      const funnelQuery = 'funnel' in sharedState.query ? sharedState.query.funnel : null
-      if (!funnelQuery) return undefined
-
-      const funnelChartConfig = sharedState.charts?.funnel
-
-      return {
-        funnelCube: null, // Not stored in AnalysisConfig directly - will be derived from steps
-        funnelSteps: [], // Steps need to be reconstructed from ServerFunnelQuery format
-        funnelTimeDimension: typeof funnelQuery.timeDimension === 'string' ? funnelQuery.timeDimension : null,
-        funnelBindingKey: funnelQuery.bindingKey
-          ? { dimension: funnelQuery.bindingKey }
-          : null,
-        funnelChartType: funnelChartConfig?.chartType || 'funnel',
-        funnelChartConfig: funnelChartConfig?.chartConfig || {},
-        funnelDisplayConfig: funnelChartConfig?.displayConfig || {},
-      }
-    })()
-
-    // Extract flow state from AnalysisConfig format (for share URLs)
-    const initialFlowStateFromShare = (() => {
-      if (!sharedState || sharedState.analysisType !== 'flow') return undefined
-      const flowQuery = 'flow' in sharedState.query ? sharedState.query.flow : null
-      if (!flowQuery) return undefined
-
-      const flowChartConfig = sharedState.charts?.flow
-
-      return {
-        flowCube: null, // Not stored in AnalysisConfig directly
-        flowBindingKey: flowQuery.bindingKey
-          ? (typeof flowQuery.bindingKey === 'string'
-              ? { dimension: flowQuery.bindingKey }
-              : { dimension: flowQuery.bindingKey[0]?.dimension || '' })
-          : null,
-        flowTimeDimension: typeof flowQuery.timeDimension === 'string'
-          ? flowQuery.timeDimension
-          : flowQuery.timeDimension?.[0]?.dimension || null,
-        startingStep: flowQuery.startingStep
-          ? {
-              name: flowQuery.startingStep.name || '',
-              filters: Array.isArray(flowQuery.startingStep.filter)
-                ? flowQuery.startingStep.filter
-                : flowQuery.startingStep.filter
-                  ? [flowQuery.startingStep.filter]
-                  : [],
-            }
-          : { name: '', filters: [] },
-        stepsBefore: flowQuery.stepsBefore ?? 3,
-        stepsAfter: flowQuery.stepsAfter ?? 3,
-        eventDimension: flowQuery.eventDimension || null,
-        flowChartType: flowChartConfig?.chartType || 'sankey',
-        flowChartConfig: flowChartConfig?.chartConfig || {},
-        flowDisplayConfig: flowChartConfig?.displayConfig || {},
-      }
-    })()
-
-    // Extract retention state from AnalysisConfig format (for share URLs)
-    const initialRetentionStateFromShare = (() => {
-      if (!sharedState || sharedState.analysisType !== 'retention') return undefined
-      const retentionQuery = 'retention' in sharedState.query ? sharedState.query.retention : null
-      if (!retentionQuery) return undefined
-
-      const retentionChartConfig = sharedState.charts?.retention
-
-      return {
-        retentionCube: null, // Not stored directly - derived from timeDimension
-        retentionBindingKey: retentionQuery.bindingKey
-          ? (typeof retentionQuery.bindingKey === 'string'
-              ? { dimension: retentionQuery.bindingKey }
-              : { dimension: retentionQuery.bindingKey })
-          : null,
-        retentionTimeDimension: typeof retentionQuery.timeDimension === 'string'
-          ? retentionQuery.timeDimension
-          : null,
-        retentionDateRange: retentionQuery.dateRange,
-        retentionCohortFilters: Array.isArray(retentionQuery.cohortFilters)
-          ? retentionQuery.cohortFilters
-          : retentionQuery.cohortFilters
-            ? [retentionQuery.cohortFilters]
-            : [],
-        retentionActivityFilters: Array.isArray(retentionQuery.activityFilters)
-          ? retentionQuery.activityFilters
-          : retentionQuery.activityFilters
-            ? [retentionQuery.activityFilters]
-            : [],
-        retentionBreakdowns: retentionQuery.breakdownDimensions?.map((field: string) => ({
-          field,
-          label: field.split('.').pop() || field,
-        })) || [],
-        retentionViewGranularity: retentionQuery.granularity || 'week',
-        retentionPeriods: retentionQuery.periods || 12,
-        retentionType: retentionQuery.retentionType || 'classic',
-        retentionChartType: retentionChartConfig?.chartType || 'retentionCombined',
-        retentionChartConfig: retentionChartConfig?.chartConfig || {},
-        retentionDisplayConfig: retentionChartConfig?.displayConfig || {},
-      }
-    })()
+    // Phase 3: Extract per-mode initial state from AnalysisConfig format (share URLs)
+    const initialFunnelStateFromShare = extractFunnelStateFromShare(sharedState)
+    const initialFlowStateFromShare = extractFlowStateFromShare(sharedState)
+    const initialRetentionStateFromShare = extractRetentionStateFromShare(sharedState)
 
     // Hide share button when using initialQuery (e.g., viewing a shared analysis)
     const hideShare = !!initialQuery || !!initialFunnelState || !!initialFlowState || !!initialRetentionState

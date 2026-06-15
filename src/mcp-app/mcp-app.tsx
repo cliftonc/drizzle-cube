@@ -36,6 +36,7 @@ import McpChartSwitcher from './McpChartSwitcher'
 
 // Auto-selection
 import { autoSelectChartType, deriveChartConfig, type McpChartType } from './chartAutoSelect'
+import { parseLoadResult, type LoadResult } from './parseLoadResult'
 import { applyHostContext, applyFallbackTheme } from './theme-bridge'
 import './global.css'
 
@@ -145,12 +146,6 @@ function normalizeHint(
   return { chartConfig, displayConfig }
 }
 
-interface LoadResult {
-  data: any[]
-  annotation?: any
-  query?: any
-}
-
 type ChartConfigSource = 'auto' | 'hint' | 'manual'
 
 export function McpApp() {
@@ -182,40 +177,15 @@ export function McpApp() {
 
   const processResult = useCallback((res: unknown, hint?: ChartHint | null) => {
     try {
-      let parsed: LoadResult
-      if (res && typeof res === 'object' && 'content' in res) {
-        const content = (res as { content: Array<{ type: string; text?: string }> }).content
-        const textContent = content.find((c) => c.type === 'text')
-        if (textContent?.text) {
-          parsed = JSON.parse(textContent.text)
-        } else {
-          setError(t('mcp.error.noTextContent'))
-          return
-        }
-      } else if (res && typeof res === 'object' && 'data' in res) {
-        parsed = res as LoadResult
-      } else if (typeof res === 'string') {
-        parsed = JSON.parse(res)
-      } else {
-        parsed = res as LoadResult
-      }
-
-      if (parsed && 'results' in parsed && Array.isArray((parsed as any).results)) {
-        const firstResult = (parsed as any).results[0]
-        if (firstResult) {
-          parsed = {
-            data: firstResult.data || [],
-            query: firstResult.query || (parsed as any).query,
-            annotation: firstResult.annotation,
-          }
-        }
-      }
-
-      if (!parsed?.data || !Array.isArray(parsed.data)) {
-        setError(t('mcp.error.invalidResultFormat'))
+      const outcome = parseLoadResult(res)
+      if (!outcome.ok) {
+        setError(outcome.error === 'noTextContent'
+          ? t('mcp.error.noTextContent')
+          : t('mcp.error.invalidResultFormat'))
         return
       }
 
+      const parsed = outcome.result
       setResult(parsed)
       setError(null)
 

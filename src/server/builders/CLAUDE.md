@@ -13,10 +13,14 @@ src/server/builders/
 ├── flow-query-builder.ts          FlowQueryBuilder — user path/journey analysis
 ├── retention-query-builder.ts     RetentionQueryBuilder — cohort retention analysis
 ├── filter-builder.ts              FilterBuilder — WHERE clause generation
+├── filter-operators.ts            Per-operator handlers for FilterBuilder.buildFilterCondition
 ├── measure-builder.ts             MeasureBuilder — SELECT aggregate expressions
 ├── group-by-builder.ts            GroupByBuilder — GROUP BY clause generation
-└── date-time-builder.ts           DateTimeBuilder — time bucketing and date filters
+├── date-time-builder.ts           DateTimeBuilder — time bucketing and date filters
+└── date-time-helpers.ts           Adapter-aware date/range conversions shared by DateTimeBuilder
 ```
+
+`analysis-utils.ts` holds shared helpers used by the analysis builders (comparison/funnel/flow/retention).
 
 ## Key Components
 

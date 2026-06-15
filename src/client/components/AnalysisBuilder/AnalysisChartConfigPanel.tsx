@@ -17,6 +17,7 @@ import type { MetricItem, BreakdownItem } from './types'
 import type { ChartAvailabilityMap } from '../../shared/chartDefaults'
 import type { MetaResponse } from '../../shared/types'
 import { useTranslation } from '../../hooks/useTranslation'
+import { applyAxisDrop, applyAxisRemove, applyAxisReorder } from './utils/axisConfigUtils'
 
 const MeasureIcon = getIcon('measure')
 const DimensionIcon = getIcon('dimension')
@@ -207,93 +208,20 @@ export default function AnalysisChartConfigPanel({
     const data = JSON.parse(e.dataTransfer.getData('text/plain'))
     const { field, fromAxis } = data
 
-    const newConfig = { ...chartConfig }
-
-    // Remove from old location if moving between axes
-    if (fromAxis !== 'available' && fromAxis !== toAxis) {
-      const fromValue = newConfig[fromAxis as keyof ChartAxisConfig]
-      if (Array.isArray(fromValue)) {
-        const filteredValue = fromValue.filter((f) => f !== field)
-        if (filteredValue.length === 0) {
-          delete newConfig[fromAxis as keyof ChartAxisConfig]
-        } else {
-          newConfig[fromAxis as keyof ChartAxisConfig] = filteredValue as any
-        }
-      } else if (fromValue === field) {
-        delete newConfig[fromAxis as keyof ChartAxisConfig]
-      }
-    }
-
-    // Add to new location
-    const toValue = newConfig[toAxis as keyof ChartAxisConfig]
     const dropZoneConfig = chartTypeConfig.dropZones.find((dz) => dz.key === toAxis)
-
-    if (dropZoneConfig?.maxItems === 1) {
-      // Single field - always store as string
-      newConfig[toAxis as keyof ChartAxisConfig] = field as any
-    } else {
-      // Multiple fields - always store as array
-      if (Array.isArray(toValue)) {
-        if (!toValue.includes(field)) {
-          newConfig[toAxis as keyof ChartAxisConfig] = [...toValue, field] as any
-        }
-      } else {
-        newConfig[toAxis as keyof ChartAxisConfig] = [field] as any
-      }
-    }
-
-    // Apply default yAxisAssignment when adding to yAxis with dual axis enabled
-    if (toAxis === 'yAxis' && dropZoneConfig?.enableDualAxis) {
-      const currentYAxisFields = Array.isArray(newConfig.yAxis) ? newConfig.yAxis : [field]
-      const fieldIndex = currentYAxisFields.indexOf(field)
-      // Default: 1st field = left, 2nd field = right, 3rd+ = left
-      if (!newConfig.yAxisAssignment?.[field]) {
-        newConfig.yAxisAssignment = {
-          ...newConfig.yAxisAssignment,
-          [field]: fieldIndex === 1 ? 'right' : 'left'
-        }
-      }
-    }
+    const newConfig = applyAxisDrop(chartConfig, field, fromAxis, toAxis, dropZoneConfig)
 
     setDraggedItem(null)
     onChartConfigChange(newConfig)
   }
 
   const handleRemoveFromAxis = (field: string, fromAxis: string) => {
-    const newConfig = { ...chartConfig }
-    const value = newConfig[fromAxis as keyof ChartAxisConfig]
-
-    if (Array.isArray(value)) {
-      const filteredValue = value.filter((f) => f !== field)
-      if (filteredValue.length === 0) {
-        delete newConfig[fromAxis as keyof ChartAxisConfig]
-      } else {
-        newConfig[fromAxis as keyof ChartAxisConfig] = filteredValue as any
-      }
-    } else if (value === field) {
-      delete newConfig[fromAxis as keyof ChartAxisConfig]
-    }
-
-    // Clean up yAxisAssignment when removing from yAxis
-    if (fromAxis === 'yAxis' && newConfig.yAxisAssignment?.[field]) {
-      const { [field]: _removed, ...rest } = newConfig.yAxisAssignment
-      newConfig.yAxisAssignment = Object.keys(rest).length > 0 ? rest : undefined
-    }
-
-    onChartConfigChange(newConfig)
+    onChartConfigChange(applyAxisRemove(chartConfig, field, fromAxis))
   }
 
   const handleReorder = (fromIndex: number, toIndex: number, axisKey: string) => {
-    const newConfig = { ...chartConfig }
-    const value = newConfig[axisKey as keyof ChartAxisConfig]
-
-    // Only reorder if we have an array with multiple items
-    if (Array.isArray(value) && value.length > 1 && fromIndex !== toIndex) {
-      const newArray = [...value]
-      const [movedItem] = newArray.splice(fromIndex, 1)
-      newArray.splice(toIndex, 0, movedItem)
-      newConfig[axisKey as keyof ChartAxisConfig] = newArray as any
-
+    const newConfig = applyAxisReorder(chartConfig, fromIndex, toIndex, axisKey)
+    if (newConfig) {
       setDraggedItem(null)
       onChartConfigChange(newConfig)
     }

@@ -7,6 +7,13 @@ import { t } from '../../i18n/runtime'
 import type { CubeMetadata } from '../types/metadata'
 import type { SemanticQuery, Filter } from '../types/query'
 import { findBestFieldMatch, levenshteinDistance } from './discovery'
+import {
+  validateRequiredDimensionField,
+  buildCorrectedQuery,
+  collectPerformanceWarnings,
+  checkTimeDimensionType,
+  validateMemberFilter,
+} from './validation-helpers'
 
 /**
  * Validation result with corrections
@@ -251,65 +258,7 @@ function validateFilters(
 
     // Handle simple filter
     if ('member' in filter) {
-      const member = filter.member
-      const parts = member.split('.')
-      if (parts.length !== 2) {
-        errors.push({
-          type: 'invalid_filter',
-          message: t('server.validation.ai.invalidFilterMemberFormat', { member }),
-          field: member
-        })
-        continue
-      }
-
-      const [cubeName, fieldName] = parts
-      const cube = metadata.find(c => c.name === cubeName)
-
-      if (!cube) {
-        const cubeNames = metadata.map(c => c.name)
-        const closest = findClosestField(cubeName, cubeNames)
-        if (closest) {
-          corrections.set(member, `${closest.field}.${fieldName}`)
-        }
-        errors.push({
-          type: 'cube_not_found',
-          message: t('server.validation.ai.cubeNotFoundInFilter', { cubeName }),
-          field: member,
-          suggestion: closest ? `Did you mean '${closest.field}'?` : undefined,
-          correctedValue: closest ? `${closest.field}.${fieldName}` : undefined
-        })
-        continue
-      }
-
-      // Check if member is a valid dimension or measure
-      const isDimension = cube.dimensions.some(d => d.name === member)
-      const isMeasure = cube.measures.some(m => m.name === member)
-
-      if (!isDimension && !isMeasure) {
-        const allFields = [
-          ...cube.dimensions.map(d => d.name.split('.').pop()!),
-          ...cube.measures.map(m => m.name.split('.').pop()!)
-        ]
-        const closest = findClosestField(fieldName, allFields)
-
-        if (closest) {
-          const correctedField = `${cubeName}.${closest.field}`
-          corrections.set(member, correctedField)
-          errors.push({
-            type: 'invalid_filter',
-            message: t('server.validation.ai.filterFieldNotFoundWithSuggestion', { fieldName, cubeName }),
-            field: member,
-            suggestion: `Did you mean '${closest.field}'?`,
-            correctedValue: correctedField
-          })
-        } else {
-          errors.push({
-            type: 'invalid_filter',
-            message: t('server.validation.ai.filterFieldNotFound', { fieldName, cubeName }),
-            field: member
-          })
-        }
-      }
+      validateMemberFilter(filter, metadata, errors, corrections, findClosestField)
     }
   }
 }
@@ -327,24 +276,11 @@ function validateFunnelQuery(
   const funnel = query.funnel
   if (!funnel) return
 
-  // Required fields
-  if (!funnel.bindingKey) {
-    errors.push({
-      type: 'syntax_error',
-      message: t('server.validation.ai.bindingKeyRequired.funnel')
-    })
-  } else if (typeof funnel.bindingKey === 'string') {
-    validateDimension(funnel.bindingKey, metadata, errors, corrections)
-  }
+  const dim = (value: string, errs: ValidationError[]): void => validateDimension(value, metadata, errs, corrections)
 
-  if (!funnel.timeDimension) {
-    errors.push({
-      type: 'syntax_error',
-      message: t('server.validation.ai.timeDimensionRequired.funnel')
-    })
-  } else if (typeof funnel.timeDimension === 'string') {
-    validateDimension(funnel.timeDimension, metadata, errors, corrections)
-  }
+  // Required fields
+  validateRequiredDimensionField(funnel.bindingKey, 'server.validation.ai.bindingKeyRequired.funnel', dim, errors)
+  validateRequiredDimensionField(funnel.timeDimension, 'server.validation.ai.timeDimensionRequired.funnel', dim, errors)
 
   if (!funnel.steps || !Array.isArray(funnel.steps)) {
     errors.push({
@@ -387,32 +323,11 @@ function validateFlowQuery(
   const flow = query.flow
   if (!flow) return
 
-  if (!flow.bindingKey) {
-    errors.push({
-      type: 'syntax_error',
-      message: t('server.validation.ai.bindingKeyRequired.flow')
-    })
-  } else if (typeof flow.bindingKey === 'string') {
-    validateDimension(flow.bindingKey, metadata, errors, corrections)
-  }
+  const dim = (value: string, errs: ValidationError[]): void => validateDimension(value, metadata, errs, corrections)
 
-  if (!flow.timeDimension) {
-    errors.push({
-      type: 'syntax_error',
-      message: t('server.validation.ai.timeDimensionRequired.flow')
-    })
-  } else if (typeof flow.timeDimension === 'string') {
-    validateDimension(flow.timeDimension, metadata, errors, corrections)
-  }
-
-  if (!flow.eventDimension) {
-    errors.push({
-      type: 'syntax_error',
-      message: t('server.validation.ai.eventDimensionRequired')
-    })
-  } else if (typeof flow.eventDimension === 'string') {
-    validateDimension(flow.eventDimension, metadata, errors, corrections)
-  }
+  validateRequiredDimensionField(flow.bindingKey, 'server.validation.ai.bindingKeyRequired.flow', dim, errors)
+  validateRequiredDimensionField(flow.timeDimension, 'server.validation.ai.timeDimensionRequired.flow', dim, errors)
+  validateRequiredDimensionField(flow.eventDimension, 'server.validation.ai.eventDimensionRequired', dim, errors)
 
   if (flow.stepsBefore === undefined && flow.stepsAfter === undefined) {
     warnings.push({
@@ -436,23 +351,10 @@ function validateRetentionQuery(
   const retention = query.retention
   if (!retention) return
 
-  if (!retention.bindingKey) {
-    errors.push({
-      type: 'syntax_error',
-      message: t('server.validation.ai.bindingKeyRequired.retention')
-    })
-  } else if (typeof retention.bindingKey === 'string') {
-    validateDimension(retention.bindingKey, metadata, errors, corrections)
-  }
+  const dim = (value: string, errs: ValidationError[]): void => validateDimension(value, metadata, errs, corrections)
 
-  if (!retention.timeDimension) {
-    errors.push({
-      type: 'syntax_error',
-      message: t('server.validation.ai.retentionTimeDimensionRequired')
-    })
-  } else if (typeof retention.timeDimension === 'string') {
-    validateDimension(retention.timeDimension, metadata, errors, corrections)
-  }
+  validateRequiredDimensionField(retention.bindingKey, 'server.validation.ai.bindingKeyRequired.retention', dim, errors)
+  validateRequiredDimensionField(retention.timeDimension, 'server.validation.ai.retentionTimeDimensionRequired', dim, errors)
 
   if (!retention.granularity) {
     warnings.push({
@@ -474,46 +376,37 @@ function validateRetentionQuery(
 /**
  * Validate a query with helpful corrections
  */
-export function validateQuery(
+/** Dispatch an analysis-mode (funnel/flow/retention) query to its validator, if any. */
+function validateAnalysisMode(
   query: SemanticQuery,
-  metadata: CubeMetadata[]
-): ValidationResult {
-  const errors: ValidationError[] = []
-  const warnings: ValidationWarning[] = []
-  const corrections: Map<string, string> = new Map()
-
-  // Detect query type and validate accordingly
+  metadata: CubeMetadata[],
+  errors: ValidationError[],
+  warnings: ValidationWarning[],
+  corrections: Map<string, string>
+): boolean {
   if (query.funnel) {
     validateFunnelQuery(query, metadata, errors, warnings, corrections)
-    // Skip standard validation for funnel queries
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-      correctedQuery: undefined // Funnel corrections not implemented yet
-    }
+    return true
   }
-
   if (query.flow) {
     validateFlowQuery(query, metadata, errors, warnings, corrections)
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-      correctedQuery: undefined
-    }
+    return true
   }
-
   if (query.retention) {
     validateRetentionQuery(query, metadata, errors, warnings, corrections)
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-      correctedQuery: undefined
-    }
+    return true
   }
+  return false
+}
 
+/** Run standard measure/dimension/timeDimension/filter validation for a non-analysis query. */
+function validateStandardQuery(
+  query: SemanticQuery,
+  metadata: CubeMetadata[],
+  errors: ValidationError[],
+  warnings: ValidationWarning[],
+  corrections: Map<string, string>
+): void {
   // Validate measures
   if (query.measures) {
     for (const measure of query.measures) {
@@ -532,21 +425,8 @@ export function validateQuery(
   if (query.timeDimensions) {
     for (const timeDim of query.timeDimensions) {
       validateDimension(timeDim.dimension, metadata, errors, corrections)
-
       // Check that the dimension is a time type
-      const [cubeName] = timeDim.dimension.split('.')
-      const cube = metadata.find(c => c.name === cubeName)
-      if (cube) {
-        const dimension = cube.dimensions.find(d => d.name === timeDim.dimension)
-        if (dimension && dimension.type !== 'time') {
-          warnings.push({
-            type: 'best_practice',
-            message: t('server.validation.ai.dimensionNotTimeType', { dimension: timeDim.dimension, type: dimension.type }),
-            field: timeDim.dimension,
-            suggestion: t('server.validation.ai.suggestUseTimeDimension')
-          })
-        }
-      }
+      checkTimeDimensionType(timeDim.dimension, metadata, warnings)
     }
   }
 
@@ -564,47 +444,37 @@ export function validateQuery(
   }
 
   // Performance warnings
-  if (query.measures && query.measures.length > 10) {
-    warnings.push({
-      type: 'performance',
-      message: t('server.validation.ai.performanceManyMeasures', { count: query.measures.length }),
-      suggestion: t('server.validation.ai.suggestSplitQueries')
-    })
+  collectPerformanceWarnings(query, warnings)
+}
+
+export function validateQuery(
+  query: SemanticQuery,
+  metadata: CubeMetadata[]
+): ValidationResult {
+  const errors: ValidationError[] = []
+  const warnings: ValidationWarning[] = []
+  const corrections: Map<string, string> = new Map()
+
+  // Detect query type and validate accordingly.
+  // Analysis-mode queries skip standard validation and corrections.
+  if (validateAnalysisMode(query, metadata, errors, warnings, corrections)) {
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+      correctedQuery: undefined // Analysis-mode corrections not implemented yet
+    }
   }
 
-  if (query.dimensions && query.dimensions.length > 5) {
-    warnings.push({
-      type: 'performance',
-      message: t('server.validation.ai.performanceManyDimensions', { count: query.dimensions.length }),
-      suggestion: t('server.validation.ai.suggestAddDimensionFilters')
-    })
-  }
+  validateStandardQuery(query, metadata, errors, warnings, corrections)
 
   // Build corrected query if we have corrections
-  let correctedQuery: SemanticQuery | undefined
-  if (corrections.size > 0) {
-    const clonedQuery: SemanticQuery = JSON.parse(JSON.stringify(query)) // Deep clone
-
-    if (clonedQuery.measures) {
-      clonedQuery.measures = clonedQuery.measures.map(m => corrections.get(m) || m)
-    }
-    if (clonedQuery.dimensions) {
-      clonedQuery.dimensions = clonedQuery.dimensions.map(d => corrections.get(d) || d)
-    }
-    if (clonedQuery.timeDimensions) {
-      clonedQuery.timeDimensions = clonedQuery.timeDimensions.map(td => ({
-        ...td,
-        dimension: corrections.get(td.dimension) || td.dimension
-      }))
-    }
-    // Note: Filter corrections would require recursive update
-    correctedQuery = clonedQuery
-  }
+  const correctedQuery = buildCorrectedQuery(query, corrections)
 
   return {
     isValid: errors.length === 0,
     errors,
     warnings,
-    correctedQuery: corrections.size > 0 ? correctedQuery : undefined
+    correctedQuery
   }
 }

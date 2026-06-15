@@ -6,6 +6,7 @@
 
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
 import type { TimeGranularity } from '../types'
+import { buildWindowOverClause, buildWindowExpression } from './window-function-builder'
 
 /**
  * Database capabilities for feature detection
@@ -481,69 +482,8 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
     orderBy?: Array<{ field: AnyColumn | SQL; direction: 'asc' | 'desc' }>,
     config?: WindowFunctionConfig
   ): SQL | null {
-    // Build OVER clause components
-    const partitionClause = partitionBy && partitionBy.length > 0
-      ? sql`PARTITION BY ${sql.join(partitionBy, sql`, `)}`
-      : sql``
-
-    const orderClause = orderBy && orderBy.length > 0
-      ? sql`ORDER BY ${sql.join(orderBy.map(o =>
-          o.direction === 'desc' ? sql`${o.field} DESC` : sql`${o.field} ASC`
-        ), sql`, `)}`
-      : sql``
-
-    // Build frame clause if specified
-    let frameClause = sql``
-    if (config?.frame) {
-      const { type: frameType, start, end } = config.frame
-      const frameTypeStr = frameType.toUpperCase()
-
-      const startStr = start === 'unbounded' ? 'UNBOUNDED PRECEDING'
-        : typeof start === 'number' ? `${start} PRECEDING`
-        : 'CURRENT ROW'
-
-      const endStr = end === 'unbounded' ? 'UNBOUNDED FOLLOWING'
-        : end === 'current' ? 'CURRENT ROW'
-        : typeof end === 'number' ? `${end} FOLLOWING`
-        : 'CURRENT ROW'
-
-      frameClause = sql`${sql.raw(frameTypeStr)} BETWEEN ${sql.raw(startStr)} AND ${sql.raw(endStr)}`
-    }
-
-    // Combine OVER clause
-    const overParts: SQL[] = []
-    if (partitionBy && partitionBy.length > 0) overParts.push(partitionClause)
-    if (orderBy && orderBy.length > 0) overParts.push(orderClause)
-    if (config?.frame) overParts.push(frameClause)
-
-    const overContent = overParts.length > 0 ? sql.join(overParts, sql` `) : sql``
-    const over = sql`OVER (${overContent})`
-
-    // Build the window function based on type
-    switch (type) {
-      case 'lag':
-        return sql`LAG(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
-      case 'lead':
-        return sql`LEAD(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
-      case 'rank':
-        return sql`RANK() ${over}`
-      case 'denseRank':
-        return sql`DENSE_RANK() ${over}`
-      case 'rowNumber':
-        return sql`ROW_NUMBER() ${over}`
-      case 'ntile':
-        return sql`NTILE(${config?.nTile ?? 4}) ${over}`
-      case 'firstValue':
-        return sql`FIRST_VALUE(${fieldExpr}) ${over}`
-      case 'lastValue':
-        return sql`LAST_VALUE(${fieldExpr}) ${over}`
-      case 'movingAvg':
-        return sql`AVG(${fieldExpr}) ${over}`
-      case 'movingSum':
-        return sql`SUM(${fieldExpr}) ${over}`
-      default:
-        throw new Error(`Unsupported window function: ${type}`)
-    }
+    const over = buildWindowOverClause(partitionBy, orderBy, config)
+    return buildWindowExpression(type, fieldExpr, over, config)
   }
 
   /**

@@ -9,6 +9,7 @@ import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
 import { flowModeAdapter } from '../adapters/flowModeAdapter'
 import { retentionModeAdapter } from '../adapters/retentionModeAdapter'
 import { useTranslation } from '../hooks/useTranslation'
+import { analysisConfigHasContent, getEmptyContentMessage } from './portletAnalysisModal/saveValidation'
 
 interface PortletAnalysisModalProps {
   isOpen: boolean
@@ -205,58 +206,9 @@ export default function PortletAnalysisModal({
 
     // Validate content based on analysis type
     const { query, analysisType } = analysisConfig
-    let hasContent: boolean
 
-    // Check for ServerFlowQuery format { flow: {...} }
-    if ('flow' in query && query.flow) {
-      // Flow mode: check for required configuration
-      hasContent = !!(
-        query.flow.bindingKey &&
-        query.flow.timeDimension &&
-        query.flow.eventDimension &&
-        query.flow.startingStep?.filter
-      )
-    } else if ('retention' in query && query.retention) {
-      // Retention mode: check for required configuration
-      hasContent = !!(
-        query.retention.bindingKey &&
-        query.retention.timeDimension &&
-        query.retention.dateRange?.start &&
-        query.retention.dateRange?.end
-      )
-    } else if ('funnel' in query && query.funnel) {
-      // Funnel mode: check for steps
-      hasContent = !!(query.funnel.steps && query.funnel.steps.length >= 2)
-    } else if ('queries' in query) {
-      // Multi-query: check the first query
-      const firstQuery = query.queries[0]
-      hasContent = !!(
-        (firstQuery?.measures && firstQuery.measures.length > 0) ||
-        (firstQuery?.dimensions && firstQuery.dimensions.length > 0) ||
-        (firstQuery?.timeDimensions && firstQuery.timeDimensions.length > 0)
-      )
-    } else {
-      // Single query: check directly (type narrowed to CubeQuery)
-      const cubeQuery = query as CubeQuery
-      hasContent = !!(
-        (cubeQuery.measures && cubeQuery.measures.length > 0) ||
-        (cubeQuery.dimensions && cubeQuery.dimensions.length > 0) ||
-        (cubeQuery.timeDimensions && cubeQuery.timeDimensions.length > 0)
-      )
-    }
-
-    if (!hasContent) {
-      let message: string
-      if (analysisType === 'flow') {
-        message = 'Please configure the flow analysis (binding key, time dimension, event dimension, and starting step filter).'
-      } else if (analysisType === 'retention') {
-        message = 'Please configure the retention analysis (binding key, time dimension, and date range).'
-      } else if (analysisType === 'funnel') {
-        message = 'Please add at least two funnel steps.'
-      } else {
-        message = 'Please add at least one metric or breakdown to your query.'
-      }
-      alert(message)
+    if (!analysisConfigHasContent(query)) {
+      alert(getEmptyContentMessage(analysisType))
       return
     }
 

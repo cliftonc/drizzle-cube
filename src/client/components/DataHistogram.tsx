@@ -25,6 +25,73 @@ interface DataHistogramProps {
 }
 
 /**
+ * Distribute values into histogram buckets and derive summary stats.
+ */
+function buildHistogram(values: number[], min: number, max: number, bucketCount: number) {
+  const buckets = new Array(bucketCount).fill(0)
+  const range = max - min
+
+  values.forEach(value => {
+    if (range === 0) {
+      // All values are the same, put everything in middle bucket
+      buckets[Math.floor(bucketCount / 2)]++
+    } else {
+      // Calculate which bucket this value belongs to
+      let bucketIndex = Math.floor(((value - min) / range) * (bucketCount - 1))
+      // Clamp to valid bucket range
+      bucketIndex = Math.max(0, Math.min(bucketCount - 1, bucketIndex))
+      buckets[bucketIndex]++
+    }
+  })
+
+  const maxBucketCount = Math.max(...buckets)
+  const average = values.reduce((sum, val) => sum + val, 0) / values.length
+  const averagePosition = range === 0 ? 50 : ((average - min) / range) * 100
+
+  return { buckets, range, maxBucketCount, average, averagePosition }
+}
+
+interface IndicatorLineProps {
+  position: number
+  clamp?: boolean
+  color: string
+  zIndex: number
+  title: string
+}
+
+/** Vertical indicator line (average / target) with a small triangle marker. */
+function IndicatorLine({ position, clamp = false, color, zIndex, title }: IndicatorLineProps) {
+  const left = clamp ? Math.max(0, Math.min(100, position)) : position
+  return (
+    <div
+      className="dc:absolute dc:top-0 dc:bottom-0 dc:pointer-events-none"
+      style={{
+        left: `${left}%`,
+        transform: 'translateX(-50%)',
+        width: '2px',
+        backgroundColor: color,
+        opacity: 0.8,
+        zIndex
+      }}
+      title={title}
+    >
+      <div
+        className="dc:absolute dc:-top-1"
+        style={{
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '0',
+          height: '0',
+          borderLeft: '4px solid transparent',
+          borderRight: '4px solid transparent',
+          borderTop: `6px solid ${color}`
+        }}
+      />
+    </div>
+  )
+}
+
+/**
  * Reusable histogram component that shows the distribution of actual data values
  */
 export default function DataHistogram({
@@ -40,55 +107,37 @@ export default function DataHistogram({
   targetValue
 }: DataHistogramProps) {
   const { t } = useTranslation()
-  // Create histogram buckets from actual data
-  const buckets = new Array(bucketCount).fill(0)
-  const range = max - min
-  
-  // Distribute actual values into buckets
-  values.forEach(value => {
-    if (range === 0) {
-      // All values are the same, put everything in middle bucket
-      buckets[Math.floor(bucketCount / 2)]++
-    } else {
-      // Calculate which bucket this value belongs to
-      let bucketIndex = Math.floor(((value - min) / range) * (bucketCount - 1))
-      // Clamp to valid bucket range
-      bucketIndex = Math.max(0, Math.min(bucketCount - 1, bucketIndex))
-      buckets[bucketIndex]++
-    }
-  })
-  
-  // Find max bucket count for normalization
-  const maxBucketCount = Math.max(...buckets)
-  
-  // Calculate average for indicator positioning
-  const average = values.reduce((sum, val) => sum + val, 0) / values.length
-  
-  // Calculate average position as percentage of histogram width
-  const averagePosition = range === 0 ? 50 : ((average - min) / range) * 100
-  
+
+  const { buckets, range, maxBucketCount, average, averagePosition } = buildHistogram(
+    values,
+    min,
+    max,
+    bucketCount
+  )
+
   // Calculate target position if target value is provided
-  const targetPosition = targetValue !== undefined && range > 0 
-    ? ((targetValue - min) / range) * 100 
+  const targetPosition = targetValue !== undefined && range > 0
+    ? ((targetValue - min) / range) * 100
     : null
+
+  const sizingStyle = {
+    width: width ? `${width}px` : '200px',
+    minWidth: '200px'
+  }
 
   return (
     <div className="dc:flex dc:flex-col dc:items-center">
       {/* Horizontal bars representing actual data distribution */}
-      <div 
-        className="dc:relative dc:flex dc:items-end dc:justify-center dc:space-x-0.5" 
-        style={{ 
-          height: `${height}px`,
-          width: width ? `${width}px` : '200px',
-          minWidth: '200px'
-        }}
+      <div
+        className="dc:relative dc:flex dc:items-end dc:justify-center dc:space-x-0.5"
+        style={{ height: `${height}px`, ...sizingStyle }}
       >
         {buckets.map((count, i) => {
           // Normalize height based on actual data frequency
           const normalizedHeight = maxBucketCount > 0 ? count / maxBucketCount : 0
           const minHeight = 0.1 // minimum height for empty buckets
           const displayHeight = count > 0 ? Math.max(minHeight, normalizedHeight) : minHeight
-          
+
           return (
             <div
               key={i}
@@ -102,75 +151,33 @@ export default function DataHistogram({
             />
           )
         })}
-        
+
         {/* Average indicator line */}
         {showAverageIndicator && (
-          <div
-            className="dc:absolute dc:top-0 dc:bottom-0 dc:pointer-events-none"
-            style={{
-              left: `${averagePosition}%`,
-              transform: 'translateX(-50%)',
-              width: '2px',
-              backgroundColor: '#ef4444',
-              opacity: 0.8,
-              zIndex: 10
-            }}
+          <IndicatorLine
+            position={averagePosition}
+            color="#ef4444"
+            zIndex={10}
             title={`Average: ${formatValue(average)}`}
-          >
-            {/* Small triangle at top to indicate average */}
-            <div
-              className="dc:absolute dc:-top-1"
-              style={{
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '0',
-                height: '0',
-                borderLeft: '4px solid transparent',
-                borderRight: '4px solid transparent',
-                borderTop: '6px solid #ef4444'
-              }}
-            />
-          </div>
+          />
         )}
-        
+
         {/* Target indicator line */}
         {targetPosition !== null && targetValue !== undefined && (
-          <div
-            className="dc:absolute dc:top-0 dc:bottom-0 dc:pointer-events-none"
-            style={{
-              left: `${Math.max(0, Math.min(100, targetPosition))}%`,
-              transform: 'translateX(-50%)',
-              width: '2px',
-              backgroundColor: '#10b981',
-              opacity: 0.8,
-              zIndex: 11
-            }}
+          <IndicatorLine
+            position={targetPosition}
+            clamp
+            color="#10b981"
+            zIndex={11}
             title={`Target: ${formatValue(targetValue)}`}
-          >
-            {/* Small triangle at top to indicate target */}
-            <div
-              className="dc:absolute dc:-top-1"
-              style={{
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '0',
-                height: '0',
-                borderLeft: '4px solid transparent',
-                borderRight: '4px solid transparent',
-                borderTop: '6px solid #10b981'
-              }}
-            />
-          </div>
+          />
         )}
       </div>
-      
+
       {/* Min/Max values aligned with histogram width */}
       <div
         className="dc:flex dc:justify-between dc:mt-2 dc:text-xs text-dc-text-muted"
-        style={{
-          width: width ? `${width}px` : '200px',
-          minWidth: '200px'
-        }}
+        style={sizingStyle}
       >
         <span>{formatValue(min)}</span>
         <span>{formatValue(max)}</span>

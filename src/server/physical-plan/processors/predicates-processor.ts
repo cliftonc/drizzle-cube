@@ -28,6 +28,45 @@ export function applyPredicatesAndFinalize(
   joinState: JoinBuildState,
   deps: Pick<PhysicalBuildDependencies, 'queryBuilder'>
 ): any {
+  const allWhereConditions = collectWhereConditions(
+    queryPlan,
+    query,
+    context,
+    allCubes,
+    primaryCubeBase,
+    cteState,
+    joinState,
+    deps
+  )
+
+  let drizzleQuery = joinState.drizzleQuery
+
+  // Apply combined WHERE conditions
+  if (allWhereConditions.length > 0) {
+    const combinedWhere = allWhereConditions.length === 1
+      ? allWhereConditions[0]
+      : and(...allWhereConditions) as SQL
+    drizzleQuery = drizzleQuery.where(combinedWhere)
+  }
+
+  return applyGroupingAndPagination(drizzleQuery, queryPlan, query, context, allCubes, deps)
+}
+
+/**
+ * Collect all WHERE conditions: join-state conditions, the primary cube's
+ * security WHERE, joined cubes' security WHERE (excluding CTE/absorbed/
+ * security-in-JOIN cubes), and the query's own filters.
+ */
+function collectWhereConditions(
+  queryPlan: PhysicalQueryPlan,
+  query: SemanticQuery,
+  context: QueryContext,
+  allCubes: Map<string, Cube>,
+  primaryCubeBase: ReturnType<Cube['sql']>,
+  cteState: CTEBuildState,
+  joinState: JoinBuildState,
+  deps: Pick<PhysicalBuildDependencies, 'queryBuilder'>
+): SQL[] {
   const allWhereConditions = [...joinState.allWhereConditions]
 
   // Add base WHERE conditions from primary cube
@@ -35,30 +74,24 @@ export function applyPredicatesAndFinalize(
     allWhereConditions.push(primaryCubeBase.where)
   }
 
-  // Add WHERE conditions from all joined cubes (including their security context filters)
+  // Add WHERE conditions from all joined cubes (including their security filters)
   if (queryPlan.joinCubes && queryPlan.joinCubes.length > 0) {
     for (const joinCube of queryPlan.joinCubes) {
       const cubeName = joinCube.cube.name
 
-      // Skip if this cube is handled by a CTE (WHERE conditions are applied within the CTE)
-      const cteAlias = cteState.cteAliasMap.get(cubeName)
-      if (cteAlias) {
+      // Skip cubes handled by a CTE (WHERE applied within the CTE), cubes
+      // absorbed as intermediates into CTEs, and cubes whose security is
+      // already in the JOIN ON clause (LEFT/RIGHT/FULL joins — avoids
+      // duplicate conditions and preserves NULL rows).
+      if (
+        cteState.cteAliasMap.get(cubeName) ||
+        joinState.absorbedIntermediateCubes.has(cubeName) ||
+        joinState.cubesWithSecurityInJoin.has(cubeName)
+      ) {
         continue
       }
 
-      // Skip cubes that were absorbed as intermediates into CTEs
-      // Their security is applied within the CTE, not in the main query
-      if (joinState.absorbedIntermediateCubes.has(cubeName)) {
-        continue
-      }
-
-      // Skip cubes whose security is already in JOIN ON clause (for LEFT/RIGHT/FULL JOINs)
-      // This prevents duplicate security conditions and preserves NULL rows in LEFT JOINs
-      if (joinState.cubesWithSecurityInJoin.has(cubeName)) {
-        continue
-      }
-
-      // Get the base query definition for this joined cube to access its WHERE conditions
+      // Get the base query definition for this joined cube to access its WHERE
       const joinCubeBase = joinCube.cube.sql(context)
       if (joinCubeBase.where) {
         allWhereConditions.push(joinCubeBase.where)
@@ -66,8 +99,8 @@ export function applyPredicatesAndFinalize(
     }
   }
 
-  // Add query-specific WHERE conditions using DrizzleSqlBuilder
-  // Pass preBuiltFilterMap to reuse filter SQL and deduplicate parameters
+  // Add query-specific WHERE conditions using DrizzleSqlBuilder.
+  // Pass preBuiltFilterMap to reuse filter SQL and deduplicate parameters.
   const queryWhereConditions = deps.queryBuilder.buildWhereConditions(
     queryPlan.joinCubes.length > 0
       ? allCubes // Multi-cube
@@ -81,56 +114,47 @@ export function applyPredicatesAndFinalize(
     allWhereConditions.push(...queryWhereConditions)
   }
 
-  let drizzleQuery = joinState.drizzleQuery
+  return allWhereConditions
+}
 
-  // Apply combined WHERE conditions
-  if (allWhereConditions.length > 0) {
-    const combinedWhere = allWhereConditions.length === 1
-      ? allWhereConditions[0]
-      : and(...allWhereConditions) as SQL
-    drizzleQuery = drizzleQuery.where(combinedWhere)
-  }
+/** Apply GROUP BY, HAVING, ORDER BY, and LIMIT/OFFSET to the query. */
+function applyGroupingAndPagination(
+  drizzleQuery: any,
+  queryPlan: PhysicalQueryPlan,
+  query: SemanticQuery,
+  context: QueryContext,
+  allCubes: Map<string, Cube>,
+  deps: Pick<PhysicalBuildDependencies, 'queryBuilder'>
+): any {
+  // Single cube vs multi-cube target for clause builders
+  const clauseCubes = queryPlan.joinCubes.length > 0 ? allCubes : queryPlan.primaryCube
 
-  // Add GROUP BY using DrizzleSqlBuilder
-  const groupByFields = deps.queryBuilder.buildGroupByFields(
-    queryPlan.joinCubes.length > 0
-      ? allCubes // Multi-cube
-      : queryPlan.primaryCube, // Single cube
-    query,
-    context,
-    queryPlan // Pass the queryPlan to handle CTE scenarios
-  )
+  let query_ = drizzleQuery
+
+  // Add GROUP BY
+  const groupByFields = deps.queryBuilder.buildGroupByFields(clauseCubes, query, context, queryPlan)
   if (groupByFields.length > 0) {
-    drizzleQuery = drizzleQuery.groupBy(...groupByFields)
+    query_ = query_.groupBy(...groupByFields)
   }
 
-  // Add HAVING conditions using DrizzleSqlBuilder (after GROUP BY)
-  // Skip HAVING for ungrouped queries — HAVING operates on aggregated results
+  // Add HAVING (after GROUP BY). Skip for ungrouped queries — HAVING operates
+  // on aggregated results.
   if (!query.ungrouped) {
-    const havingConditions = deps.queryBuilder.buildHavingConditions(
-      queryPlan.joinCubes.length > 0
-        ? allCubes // Multi-cube
-        : queryPlan.primaryCube, // Single cube
-      query,
-      context,
-      queryPlan // Pass the queryPlan to handle CTE scenarios
-    )
+    const havingConditions = deps.queryBuilder.buildHavingConditions(clauseCubes, query, context, queryPlan)
     if (havingConditions.length > 0) {
       const combinedHaving = havingConditions.length === 1
         ? havingConditions[0]
         : and(...havingConditions) as SQL
-      drizzleQuery = drizzleQuery.having(combinedHaving)
+      query_ = query_.having(combinedHaving)
     }
   }
 
-  // Add ORDER BY using DrizzleSqlBuilder
+  // Add ORDER BY
   const orderByFields = deps.queryBuilder.buildOrderBy(query)
   if (orderByFields.length > 0) {
-    drizzleQuery = drizzleQuery.orderBy(...orderByFields)
+    query_ = query_.orderBy(...orderByFields)
   }
 
-  // Add LIMIT and OFFSET using DrizzleSqlBuilder
-  drizzleQuery = deps.queryBuilder.applyLimitAndOffset(drizzleQuery, query)
-
-  return drizzleQuery
+  // Add LIMIT and OFFSET
+  return deps.queryBuilder.applyLimitAndOffset(query_, query)
 }

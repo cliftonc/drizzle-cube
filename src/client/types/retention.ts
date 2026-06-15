@@ -441,17 +441,25 @@ export function isServerRetentionQuery(obj: unknown): obj is ServerRetentionQuer
 }
 
 /**
+ * Field name → expected `typeof` result for the required retention-result-row
+ * fields. Used by `isRetentionResultRow` to validate a row in a single pass.
+ */
+const RETENTION_RESULT_ROW_FIELD_TYPES: Record<string, 'string' | 'number'> = {
+  cohortPeriod: 'string',
+  period: 'number',
+  cohortSize: 'number',
+  retainedUsers: 'number',
+  retentionRate: 'number',
+}
+
+/**
  * Type guard for retention result row
  */
 export function isRetentionResultRow(row: unknown): row is RetentionResultRow {
   if (!row || typeof row !== 'object') return false
   const r = row as Record<string, unknown>
-  return (
-    typeof r.cohortPeriod === 'string' &&
-    typeof r.period === 'number' &&
-    typeof r.cohortSize === 'number' &&
-    typeof r.retainedUsers === 'number' &&
-    typeof r.retentionRate === 'number'
+  return Object.entries(RETENTION_RESULT_ROW_FIELD_TYPES).every(
+    ([field, expectedType]) => typeof r[field] === expectedType
   )
 }
 

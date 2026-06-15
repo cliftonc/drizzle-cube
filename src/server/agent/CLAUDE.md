@@ -8,6 +8,7 @@ Streaming agentic chat handler that connects LLM providers to drizzle-cube's sem
 src/server/agent/
 ├── index.ts              Public exports
 ├── handler.ts            handleAgentChat — streaming agentic loop (async generator)
+├── handler-steps.ts      Pure per-step/per-branch helpers orchestrated by handleAgentChat
 ├── tools.ts              getToolDefinitions, createToolExecutor — 6 agent tools
 ├── chart-validation.ts   validateChartConfig, inferChartConfig — chart drop-zone validation
 ├── system-prompt.ts      buildAgentSystemPrompt — dynamic prompt from cube metadata

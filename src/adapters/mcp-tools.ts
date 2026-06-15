@@ -30,14 +30,17 @@
  */
 
 import type { SemanticLayerCompiler, SecurityContext } from '../server'
-import {
-  handleDiscover,
-  handleValidate,
-  handleLoad,
-  type DiscoverRequest,
-  type ValidateRequest,
-  type LoadRequest
+import type {
+  DiscoverRequest,
+  ValidateRequest,
+  LoadRequest
 } from './utils'
+import {
+  type CubeToolHandlerDeps,
+  runDiscoverTool,
+  runValidateTool,
+  runLoadTool
+} from './mcp-tools-handlers'
 import type { MCPPrompt } from '../server/ai/mcp-prompts'
 import {
   type MCPResource,
@@ -268,53 +271,33 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
     return handledNames.has(name)
   }
 
+  const handlerDeps: CubeToolHandlerDeps = {
+    semanticLayer,
+    getSecurityContext,
+    wrapContent,
+    wrapError
+  }
+
+  // Per-tool executors. `load` and `chart` share the same query path; `chart`
+  // only differs by carrying _meta.ui on its definition.
+  const toolHandlers: Record<string, (args: unknown, meta?: unknown) => Promise<MCPToolResult>> = {
+    discover: (args) => runDiscoverTool(handlerDeps, args),
+    validate: (args, meta) => runValidateTool(handlerDeps, args, meta),
+    load: (args, meta) => runLoadTool(handlerDeps, args, meta),
+    chart: (args, meta) => runLoadTool(handlerDeps, args, meta)
+  }
+
   async function handle(name: string, args: unknown, meta?: unknown): Promise<MCPToolResult> {
     // Strip prefix if present to get the base tool name
     const baseName = name.startsWith(toolPrefix) ? name.slice(toolPrefix.length) : name
 
-    if (!enabledTools.includes(baseName as any)) {
+    const handler = enabledTools.includes(baseName as any) ? toolHandlers[baseName] : undefined
+    if (!handler) {
       return wrapError(`Unknown tool: ${name}`)
     }
 
     try {
-      switch (baseName) {
-        case 'discover':
-          return wrapContent(await handleDiscover(semanticLayer, (args || {}) as DiscoverRequest))
-
-        case 'validate': {
-          const body = (args || {}) as ValidateRequest
-          if (!body.query) {
-            return wrapError('query is required')
-          }
-          let securityContext: SecurityContext | undefined
-          try {
-            securityContext = await getSecurityContext(meta) as SecurityContext
-          } catch { /* validate works without auth — SQL just won't be included */ }
-          return wrapContent(await handleValidate(semanticLayer, body, securityContext))
-        }
-
-        case 'load': {
-          const body = (args || {}) as LoadRequest
-          if (!body.query) {
-            return wrapError('query is required')
-          }
-          const securityContext = await getSecurityContext(meta)
-          return wrapContent(await handleLoad(semanticLayer, securityContext, body))
-        }
-
-        case 'chart': {
-          // Same as load but rendered in the MCP App UI (has _meta.ui attached)
-          const body = (args || {}) as LoadRequest
-          if (!body.query) {
-            return wrapError('query is required')
-          }
-          const securityContext = await getSecurityContext(meta)
-          return wrapContent(await handleLoad(semanticLayer, securityContext, body))
-        }
-
-        default:
-          return wrapError(`Unknown tool: ${name}`)
-      }
+      return await handler(args, meta)
     } catch (error) {
       return wrapError(error)
     }

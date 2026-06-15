@@ -1,4 +1,6 @@
 import type { FieldLabelMap, AxisFormatConfig } from '../types'
+import { abbreviateValue, formatByUnit } from './axisValueFormatting'
+import { parseTimestampParts, formatByGranularity, formatByHeuristic } from './timeValueFormatting'
 
 // Utility function to check if a value is a valid numeric value (not null, undefined, or NaN)
 // This is used to preserve null values instead of converting them to 0
@@ -67,26 +69,11 @@ export function formatAxisValue(
     return formatNumericValue(value)
   }
 
-  const { unit, abbreviate = true, decimals, customPrefix, customSuffix } = config
+  const { abbreviate = true, decimals } = config
 
   // Calculate the display value and suffix for abbreviation
   // Default to true for abbreviation when config is provided
-  let displayValue = num
-  let abbreviationSuffix = ''
-
-  if (abbreviate) {
-    const absNum = Math.abs(num)
-    if (absNum >= 1_000_000_000) {
-      displayValue = num / 1_000_000_000
-      abbreviationSuffix = 'B'
-    } else if (absNum >= 1_000_000) {
-      displayValue = num / 1_000_000
-      abbreviationSuffix = 'M'
-    } else if (absNum >= 1_000) {
-      displayValue = num / 1_000
-      abbreviationSuffix = 'K'
-    }
-  }
+  const { displayValue, abbreviationSuffix } = abbreviateValue(num, abbreviate)
 
   // Determine decimal places
   // If decimals is undefined, use auto (2 for non-integers, 0 for integers after abbreviation)
@@ -95,132 +82,14 @@ export function formatAxisValue(
     : (Number.isInteger(displayValue) ? 0 : 2)
 
   // Format based on unit type
-  switch (unit) {
-    case 'currency': {
-      // Use Intl.NumberFormat for currency
-      // Currency code is determined by locale (USD for en-US, EUR for de-DE, etc.)
-      const currencyCode = getCurrencyCodeForLocale(effectiveLocale)
-
-      if (abbreviate && abbreviationSuffix) {
-        // For abbreviated currency, format the number part and add suffix
-        const formatted = new Intl.NumberFormat(effectiveLocale, {
-          style: 'currency',
-          currency: currencyCode,
-          minimumFractionDigits: effectiveDecimals,
-          maximumFractionDigits: effectiveDecimals,
-        }).format(displayValue)
-        // Insert abbreviation suffix before any trailing currency symbol or at end
-        // Handle both "$1.25" -> "$1.25M" and "1.25 €" -> "1.25M €"
-        const parts = new Intl.NumberFormat(effectiveLocale, {
-          style: 'currency',
-          currency: currencyCode,
-        }).formatToParts(displayValue)
-        const hasTrailingCurrency = parts[parts.length - 1]?.type === 'currency'
-        if (hasTrailingCurrency) {
-          // Currency symbol is at the end (e.g., "1.25 €")
-          return formatted.replace(/(\s*[^\d\s]+)$/, abbreviationSuffix + '$1')
-        }
-        return formatted + abbreviationSuffix
-      }
-
-      return new Intl.NumberFormat(effectiveLocale, {
-        style: 'currency',
-        currency: currencyCode,
-        minimumFractionDigits: effectiveDecimals,
-        maximumFractionDigits: effectiveDecimals,
-      }).format(displayValue)
-    }
-
-    case 'percent': {
-      // Format as percentage (multiply by 100 if value is 0-1 range, otherwise use as-is)
-      // Assume values > 1 are already percentages, values <= 1 need multiplication
-      const percentValue = Math.abs(displayValue) <= 1 && !abbreviate ? displayValue * 100 : displayValue
-      const formatted = new Intl.NumberFormat(effectiveLocale, {
-        minimumFractionDigits: effectiveDecimals,
-        maximumFractionDigits: effectiveDecimals,
-      }).format(percentValue)
-      return formatted + abbreviationSuffix + '%'
-    }
-
-    case 'custom': {
-      // Apply custom prefix/suffix
-      const prefix = customPrefix || ''
-      const suffix = customSuffix || ''
-      const formatted = new Intl.NumberFormat(effectiveLocale, {
-        minimumFractionDigits: effectiveDecimals,
-        maximumFractionDigits: effectiveDecimals,
-      }).format(displayValue)
-      return prefix + formatted + abbreviationSuffix + suffix
-    }
-
-    case 'number':
-    default: {
-      // Standard number formatting with locale-aware grouping
-      const formatted = new Intl.NumberFormat(effectiveLocale, {
-        minimumFractionDigits: effectiveDecimals,
-        maximumFractionDigits: effectiveDecimals,
-      }).format(displayValue)
-      return formatted + abbreviationSuffix
-    }
-  }
-}
-
-/**
- * Get the currency code for a given locale
- * Maps common locales to their default currency
- */
-function getCurrencyCodeForLocale(locale: string): string {
-  // Extract language and region from locale (e.g., "en-US" -> ["en", "US"])
-  const parts = locale.split('-')
-  const region = parts[1]?.toUpperCase()
-
-  // Map regions to currencies
-  const currencyMap: Record<string, string> = {
-    'US': 'USD',
-    'CA': 'CAD',
-    'GB': 'GBP',
-    'UK': 'GBP',
-    'AU': 'AUD',
-    'NZ': 'NZD',
-    'EU': 'EUR',
-    'DE': 'EUR',
-    'FR': 'EUR',
-    'IT': 'EUR',
-    'ES': 'EUR',
-    'NL': 'EUR',
-    'BE': 'EUR',
-    'AT': 'EUR',
-    'IE': 'EUR',
-    'PT': 'EUR',
-    'FI': 'EUR',
-    'JP': 'JPY',
-    'CN': 'CNY',
-    'KR': 'KRW',
-    'IN': 'INR',
-    'BR': 'BRL',
-    'MX': 'MXN',
-    'CH': 'CHF',
-    'SE': 'SEK',
-    'NO': 'NOK',
-    'DK': 'DKK',
-    'PL': 'PLN',
-    'RU': 'RUB',
-    'ZA': 'ZAR',
-    'SG': 'SGD',
-    'HK': 'HKD',
-    'TW': 'TWD',
-    'TH': 'THB',
-    'MY': 'MYR',
-    'PH': 'PHP',
-    'ID': 'IDR',
-    'VN': 'VND',
-    'AE': 'AED',
-    'SA': 'SAR',
-    'IL': 'ILS',
-    'TR': 'TRY',
-  }
-
-  return currencyMap[region] || 'USD'
+  return formatByUnit({
+    displayValue,
+    abbreviate,
+    abbreviationSuffix,
+    decimals: effectiveDecimals,
+    locale: effectiveLocale,
+    config,
+  })
 }
 
 /**
@@ -245,94 +114,27 @@ export function transformSeriesKeysWithLabels(seriesKeys: string[], labelMap: Fi
 export function formatTimeValue(value: any, granularity?: string): string {
 
   if (!value) return 'Unknown'
-  
+
   const str = String(value)
-  
+
   // Check if it's a timestamp (ISO format or PostgreSQL format)
-  // Handles formats like: "2025-04-01T00:00:00.000" or "2023-02-01 00:00:00+00"
-  if (str.match(/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/)) {
-    // Convert PostgreSQL format to ISO format if needed
-    let isoStr = str
-    if (str.includes(' ')) {
-      // Convert "2023-02-01 00:00:00+00" to "2023-02-01T00:00:00Z"
-      isoStr = str.replace(' ', 'T').replace('+00', 'Z').replace(/\+\d{2}:\d{2}$/, 'Z')
-    }
-    // Ensure the timestamp ends with 'Z' if not present
-    if (!isoStr.endsWith('Z') && !isoStr.includes('+')) {
-      isoStr = isoStr + 'Z'
-    }
-    const date = new Date(isoStr)
-    
-    // Ensure we're working with valid date
-    if (isNaN(date.getTime())) {
-      return str
-    }
-    
-    // Use UTC methods on the properly UTC-parsed date
-    const year = date.getUTCFullYear()
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-    const day = String(date.getUTCDate()).padStart(2, '0')
-    const hours = date.getUTCHours()
-    const minutes = date.getUTCMinutes()
-    
-    // Format based on known granularity if provided
-    if (granularity) {
-      switch (granularity.toLowerCase()) {
-        case 'year':
-          return `${year}`
-        case 'quarter': {
-          const quarter = Math.floor(date.getUTCMonth() / 3) + 1
-          return `${year}-Q${quarter}`
-        }
-        case 'month':
-          return `${year}-${month}`
-        case 'week':
-          // For week, we could calculate week number, but let's use date for simplicity
-          return `${year}-${month}-${day}`
-        case 'day':
-          return `${year}-${month}-${day}`
-        case 'hour':
-          return `${year}-${month}-${day} ${String(hours).padStart(2, '0')}:00`
-        case 'minute':
-          return `${year}-${month}-${day} ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-        default:
-          // Unknown granularity, fall back to heuristic
-          break
-      }
-    }
-    
-    // Fallback heuristic if granularity not provided or unknown
-    const seconds = date.getUTCSeconds()
-    const milliseconds = date.getUTCMilliseconds()
-    
-    // If it's the first day of the month at exactly midnight UTC, it's likely a month granularity
-    if (day === '01' && hours === 0 && minutes === 0 && seconds === 0 && milliseconds === 0) {
-      // Check if it's also first month of a quarter (quarter granularity)
-      if (month === '01' || month === '04' || month === '07' || month === '10') {
-        const quarter = Math.floor(date.getUTCMonth() / 3) + 1
-        return `${year}-Q${quarter}`
-      }
-      // Month granularity
-      return `${year}-${month}`
-    }
-    
-    // If it's exactly midnight UTC, it's likely a day granularity
-    if (hours === 0 && minutes === 0 && seconds === 0 && milliseconds === 0) {
-      return `${year}-${month}-${day}`
-    }
-    
-    // If it has time components, include them (hour/minute granularity)
-    if (minutes === 0 && seconds === 0 && milliseconds === 0) {
-      // Hour granularity
-      return `${year}-${month}-${day} ${String(hours).padStart(2, '0')}:00`
-    }
-    
-    // Full timestamp
-    return `${year}-${month}-${day} ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+  const parts = parseTimestampParts(str)
+
+  // Return as-is if not a (valid) timestamp
+  if (!parts) {
+    return str
   }
-  
-  // Return as-is if not a timestamp
-  return str
+
+  // Format based on known granularity if provided
+  if (granularity) {
+    const formatted = formatByGranularity(parts, granularity)
+    if (formatted !== null) {
+      return formatted
+    }
+  }
+
+  // Fallback heuristic if granularity not provided or unknown
+  return formatByHeuristic(parts)
 }
 
 // Helper function to get granularity for a field from the query timeDimensions

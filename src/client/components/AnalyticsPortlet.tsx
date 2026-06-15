@@ -3,29 +3,18 @@
  * Simplified version with minimal dependencies
  */
 
-import React, { useMemo, useCallback, forwardRef, useImperativeHandle, useEffect, useRef, useState } from 'react'
+import React, { useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useInView } from 'react-intersection-observer'
-import { useQueryClient } from '@tanstack/react-query'
-import { useCubeLoadQuery, useMultiCubeLoadQuery, useFunnelQuery, useFlowQuery, useRetentionQuery, createQueryKey, createMultiQueryKey } from '../hooks/queries'
 import { useScrollContainer } from '../providers/ScrollContainerContext'
-import { useCubeMeta } from '../providers/CubeMetaContext'
-import ChartErrorBoundary from './ChartErrorBoundary'
-import LoadingIndicator from './LoadingIndicator'
-import { DrillMenu } from './DrillMenu'
-import { DrillBreadcrumb } from './DrillBreadcrumb'
-import { useDrillInteraction } from '../hooks/useDrillInteraction'
-import { LazyChart, isValidChartType } from '../charts/ChartLoader'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry'
-import { useTranslation } from '../hooks/useTranslation'
-import type { AnalyticsPortletProps, MultiQueryConfig, ServerFunnelQuery, CubeQuery } from '../types'
-import { isMultiQueryConfig, isServerFunnelQuery } from '../types'
-import type { ServerFlowQuery } from '../types/flow'
-import { isServerFlowQuery } from '../types/flow'
-import type { ServerRetentionQuery } from '../types/retention'
-import { isServerRetentionQuery } from '../types/retention'
-import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUniversalTimeFilters, mappingIncludesFilter } from '../utils/filterUtils'
-import { cleanQueryForServer } from '../shared/utils'
-
+import type { AnalyticsPortletProps } from '../types'
+import { parsePortletQuery } from './analyticsPortlet/parsePortletQuery'
+import { usePortletDrillState } from './analyticsPortlet/usePortletDrillState'
+import { usePortletQueryResults } from './analyticsPortlet/usePortletQueryResults'
+import { usePortletDebugData } from './analyticsPortlet/usePortletDebugData'
+import { resolvePortletRenderKind } from './analyticsPortlet/portletRenderState'
+import { PortletChartView } from './analyticsPortlet/PortletChartView'
+import { PortletStateView } from './analyticsPortlet/PortletStates'
 
 interface RefreshOptions {
   bustCache?: boolean
@@ -51,9 +40,6 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   loadingComponent,
   onDebugDataReady
 }, ref) => {
-  const { t } = useTranslation()
-  const onDebugDataReadyRef = useRef(onDebugDataReady)
-
   // Lazy loading: Use IntersectionObserver to detect when portlet is visible
   // Get scroll container from context (null = viewport, element = container scroll)
   const scrollContainer = useScrollContainer()
@@ -69,11 +55,6 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   // Note: Batching is handled by BatchCoordinator which collects queries for 100ms before flushing
   const isVisible = eagerLoad || inView
 
-  // Update ref when callback changes
-  useEffect(() => {
-    onDebugDataReadyRef.current = onDebugDataReady
-  }, [onDebugDataReady])
-
   // Check if this chart type skips queries (using lazy-loaded config)
   const { config: chartTypeConfig } = useChartConfig(chartType)
   const shouldSkipQuery = chartTypeConfig.skipQuery === true
@@ -85,153 +66,10 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
   // Parse query from JSON string, merge dashboard filters, and detect query type
   // Supports: CubeQuery, MultiQueryConfig, ServerFunnelQuery, ServerFlowQuery, and ServerRetentionQuery formats
-  const { queryObject, multiQueryConfig, serverFunnelQuery, serverFlowQuery, serverRetentionQuery } = useMemo(() => {
-    // Skip query parsing for charts that don't need queries
-    if (shouldSkipQuery) {
-      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null, serverFlowQuery: null, serverRetentionQuery: null }
-    }
-
-    try {
-      const parsed = JSON.parse(query)
-
-      // Get applicable dashboard filters (excluding universal time filters - they apply to timeDimensions)
-      const applicableFilters = getApplicableDashboardFilters(regularFilters, dashboardFilterMapping)
-
-      // Check if this is a ServerRetentionQuery format { retention: {...} }
-      if (isServerRetentionQuery(parsed)) {
-        const retentionQuery = parsed as ServerRetentionQuery
-        // Retention queries don't have dashboard filter merging yet (could be added later)
-        return {
-          queryObject: null,
-          multiQueryConfig: null,
-          serverFunnelQuery: null,
-          serverFlowQuery: null,
-          serverRetentionQuery: retentionQuery
-        }
-      }
-
-      // Check if this is a ServerFlowQuery format { flow: {...} }
-      if (isServerFlowQuery(parsed)) {
-        const flowQuery = parsed as ServerFlowQuery
-        // Flow queries don't have dashboard filter merging yet (could be added later)
-        return {
-          queryObject: null,
-          multiQueryConfig: null,
-          serverFunnelQuery: null,
-          serverFlowQuery: flowQuery,
-          serverRetentionQuery: null
-        }
-      }
-
-      // Check if this is a ServerFunnelQuery format { funnel: {...} }
-      if (isServerFunnelQuery(parsed)) {
-        const funnelQuery = parsed as ServerFunnelQuery
-
-        // Apply dashboard filters to funnel query:
-        // 1. Regular filters → merge into step 0's filter
-        // 2. Universal time filters → apply as inDateRange filter on step 0
-
-        // Clone the funnel query to avoid mutating the original
-        const modifiedFunnel = { ...funnelQuery, funnel: { ...funnelQuery.funnel, steps: [...funnelQuery.funnel.steps] } }
-
-        // Get applicable dashboard filters (non-universal time)
-        if (applicableFilters.length > 0 && modifiedFunnel.funnel.steps.length > 0) {
-          // Clone step 0
-          const step0 = { ...modifiedFunnel.funnel.steps[0] }
-
-          // Merge dashboard filters with step 0's existing filter
-          const existingFilters = step0.filter ? (Array.isArray(step0.filter) ? step0.filter : [step0.filter]) : []
-          const mergedFilters = mergeDashboardAndPortletFilters(applicableFilters, existingFilters as any)
-
-          step0.filter = mergedFilters
-          modifiedFunnel.funnel.steps[0] = step0
-        }
-
-        // Apply universal time filters as inDateRange filter on step 0
-        const universalTimeFilters = dashboardFilters?.filter(df =>
-          df.isUniversalTime && mappingIncludesFilter(dashboardFilterMapping, df.id)
-        )
-        if (universalTimeFilters && universalTimeFilters.length > 0 && modifiedFunnel.funnel.steps.length > 0) {
-          const timeFilter = universalTimeFilters[0]
-          if ('member' in timeFilter.filter) {
-            const simpleFilter = timeFilter.filter as { member: string; operator: string; values?: string[]; dateRange?: string }
-
-            // Get the date range value from either dateRange property or values[0]
-            const dateRangeValue = simpleFilter.dateRange || (simpleFilter.values?.[0])
-
-            if (dateRangeValue) {
-              // Clone step 0 and add time filter
-              const step0 = { ...modifiedFunnel.funnel.steps[0] }
-
-              // Get the time dimension from the funnel config
-              let timeDimMember: string | undefined
-              if (typeof modifiedFunnel.funnel.timeDimension === 'string') {
-                timeDimMember = modifiedFunnel.funnel.timeDimension
-              } else if (Array.isArray(modifiedFunnel.funnel.timeDimension) && modifiedFunnel.funnel.timeDimension.length > 0) {
-                const td = modifiedFunnel.funnel.timeDimension[0]
-                timeDimMember = `${td.cube}.${td.dimension}`
-              }
-
-              if (timeDimMember) {
-                // Create inDateRange filter for the time dimension
-                // Format: { member, operator: 'inDateRange', values: [], dateRange: 'this month' }
-                const timeRangeFilter = {
-                  member: timeDimMember,
-                  operator: 'inDateRange',
-                  values: [] as string[],
-                  dateRange: dateRangeValue
-                }
-
-                // Merge with existing filters on step 0
-                const existingFilters = step0.filter ? (Array.isArray(step0.filter) ? step0.filter : [step0.filter]) : []
-                step0.filter = [...existingFilters, timeRangeFilter]
-                modifiedFunnel.funnel.steps[0] = step0
-              }
-            }
-          }
-        }
-
-        return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: modifiedFunnel, serverFlowQuery: null, serverRetentionQuery: null }
-      }
-
-      // Check if this is a multi-query configuration
-      if (isMultiQueryConfig(parsed)) {
-        // Multi-query: apply filters to each query in the array
-        const multiConfig: MultiQueryConfig = {
-          ...parsed,
-          queries: parsed.queries.map(q => ({
-            ...q,
-            filters: mergeDashboardAndPortletFilters(applicableFilters, q.filters),
-            timeDimensions: applyUniversalTimeFilters(dashboardFilters, dashboardFilterMapping, q.timeDimensions)
-          }))
-        }
-        return { queryObject: null, multiQueryConfig: multiConfig, serverFunnelQuery: null, serverFlowQuery: null, serverRetentionQuery: null }
-      }
-
-      // Single query: existing behavior
-      const mergedFilters = mergeDashboardAndPortletFilters(applicableFilters, parsed.filters)
-      const mergedTimeDimensions = applyUniversalTimeFilters(
-        dashboardFilters,
-        dashboardFilterMapping,
-        parsed.timeDimensions
-      )
-
-      return {
-        queryObject: {
-          ...parsed,
-          filters: mergedFilters,
-          timeDimensions: mergedTimeDimensions
-        },
-        multiQueryConfig: null,
-        serverFunnelQuery: null,
-        serverFlowQuery: null,
-        serverRetentionQuery: null
-      }
-    } catch (e) {
-      console.error('AnalyticsPortlet: Invalid query JSON:', e)
-      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null, serverFlowQuery: null, serverRetentionQuery: null }
-    }
-  }, [query, shouldSkipQuery, regularFilters, dashboardFilters, dashboardFilterMapping])
+  const { queryObject, multiQueryConfig, serverFunnelQuery, serverFlowQuery, serverRetentionQuery } = useMemo(
+    () => parsePortletQuery({ query, shouldSkipQuery, regularFilters, dashboardFilters, dashboardFilterMapping }),
+    [query, shouldSkipQuery, regularFilters, dashboardFilters, dashboardFilterMapping]
+  )
 
   // Determine whether to skip queries based on various conditions
   const isMultiQuery = multiQueryConfig !== null
@@ -243,606 +81,155 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   // Retention mode: ServerRetentionQuery format (cohort retention analysis)
   const isRetentionMode = serverRetentionQuery !== null
 
-  // ========== Drill-Down State ==========
-  // Track the current drilled query (null means using the original/parsed query)
-  const [drilledQuery, setDrilledQuery] = useState<CubeQuery | null>(null)
-
-  // Reset drilled query when the base query changes (e.g., dashboard filters change)
-  const queryObjectJson = queryObject ? JSON.stringify(queryObject) : null
-  const previousQueryObjectJson = useRef<string | null>(null)
-  useEffect(() => {
-    if (queryObjectJson !== previousQueryObjectJson.current) {
-      previousQueryObjectJson.current = queryObjectJson
-      // Reset drill state when base query changes
-      if (drilledQuery) {
-        setDrilledQuery(null)
-      }
-    }
-  }, [queryObjectJson, drilledQuery])
-
-  // The active query is either the drilled query or the original parsed query
-  const activeQuery = drilledQuery || queryObject
-
-  // Get metadata for drill options (only for single query mode)
-  const { meta } = useCubeMeta()
-
-  // Drill interaction hook - only enabled for single query mode
-  const drill = useDrillInteraction({
-    query: activeQuery || { measures: [], dimensions: [] },
-    metadata: meta,
-    onQueryChange: (newQuery) => {
-      setDrilledQuery(newQuery)
-    },
+  // Drill-down state, active query, and navigation handlers
+  const { drill, activeQuery, handleNavigateBack, handleNavigateToLevel } = usePortletDrillState({
+    queryObject,
     chartConfig,
     dashboardFilters,
     dashboardFilterMapping,
-    enabled: !isMultiQuery && !isFunnelMode && !isFlowMode && !isRetentionMode && !!activeQuery
+    isMultiQuery,
+    isFunnelMode,
+    isFlowMode,
+    isRetentionMode
   })
 
-  // Handle navigating back to root - restore the original query
-  const handleNavigateBack = useCallback(() => {
-    if (drill.drillPath.length === 1) {
-      // Going back to root - restore original query
-      setDrilledQuery(null)
-      // Clear the drill path by calling the hook's navigateBack
-    }
-    drill.navigateBack()
-  }, [drill])
-
-  // Handle navigating to a specific level
-  const handleNavigateToLevel = useCallback((index: number) => {
-    if (index === 0) {
-      // Navigate to root - restore original query
-      setDrilledQuery(null)
-    }
-    drill.navigateToLevel(index)
-  }, [drill])
-
-  const shouldSkipSingle = !activeQuery || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery || isFunnelMode || isFlowMode || isRetentionMode
-  const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || (!eagerLoad && !isVisible) || isFunnelMode || isFlowMode || isRetentionMode
-  const shouldSkipFunnel = !isFunnelMode || shouldSkipQuery || (!eagerLoad && !isVisible)
-  const shouldSkipFlow = !isFlowMode || shouldSkipQuery || (!eagerLoad && !isVisible)
-  const shouldSkipRetention = !isRetentionMode || shouldSkipQuery || (!eagerLoad && !isVisible)
-
-  // Query client for cache invalidation
-  const queryClient = useQueryClient()
-
-  // Note: Legacy funnel config via mergeStrategy === 'funnel' is no longer supported
-  // Funnel mode now uses ServerFunnelQuery format exclusively
-  const funnelConfig = null
-
-  // Use single query hook with TanStack Query (skip if multi-query or other skip conditions)
-  // Use activeQuery to support drill-down (which replaces the query temporarily)
-  const singleQueryResult = useCubeLoadQuery(activeQuery, {
-    skip: shouldSkipSingle,
-    resetResultSetOnChange: true,
-    debounceMs: 100, // Lower debounce for portlets (faster response)
+  // Run all query hooks and derive combined loading/error/data + refresh/retry
+  const {
+    resultSet,
+    isLoading,
+    isFetching,
+    error,
+    multiQueryData,
+    flowChartData,
+    retentionChartData,
+    funnelCacheInfo,
+    flowCacheInfo,
+    retentionCacheInfo,
+    refresh,
+    retry
+  } = usePortletQueryResults({
+    activeQuery,
+    multiQueryConfig,
+    serverFunnelQuery,
+    serverFlowQuery,
+    serverRetentionQuery,
+    isMultiQuery,
+    isFunnelMode,
+    isFlowMode,
+    isRetentionMode,
+    shouldSkipQuery,
+    eagerLoad,
+    isVisible
   })
-
-  // Use multi-query hook with TanStack Query (skip if single query, funnel mode, or other skip conditions)
-  const multiQueryResult = useMultiCubeLoadQuery(multiQueryConfig, {
-    skip: shouldSkipMulti,
-    resetResultSetOnChange: true,
-    debounceMs: 100, // Lower debounce for portlets (faster response)
-  })
-
-  // Use funnel query hook (supports both legacy funnelConfig and new serverFunnelQuery)
-  const funnelQueryResult = useFunnelQuery(funnelConfig, {
-    skip: shouldSkipFunnel || (!funnelConfig && !serverFunnelQuery),
-    debounceMs: 100,
-    // Pass prebuilt ServerFunnelQuery directly (new dedicated funnel mode)
-    prebuiltServerQuery: serverFunnelQuery,
-  })
-
-  // Use flow query hook for Sankey chart data
-  const flowQueryResult = useFlowQuery(serverFlowQuery, {
-    skip: shouldSkipFlow,
-    debounceMs: 100,
-  })
-
-  // Use retention query hook for cohort retention data
-  const retentionQueryResult = useRetentionQuery(serverRetentionQuery, {
-    skip: shouldSkipRetention,
-    debounceMs: 100,
-  })
-
-  // Combine results from all hooks
-  const resultSet = isMultiQuery ? null : singleQueryResult.resultSet
-  const isLoading = isRetentionMode
-    ? retentionQueryResult.isLoading || retentionQueryResult.isDebouncing
-    : isFlowMode
-      ? flowQueryResult.isLoading || flowQueryResult.isDebouncing
-      : isFunnelMode
-        ? funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing
-        : isMultiQuery
-          ? multiQueryResult.isLoading
-          : singleQueryResult.isLoading
-  const isFetching = isRetentionMode
-    ? retentionQueryResult.isFetching
-    : isFlowMode
-      ? flowQueryResult.isFetching
-      : isFunnelMode
-        ? funnelQueryResult.isExecuting
-        : isMultiQuery
-          ? multiQueryResult.isFetching
-          : singleQueryResult.isFetching
-  const error = isRetentionMode
-    ? retentionQueryResult.error
-    : isFlowMode
-      ? flowQueryResult.error
-      : isFunnelMode
-        ? funnelQueryResult.error
-        : isMultiQuery
-          ? multiQueryResult.error
-          : singleQueryResult.error
-  const multiQueryData = isRetentionMode
-    ? null  // Retention returns data in retentionQueryResult.chartData (RetentionChartData structure)
-    : isFlowMode
-      ? null  // Flow returns data in flowQueryResult.data (nodes/links structure)
-      : isFunnelMode
-        ? (funnelQueryResult.chartData as unknown[] | null)
-        : isMultiQuery
-          ? multiQueryResult.data
-          : null
-  // Flow data is separate since it has a different structure (nodes/links vs array)
-  const flowChartData = isFlowMode ? flowQueryResult.data : null
-  // Retention data is separate since it has a different structure (rows/periods vs array)
-  const retentionChartData = isRetentionMode ? retentionQueryResult.chartData : null
 
   // Expose refresh function through ref
-  // Invalidates cache and forces a fresh fetch from the server
-  // Pass bustCache: true to bypass both client and server caches
-  useImperativeHandle(ref, () => ({
-    refresh: (options?: RefreshOptions) => {
-      const bustCache = options?.bustCache ?? false
+  useImperativeHandle(ref, () => ({ refresh }), [refresh])
 
-      if (isRetentionMode && serverRetentionQuery) {
-        // For retention mode, invalidate cache first then re-execute
-        // Retention query key format: ['cube', 'retention', JSON.stringify(serverQuery)]
-        const queryKey = ['cube', 'retention', JSON.stringify(serverRetentionQuery)] as const
-        if (bustCache) {
-          queryClient.removeQueries({ queryKey })
-        } else {
-          queryClient.invalidateQueries({ queryKey })
-        }
-        retentionQueryResult.refetch()
-      } else if (isFlowMode && serverFlowQuery) {
-        // For flow mode, invalidate cache first then re-execute
-        // Flow query key format: ['cube', 'flow', JSON.stringify(serverQuery)]
-        const queryKey = ['cube', 'flow', JSON.stringify(serverFlowQuery)] as const
-        if (bustCache) {
-          queryClient.removeQueries({ queryKey })
-        } else {
-          queryClient.invalidateQueries({ queryKey })
-        }
-        flowQueryResult.refetch({ bustCache })
-      } else if (isFunnelMode && serverFunnelQuery) {
-        // For funnel mode, invalidate cache first then re-execute
-        // Funnel query key format: ['cube', 'funnel', stepCount, JSON.stringify(serverQuery)]
-        const stepCount = serverFunnelQuery.funnel?.steps?.length || 0
-        const queryKey = ['cube', 'funnel', stepCount, JSON.stringify(serverFunnelQuery)] as const
-        if (bustCache) {
-          queryClient.removeQueries({ queryKey })
-        } else {
-          queryClient.invalidateQueries({ queryKey })
-        }
-        funnelQueryResult.execute({ bustCache })
-      } else if (isMultiQuery && multiQueryConfig) {
-        // Invalidate cache for this specific multi-query, then refetch
-        // Clean each query to match the cache key format used by useMultiCubeLoadQuery
-        const cleanedConfig = {
-          ...multiQueryConfig,
-          queries: multiQueryConfig.queries.map((q: CubeQuery) => cleanQueryForServer(q))
-        }
-        if (bustCache) {
-          queryClient.removeQueries({ queryKey: createMultiQueryKey(cleanedConfig) })
-        } else {
-          queryClient.invalidateQueries({ queryKey: createMultiQueryKey(cleanedConfig) })
-        }
-        multiQueryResult.refetch({ bustCache })
-      } else if (activeQuery) {
-        // Clean the query to match the cache key format used by useCubeLoadQuery
-        // This is important because the cache uses cleanQueryForServer(query) which removes empty arrays
-        const cleanedQuery = cleanQueryForServer(activeQuery)
-        if (bustCache) {
-          queryClient.removeQueries({ queryKey: createQueryKey(cleanedQuery) })
-        } else {
-          queryClient.invalidateQueries({ queryKey: createQueryKey(cleanedQuery) })
-        }
-        singleQueryResult.refetch({ bustCache })
-      }
-    }
-  }), [isRetentionMode, isFlowMode, isFunnelMode, isMultiQuery, multiQueryConfig, activeQuery, queryClient, serverRetentionQuery, serverFlowQuery, serverFunnelQuery, retentionQueryResult, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
-
-  const handleRetry = useCallback(() => {
-    if (isRetentionMode) {
-      retentionQueryResult.refetch()
-    } else if (isFlowMode) {
-      flowQueryResult.refetch()
-    } else if (isFunnelMode) {
-      funnelQueryResult.execute()
-    } else if (isMultiQuery) {
-      multiQueryResult.refetch()
-    } else {
-      singleQueryResult.refetch()
-    }
-  }, [isRetentionMode, isFlowMode, isFunnelMode, isMultiQuery, retentionQueryResult, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
-
-
-  // Send debug data to parent when ready (must be before any returns)
-  useEffect(() => {
-    if (!onDebugDataReadyRef.current || error) return
-
-    // Handle funnel mode
-    if (isFunnelMode && multiQueryData && multiQueryData.length > 0) {
-      onDebugDataReadyRef.current({
-        chartConfig: chartConfig || {},
-        displayConfig: displayConfig || {},
-        queryObject: serverFunnelQuery as unknown as Record<string, unknown>,
-        data: multiQueryData,
-        chartType,
-        cacheInfo: funnelQueryResult.cacheInfo ?? undefined
-      })
-      return
-    }
-
-    // Handle flow mode
-    if (isFlowMode && serverFlowQuery && flowChartData) {
-      onDebugDataReadyRef.current({
-        chartConfig: chartConfig || {},
-        displayConfig: displayConfig || {},
-        queryObject: serverFlowQuery as unknown as Record<string, unknown>,
-        data: flowChartData,
-        chartType,
-        cacheInfo: flowQueryResult.cacheInfo,
-      })
-      return
-    }
-
-    // Handle retention mode
-    if (isRetentionMode && serverRetentionQuery && retentionChartData) {
-      onDebugDataReadyRef.current({
-        chartConfig: chartConfig || {},
-        displayConfig: displayConfig || {},
-        queryObject: serverRetentionQuery as unknown as Record<string, unknown>,
-        data: retentionChartData,
-        chartType,
-        cacheInfo: retentionQueryResult.cacheInfo ?? undefined,
-      })
-      return
-    }
-
-    // Handle single query mode
-    if (chartConfig && queryObject && resultSet) {
-      const getData = () => {
-        switch (chartType) {
-          case 'pie':
-          case 'table':
-            return resultSet.tablePivot()
-          default:
-            return resultSet.rawData()
-        }
-      }
-      const data = getData()
-
-      if (data) {
-        // Include drill state in debug info if drilling is active
-        const drillDebugInfo = drill.drillPath.length > 0 ? {
-          isDrilling: true,
-          drillPath: drill.drillPath.map(entry => ({
-            id: entry.id,
-            label: entry.label,
-            clickedValue: entry.clickedValue,
-            dimension: entry.dimension,
-            granularity: entry.granularity,
-            hierarchy: entry.hierarchy
-          })),
-          currentDrillDepth: drill.drillPath.length,
-          originalQuery: queryObject,
-          activeQuery: activeQuery
-        } : undefined
-
-        onDebugDataReadyRef.current({
-          chartConfig: drill.currentChartConfig || chartConfig || {},
-          displayConfig: displayConfig || {},
-          queryObject: activeQuery || queryObject,
-          data,
-          chartType,
-          cacheInfo: resultSet.cacheInfo?.(),
-          drillState: drillDebugInfo
-        })
-      }
-    }
-  }, [chartConfig, displayConfig, queryObject, activeQuery, resultSet, chartType, error, isFunnelMode, isFlowMode, isRetentionMode, multiQueryData, serverFunnelQuery, serverFlowQuery, serverRetentionQuery, flowChartData, retentionChartData, flowQueryResult.cacheInfo, funnelQueryResult.cacheInfo, retentionQueryResult.cacheInfo, drill.drillPath, drill.currentChartConfig]) // Use ref for callback to prevent infinite loops
+  // Send debug data to parent when ready
+  usePortletDebugData({
+    onDebugDataReady,
+    error,
+    chartType,
+    chartConfig,
+    displayConfig,
+    isFunnelMode,
+    isFlowMode,
+    isRetentionMode,
+    queryObject,
+    activeQuery,
+    serverFunnelQuery,
+    serverFlowQuery,
+    serverRetentionQuery,
+    resultSet,
+    multiQueryData,
+    flowChartData,
+    retentionChartData,
+    funnelCacheInfo,
+    flowCacheInfo,
+    retentionCacheInfo,
+    drillPath: drill.drillPath,
+    currentChartConfig: drill.currentChartConfig
+  })
 
   // Validate that chartConfig is provided when required (not required for skipQuery charts)
   // Check if any dropZones are mandatory for this chart type
   const hasMandatoryFields = !shouldSkipQuery && chartTypeConfig.dropZones.some(zone => zone.mandatory === true)
-  
-  if (!chartConfig && hasMandatoryFields) {
+
+  // Decide which view to render based on the resolved query state
+  const renderKind = resolvePortletRenderKind({
+    hasChartConfig: !!chartConfig,
+    hasMandatoryFields,
+    shouldSkipQuery,
+    eagerLoad,
+    isVisible,
+    isLoading,
+    isFetching,
+    error,
+    isMultiQuery,
+    isFunnelMode,
+    isFlowMode,
+    isRetentionMode,
+    queryObject,
+    multiQueryConfig,
+    serverFunnelQuery,
+    serverFlowQuery,
+    serverRetentionQuery,
+    resultSet,
+    multiQueryData,
+    flowChartData,
+    retentionChartData
+  })
+
+  // Non-chart states (config-required, placeholder, loading, error, no-data)
+  if (renderKind !== 'chart') {
     return (
-      <div ref={inViewRef} className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('portlet.configRequired')}</div>
-          <div className="dc:text-xs text-dc-text-secondary">{t('portlet.configRequiredHint')}</div>
-        </div>
-      </div>
+      <PortletStateView
+        kind={renderKind}
+        inViewRef={inViewRef}
+        height={height}
+        loadingComponent={loadingComponent}
+        error={(error as { message?: string; toString: () => string }) ?? null}
+        onRetry={retry}
+        activeQuery={activeQuery}
+        query={query}
+        chartType={chartType}
+        chartConfig={drill.currentChartConfig || chartConfig}
+        displayConfig={displayConfig}
+        drillPath={drill.drillPath}
+        onNavigateBack={handleNavigateBack}
+        onNavigateToLevel={handleNavigateToLevel}
+      />
     )
   }
 
-  // Show placeholder for lazy-loaded portlets that aren't visible yet
-  if (!shouldSkipQuery && !eagerLoad && !isVisible) {
-    return (
-      <div ref={inViewRef} className="dc:w-full dc:h-full" style={{ height }}>
-        <div className="dc:w-full dc:h-full dc:animate-pulse bg-dc-surface-secondary dc:rounded" style={{ minHeight: '100px' }} />
-      </div>
-    )
-  }
-
-  // Skip loading and error handling for charts that don't need queries
-  if (!shouldSkipQuery) {
-    // Show loading indicator during initial load OR during refresh (isFetching)
-    if (isLoading || isFetching || (queryObject && !resultSet && !error)) {
-      return (
-        <div ref={inViewRef} className="dc:flex dc:items-center dc:justify-center dc:w-full" style={{ height }}>
-          {loadingComponent || <LoadingIndicator size="md" />}
-        </div>
-      )
-    }
-
-    if (error) {
-      return (
-        <div ref={inViewRef} className="dc:p-4 dc:border dc:rounded-sm" style={{ height, borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}>
-          <div className="dc:mb-2">
-            <div className="dc:flex dc:items-center dc:justify-between">
-              <span className="dc:font-medium dc:text-sm" style={{ color: 'var(--dc-text)' }}>{`⚠️ ${t('portlet.queryError')}`}</span>
-              <button
-                onClick={handleRetry}
-                className="dc:px-2 dc:py-1 text-white dc:rounded-sm dc:text-xs"
-                style={{ backgroundColor: 'var(--dc-primary)' }}
-              >
-                {t('common.actions.retry')}
-              </button>
-            </div>
-          </div>
-
-          <div className="dc:mb-3">
-            <div className="dc:text-xs dc:p-2 dc:rounded-sm dc:border" style={{ color: 'var(--dc-text-secondary)', backgroundColor: 'var(--dc-surface)', borderColor: 'var(--dc-border)' }}>
-              {error.message || error.toString()}
-            </div>
-          </div>
-
-          <div className="dc:space-y-2 dc:text-xs">
-            <details>
-              <summary className="dc:cursor-pointer dc:font-medium" style={{ color: 'var(--dc-text-secondary)' }}>{t('portlet.queryWithFilters')}</summary>
-              <pre className="dc:mt-1 dc:p-2 dc:rounded-sm dc:text-xs dc:overflow-auto dc:max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
-                {activeQuery ? JSON.stringify(activeQuery, null, 2) : query}
-              </pre>
-            </details>
-
-            <details>
-              <summary className="dc:cursor-pointer dc:font-medium" style={{ color: 'var(--dc-text-secondary)' }}>{t('portlet.chartConfig')}</summary>
-              <pre className="dc:mt-1 dc:p-2 dc:rounded-sm dc:text-xs dc:overflow-auto dc:max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.05)' }}>
-                {JSON.stringify({
-                  chartType,
-                  chartConfig: drill.currentChartConfig || chartConfig,
-                  displayConfig: displayConfig
-                }, null, 2)}
-              </pre>
-            </details>
-          </div>
-        </div>
-      )
-    }
-
-    // Check for valid data based on query type
-    // Retention mode uses retentionChartData from retentionQueryResult.chartData
-    // Flow mode uses flowChartData from flowQueryResult.data
-    // Funnel mode uses multiQueryData from funnelQueryResult.chartData
-    // Multi-query mode uses multiQueryData from multiQueryResult.data
-    // Single query mode uses resultSet from singleQueryResult
-    const hasValidData = isRetentionMode
-      ? (retentionChartData !== null && serverRetentionQuery !== null)
-      : isFlowMode
-        ? (flowChartData !== null && serverFlowQuery !== null)
-        : isFunnelMode
-          ? (multiQueryData !== null && (funnelConfig !== null || serverFunnelQuery !== null))
-          : isMultiQuery
-            ? (multiQueryData !== null && multiQueryConfig !== null)
-            : (resultSet !== null && queryObject !== null)
-
-    if (!hasValidData) {
-      // Check if we're in a drilled state - show more helpful message with back option
-      const isDrilledState = drill.drillPath.length > 0
-
-      return (
-        <div ref={inViewRef} className="dc:flex dc:flex-col dc:w-full" style={{ height }}>
-          {/* Show breadcrumb when drilling even if no data */}
-          {isDrilledState && (
-            <div className="dc:mb-2 dc:flex-shrink-0">
-              <DrillBreadcrumb
-                path={drill.drillPath}
-                onNavigate={handleNavigateBack}
-                onLevelClick={handleNavigateToLevel}
-              />
-            </div>
-          )}
-          <div className="dc:flex dc:items-center dc:justify-center dc:flex-1 text-dc-text-muted">
-            <div className="dc:text-center">
-              <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-              <div className="dc:text-xs text-dc-text-secondary">
-                {isDrilledState
-                  ? 'No data points to display for the current filter'
-                  : 'Invalid query or no results'
-                }
-              </div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-  }
-
-  // Get data based on chart type needs
-  // Returns array data for most charts, FlowChartData for Sankey, or RetentionChartData for retention charts
-  // Note: FlowChartData and RetentionChartData are cast to any[] for ChartProps compatibility - specific charts handle internally
-  const getData = (): unknown => {
-    // Return empty array for charts that don't use query data
-    if (shouldSkipQuery) {
-      return []
-    }
-
-    // Retention mode: return retentionChartData (rows/periods structure) from retentionQueryResult
-    // Retention charts expect { rows: [], periods: [] } structure
-    if (isRetentionMode) {
-      return retentionChartData || { rows: [], periods: [] }
-    }
-
-    // Flow mode: return flowChartData (nodes/links structure) from flowQueryResult
-    // Sankey chart expects { nodes: [], links: [] } structure
-    if (isFlowMode) {
-      return flowChartData || { nodes: [], links: [] }
-    }
-
-    // Funnel mode: return chartData from funnelQueryResult
-    if (isFunnelMode) {
-      return multiQueryData || []
-    }
-
-    // Multi-query: return merged data directly
-    if (isMultiQuery) {
-      return multiQueryData || []
-    }
-
-    // Single query: return empty array if no resultSet
-    if (!resultSet) {
-      return []
-    }
-
-    switch (chartType) {
-      case 'pie':
-      case 'table':
-        return resultSet.tablePivot()
-      default:
-        return resultSet.rawData()
-    }
-  }
-
-  // Cast to any[] for ChartProps - specific charts (like Sankey) handle their own data format
-  const data = getData() as unknown as unknown[]
-
-  // Render appropriate chart component using lazy loading
-  // Each chart type is dynamically imported for code splitting
-  const renderChart = () => {
-    try {
-      const chartHeight = height
-
-      // Determine effective chart type (handles sankey/sunburst toggle)
-      const effectiveChartType = chartType === 'sankey' &&
-        (displayConfig as Record<string, unknown>)?.flowVisualization === 'sunburst'
-          ? 'sunburst'
-          : chartType
-
-      // Handle unsupported chart types
-      if (!isValidChartType(effectiveChartType)) {
-        return (
-          <div className="dc:flex dc:items-center dc:justify-center dc:w-full" style={{ height }}>
-            <div className="dc:text-center text-dc-text-muted">
-              <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('portlet.unsupportedChartType')}</div>
-              <div className="dc:text-xs">{effectiveChartType}</div>
-            </div>
-          </div>
-        )
-      }
-
-      // For markdown chart, use empty data array
-      const chartData = effectiveChartType === 'markdown' ? [] : data
-
-      // Determine if drill is enabled for this chart (only single query mode)
-      const isDrillEnabledForChart = !isMultiQuery && !isFunnelMode && !isFlowMode && !isRetentionMode && drill.drillEnabled
-
-      // Use drill chart config if available, otherwise fall back to original
-      const effectiveChartConfig = (isDrillEnabledForChart && drill.currentChartConfig)
-        ? drill.currentChartConfig
-        : chartConfig
-
-      return (
-        <LazyChart
-          chartType={effectiveChartType}
-          data={chartData}
-          chartConfig={effectiveChartConfig}
-          displayConfig={displayConfig}
-          queryObject={activeQuery ?? undefined}
-          height={chartHeight}
-          colorPalette={colorPalette}
-          onDataPointClick={isDrillEnabledForChart ? drill.handleDataPointClick : undefined}
-          drillEnabled={isDrillEnabledForChart}
-          fallback={
-            <div
-              className="dc:flex dc:items-center dc:justify-center dc:w-full"
-              style={{ height: typeof chartHeight === 'number' ? `${chartHeight}px` : chartHeight }}
-            >
-              <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded dc:w-full dc:h-full dc:min-h-[100px]" />
-            </div>
-          }
-        />
-      )
-    } catch (error) {
-      console.error('Chart rendering error:', error)
-      return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted dc:p-4" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('portlet.unableToRender')}</div>
-            <div className="dc:text-xs text-dc-text-secondary">{error instanceof Error ? error.message : t('errorBoundary.unknownError')}</div>
-          </div>
-        </div>
-      )
-    }
-  }
-
-  // Check if drill is enabled for this portlet
+  // Check if drill is enabled for this portlet (only single query mode)
   const isDrillEnabled = !isMultiQuery && !isFunnelMode && !isFlowMode && !isRetentionMode && drill.drillEnabled
 
   return (
     <div ref={inViewRef} className="dc:w-full dc:h-full dc:relative">
-      <ChartErrorBoundary
-        portletTitle={_title}
-        portletConfig={{
-          chartType,
-          chartConfig,
-          displayConfig,
-          height
-        }}
-        cubeQuery={query}
-      >
-        <div className="dc:w-full dc:h-full dc:flex dc:flex-col dc:flex-1" style={{ minHeight: chartType === 'markdown' ? undefined : '200px' }}>
-          {/* Drill breadcrumb - shows when drilling into data */}
-          {isDrillEnabled && drill.drillPath.length > 0 && (
-            <div className="dc:mb-2 dc:flex-shrink-0">
-              <DrillBreadcrumb
-                path={drill.drillPath}
-                onNavigate={handleNavigateBack}
-                onLevelClick={handleNavigateToLevel}
-              />
-            </div>
-          )}
-
-          {/* Chart content */}
-          <div className="dc:flex-1 dc:min-h-0">
-            {renderChart()}
-          </div>
-        </div>
-      </ChartErrorBoundary>
-
-      {/* Drill menu - positioned absolutely near clicked point */}
-      {isDrillEnabled && drill.menuOpen && drill.menuPosition && (
-        <DrillMenu
-          options={drill.menuOptions}
-          position={drill.menuPosition}
-          onSelect={drill.handleOptionSelect}
-          onClose={drill.closeMenu}
-        />
-      )}
+      <PortletChartView
+        title={_title}
+        query={query}
+        chartType={chartType}
+        height={height}
+        chartConfig={chartConfig}
+        displayConfig={displayConfig}
+        colorPalette={colorPalette}
+        shouldSkipQuery={shouldSkipQuery}
+        isMultiQuery={isMultiQuery}
+        isFunnelMode={isFunnelMode}
+        isFlowMode={isFlowMode}
+        isRetentionMode={isRetentionMode}
+        resultSet={resultSet}
+        multiQueryData={multiQueryData}
+        flowChartData={flowChartData}
+        retentionChartData={retentionChartData}
+        activeQuery={activeQuery}
+        drill={drill}
+        isDrillEnabled={isDrillEnabled}
+        onNavigateBack={handleNavigateBack}
+        onNavigateToLevel={handleNavigateToLevel}
+      />
     </div>
   )
 }))

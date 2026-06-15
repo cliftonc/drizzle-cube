@@ -1104,10 +1104,14 @@ describe('MCP Transport Layer', () => {
 
   describe('getMcpAppHtml locale config injection', () => {
     it('returns base html unchanged when no config is provided', () => {
-      // No config → no injection; the built HTML is returned as-is
+      // No config → no injection; the built HTML is returned as-is.
+      // Assert on the injection *assignment* (`window.X = ...`), not the bare
+      // identifier: the app bundle itself reads `window.__DRIZZLE_CUBE_MCP_APP_CONFIG__`,
+      // so the built HTML always contains the name — only the injected
+      // <script> assigns to it.
       const html = getMcpAppHtml()
       expect(html).toContain('<!DOCTYPE html>')
-      expect(html).not.toContain('__DRIZZLE_CUBE_MCP_APP_CONFIG__')
+      expect(html).not.toContain('window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ =')
     })
 
     it('injects config script into html when config is provided', () => {

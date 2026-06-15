@@ -40,6 +40,29 @@ export interface JoinBuildState {
 
 export type SelectionMap = Record<string, any>
 
+/**
+ * Apply a join of the given type to a Drizzle query builder.
+ * Shared by the physical-plan builders that assemble CTE/merge queries.
+ */
+export function applyJoinByType(
+  drizzleQuery: any,
+  joinType: 'inner' | 'left' | 'right' | 'full',
+  joinTarget: any,
+  joinCondition: SQL
+): any {
+  switch (joinType) {
+    case 'inner':
+      return drizzleQuery.innerJoin(joinTarget, joinCondition)
+    case 'right':
+      return drizzleQuery.rightJoin(joinTarget, joinCondition)
+    case 'full':
+      return drizzleQuery.fullJoin(joinTarget, joinCondition)
+    case 'left':
+    default:
+      return drizzleQuery.leftJoin(joinTarget, joinCondition)
+  }
+}
+
 export function getCubesFromPlan(queryPlan: PhysicalQueryPlan): Map<string, Cube> {
   const cubes = new Map<string, Cube>()
   cubes.set(queryPlan.primaryCube.name, queryPlan.primaryCube)

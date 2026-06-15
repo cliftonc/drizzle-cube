@@ -1,6 +1,6 @@
 # AnalysisBuilder
 
-Visual query construction UI — the largest client subsystem (~14k lines, 41 files). Supports four analysis modes (query, funnel, flow, retention) with a search-first field picker, drag-and-drop sections, and auto-executing queries.
+Visual query construction UI — the largest client subsystem (~15k lines, 64 files). Supports four analysis modes (query, funnel, flow, retention) with a search-first field picker, drag-and-drop sections, and auto-executing queries.
 
 ## Layout
 
@@ -15,31 +15,44 @@ src/client/components/AnalysisBuilder/
 │
 │ Query Builder Panels
 ├── AnalysisQueryPanel.tsx           Right panel — tabs: metrics, breakdowns, filters, chart config
+├── AnalysisQueryPanelParts.tsx      Extracted sub-pieces of the query panel
 ├── AnalysisResultsPanel.tsx         Left panel — chart/table/debug views, toolbar
+├── AnalysisResultsHeader.tsx        Results panel header — title, view toggles, actions
 ├── AnalysisChartConfigPanel.tsx     Chart type picker + axis drop-zone config
 ├── AnalysisDisplayConfigPanel.tsx   Display options (legend, grid, tooltip toggles)
+├── DisplayOptionControl.tsx         Single display-option toggle/control row
+├── LegacyBooleanOptions.tsx         Backwards-compat boolean display options
 ├── AnalysisTypeSelector.tsx         Mode switcher: query | funnel | flow | retention
 ├── AnalysisAIPanel.tsx              AI natural-language query generation panel
 ├── AnalysisModeErrorBoundary.tsx    Error boundary per analysis mode
 │
 │ Field Selection
 ├── FieldSearchModal.tsx             Search-first modal for picking measures/dimensions
+├── FieldSearchResults.tsx           Search results list within the field modal
 ├── FieldSearchItem.tsx              Individual field row in search results
 ├── FieldDetailPanel.tsx             Field metadata detail view
 │
 │ Query Sections
 ├── MetricsSection.tsx               Measure pill list with drag-reorder
 ├── MetricItemCard.tsx               Individual measure pill
+├── MetricRow.tsx                    Measure row layout used within the metrics list
 ├── BreakdownSection.tsx             Dimension pill list with granularity controls
 ├── BreakdownItemCard.tsx            Individual dimension pill
+├── BreakdownRow.tsx                 Dimension row layout used within the breakdown list
+├── BreakdownComparisonToggle.tsx    Toggle for period-over-period breakdown comparison
+├── SortToggleButton.tsx             Asc/desc/none sort toggle for a field
 ├── AnalysisFilterSection.tsx        Filter group container
 ├── AnalysisFilterGroup.tsx          AND/OR filter group logic
 ├── AnalysisFilterItem.tsx           Individual filter row with operator/value
 ├── FilterConfigModal.tsx            Filter operator and value configuration
+├── filterConfigModalUtils.ts        Pure helpers for FilterConfigModal
+├── FilterValueInput.tsx             Operator-aware filter value input
+├── StringArrayInput.tsx             Multi-value string input (tags/list)
 ├── AnalysisAxisDropZone.tsx         Drag target for chart axis configuration
 ├── LimitSection.tsx                 Row limit control
 ├── SectionHeading.tsx               Reusable collapsible section header
 ├── ExecutionPlanPanel.tsx           Query execution plan / dry-run viewer
+├── ExecutionPlanPanelParts.tsx      Extracted sub-pieces of the execution plan panel
 ├── ExplainAIPanel.tsx               AI explanation of query results
 │
 │ Funnel Mode
@@ -52,8 +65,15 @@ src/client/components/AnalysisBuilder/
 │ Flow & Retention Modes
 ├── FlowModeContent.tsx              Flow analysis panel (event paths)
 ├── FlowConfigPanel.tsx              Flow configuration (starting step, depth)
+├── FlowDepthControls.tsx           Flow depth / step-count controls
+├── FlowVisualizationPicker.tsx     Flow visualization type picker (sankey, etc.)
 ├── RetentionModeContent.tsx         Retention analysis panel
 ├── RetentionConfigPanel.tsx         Retention configuration (cohort, activity, periods)
+│
+├── hooks/                           Co-located React hooks
+│   ├── useAnalysisBuilderImperativeHandle.ts  Builds the AnalysisBuilderRef imperative API
+│   ├── useDragReorder.ts            Drag-and-drop reorder logic for pill sections
+│   └── useFieldSearchKeyboard.ts    Keyboard navigation for the field search modal
 │
 └── utils/                           Pure utility functions
     ├── index.ts                     Barrel exports
@@ -62,7 +82,12 @@ src/client/components/AnalysisBuilder/
     ├── idUtils.ts                   Stable ID generation for metrics/breakdowns
     ├── queryUtils.ts                Query state → SemanticQuery conversion
     ├── recentFieldsUtils.ts         Recently-used field tracking (localStorage)
-    └── storageUtils.ts              LocalStorage read/write with versioning
+    ├── storageUtils.ts              LocalStorage read/write with versioning
+    ├── sortUtils.ts                 Sort-order toggling / ordering helpers
+    ├── axisConfigUtils.ts           Chart axis assignment helpers
+    ├── shareStateUtils.ts           Share-state serialization helpers
+    ├── resultsPanelDerive.ts        Derived view-state for the results panel
+    └── executionPlanMarkdown.ts     Renders the execution plan as markdown
 ```
 
 ## Key Components

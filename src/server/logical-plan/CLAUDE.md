@@ -21,6 +21,7 @@ src/server/logical-plan/
 ├── logical-planner.ts          LogicalPlanner — thin facade composing the planning phases
 ├── join-planner.ts             JoinPlanner — join-plan construction
 ├── cte-planner.ts              CTEPlanner — pre-aggregation CTE decisions (fan-out prevention)
+├── cte-planner-helpers.ts      Pure CTE join-key derivation / join-def resolution for CTEPlanner
 ├── filter-propagation.ts       FilterPropagation — filter propagation into CTEs
 ├── plan-analysis-reporter.ts   PlanAnalysisReporter — dry-run/EXPLAIN trace + warnings
 ├── planner-utils.ts            ResolverCache + shared cube-usage helpers

@@ -27,11 +27,19 @@ export function buildAnnotations(
   segments: Record<string, never>
   timeDimensions: Record<string, TimeDimensionAnnotation>
 } {
-  const measures: Record<string, MeasureAnnotation> = {}
-  const dimensions: Record<string, DimensionAnnotation> = {}
-  const timeDimensions: Record<string, TimeDimensionAnnotation> = {}
+  // Get all cubes involved (primary + join cubes + multi-fact merge groups)
+  const allCubes = collectPlanCubes(queryPlan)
 
-  // Get all cubes involved (primary + join cubes)
+  return {
+    measures: buildMeasureAnnotations(query, allCubes),
+    dimensions: buildDimensionAnnotations(query, allCubes),
+    segments: {},
+    timeDimensions: buildTimeDimensionAnnotations(query, allCubes)
+  }
+}
+
+/** Collect every cube referenced by the plan (primary + joins + merge groups). */
+function collectPlanCubes(queryPlan: PhysicalQueryPlan): any[] {
   const allCubes = [queryPlan.primaryCube].filter(Boolean)
   if (queryPlan.joinCubes && queryPlan.joinCubes.length > 0) {
     allCubes.push(...queryPlan.joinCubes.map((jc: any) => jc.cube).filter(Boolean))
@@ -46,60 +54,76 @@ export function buildAnnotations(
       }
     }
   }
+  return allCubes
+}
 
-  // Generate measure annotations from all cubes
-  if (query.measures) {
-    for (const measureName of query.measures) {
-      const [cubeName, fieldName] = measureName.split('.')
-      const cube = allCubes.find(c => c?.name === cubeName)
-      if (cube && cube.measures[fieldName]) {
-        const measure = cube.measures[fieldName]
-        measures[measureName] = {
-          title: measure.title || fieldName,
-          shortTitle: measure.title || fieldName,
-          type: measure.type
-        }
+/** Find the field's cube and dimension definition across the involved cubes. */
+function findDimension(allCubes: any[], cubeName: string, fieldName: string): any | undefined {
+  const cube = allCubes.find(c => c?.name === cubeName)
+  return cube?.dimensions?.[fieldName]
+}
+
+function buildMeasureAnnotations(
+  query: SemanticQuery,
+  allCubes: any[]
+): Record<string, MeasureAnnotation> {
+  const measures: Record<string, MeasureAnnotation> = {}
+  if (!query.measures) return measures
+
+  for (const measureName of query.measures) {
+    const [cubeName, fieldName] = measureName.split('.')
+    const cube = allCubes.find(c => c?.name === cubeName)
+    const measure = cube?.measures?.[fieldName]
+    if (measure) {
+      measures[measureName] = {
+        title: measure.title || fieldName,
+        shortTitle: measure.title || fieldName,
+        type: measure.type
       }
     }
   }
+  return measures
+}
 
-  // Generate dimension annotations from all cubes
-  if (query.dimensions) {
-    for (const dimensionName of query.dimensions) {
-      const [cubeName, fieldName] = dimensionName.split('.')
-      const cube = allCubes.find(c => c?.name === cubeName)
-      if (cube && cube.dimensions?.[fieldName]) {
-        const dimension = cube.dimensions[fieldName]
-        dimensions[dimensionName] = {
-          title: dimension.title || fieldName,
-          shortTitle: dimension.title || fieldName,
-          type: dimension.type
-        }
+function buildDimensionAnnotations(
+  query: SemanticQuery,
+  allCubes: any[]
+): Record<string, DimensionAnnotation> {
+  const dimensions: Record<string, DimensionAnnotation> = {}
+  if (!query.dimensions) return dimensions
+
+  for (const dimensionName of query.dimensions) {
+    const [cubeName, fieldName] = dimensionName.split('.')
+    const dimension = findDimension(allCubes, cubeName, fieldName)
+    if (dimension) {
+      dimensions[dimensionName] = {
+        title: dimension.title || fieldName,
+        shortTitle: dimension.title || fieldName,
+        type: dimension.type
       }
     }
   }
+  return dimensions
+}
 
-  // Generate time dimension annotations from all cubes
-  if (query.timeDimensions) {
-    for (const timeDim of query.timeDimensions) {
-      const [cubeName, fieldName] = timeDim.dimension.split('.')
-      const cube = allCubes.find(c => c?.name === cubeName)
-      if (cube && cube.dimensions?.[fieldName]) {
-        const dimension = cube.dimensions[fieldName]
-        timeDimensions[timeDim.dimension] = {
-          title: dimension.title || fieldName,
-          shortTitle: dimension.title || fieldName,
-          type: dimension.type,
-          granularity: timeDim.granularity
-        }
+function buildTimeDimensionAnnotations(
+  query: SemanticQuery,
+  allCubes: any[]
+): Record<string, TimeDimensionAnnotation> {
+  const timeDimensions: Record<string, TimeDimensionAnnotation> = {}
+  if (!query.timeDimensions) return timeDimensions
+
+  for (const timeDim of query.timeDimensions) {
+    const [cubeName, fieldName] = timeDim.dimension.split('.')
+    const dimension = findDimension(allCubes, cubeName, fieldName)
+    if (dimension) {
+      timeDimensions[timeDim.dimension] = {
+        title: dimension.title || fieldName,
+        shortTitle: dimension.title || fieldName,
+        type: dimension.type,
+        granularity: timeDim.granularity
       }
     }
   }
-
-  return {
-    measures,
-    dimensions,
-    segments: {},
-    timeDimensions
-  }
+  return timeDimensions
 }

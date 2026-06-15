@@ -11,166 +11,19 @@ import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
 import { getIcon } from '../../icons'
 import { QueryAnalysisPanel, CodeBlock } from '../../shared'
 import ConfirmModal from '../ConfirmModal'
-import ColorPaletteSelector from '../ColorPaletteSelector'
 import { useExplainQuery } from '../../hooks/queries/useExplainQuery'
 import { useExplainAI } from '../../hooks/queries/useExplainAI'
 import type { CubeQuery } from '../../types'
-import type { QueryAnalysis } from '../../shared/types'
 import { ExecutionPlanPanel } from './ExecutionPlanPanel'
+import ResultsHeader from './AnalysisResultsHeader'
+import type { ResultsSummary, ResultsToolbarActions, ResultsDisplayFlags } from './AnalysisResultsHeader'
+import { generateExecutionPlanMarkdown } from './utils/executionPlanMarkdown'
+import { resolveDebugData, isChartViewEnabled, chartViewButtonTitle, computeHasResults, selectTableData, flowLinkNames, computeIsMultiQuery } from './utils/resultsPanelDerive'
 import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
 import { useTranslation } from '../../hooks/useTranslation'
 const SchemaVisualizationLazy = React.lazy(() =>
   import('../SchemaVisualization/SchemaVisualizationLazy').then(m => ({ default: m.SchemaVisualizationLazy }))
 )
-
-/**
- * Generate markdown representation of query execution plan
- */
-function generateExecutionPlanMarkdown(
-  analysis: QueryAnalysis,
-  query: CubeQuery | null,
-  sql?: { sql: string } | null
-): string {
-  const lines: string[] = []
-
-  lines.push('# Query Execution Plan')
-  lines.push('')
-
-  // Original query
-  if (query) {
-    lines.push('## Cube Query')
-    lines.push('')
-    lines.push('```json')
-    lines.push(JSON.stringify(query, null, 2))
-    lines.push('```')
-    lines.push('')
-  }
-
-  // Query summary
-  lines.push('## Query Summary')
-  lines.push('')
-  lines.push(`- **Cubes:** ${analysis.cubesInvolved.join(', ')}`)
-  lines.push(`- **Query Type:** ${analysis.querySummary.queryType.replace(/_/g, ' ')}`)
-  lines.push(`- **Joins:** ${analysis.querySummary.joinCount}`)
-  lines.push(`- **CTEs:** ${analysis.querySummary.cteCount}`)
-  lines.push('')
-
-  // Primary cube selection
-  lines.push('## Primary Cube Selection')
-  lines.push('')
-  lines.push(`**Selected:** ${analysis.primaryCube.selectedCube}`)
-  lines.push(`**Reason:** ${analysis.primaryCube.reason.replace(/_/g, ' ')}`)
-  lines.push(`**Explanation:** ${analysis.primaryCube.explanation}`)
-  lines.push('')
-
-  // Candidates if available
-  if (analysis.primaryCube.candidates && analysis.primaryCube.candidates.length > 1) {
-    lines.push('### Candidates Considered')
-    lines.push('')
-    lines.push('| Cube | Dimensions | Joins | Can Reach All |')
-    lines.push('|------|------------|-------|---------------|')
-    for (const c of analysis.primaryCube.candidates) {
-      const selected = c.cubeName === analysis.primaryCube.selectedCube ? ' ✓' : ''
-      lines.push(`| ${c.cubeName}${selected} | ${c.dimensionCount} | ${c.joinCount} | ${c.canReachAll ? 'Yes' : 'No'} |`)
-    }
-    lines.push('')
-  }
-
-  // Join paths
-  if (analysis.joinPaths.length > 0) {
-    lines.push('## Join Paths')
-    lines.push('')
-    for (const jp of analysis.joinPaths) {
-      if (jp.pathFound && jp.path) {
-        lines.push(`### ${analysis.primaryCube.selectedCube} → ${jp.targetCube} (${jp.pathLength} step${jp.pathLength !== 1 ? 's' : ''})`)
-        lines.push('')
-        if (jp.selection) {
-          lines.push(`**Selection strategy:** ${jp.selection.strategy}`)
-          if (typeof jp.selection.selectedRank === 'number') {
-            lines.push(`**Selected rank:** #${jp.selection.selectedRank}`)
-          }
-          if (typeof jp.selection.selectedScore === 'number') {
-            lines.push(`**Selected score:** ${jp.selection.selectedScore}`)
-          }
-          if (jp.selection.preferredCubes && jp.selection.preferredCubes.length > 0) {
-            lines.push(`**Preferred cubes:** ${jp.selection.preferredCubes.join(', ')}`)
-          }
-          if (jp.selection.candidates && jp.selection.candidates.length > 0) {
-            lines.push('**Path scoring candidates:**')
-            for (const candidate of jp.selection.candidates.slice(0, 5)) {
-              const candidatePath = candidate.path.length > 0
-                ? `${candidate.path[0].fromCube} → ${candidate.path.map(step => step.toCube).join(' → ')}`
-                : analysis.primaryCube.selectedCube
-              lines.push(
-                `- #${candidate.rank} score=${candidate.score} `
-                + `(preferredJoin=${candidate.scoreBreakdown.preferredJoinBonus}, `
-                + `preferredCube=${candidate.scoreBreakdown.preferredCubeBonus}, `
-                + `lengthPenalty=${candidate.scoreBreakdown.lengthPenalty}) `
-                + `${candidatePath}`
-              )
-            }
-          }
-          lines.push('')
-        }
-        for (const step of jp.path) {
-          lines.push(`- **${step.fromCube}** → **${step.toCube}** (${step.relationship}, ${step.joinType.toUpperCase()} JOIN)`)
-          for (const col of step.joinColumns) {
-            lines.push(`  - \`${col.sourceColumn}\` = \`${col.targetColumn}\``)
-          }
-        }
-        lines.push('')
-      } else if (!jp.pathFound) {
-        lines.push(`### ${analysis.primaryCube.selectedCube} → ${jp.targetCube}`)
-        lines.push('')
-        lines.push(`❌ **No path found**${jp.error ? `: ${jp.error}` : ''}`)
-        if (jp.visitedCubes && jp.visitedCubes.length > 0) {
-          lines.push(`Cubes visited: ${jp.visitedCubes.join(' → ')}`)
-        }
-        lines.push('')
-      }
-    }
-  }
-
-  // Pre-aggregation CTEs
-  if (analysis.preAggregations.length > 0) {
-    lines.push('## Pre-Aggregation CTEs')
-    lines.push('')
-    for (const cte of analysis.preAggregations) {
-      lines.push(`### ${cte.cubeName} (\`${cte.cteAlias}\`)`)
-      lines.push('')
-      lines.push(`**Reason:** ${cte.reason}`)
-      lines.push(`**Measures:** ${cte.measures.join(', ')}`)
-      if (cte.joinKeys.length > 0) {
-        lines.push('**Join Keys:**')
-        for (const jk of cte.joinKeys) {
-          lines.push(`- \`${jk.sourceColumn}\` = \`${jk.targetColumn}\``)
-        }
-      }
-      lines.push('')
-    }
-  }
-
-  // Warnings
-  if (analysis.warnings && analysis.warnings.length > 0) {
-    lines.push('## ⚠️ Warnings')
-    lines.push('')
-    for (const warning of analysis.warnings) {
-      lines.push(`- ${warning}`)
-    }
-    lines.push('')
-  }
-
-  // Generated SQL
-  if (sql?.sql) {
-    lines.push('## Generated SQL')
-    lines.push('')
-    lines.push('```sql')
-    lines.push(sql.sql)
-    lines.push('```')
-  }
-
-  return lines.join('\n')
-}
 
 /**
  * AnalysisResultsPanel displays query results with chart/table toggle.
@@ -294,17 +147,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   }, [debugDataPerQuery.length, activeDebugIndex])
 
   // Get current debug data based on active index
-  const currentDebugData = debugDataPerQuery[activeDebugIndex] || {
-    sql: null,
-    analysis: null,
-    mode: null,
-    queryType: null,
-    joinType: null,
-    cubesUsed: [],
-    modeMetadata: undefined,
-    loading: false,
-    error: null
-  }
+  const currentDebugData = resolveDebugData(debugDataPerQuery, activeDebugIndex)
   const debugSql = currentDebugData.sql
   const debugAnalysis = currentDebugData.analysis
   const debugLoading = currentDebugData.loading
@@ -409,14 +252,14 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Drives the Chart view toggle — table is always available, bar/line/etc. need measures.
   const isCurrentChartRenderable =
     chartAvailability?.[chartType]?.available ?? true
-  const chartViewEnabled =
-    isCurrentChartRenderable || isFlowMode || isFunnelMode || isRetentionMode
+  const chartViewEnabled = isChartViewEnabled({
+    isCurrentChartRenderable,
+    isFlowMode,
+    isFunnelMode,
+    isRetentionMode
+  })
   const chartViewUnavailableReason = chartAvailability?.[chartType]?.reason
-  const chartButtonTitle = chartViewEnabled
-    ? t('results.toolbar.chartView')
-    : chartViewUnavailableReason
-      ? t(chartViewUnavailableReason)
-      : t('results.toolbar.chartDisabled')
+  const chartButtonTitle = chartViewButtonTitle(chartViewEnabled, chartViewUnavailableReason, t)
 
   // Force table view when the selected chart type can't render with the current query.
   // In funnel/flow/retention modes, charts have their own requirements, so we skip this.
@@ -453,13 +296,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const WarningIcon = getIcon('warning')
   const TableIcon = getIcon('table')
   const ChartIcon = getIcon('measure')
-  const CodeIcon = getIcon('codeBracket')
-  const ShareIcon = getIcon('share')
-  const CheckIcon = getIcon('check')
-  const TrashIcon = getIcon('delete')
   const SparklesIcon = getIcon('sparkles')
-  const RefreshIcon = getIcon('arrowPath')
-  const SchemaGraphIcon = getIcon('schemaGraph')
 
   // Loading state - initial load
   const renderLoading = () => (
@@ -1056,193 +893,196 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   )
 
   // Route to appropriate debug view based on mode
-  const renderDebug = () => {
-    if (isFunnelMode) {
-      const metadata = funnelDebugData?.modeMetadata as FunnelMetadata | undefined
-      const metadataSection = metadata ? (
-        <div className="dc:flex dc:flex-wrap dc:gap-2">
-          {metadata.steps.map((step, idx) => (
-            <div key={idx} className="dc:flex dc:items-center dc:gap-2 dc:px-3 dc:py-1.5 bg-dc-bg dc:border border-dc-border dc:rounded dc:text-sm">
-              <span className="dc:w-5 dc:h-5 dc:flex dc:items-center dc:justify-center bg-dc-accent text-white dc:text-xs dc:rounded-full">
-                {idx + 1}
-              </span>
-              <span className="text-dc-text">{step.name}</span>
-              {step.timeToConvert && (
-                <span className="dc:text-xs text-dc-text-muted">({step.timeToConvert})</span>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : null
+  const renderFunnelDebug = () => {
+    const metadata = funnelDebugData?.modeMetadata as FunnelMetadata | undefined
+    const metadataSection = metadata ? (
+      <div className="dc:flex dc:flex-wrap dc:gap-2">
+        {metadata.steps.map((step, idx) => (
+          <div key={idx} className="dc:flex dc:items-center dc:gap-2 dc:px-3 dc:py-1.5 bg-dc-bg dc:border border-dc-border dc:rounded dc:text-sm">
+            <span className="dc:w-5 dc:h-5 dc:flex dc:items-center dc:justify-center bg-dc-accent text-white dc:text-xs dc:rounded-full">
+              {idx + 1}
+            </span>
+            <span className="text-dc-text">{step.name}</span>
+            {step.timeToConvert && (
+              <span className="dc:text-xs text-dc-text-muted">({step.timeToConvert})</span>
+            )}
+          </div>
+        ))}
+      </div>
+    ) : null
 
-      return renderModeDebug({
-        label: t('results.debug.funnel.label'),
-        badgeText: metadata?.stepCount ? t('results.debug.funnel.steps', { count: metadata.stepCount }) : undefined,
-        serverQuery: funnelServerQuery,
-        serverQueryTitle: t('results.debug.funnel.serverQuery'),
-        serverQueryMissing: (
-          <>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.funnel.serverQuery')}</h4>
-            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
-              {t('results.debug.funnel.noQuery')}
-            </div>
-          </>
-        ),
-        debugData: funnelDebugData,
-        sqlPlaceholder: t('results.debug.funnel.sqlPlaceholder'),
-        explainResult: funnelExplainResult,
-        explainLoading: funnelExplainLoading,
-        explainHasRun: funnelExplainHasRun,
-        explainError: funnelExplainError,
-        runExplain: runFunnelExplain,
-        metadataTitle: metadataSection ? t('results.debug.funnel.stepsTitle') : undefined,
-        metadataSection,
-        responseSection: renderStandardResponseBlock(),
-      })
-    }
+    return renderModeDebug({
+      label: t('results.debug.funnel.label'),
+      badgeText: metadata?.stepCount ? t('results.debug.funnel.steps', { count: metadata.stepCount }) : undefined,
+      serverQuery: funnelServerQuery,
+      serverQueryTitle: t('results.debug.funnel.serverQuery'),
+      serverQueryMissing: (
+        <>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.funnel.serverQuery')}</h4>
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
+            {t('results.debug.funnel.noQuery')}
+          </div>
+        </>
+      ),
+      debugData: funnelDebugData,
+      sqlPlaceholder: t('results.debug.funnel.sqlPlaceholder'),
+      explainResult: funnelExplainResult,
+      explainLoading: funnelExplainLoading,
+      explainHasRun: funnelExplainHasRun,
+      explainError: funnelExplainError,
+      runExplain: runFunnelExplain,
+      metadataTitle: metadataSection ? t('results.debug.funnel.stepsTitle') : undefined,
+      metadataSection,
+      responseSection: renderStandardResponseBlock(),
+    })
+  }
 
-    if (isRetentionMode) {
-      const metadata = retentionDebugData?.modeMetadata as RetentionMetadata | undefined
-      const metadataSection = metadata ? (
-        <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
-          <div>
-            <span className="text-dc-text-muted">{t('results.debug.retention.retentionType')}</span>{' '}
-            <span className="text-dc-text">{metadata.retentionType || 'Classic'}</span>
-          </div>
-          <div>
-            <span className="text-dc-text-muted">{t('results.debug.retention.periods')}</span>{' '}
-            <span className="text-dc-text">{metadata.periods ?? t('results.debug.flow.notSet')}</span>
-          </div>
-          <div>
-            <span className="text-dc-text-muted">{t('results.debug.retention.granularity')}</span>{' '}
-            <span className="text-dc-text">{metadata.granularity || 'Week'}</span>
-          </div>
-          <div>
-            <span className="text-dc-text-muted">{t('results.debug.retention.segments')}</span>{' '}
-            <span className="text-dc-text">{metadata.segmentCount || 1}</span>
-          </div>
-        </div>
-      ) : null
-
-      const extraSection = retentionChartData?.summary ? (
+  const renderRetentionDebug = () => {
+    const metadata = retentionDebugData?.modeMetadata as RetentionMetadata | undefined
+    const metadataSection = metadata ? (
+      <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
         <div>
-          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.retention.summaryTitle')}</h4>
-          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
-            <div className="dc:grid dc:grid-cols-3 dc:gap-4 dc:text-sm">
-              <div>
-                <span className="text-dc-text-muted">{t('results.debug.retention.avgPeriod1')}</span>{' '}
-                <span className="text-dc-text dc:font-medium">
-                  {(retentionChartData.summary.avgPeriod1Retention * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div>
-                <span className="text-dc-text-muted">{t('results.debug.retention.maxPeriod1')}</span>{' '}
-                <span className="text-dc-text dc:font-medium">
-                  {(retentionChartData.summary.maxPeriod1Retention * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div>
-                <span className="text-dc-text-muted">{t('results.debug.retention.minPeriod1')}</span>{' '}
-                <span className="text-dc-text dc:font-medium">
-                  {(retentionChartData.summary.minPeriod1Retention * 100).toFixed(1)}%
-                </span>
-              </div>
+          <span className="text-dc-text-muted">{t('results.debug.retention.retentionType')}</span>{' '}
+          <span className="text-dc-text">{metadata.retentionType || 'Classic'}</span>
+        </div>
+        <div>
+          <span className="text-dc-text-muted">{t('results.debug.retention.periods')}</span>{' '}
+          <span className="text-dc-text">{metadata.periods ?? t('results.debug.flow.notSet')}</span>
+        </div>
+        <div>
+          <span className="text-dc-text-muted">{t('results.debug.retention.granularity')}</span>{' '}
+          <span className="text-dc-text">{metadata.granularity || 'Week'}</span>
+        </div>
+        <div>
+          <span className="text-dc-text-muted">{t('results.debug.retention.segments')}</span>{' '}
+          <span className="text-dc-text">{metadata.segmentCount || 1}</span>
+        </div>
+      </div>
+    ) : null
+
+    const extraSection = retentionChartData?.summary ? (
+      <div>
+        <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.retention.summaryTitle')}</h4>
+        <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
+          <div className="dc:grid dc:grid-cols-3 dc:gap-4 dc:text-sm">
+            <div>
+              <span className="text-dc-text-muted">{t('results.debug.retention.avgPeriod1')}</span>{' '}
+              <span className="text-dc-text dc:font-medium">
+                {(retentionChartData.summary.avgPeriod1Retention * 100).toFixed(1)}%
+              </span>
+            </div>
+            <div>
+              <span className="text-dc-text-muted">{t('results.debug.retention.maxPeriod1')}</span>{' '}
+              <span className="text-dc-text dc:font-medium">
+                {(retentionChartData.summary.maxPeriod1Retention * 100).toFixed(1)}%
+              </span>
+            </div>
+            <div>
+              <span className="text-dc-text-muted">{t('results.debug.retention.minPeriod1')}</span>{' '}
+              <span className="text-dc-text dc:font-medium">
+                {(retentionChartData.summary.minPeriod1Retention * 100).toFixed(1)}%
+              </span>
             </div>
           </div>
         </div>
-      ) : null
+      </div>
+    ) : null
 
-      return renderModeDebug({
-        label: t('results.debug.retention.label'),
-        badgeText: metadata ? t('results.debug.retention.badge', { segments: metadata.segmentCount || 1, users: metadata.totalUsers }) : undefined,
-        serverQuery: retentionServerQuery,
-        serverQueryTitle: t('results.debug.retention.serverQuery'),
-        serverQueryMissing: (
-          <>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.retention.serverQuery')}</h4>
-            <div className="bg-dc-warning-bg dc:border border-dc-warning dc:rounded dc:p-3 dc:text-sm dc:h-64 dc:overflow-auto">
-              <div className="text-dc-warning dc:font-medium dc:mb-2">{t('results.debug.retention.configIncomplete')}</div>
-              {retentionValidation && retentionValidation.errors.length > 0 ? (
-                <ul className="list-disc dc:list-inside text-dc-text-secondary dc:space-y-1">
-                  {retentionValidation.errors.map((error, i) => (
-                    <li key={i}>{error}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-dc-text-muted">{t('results.debug.retention.configHint')}</p>
-              )}
-            </div>
-          </>
-        ),
-        debugData: retentionDebugData,
-        sqlPlaceholder: t('results.debug.retention.sqlPlaceholder'),
-        explainResult: retentionExplainResult,
-        explainLoading: retentionExplainLoading,
-        explainHasRun: retentionExplainHasRun,
-        explainError: retentionExplainError,
-        runExplain: runRetentionExplain,
-        metadataTitle: metadataSection ? t('results.debug.retention.configTitle') : undefined,
-        metadataSection,
-        extraSection,
-        responseSection: renderRetentionResponseBlock(),
-      })
-    }
+    return renderModeDebug({
+      label: t('results.debug.retention.label'),
+      badgeText: metadata ? t('results.debug.retention.badge', { segments: metadata.segmentCount || 1, users: metadata.totalUsers }) : undefined,
+      serverQuery: retentionServerQuery,
+      serverQueryTitle: t('results.debug.retention.serverQuery'),
+      serverQueryMissing: (
+        <>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.retention.serverQuery')}</h4>
+          <div className="bg-dc-warning-bg dc:border border-dc-warning dc:rounded dc:p-3 dc:text-sm dc:h-64 dc:overflow-auto">
+            <div className="text-dc-warning dc:font-medium dc:mb-2">{t('results.debug.retention.configIncomplete')}</div>
+            {retentionValidation && retentionValidation.errors.length > 0 ? (
+              <ul className="list-disc dc:list-inside text-dc-text-secondary dc:space-y-1">
+                {retentionValidation.errors.map((error, i) => (
+                  <li key={i}>{error}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-dc-text-muted">{t('results.debug.retention.configHint')}</p>
+            )}
+          </div>
+        </>
+      ),
+      debugData: retentionDebugData,
+      sqlPlaceholder: t('results.debug.retention.sqlPlaceholder'),
+      explainResult: retentionExplainResult,
+      explainLoading: retentionExplainLoading,
+      explainHasRun: retentionExplainHasRun,
+      explainError: retentionExplainError,
+      runExplain: runRetentionExplain,
+      metadataTitle: metadataSection ? t('results.debug.retention.configTitle') : undefined,
+      metadataSection,
+      extraSection,
+      responseSection: renderRetentionResponseBlock(),
+    })
+  }
 
-    if (isFlowMode) {
-      const metadata = flowDebugData?.modeMetadata as FlowMetadata | undefined
-      const metadataSection = metadata ? (
-        <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
-          <div>
-            <span className="text-dc-text-muted">{t('results.debug.flow.startingStep')}</span>{' '}
-            <span className="text-dc-text">{metadata.startingStep?.name || t('results.debug.flow.notSet')}</span>
-          </div>
-          <div>
-            <span className="text-dc-text-muted">{t('results.debug.flow.eventDimension')}</span>{' '}
-            <span className="text-dc-text">{metadata.eventDimension || t('results.debug.flow.notSet')}</span>
-          </div>
-          <div>
-            <span className="text-dc-text-muted">{t('results.debug.flow.stepsBefore')}</span>{' '}
-            <span className="text-dc-text">{metadata.stepsBefore ?? t('results.debug.flow.notSet')}</span>
-          </div>
-          <div>
-            <span className="text-dc-text-muted">{t('results.debug.flow.stepsAfter')}</span>{' '}
-            <span className="text-dc-text">{metadata.stepsAfter ?? t('results.debug.flow.notSet')}</span>
-          </div>
+  const renderFlowDebug = () => {
+    const metadata = flowDebugData?.modeMetadata as FlowMetadata | undefined
+    const metadataSection = metadata ? (
+      <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
+        <div>
+          <span className="text-dc-text-muted">{t('results.debug.flow.startingStep')}</span>{' '}
+          <span className="text-dc-text">{metadata.startingStep?.name || t('results.debug.flow.notSet')}</span>
         </div>
-      ) : null
+        <div>
+          <span className="text-dc-text-muted">{t('results.debug.flow.eventDimension')}</span>{' '}
+          <span className="text-dc-text">{metadata.eventDimension || t('results.debug.flow.notSet')}</span>
+        </div>
+        <div>
+          <span className="text-dc-text-muted">{t('results.debug.flow.stepsBefore')}</span>{' '}
+          <span className="text-dc-text">{metadata.stepsBefore ?? t('results.debug.flow.notSet')}</span>
+        </div>
+        <div>
+          <span className="text-dc-text-muted">{t('results.debug.flow.stepsAfter')}</span>{' '}
+          <span className="text-dc-text">{metadata.stepsAfter ?? t('results.debug.flow.notSet')}</span>
+        </div>
+      </div>
+    ) : null
 
-      return renderModeDebug({
-        label: t('results.debug.flow.label'),
-        badgeText: metadata ? `${metadata.stepsBefore} before, ${metadata.stepsAfter} after` : undefined,
-        serverQuery: flowServerQuery,
-        serverQueryTitle: t('results.debug.flow.serverQuery'),
-        serverQueryMissing: (
-          <>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.flow.serverQuery')}</h4>
-            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
-              {t('results.debug.flow.noQuery')}
-            </div>
-          </>
-        ),
-        debugData: flowDebugData,
-        sqlPlaceholder: t('results.debug.flow.sqlPlaceholder'),
-        explainResult: flowExplainResult,
-        explainLoading: flowExplainLoading,
-        explainHasRun: flowExplainHasRun,
-        explainError: flowExplainError,
-        runExplain: runFlowExplain,
-        metadataTitle: metadataSection ? t('results.debug.flow.configTitle') : undefined,
-        metadataSection,
-        responseSection: renderStandardResponseBlock(t('results.debug.flow.responseTitle')),
-      })
-    }
+    return renderModeDebug({
+      label: t('results.debug.flow.label'),
+      badgeText: metadata ? `${metadata.stepsBefore} before, ${metadata.stepsAfter} after` : undefined,
+      serverQuery: flowServerQuery,
+      serverQueryTitle: t('results.debug.flow.serverQuery'),
+      serverQueryMissing: (
+        <>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.flow.serverQuery')}</h4>
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
+            {t('results.debug.flow.noQuery')}
+          </div>
+        </>
+      ),
+      debugData: flowDebugData,
+      sqlPlaceholder: t('results.debug.flow.sqlPlaceholder'),
+      explainResult: flowExplainResult,
+      explainLoading: flowExplainLoading,
+      explainHasRun: flowExplainHasRun,
+      explainError: flowExplainError,
+      runExplain: runFlowExplain,
+      metadataTitle: metadataSection ? t('results.debug.flow.configTitle') : undefined,
+      metadataSection,
+      responseSection: renderStandardResponseBlock(t('results.debug.flow.responseTitle')),
+    })
+  }
 
+  const renderDebug = () => {
+    if (isFunnelMode) return renderFunnelDebug()
+    if (isRetentionMode) return renderRetentionDebug()
+    if (isFlowMode) return renderFlowDebug()
     return renderStandardDebug()
   }
 
   // Determine if we're in multi-query mode (but NOT funnel mode)
   // Funnel mode always shows unified results, not per-query tables
-  const isMultiQuery = !isFunnelMode && queryCount > 1 && perQueryResults && perQueryResults.length > 1
+  const isMultiQuery = computeIsMultiQuery(isFunnelMode, queryCount, perQueryResults)
 
   // Render flow-specific table view showing nodes and links
   const renderFlowTable = () => {
@@ -1350,12 +1190,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
               </thead>
               <tbody className="dc:divide-y divide-dc-border bg-dc-surface">
                 {links.map((link: Record<string, unknown>, idx: number) => {
-                  // SankeyLink uses `source` and `target` (transformed), fallback to source_id/target_id (raw)
-                  const sourceId = (link.source || link.source_id) as string || ''
-                  const targetId = (link.target || link.target_id) as string || ''
-                  // IDs are like "before_5_created" or "start_created" - extract the event name
-                  const sourceName = sourceId.split('_').slice(-1)[0] || sourceId
-                  const targetName = targetId.split('_').slice(-1)[0] || targetId
+                  const { sourceName, targetName } = flowLinkNames(link)
 
                   return (
                     <tr key={idx} className="hover:bg-dc-surface-hover">
@@ -1378,23 +1213,14 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Render table - uses per-query results in multi-query mode
   const renderTable = (tableIndex?: number) => {
-    // In multi-query mode, use specific query's results and query object
-    // tableIndex: undefined = single query, -1 = merged view, 0+ = per-query view
-    let tableData: any[] | null
-    let tableQuery = allQueries?.[0]  // Default to first query
-
-    if (isMultiQuery && tableIndex !== undefined && tableIndex >= 0 && perQueryResults) {
-      // Per-query table view
-      tableData = perQueryResults[tableIndex] || null
-      tableQuery = allQueries?.[tableIndex]
-    } else {
-      // Merged view (tableIndex === -1) or single query mode
-      tableData = executionResults
-      // For merged view, use combined query
-      if (isMultiQuery) {
-        tableQuery = combinedQueryForChart
-      }
-    }
+    const { tableData, tableQuery } = selectTableData({
+      tableIndex,
+      isMultiQuery,
+      allQueries,
+      perQueryResults,
+      executionResults,
+      combinedQueryForChart
+    })
 
     if (!tableData || tableData.length === 0) {
       return (
@@ -1440,208 +1266,52 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     </div>
   )
 
-  // Render header - shown whenever we have query content
-  const renderHeader = () => {
-    const hasResults = executionResults && executionResults.length > 0
-
-    return (
-      <div className="dc:px-4 dc:py-2 dc:border-b border-dc-border bg-dc-surface-secondary dc:flex-shrink-0">
-        <div className="dc:flex dc:items-center dc:justify-between">
-          {/* Left side: Status and row count */}
-          <div className="dc:flex dc:items-center">
-            {executionStatus === 'refreshing' ? (
-              <div
-                className="dc:w-4 dc:h-4 dc:mr-2 dc:rounded-full dc:border-b-2 dc:animate-spin"
-                style={{ borderBottomColor: 'var(--dc-primary)' }}
-              />
-            ) : hasResults ? (
-              <SuccessIcon className="dc:w-4 dc:h-4 text-dc-success dc:mr-2" />
-            ) : executionStatus === 'error' ? (
-              <ErrorIcon className="dc:w-4 dc:h-4 text-dc-error dc:mr-2" />
-            ) : (
-              <WarningIcon className="dc:w-4 dc:h-4 text-dc-text-muted dc:mr-2" />
-            )}
-            <span className="dc:text-sm text-dc-text-secondary">
-              {hasResults ? (
-                <>
-                  {executionResults.length} {executionResults.length !== 1 ? t('results.header.rows') : t('results.header.row')}
-                  {totalRowCount !== null && totalRowCount > executionResults.length && (
-                    <span className="text-dc-text-muted"> of {totalRowCount.toLocaleString()}</span>
-                  )}
-                  {resultsStale && (
-                    <span className="text-dc-warning dc:ml-2">• {t('results.header.stale')}</span>
-                  )}
-                </>
-              ) : executionStatus === 'error' ? (
-                t('results.header.failed')
-              ) : executionStatus === 'loading' ? (
-                t('results.header.executing')
-              ) : (
-                t('results.header.noResults')
-              )}
-            </span>
-          </div>
-
-          {/* Right side: Display limit (table only) and Debug toggle */}
-          <div className="dc:flex dc:items-center dc:gap-2">
-            {/* Display Limit (only for table view) */}
-            {hasResults && activeView === 'table' && !showDebug && onDisplayLimitChange && (
-              <select
-                value={displayLimit}
-                onChange={(e) => onDisplayLimitChange(Number(e.target.value))}
-                className="dc:text-xs dc:border border-dc-border dc:rounded dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
-              >
-                <option value={50}>50 {t('results.header.rows')}</option>
-                <option value={100}>100 {t('results.header.rows')}</option>
-                <option value={250}>250 {t('results.header.rows')}</option>
-                <option value={500}>500 {t('results.header.rows')}</option>
-              </select>
-            )}
-
-            {/* AI Button - positioned before palette selector */}
-            {enableAI && onAIToggle && (
-              <button
-                onClick={onAIToggle}
-                className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:transition-colors ${
-                  isAIOpen
-                    ? 'text-white bg-dc-accent dc:border border-dc-accent'
-                    : 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg dc:border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
-                }`}
-                title={isAIOpen ? 'Close AI assistant' : 'Analyse with AI'}
-              >
-                <SparklesIcon className="dc:w-3 dc:h-3" />
-                <span className="dc:hidden dc:sm:inline">{t('results.ai.button')}</span>
-              </button>
-            )}
-
-            {/* Color Palette Selector (only when callback is provided, i.e., standalone mode) */}
-            {onColorPaletteChange && hasResults && (
-              <ColorPaletteSelector
-                currentPalette={currentPaletteName || 'default'}
-                onPaletteChange={onColorPaletteChange}
-              />
-            )}
-
-            {/* Share Button */}
-            {onShareClick && (
-              <button
-                onClick={onShareClick}
-                className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:transition-colors ${
-                  shareButtonState === 'idle' && canShare
-                    ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg dc:border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
-                    : shareButtonState !== 'idle'
-                    ? 'text-dc-success dark:text-dc-success bg-dc-success-bg dark:bg-dc-success-bg dc:border border-dc-success dark:border-dc-success'
-                    : 'text-dc-text-muted bg-dc-surface-secondary dc:border border-dc-border dc:cursor-not-allowed'
-                }`}
-                title={shareButtonState === 'idle' ? 'Share this analysis' : 'Link copied!'}
-                disabled={!canShare || shareButtonState !== 'idle'}
-              >
-                {shareButtonState === 'idle' ? (
-                  <>
-                    <ShareIcon className="dc:w-3 dc:h-3" />
-                    <span className="dc:hidden dc:sm:inline">{t('common.actions.share')}</span>
-                  </>
-                ) : shareButtonState === 'copied' ? (
-                  <>
-                    <CheckIcon className="dc:w-3 dc:h-3" />
-                    <span className="dc:hidden dc:sm:inline">{t('results.share.copied')}</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckIcon className="dc:w-3 dc:h-3" />
-                    <span className="dc:hidden dc:sm:inline">{t('results.share.copied')}</span>
-                    <span className="dc:hidden dc:lg:inline dc:text-[10px] dc:opacity-75">{t('results.share.noChart')}</span>
-                  </>
-                )}
-              </button>
-            )}
-
-            {/* Refresh Button - Shift+click bypasses cache */}
-            {onRefreshClick && canRefresh && (
-              <button
-                onClick={(e) => onRefreshClick({ bustCache: e.shiftKey })}
-                onMouseEnter={() => setIsHoveringRefresh(true)}
-                onMouseLeave={() => setIsHoveringRefresh(false)}
-                disabled={isRefreshing}
-                className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:transition-colors ${
-                  isRefreshing
-                    ? 'text-dc-text-muted bg-dc-surface-secondary dc:border border-dc-border dc:cursor-wait'
-                    : showCacheBustIndicator
-                      ? 'text-dc-warning bg-dc-warning-bg dc:border border-dc-warning dc:font-semibold'
-                      : 'text-dc-accent bg-dc-accent-bg dc:border border-dc-accent hover:bg-dc-accent-bg'
-                }`}
-                title={isRefreshing ? 'Refreshing...' : showCacheBustIndicator ? 'Click to refresh and bypass cache' : 'Refresh data (Shift+click to bypass cache)'}
-              >
-                <RefreshIcon className={`dc:w-3 dc:h-3 ${isRefreshing ? 'dc:animate-spin' : ''}`} />
-                <span className="dc:hidden dc:sm:inline">{isRefreshing ? 'Refreshing' : 'Refresh'}</span>
-              </button>
-            )}
-
-            {/* Clear Button */}
-            {onClearClick && canClear && (
-              <button
-                onClick={() => setIsClearConfirmOpen(true)}
-                className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover dc:border border-dc-border dc:rounded dc:transition-colors"
-                title={isFunnelMode ? 'Clear funnel' : 'Clear all query data'}
-              >
-                <TrashIcon className="dc:w-3 dc:h-3" />
-                <span className="dc:hidden dc:sm:inline">{t('common.actions.clear')}</span>
-              </button>
-            )}
-
-            {/* Schema Visualization Toggle Button */}
-            {features.showSchemaDiagram && (
-              <button
-                onClick={() => {
-                  setShowSchema(!showSchema)
-                  if (!showSchema) setShowDebug(false)
-                }}
-                className={`dc:p-1.5 dc:rounded dc:transition-colors dc:relative ${
-                  showSchema
-                    ? 'bg-dc-primary text-white'
-                    : 'text-dc-text-secondary hover:text-dc-text hover:bg-dc-surface-hover'
-                }`}
-                title={showSchema ? 'Hide schema diagram' : 'Show schema diagram'}
-              >
-                <SchemaGraphIcon className="dc:w-4 dc:h-4" />
-              </button>
-            )}
-
-            {/* Debug Toggle Button */}
-            <button
-              onClick={() => {
-                setShowDebug(!showDebug)
-                if (!showDebug) setShowSchema(false)
-              }}
-              className={`dc:p-1.5 dc:rounded dc:transition-colors dc:relative ${
-                showDebug
-                  ? 'bg-dc-primary text-white'
-                  : 'text-dc-text-secondary hover:text-dc-text hover:bg-dc-surface-hover'
-              }`}
-              title={showDebug ? 'Hide debug info' : 'Show debug info'}
-            >
-              <CodeIcon className="dc:w-4 dc:h-4" />
-              {/* Error indicator dot - show if ANY query has an error */}
-              {(executionError || debugDataPerQuery.some(d => d.error)) && !showDebug && (
-                <span className="dc:absolute dc:-top-0.5 dc:-right-0.5 dc:w-2 dc:h-2 bg-dc-danger-bg0 dc:rounded-full" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Performance Warning */}
-        {hasResults && totalRowCount !== null && totalRowCount > 1000 && (
-          <div className="dc:mt-2 bg-dc-warning-bg dc:border border-dc-warning dc:rounded-lg dc:p-2 dc:flex dc:items-start">
-            <WarningIcon className="dc:w-4 dc:h-4 text-dc-warning dc:mr-2 dc:shrink-0 dc:mt-0.5" />
-            <div className="dc:text-xs text-dc-warning">
-              <span className="dc:font-semibold">{t('results.warning.largeDataset')}</span> {totalRowCount.toLocaleString()} {t('results.header.rows')}.
-              {t('results.warning.filterHint')}
-            </div>
-          </div>
-        )}
-      </div>
-    )
+  // Header prop groups — cohesive slices passed to ResultsHeader (see its
+  // ResultsSummary / ResultsToolbarActions / ResultsDisplayFlags types).
+  const headerSummary: ResultsSummary = {
+    executionResults,
+    executionStatus,
+    totalRowCount,
+    resultsStale,
+    executionError,
+    debugDataPerQuery,
   }
+
+  const headerToolbar: ResultsToolbarActions = {
+    displayLimit,
+    onDisplayLimitChange,
+    isAIOpen,
+    onAIToggle,
+    onColorPaletteChange,
+    currentPaletteName,
+    onShareClick,
+    shareButtonState,
+    canShare,
+    onRefreshClick,
+    canRefresh,
+    isRefreshing,
+    showCacheBustIndicator,
+    setIsHoveringRefresh,
+    onClearClick,
+    canClear,
+    setIsClearConfirmOpen,
+    setShowDebug,
+    setShowSchema,
+  }
+
+  const headerDisplay: ResultsDisplayFlags = {
+    activeView,
+    showDebug,
+    showSchema,
+    enableAI,
+    isFunnelMode,
+    showSchemaDiagram: !!features.showSchemaDiagram,
+  }
+
+  // Render header - shown whenever we have query content
+  const renderHeader = () => (
+    <ResultsHeader summary={headerSummary} toolbar={headerToolbar} display={headerDisplay} />
+  )
 
   // "Needs refresh" banner for manual refresh mode
   const renderNeedsRefreshBanner = () => {
@@ -1702,6 +1372,101 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   }
 
   // Success state with data
+  // Schema / debug / chart / table content area for a successful result
+  const renderResultsContent = () => {
+    if (showSchema) {
+      return (
+        <React.Suspense fallback={null}><SchemaVisualizationLazy height="100%" highlightedFields={highlightedFields} onFieldClick={onSchemaFieldClick} /></React.Suspense>
+      )
+    }
+    if (showDebug) return renderDebug()
+    if (activeView === 'chart') return <div className="dc:p-4 dc:h-full">{renderChart()}</div>
+    if (isFlowMode) return <div className="dc:h-full" key="table-flow">{renderFlowTable()}</div>
+    if (isMultiQuery) return <div className="dc:h-full" key={`table-${activeTableIndex}`}>{renderTable(activeTableIndex)}</div>
+    return <div className="dc:h-full" key="table-single">{renderTable()}</div>
+  }
+
+  // Per-query + merged table buttons shown in multi-query mode
+  const renderMultiQueryTableButtons = () => (
+    <>
+      {/* Per-query table buttons */}
+      {Array.from({ length: queryCount }).map((_, index) => (
+        <button
+          key={`table-${index}`}
+          onClick={() => {
+            onActiveViewChange('table')
+            onActiveTableChange?.(index)
+          }}
+          className={`dc:flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
+            activeView === 'table' && activeTableIndex === index
+              ? 'bg-dc-primary text-white'
+              : 'text-dc-text-secondary hover:bg-dc-surface-hover'
+          }`}
+          title={`Table Q${index + 1}`}
+        >
+          <TableIcon className="dc:w-4 dc:h-4" />
+          Q{index + 1}
+        </button>
+      ))}
+      {/* Merged table button */}
+      <button
+        onClick={() => {
+          onActiveViewChange('table')
+          onActiveTableChange?.(-1)  // -1 = merged view
+        }}
+        className={`dc:flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
+          activeView === 'table' && activeTableIndex === -1
+            ? 'bg-dc-primary text-white'
+            : 'text-dc-text-secondary hover:bg-dc-surface-hover'
+        }`}
+        title="Merged table view"
+      >
+        <TableIcon className="dc:w-4 dc:h-4" />
+        {t('results.view.merged')}
+      </button>
+    </>
+  )
+
+  // Chart / table view toggle, centered below the content
+  const renderViewToggle = () => (
+    <div className="dc:px-4 dc:py-3 dc:border-t border-dc-border bg-dc-surface dc:flex dc:justify-center dc:flex-shrink-0">
+      <div className="dc:flex dc:items-center bg-dc-surface-secondary dc:border border-dc-border dc:rounded-md dc:overflow-hidden">
+        {/* Chart button - enabled when the selected chart type can render with the current query */}
+        <button
+          onClick={() => chartViewEnabled && onActiveViewChange('chart')}
+          disabled={!chartViewEnabled}
+          className={`dc:flex dc:items-center dc:gap-1.5 dc:px-4 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
+            activeView === 'chart'
+              ? 'bg-dc-primary text-white'
+              : !chartViewEnabled
+                ? 'text-dc-text-disabled bg-dc-surface-tertiary dc:cursor-not-allowed'
+                : 'text-dc-text-secondary hover:bg-dc-surface-hover'
+          }`}
+          title={chartButtonTitle}
+        >
+          <ChartIcon className="dc:w-4 dc:h-4" />
+          {t('results.view.chart')}
+        </button>
+
+        {/* Table buttons - show multiple when in multi-query mode */}
+        {isMultiQuery ? renderMultiQueryTableButtons() : (
+          <button
+            onClick={() => onActiveViewChange('table')}
+            className={`dc:flex dc:items-center dc:gap-1.5 dc:px-4 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
+              activeView === 'table'
+                ? 'bg-dc-primary text-white'
+                : 'text-dc-text-secondary hover:bg-dc-surface-hover'
+            }`}
+            title="Table view"
+          >
+            <TableIcon className="dc:w-4 dc:h-4" />
+            {t('results.view.table')}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+
   const renderSuccess = () => {
     const hasResults = executionResults && executionResults.length > 0
 
@@ -1726,132 +1491,35 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
         {/* Results Content */}
         <div className="dc:flex-1 dc:min-h-0 dc:relative dc:overflow-auto">
-          {showSchema ? (
-            <React.Suspense fallback={null}><SchemaVisualizationLazy height="100%" highlightedFields={highlightedFields} onFieldClick={onSchemaFieldClick} /></React.Suspense>
-          ) : showDebug ? (
-            renderDebug()
-          ) : activeView === 'chart' ? (
-            <div className="dc:p-4 dc:h-full">{renderChart()}</div>
-          ) : isFlowMode ? (
-            <div className="dc:h-full" key="table-flow">{renderFlowTable()}</div>
-          ) : isMultiQuery ? (
-            <div className="dc:h-full" key={`table-${activeTableIndex}`}>{renderTable(activeTableIndex)}</div>
-          ) : (
-            <div className="dc:h-full" key="table-single">{renderTable()}</div>
-          )}
+          {renderResultsContent()}
         </div>
 
         {/* View Toggle - Below content, centered */}
-        {!showDebug && !showSchema && (
-          <div className="dc:px-4 dc:py-3 dc:border-t border-dc-border bg-dc-surface dc:flex dc:justify-center dc:flex-shrink-0">
-            <div className="dc:flex dc:items-center bg-dc-surface-secondary dc:border border-dc-border dc:rounded-md dc:overflow-hidden">
-              {/* Chart button - enabled when the selected chart type can render with the current query */}
-              <button
-                onClick={() => chartViewEnabled && onActiveViewChange('chart')}
-                disabled={!chartViewEnabled}
-                className={`dc:flex dc:items-center dc:gap-1.5 dc:px-4 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
-                  activeView === 'chart'
-                    ? 'bg-dc-primary text-white'
-                    : !chartViewEnabled
-                      ? 'text-dc-text-disabled bg-dc-surface-tertiary dc:cursor-not-allowed'
-                      : 'text-dc-text-secondary hover:bg-dc-surface-hover'
-                }`}
-                title={chartButtonTitle}
-              >
-                <ChartIcon className="dc:w-4 dc:h-4" />
-                {t('results.view.chart')}
-              </button>
-
-              {/* Table buttons - show multiple when in multi-query mode */}
-              {isMultiQuery ? (
-                <>
-                  {/* Per-query table buttons */}
-                  {Array.from({ length: queryCount }).map((_, index) => (
-                    <button
-                      key={`table-${index}`}
-                      onClick={() => {
-                        onActiveViewChange('table')
-                        onActiveTableChange?.(index)
-                      }}
-                      className={`dc:flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
-                        activeView === 'table' && activeTableIndex === index
-                          ? 'bg-dc-primary text-white'
-                          : 'text-dc-text-secondary hover:bg-dc-surface-hover'
-                      }`}
-                      title={`Table Q${index + 1}`}
-                    >
-                      <TableIcon className="dc:w-4 dc:h-4" />
-                      Q{index + 1}
-                    </button>
-                  ))}
-                  {/* Merged table button */}
-                  <button
-                    onClick={() => {
-                      onActiveViewChange('table')
-                      onActiveTableChange?.(-1)  // -1 = merged view
-                    }}
-                    className={`dc:flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
-                      activeView === 'table' && activeTableIndex === -1
-                        ? 'bg-dc-primary text-white'
-                        : 'text-dc-text-secondary hover:bg-dc-surface-hover'
-                    }`}
-                    title="Merged table view"
-                  >
-                    <TableIcon className="dc:w-4 dc:h-4" />
-                    {t('results.view.merged')}
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => onActiveViewChange('table')}
-                  className={`dc:flex dc:items-center dc:gap-1.5 dc:px-4 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
-                    activeView === 'table'
-                      ? 'bg-dc-primary text-white'
-                      : 'text-dc-text-secondary hover:bg-dc-surface-hover'
-                  }`}
-                  title="Table view"
-                >
-                  <TableIcon className="dc:w-4 dc:h-4" />
-                  {t('results.view.table')}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        {!showDebug && !showSchema && renderViewToggle()}
       </div>
     )
   }
 
   // Determine what to render based on execution status
   // Check for meaningful results - handles different data structures per mode
-  const hasResults = useMemo(() => {
-    if (executionResults === null) return false
-    if (!Array.isArray(executionResults)) return true
-    if (executionResults.length === 0) return false
-
-    // For flow mode, check if we have actual nodes/links data
-    // Flow wraps results as [{ nodes: [...], links: [...] }] - need to check inner content
-    if (isFlowMode && executionResults.length === 1) {
-      const flowData = executionResults[0] as { nodes?: unknown[]; links?: unknown[] } | undefined
-      if (flowData && typeof flowData === 'object' && 'nodes' in flowData && 'links' in flowData) {
-        const hasNodes = Array.isArray(flowData.nodes) && flowData.nodes.length > 0
-        const hasLinks = Array.isArray(flowData.links) && flowData.links.length > 0
-        return hasNodes || hasLinks
-      }
-    }
-
-    // For retention mode, check if we have chart data with rows
-    if (isRetentionMode && retentionChartData) {
-      return retentionChartData.rows.length > 0
-    }
-
-    // For funnel mode, results are chart data items - check length
-    // For query mode, results are data rows - check length
-    return executionResults.length > 0
-  }, [executionResults, isFlowMode, isRetentionMode, retentionChartData])
+  const hasResults = useMemo(
+    () => computeHasResults(executionResults, isFlowMode, isRetentionMode, retentionChartData),
+    [executionResults, isFlowMode, isRetentionMode, retentionChartData]
+  )
 
   // Don't show results if we're in idle state with no query content (cleared state)
   const shouldShowResults = hasResults && (executionStatus !== 'idle' || hasModeSpecificContent)
+
+  // Main content based on execution status (overlay + modal handled by the wrapper)
+  const renderMainContent = () => (
+    <>
+      {executionStatus === 'idle' && !hasModeSpecificContent && renderEmpty()}
+      {executionStatus === 'idle' && hasModeSpecificContent && !hasResults && renderWaiting()}
+      {executionStatus === 'loading' && !hasResults && renderLoading()}
+      {executionStatus === 'error' && !hasResults && renderError()}
+      {(executionStatus === 'success' || shouldShowResults) && renderSuccess()}
+    </>
+  )
 
   // Priority 1: Manual refresh mode with no results - show centered refresh prompt
   // This takes precedence over all other states for consistent UX across all modes
@@ -1866,11 +1534,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   return (
     <div className="dc:h-full dc:min-h-[400px] dc:flex dc:flex-col bg-dc-surface dc:relative">
       {/* Main content */}
-      {executionStatus === 'idle' && !hasModeSpecificContent && renderEmpty()}
-      {executionStatus === 'idle' && hasModeSpecificContent && !hasResults && renderWaiting()}
-      {executionStatus === 'loading' && !hasResults && renderLoading()}
-      {executionStatus === 'error' && !hasResults && renderError()}
-      {(executionStatus === 'success' || shouldShowResults) && renderSuccess()}
+      {renderMainContent()}
 
       {/* Overlay states */}
       {(executionStatus === 'loading' || executionStatus === 'refreshing') && hasResults && renderOverlaySpinner()}
