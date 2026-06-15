@@ -453,20 +453,11 @@ describe('Statistical Functions', () => {
       const capabilities = dbExecutor.databaseAdapter.getCapabilities()
 
       if (dbType === 'postgres') {
-        expect(capabilities.supportsStddev).toBe(true)
-        expect(capabilities.supportsVariance).toBe(true)
         expect(capabilities.supportsPercentile).toBe(true)
-        expect(capabilities.supportsWindowFunctions).toBe(true)
       } else if (dbType === 'mysql') {
-        expect(capabilities.supportsStddev).toBe(true)
-        expect(capabilities.supportsVariance).toBe(true)
         expect(capabilities.supportsPercentile).toBe(false)
-        expect(capabilities.supportsWindowFunctions).toBe(true)
       } else if (dbType === 'sqlite') {
-        expect(capabilities.supportsStddev).toBe(false)
-        expect(capabilities.supportsVariance).toBe(false)
         expect(capabilities.supportsPercentile).toBe(false)
-        expect(capabilities.supportsWindowFunctions).toBe(true) // SQLite 3.25+
       }
     })
   })

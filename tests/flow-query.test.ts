@@ -964,7 +964,7 @@ describe('Database Adapter Flow Support', () => {
     })
 
     it('should report lateral join support', () => {
-      expect(adapter.supportsLateralJoins()).toBe(true)
+      expect(adapter.getCapabilities().supportsLateralJoins).toBe(true)
     })
   })
 
@@ -993,7 +993,7 @@ describe('Database Adapter Flow Support', () => {
     })
 
     it('should report lateral join support', () => {
-      expect(adapter.supportsLateralJoins()).toBe(true)
+      expect(adapter.getCapabilities().supportsLateralJoins).toBe(true)
     })
   })
 
@@ -1055,7 +1055,7 @@ describe('Database Adapter Flow Support', () => {
     })
 
     it('should report no lateral join support', () => {
-      expect(adapter.supportsLateralJoins()).toBe(false)
+      expect(adapter.getCapabilities().supportsLateralJoins).toBe(false)
     })
   })
 })

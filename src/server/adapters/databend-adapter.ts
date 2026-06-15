@@ -18,13 +18,6 @@ export class DatabendAdapter extends BaseDatabaseAdapter {
     return 'databend'
   }
 
-  /**
-   * Databend does not support LATERAL joins
-   */
-  supportsLateralJoins(): boolean {
-    return false
-  }
-
   // ============================================
   // Funnel Analysis Methods
   // ============================================
@@ -157,14 +150,9 @@ export class DatabendAdapter extends BaseDatabaseAdapter {
    */
   getCapabilities(): DatabaseCapabilities {
     return {
-      supportsStddev: true,
-      supportsVariance: true,
       supportsPercentile: false,
-      supportsWindowFunctions: true,
-      supportsFrameClause: true,
       supportsLateralJoins: false,
       supportsPercentileSubqueries: false,
-      supportsDerivedTablesInCTE: false, // Databend doesn't support derived tables (subqueries) in FROM inside CTEs
       supportsLateralSubqueriesInCTE: false // Databend doesn't support LATERAL
     }
   }

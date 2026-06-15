@@ -21,9 +21,6 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
    * which is required for the LATERAL join strategy in flow queries.
    * Use window function strategy instead.
    */
-  supportsLateralJoins(): boolean {
-    return false
-  }
 
   // ============================================
   // Funnel Analysis Methods
@@ -164,14 +161,9 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
    */
   getCapabilities(): DatabaseCapabilities {
     return {
-      supportsStddev: true,
-      supportsVariance: true,
       supportsPercentile: true,
-      supportsWindowFunctions: true,
-      supportsFrameClause: true,
       supportsLateralJoins: false,
       supportsPercentileSubqueries: false,
-      supportsDerivedTablesInCTE: true,
       supportsLateralSubqueriesInCTE: false // DuckDB doesn't support LATERAL
     }
   }

@@ -17,13 +17,6 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
     return 'postgres'
   }
 
-  /**
-   * PostgreSQL supports LATERAL joins since version 9.3
-   */
-  supportsLateralJoins(): boolean {
-    return true
-  }
-
   // ============================================
   // Funnel Analysis Methods
   // ============================================
@@ -164,14 +157,9 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
    */
   getCapabilities(): DatabaseCapabilities {
     return {
-      supportsStddev: true,
-      supportsVariance: true,
       supportsPercentile: true,
-      supportsWindowFunctions: true,
-      supportsFrameClause: true,
       supportsLateralJoins: true,
       supportsPercentileSubqueries: true,
-      supportsDerivedTablesInCTE: true,
       supportsLateralSubqueriesInCTE: true
     }
   }

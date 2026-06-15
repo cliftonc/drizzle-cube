@@ -26,7 +26,7 @@ import type {
 } from '../types'
 import { resolveFilterFieldExpr } from '../cube-utils'
 import { hasFunnelMode } from '../query-modes'
-import { combineWhere, resolveBindingKeyExpr, resolveTimeDimensionExpr, type WithSubquery } from './analysis-utils'
+import { combineWhere, resolveBindingKeyExpr, bindingKeyErrorsForPrefix, resolveTimeDimensionExpr, asGroupFilter, type GroupFilterParts, type WithSubquery } from './analysis-utils'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
 import { JoinPathResolver } from '../resolvers/join-path-resolver'
@@ -348,7 +348,8 @@ export class FunnelQueryBuilder {
     const filters = Array.isArray(step.filter) ? step.filter : [step.filter]
 
     const extractFromFilter = (filter: Filter) => {
-      // Handle logical filters
+      // Handle logical filters (server { and/or } and client { type, filters })
+      const group = asGroupFilter(filter)
       if ('and' in filter && filter.and) {
         for (const subFilter of filter.and) {
           extractFromFilter(subFilter as Filter)
@@ -357,10 +358,8 @@ export class FunnelQueryBuilder {
         for (const subFilter of filter.or) {
           extractFromFilter(subFilter as Filter)
         }
-      } else if ('type' in filter && 'filters' in filter) {
-        // Client format: { type: 'and' | 'or', filters: [...] }
-        const groupFilter = filter as { type: string; filters: Filter[] }
-        for (const subFilter of groupFilter.filters || []) {
+      } else if (group) {
+        for (const subFilter of group.filters) {
           extractFromFilter(subFilter)
         }
       } else if ('member' in filter) {
@@ -460,7 +459,7 @@ export class FunnelQueryBuilder {
     cube: Cube,
     context: QueryContext
   ): SQL {
-    return resolveBindingKeyExpr(config.bindingKey, cube, context, 'server.errors.funnel')
+    return resolveBindingKeyExpr(config.bindingKey, cube, context, bindingKeyErrorsForPrefix('server.errors.funnel'))
   }
 
   /**
@@ -519,10 +518,10 @@ export class FunnelQueryBuilder {
   ): SQL | null {
     // Handle logical filters - support both server format ({ and: [...] }) and client format ({ type: 'and', filters: [...] })
     const isServerLogicalFilter = 'and' in filter || 'or' in filter
-    const isClientGroupFilter = 'type' in filter && ('filters' in filter) && (filter.type === 'and' || filter.type === 'or')
+    const group = asGroupFilter(filter)
 
-    if (isServerLogicalFilter || isClientGroupFilter) {
-      return this.buildLogicalFilterCondition(filter, isClientGroupFilter, baseCube, cubes, context)
+    if (isServerLogicalFilter || group) {
+      return this.buildLogicalFilterCondition(filter, group, baseCube, cubes, context)
     }
 
     return this.buildSimpleFilterCondition(filter as FilterCondition, baseCube, cubes, context)
@@ -531,7 +530,7 @@ export class FunnelQueryBuilder {
   /** Combine a logical/group filter's sub-conditions into a single SQL condition. */
   private buildLogicalFilterCondition(
     filter: Filter,
-    isClientGroupFilter: boolean,
+    group: GroupFilterParts | null,
     baseCube: Cube,
     cubes: Map<string, Cube>,
     context: QueryContext
@@ -539,11 +538,10 @@ export class FunnelQueryBuilder {
     let isAndFilter: boolean
     let filterList: Filter[]
 
-    if (isClientGroupFilter) {
+    if (group) {
       // Client format: { type: 'and' | 'or', filters: [...] }
-      const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
-      isAndFilter = groupFilter.type === 'and'
-      filterList = groupFilter.filters || []
+      isAndFilter = group.isAnd
+      filterList = group.filters
     } else {
       // Server format: { and: [...] } or { or: [...] }
       const logicalFilter = filter as LogicalFilter

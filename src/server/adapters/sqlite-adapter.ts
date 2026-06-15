@@ -17,14 +17,6 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     return 'sqlite'
   }
 
-  /**
-   * SQLite does not support LATERAL joins
-   * Flow queries require LATERAL for efficient execution and are not supported on SQLite
-   */
-  supportsLateralJoins(): boolean {
-    return false
-  }
-
   // ============================================
   // Funnel Analysis Methods
   // ============================================
@@ -316,14 +308,9 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
    */
   getCapabilities(): DatabaseCapabilities {
     return {
-      supportsStddev: false,      // Requires extension
-      supportsVariance: false,    // Requires extension
       supportsPercentile: false,  // Requires extension
-      supportsWindowFunctions: true, // SQLite 3.25+
-      supportsFrameClause: true,
       supportsLateralJoins: false, // SQLite does not support LATERAL
       supportsPercentileSubqueries: false, // No percentile support anyway
-      supportsDerivedTablesInCTE: true,
       supportsLateralSubqueriesInCTE: false // SQLite doesn't support LATERAL at all
     }
   }
