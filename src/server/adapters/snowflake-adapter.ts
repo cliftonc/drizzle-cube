@@ -19,13 +19,6 @@ export class SnowflakeAdapter extends BaseDatabaseAdapter {
     return 'snowflake'
   }
 
-  /**
-   * Snowflake supports LATERAL joins
-   */
-  supportsLateralJoins(): boolean {
-    return true
-  }
-
   // ============================================
   // Funnel Analysis Methods
   // ============================================
@@ -143,14 +136,9 @@ export class SnowflakeAdapter extends BaseDatabaseAdapter {
    */
   getCapabilities(): DatabaseCapabilities {
     return {
-      supportsStddev: true,
-      supportsVariance: true,
       supportsPercentile: true,
-      supportsWindowFunctions: true,
-      supportsFrameClause: true,
       supportsLateralJoins: true,
       supportsPercentileSubqueries: true,
-      supportsDerivedTablesInCTE: true,
       supportsLateralSubqueriesInCTE: false // Snowflake can't correlate LATERAL subqueries with CTE references
     }
   }

@@ -25,6 +25,7 @@ import { resolveFilterFieldExpr } from '../cube-utils'
 import type { DatabaseAdapter } from '../adapters/base-adapter'
 import { DateTimeBuilder } from './date-time-builder'
 import { applyFilterOperator } from './filter-operators'
+import { asGroupFilter } from './analysis-utils'
 
 export class FilterBuilder {
   constructor(
@@ -113,24 +114,29 @@ export class FilterBuilder {
     context: QueryContext
   ): SQL | null {
     if ('and' in filter && filter.and) {
-      const conditions = filter.and
-        .map(f => this.buildSingleFilter(f, cubes, context))
-        .filter((c): c is SQL => c !== null)
-      return conditions.length > 0
-        ? (conditions.length === 1 ? conditions[0] : and(...conditions) as SQL)
-        : null
+      return this.combineFilters(filter.and, true, cubes, context)
     }
 
     if ('or' in filter && filter.or) {
-      const conditions = filter.or
-        .map(f => this.buildSingleFilter(f, cubes, context))
-        .filter((c): c is SQL => c !== null)
-      return conditions.length > 0
-        ? (conditions.length === 1 ? conditions[0] : or(...conditions) as SQL)
-        : null
+      return this.combineFilters(filter.or, false, cubes, context)
     }
 
     return null
+  }
+
+  /** Build + AND/OR-combine a list of sub-filters, collapsing the 0- and 1-element cases. */
+  private combineFilters(
+    filterList: Filter[],
+    isAnd: boolean,
+    cubes: Map<string, Cube>,
+    context: QueryContext
+  ): SQL | null {
+    const conditions = filterList
+      .map(f => this.buildSingleFilter(f, cubes, context))
+      .filter((c): c is SQL => c !== null)
+    if (conditions.length === 0) return null
+    if (conditions.length === 1) return conditions[0]
+    return isAnd ? and(...conditions) as SQL : or(...conditions) as SQL
   }
 
   /**
@@ -145,6 +151,12 @@ export class FilterBuilder {
     // Handle logical filters recursively
     if ('and' in filter || 'or' in filter) {
       return this.buildLogicalFilter(filter, cubes, context)
+    }
+
+    // Handle client-style group filters ({ type: 'and' | 'or', filters: [...] })
+    const group = asGroupFilter(filter)
+    if (group) {
+      return this.combineFilters(group.filters, group.isAnd, cubes, context)
     }
 
     // Simple filter

@@ -34,14 +34,9 @@ function createMockPostgresAdapter(): DatabaseAdapter {
   return ({
     getEngineType: () => 'postgres',
     getCapabilities: () => ({
-      supportsStddev: true,
-      supportsVariance: true,
       supportsPercentile: true,
-      supportsWindowFunctions: true,
-      supportsFrameClause: true,
       supportsLateralJoins: true,
       supportsPercentileSubqueries: true,
-      supportsDerivedTablesInCTE: true,
       supportsLateralSubqueriesInCTE: true
     }),
     buildTimeDimension: (granularity: TimeGranularity, fieldExpr: AnyColumn | SQL) => {
@@ -162,14 +157,9 @@ function createMockSQLiteAdapter(): DatabaseAdapter {
     ...baseAdapter,
     getEngineType: () => 'sqlite',
     getCapabilities: () => ({
-      supportsStddev: false,
-      supportsVariance: false,
       supportsPercentile: false,
-      supportsWindowFunctions: true,
-      supportsFrameClause: true,
       supportsLateralJoins: false,
       supportsPercentileSubqueries: false,
-      supportsDerivedTablesInCTE: false,
       supportsLateralSubqueriesInCTE: false
     }),
     buildBooleanLiteral: (value: boolean) => value ? sql`1` : sql`0`,
@@ -194,14 +184,9 @@ function createMockMySQLAdapter(): DatabaseAdapter {
     ...baseAdapter,
     getEngineType: () => 'mysql',
     getCapabilities: () => ({
-      supportsStddev: true,
-      supportsVariance: true,
       supportsPercentile: false, // MySQL 8.0+ has limited percentile support
-      supportsWindowFunctions: true,
-      supportsFrameClause: true,
       supportsLateralJoins: true,
       supportsPercentileSubqueries: false,
-      supportsDerivedTablesInCTE: true,
       supportsLateralSubqueriesInCTE: true
     }),
     buildAvg: (fieldExpr: AnyColumn | SQL) => sql`IFNULL(AVG(${fieldExpr}), 0)`,

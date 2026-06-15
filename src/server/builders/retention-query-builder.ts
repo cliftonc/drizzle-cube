@@ -15,7 +15,6 @@ import type { DatabaseAdapter } from '../adapters/base-adapter'
 import type {
   RetentionQueryConfig,
   RetentionResultRow,
-  RetentionBindingKeyMapping,
   RetentionDateRange
 } from '../types/retention'
 import {
@@ -34,9 +33,30 @@ import type {
 } from '../types'
 import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
 import { hasRetentionMode } from '../query-modes'
-import { combineWhere, type WithSubquery } from './analysis-utils'
+import {
+  combineWhere,
+  resolveBindingKeyExpr,
+  extractDimensionName,
+  type BindingKeyErrors,
+  type WithSubquery
+} from './analysis-utils'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
+
+/**
+ * Binding-key error messages for retention. Unlike funnel/flow these live under
+ * `server.validation.retention.*`, and retention additionally resolves the
+ * dimension on the cube *named in the key* (via the `cubes` registry), so it can
+ * report a missing target cube (`bindingKeyCubeNotFound`).
+ */
+const RETENTION_BINDING_KEY_ERRORS: BindingKeyErrors = {
+  noMapping: ({ cubeName }) => t('server.validation.retention.noBindingKeyMapping', { cubeName }),
+  cubeNotFound: ({ cubeName }) => t('server.validation.retention.bindingKeyCubeNotFound', { cubeName }),
+  keyDimNotFound: ({ bindingKey, cubeName }) =>
+    t('server.validation.retention.bindingKeyDimNotFound', { dimName: bindingKey, cubeName }),
+  mappingDimNotFound: ({ dimension, cubeName }) =>
+    t('server.validation.retention.bindingKeyDimNotFound', { dimName: dimension, cubeName })
+}
 
 /**
  * Resolved retention configuration with SQL expressions
@@ -128,7 +148,7 @@ export class RetentionQueryBuilder {
           errors.push(t('server.validation.retention.bindingKeyMappingCubeNotFound', { cubeName: mapping.cube }))
           continue
         }
-        const dimName = this.extractDimensionName(mapping.dimension)
+        const dimName = extractDimensionName(mapping.dimension)
         if (!cube.dimensions?.[dimName]) {
           errors.push(t('server.validation.retention.bindingKeyDimNotFound', { dimName, cubeName: mapping.cube }))
         }
@@ -357,7 +377,7 @@ export class RetentionQueryBuilder {
     }
 
     const timeExpr = resolveSqlExpression(timeDimension.sql, context) as SQL
-    const bindingKeyExpr = this.resolveBindingKey(config.bindingKey, cube, cubes, context)
+    const bindingKeyExpr = resolveBindingKeyExpr(config.bindingKey, cube, context, RETENTION_BINDING_KEY_ERRORS, cubes)
     const cohortFilterConditions = this.buildFilterConditions(config.cohortFilters, cube, cubes, context)
     const activityFilterConditions = this.buildFilterConditions(config.activityFilters, cube, cubes, context)
 
@@ -375,53 +395,6 @@ export class RetentionQueryBuilder {
     }
 
     return { cube, bindingKeyExpr, timeExpr, cohortFilterConditions, activityFilterConditions, breakdowns }
-  }
-
-  /**
-   * Resolve binding key expression for a cube
-   *
-   * TODO(#850): Not unified with the shared resolveBindingKeyExpr used by
-   * funnel/flow. Retention's variant uses a different i18n leaf-key set
-   * (`server.validation.retention.bindingKeyCubeNotFound` etc., not the
-   * `server.errors.*` keys funnel/flow share), takes an extra `cubes` map for
-   * multi-cube binding-key resolution, and uses `isRetentionMultiCubeBindingKey`
-   * / `extractDimensionName`. Kept separate to preserve exact error messages.
-   */
-  private resolveBindingKey(
-    bindingKey: string | RetentionBindingKeyMapping[],
-    cube: Cube,
-    cubes: Map<string, Cube>,
-    context: QueryContext
-  ): SQL {
-    if (isRetentionMultiCubeBindingKey(bindingKey)) {
-      // Find the mapping for this cube
-      const mapping = bindingKey.find(m => m.cube === cube.name)
-      if (!mapping) {
-        throw new Error(t('server.validation.retention.noBindingKeyMapping', { cubeName: cube.name }))
-      }
-      const dimName = this.extractDimensionName(mapping.dimension)
-      const targetCube = cubes.get(mapping.cube)
-      if (!targetCube) {
-        throw new Error(t('server.validation.retention.bindingKeyCubeNotFound', { cubeName: mapping.cube }))
-      }
-      const dimension = targetCube.dimensions?.[dimName]
-      if (!dimension) {
-        throw new Error(t('server.validation.retention.bindingKeyDimNotFound', { dimName: mapping.dimension, cubeName: mapping.cube }))
-      }
-      return resolveSqlExpression(dimension.sql, context) as SQL
-    }
-
-    // Single string format
-    const [cubeName, dimName] = bindingKey.split('.')
-    const targetCube = cubes.get(cubeName)
-    if (!targetCube) {
-      throw new Error(t('server.validation.retention.bindingKeyCubeNotFound', { cubeName }))
-    }
-    const dimension = targetCube.dimensions?.[dimName]
-    if (!dimension) {
-      throw new Error(t('server.validation.retention.bindingKeyDimNotFound', { dimName: bindingKey, cubeName }))
-    }
-    return resolveSqlExpression(dimension.sql, context) as SQL
   }
 
   /**
@@ -842,14 +815,5 @@ export class RetentionQueryBuilder {
       activityPeriod,
       granularity
     )
-  }
-
-  /**
-   * Extract dimension name from a dimension reference
-   * Handles both 'CubeName.dimName' and just 'dimName' formats
-   */
-  private extractDimensionName(dimension: string): string {
-    const parts = dimension.split('.')
-    return parts.length > 1 ? parts[1] : parts[0]
   }
 }

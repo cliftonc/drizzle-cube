@@ -13,22 +13,12 @@ import { buildWindowOverClause, buildWindowExpression } from './window-function-
  * Used for graceful degradation when functions aren't supported
  */
 export interface DatabaseCapabilities {
-  /** Whether the database supports STDDEV_POP/STDDEV_SAMP */
-  supportsStddev: boolean
-  /** Whether the database supports VAR_POP/VAR_SAMP */
-  supportsVariance: boolean
   /** Whether the database supports PERCENTILE_CONT or similar */
   supportsPercentile: boolean
-  /** Whether the database supports window functions (LAG, LEAD, RANK, etc.) */
-  supportsWindowFunctions: boolean
-  /** Whether the database supports frame clauses (ROWS BETWEEN, RANGE BETWEEN) */
-  supportsFrameClause: boolean
   /** Whether the database supports LATERAL joins (PostgreSQL 9.3+, MySQL 8.0.14+) */
   supportsLateralJoins: boolean
   /** Whether percentile functions work in subqueries against CTEs (false for DuckDB) */
   supportsPercentileSubqueries: boolean
-  /** Whether derived tables (subqueries) work in FROM clauses inside CTEs (false for Databend) */
-  supportsDerivedTablesInCTE: boolean
   /** Whether correlated LATERAL subqueries can reference CTEs (false for Snowflake) */
   supportsLateralSubqueriesInCTE: boolean
 }
@@ -71,13 +61,6 @@ export interface DatabaseAdapter {
    * Get the database engine type this adapter supports
    */
   getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'
-
-  /**
-   * Check if the database supports LATERAL joins
-   * Required for optimized flow queries with index-backed seeks
-   * @returns true for PostgreSQL 9.3+, MySQL 8.0.14+, SingleStore; false for SQLite
-   */
-  supportsLateralJoins(): boolean
 
   // ============================================
   // Funnel Analysis Methods
@@ -286,7 +269,6 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   // ============================================
 
   abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'
-  abstract supportsLateralJoins(): boolean
 
   // Funnel analysis methods — interval/date arithmetic differs per engine
   abstract buildIntervalFromISO(duration: string): SQL

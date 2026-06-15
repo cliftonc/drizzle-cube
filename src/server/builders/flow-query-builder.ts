@@ -33,7 +33,7 @@ import type {
 } from '../types'
 import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
 import { hasFlowMode } from '../query-modes'
-import { combineWhere, resolveBindingKeyExpr, resolveTimeDimensionExpr, type WithSubquery } from './analysis-utils'
+import { combineWhere, resolveBindingKeyExpr, bindingKeyErrorsForPrefix, resolveTimeDimensionExpr, asGroupFilter, type WithSubquery } from './analysis-utils'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
 
@@ -391,7 +391,7 @@ export class FlowQueryBuilder {
     cube: Cube,
     context: QueryContext
   ): SQL {
-    return resolveBindingKeyExpr(config.bindingKey, cube, context, 'server.errors.flow')
+    return resolveBindingKeyExpr(config.bindingKey, cube, context, bindingKeyErrorsForPrefix('server.errors.flow'))
   }
 
   /**
@@ -465,11 +465,11 @@ export class FlowQueryBuilder {
       return this.combineConditions(subConditions, 'and' in filter)
     }
 
-    // Handle client-style group filters
-    if ('type' in filter && 'filters' in filter) {
-      const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
-      const subConditions = this.buildSubConditions(groupFilter.filters || [], cube, context)
-      return this.combineConditions(subConditions, groupFilter.type === 'and')
+    // Handle client-style group filters ({ type: 'and' | 'or', filters: [...] })
+    const group = asGroupFilter(filter)
+    if (group) {
+      const subConditions = this.buildSubConditions(group.filters, cube, context)
+      return this.combineConditions(subConditions, group.isAnd)
     }
 
     // Handle simple filter condition
@@ -726,6 +726,78 @@ export class FlowQueryBuilder {
   }
 
   /**
+   * Build a single node-aggregation UNION arm for a before/after step.
+   *
+   * Sankey groups by `event_type` (converging paths); sunburst groups by
+   * `event_path` (unique tree branches). The node-id prefix and layer are
+   * emitted via sql.raw() because they're hardcoded constants (not user input)
+   * and avoid multi-digit parameter issues in DuckDB.
+   */
+  private buildNodeArm(prefix: string, layer: number, fromAlias: string, isSunburst: boolean): SQL {
+    const prefixLit = sql.raw(`'${prefix}_'`)
+    const layerLit = sql.raw(String(layer))
+    const from = sql.identifier(fromAlias)
+    if (isSunburst) {
+      return sql`
+          SELECT
+            ${prefixLit} || event_path AS node_id,
+            event_type AS name,
+            ${layerLit} AS layer,
+            COUNT(*) AS value
+          FROM ${from}
+          GROUP BY event_path, event_type
+        `
+    }
+    return sql`
+          SELECT
+            ${prefixLit} || event_type AS node_id,
+            event_type AS name,
+            ${layerLit} AS layer,
+            COUNT(*) AS value
+          FROM ${from}
+          GROUP BY event_type
+        `
+  }
+
+  /**
+   * Build a single link-aggregation UNION arm between two adjacent step CTEs
+   * (before→before or after→after). Sankey keys transitions on `event_type`,
+   * sunburst on `event_path`. Source/target id prefixes are sql.raw() constants.
+   */
+  private buildAdjacentLinkArm(
+    sourcePrefix: string,
+    targetPrefix: string,
+    fromAlias: string,
+    toAlias: string,
+    isSunburst: boolean
+  ): SQL {
+    const srcLit = sql.raw(`'${sourcePrefix}_'`)
+    const tgtLit = sql.raw(`'${targetPrefix}_'`)
+    const from = sql.identifier(fromAlias)
+    const to = sql.identifier(toAlias)
+    if (isSunburst) {
+      return sql`
+          SELECT
+            ${srcLit} || f.event_path AS source_id,
+            ${tgtLit} || t.event_path AS target_id,
+            COUNT(*) AS value
+          FROM ${from} f
+          INNER JOIN ${to} t ON f.binding_key = t.binding_key
+          GROUP BY f.event_path, t.event_path
+        `
+    }
+    return sql`
+          SELECT
+            ${srcLit} || f.event_type AS source_id,
+            ${tgtLit} || t.event_type AS target_id,
+            COUNT(*) AS value
+          FROM ${from} f
+          INNER JOIN ${to} t ON f.binding_key = t.binding_key
+          GROUP BY f.event_type, t.event_type
+        `
+  }
+
+  /**
    * Build the nodes aggregation CTE
    * Aggregates counts per (layer, event_type) combination using UNION ALL
    * For sunburst mode, aggregates by event_path for unique tree branches
@@ -742,31 +814,7 @@ export class FlowQueryBuilder {
     // Note: Using sql.raw() for prefix strings to avoid multi-digit parameter issues in DuckDB
     // These are hardcoded constants (not user input), so sql.raw() is safe here
     for (let depth = config.stepsBefore; depth >= 1; depth--) {
-      const layer = -depth
-      const alias = `before_step_${depth}`
-      if (isSunburst) {
-        // Sunburst: Group by event_path for unique branches
-        unionParts.push(sql`
-          SELECT
-            ${sql.raw(`'before_${depth}_'`)} || event_path AS node_id,
-            event_type AS name,
-            ${sql.raw(String(layer))} AS layer,
-            COUNT(*) AS value
-          FROM ${sql.identifier(alias)}
-          GROUP BY event_path, event_type
-        `)
-      } else {
-        // Sankey: Group by event_type (paths can converge)
-        unionParts.push(sql`
-          SELECT
-            ${sql.raw(`'before_${depth}_'`)} || event_type AS node_id,
-            event_type AS name,
-            ${sql.raw(String(layer))} AS layer,
-            COUNT(*) AS value
-          FROM ${sql.identifier(alias)}
-          GROUP BY event_type
-        `)
-      }
+      unionParts.push(this.buildNodeArm(`before_${depth}`, -depth, `before_step_${depth}`, isSunburst))
     }
 
     // Starting step (layer 0) - same for both modes since it's the root
@@ -782,31 +830,7 @@ export class FlowQueryBuilder {
 
     // After steps (positive layers)
     for (let depth = 1; depth <= config.stepsAfter; depth++) {
-      const layer = depth
-      const alias = `after_step_${depth}`
-      if (isSunburst) {
-        // Sunburst: Group by event_path for unique branches
-        unionParts.push(sql`
-          SELECT
-            ${sql.raw(`'after_${depth}_'`)} || event_path AS node_id,
-            event_type AS name,
-            ${sql.raw(String(layer))} AS layer,
-            COUNT(*) AS value
-          FROM ${sql.identifier(alias)}
-          GROUP BY event_path, event_type
-        `)
-      } else {
-        // Sankey: Group by event_type (paths can converge)
-        unionParts.push(sql`
-          SELECT
-            ${sql.raw(`'after_${depth}_'`)} || event_type AS node_id,
-            event_type AS name,
-            ${sql.raw(String(layer))} AS layer,
-            COUNT(*) AS value
-          FROM ${sql.identifier(alias)}
-          GROUP BY event_type
-        `)
-      }
+      unionParts.push(this.buildNodeArm(`after_${depth}`, depth, `after_step_${depth}`, isSunburst))
     }
 
     const unionQuery = sql.join(unionParts, sql` UNION ALL `)
@@ -839,32 +863,11 @@ export class FlowQueryBuilder {
     // Note: Using sql.raw() for prefix strings to avoid multi-digit parameter issues in DuckDB
     // These are hardcoded constants (not user input), so sql.raw() is safe here
     for (let depth = config.stepsBefore; depth >= 2; depth--) {
-      const fromAlias = `before_step_${depth}`
-      const toAlias = `before_step_${depth - 1}`
-
-      if (isSunburst) {
-        // Sunburst: Use event_path for unique branches
-        linkParts.push(sql`
-          SELECT
-            ${sql.raw(`'before_${depth}_'`)} || f.event_path AS source_id,
-            ${sql.raw(`'before_${depth - 1}_'`)} || t.event_path AS target_id,
-            COUNT(*) AS value
-          FROM ${sql.identifier(fromAlias)} f
-          INNER JOIN ${sql.identifier(toAlias)} t ON f.binding_key = t.binding_key
-          GROUP BY f.event_path, t.event_path
-        `)
-      } else {
-        // Sankey: Use event_type (paths can converge)
-        linkParts.push(sql`
-          SELECT
-            ${sql.raw(`'before_${depth}_'`)} || f.event_type AS source_id,
-            ${sql.raw(`'before_${depth - 1}_'`)} || t.event_type AS target_id,
-            COUNT(*) AS value
-          FROM ${sql.identifier(fromAlias)} f
-          INNER JOIN ${sql.identifier(toAlias)} t ON f.binding_key = t.binding_key
-          GROUP BY f.event_type, t.event_type
-        `)
-      }
+      linkParts.push(this.buildAdjacentLinkArm(
+        `before_${depth}`, `before_${depth - 1}`,
+        `before_step_${depth}`, `before_step_${depth - 1}`,
+        isSunburst
+      ))
     }
 
     // Link from before_step_1 to start
@@ -920,32 +923,11 @@ export class FlowQueryBuilder {
 
     // Links between after steps (away from start)
     for (let depth = 1; depth < config.stepsAfter; depth++) {
-      const fromAlias = `after_step_${depth}`
-      const toAlias = `after_step_${depth + 1}`
-
-      if (isSunburst) {
-        // Sunburst: Use event_path for unique branches
-        linkParts.push(sql`
-          SELECT
-            ${sql.raw(`'after_${depth}_'`)} || f.event_path AS source_id,
-            ${sql.raw(`'after_${depth + 1}_'`)} || t.event_path AS target_id,
-            COUNT(*) AS value
-          FROM ${sql.identifier(fromAlias)} f
-          INNER JOIN ${sql.identifier(toAlias)} t ON f.binding_key = t.binding_key
-          GROUP BY f.event_path, t.event_path
-        `)
-      } else {
-        // Sankey: Use event_type (paths can converge)
-        linkParts.push(sql`
-          SELECT
-            ${sql.raw(`'after_${depth}_'`)} || f.event_type AS source_id,
-            ${sql.raw(`'after_${depth + 1}_'`)} || t.event_type AS target_id,
-            COUNT(*) AS value
-          FROM ${sql.identifier(fromAlias)} f
-          INNER JOIN ${sql.identifier(toAlias)} t ON f.binding_key = t.binding_key
-          GROUP BY f.event_type, t.event_type
-        `)
-      }
+      linkParts.push(this.buildAdjacentLinkArm(
+        `after_${depth}`, `after_${depth + 1}`,
+        `after_step_${depth}`, `after_step_${depth + 1}`,
+        isSunburst
+      ))
     }
 
     // If no links possible, return empty result

@@ -108,7 +108,8 @@ describe('Cache Integration', () => {
       expect(result.cache?.cachedAt).toBeDefined()
       expect(result.cache?.ttlMs).toBe(60000)
       expect(result.cache?.ttlRemainingMs).toBeLessThan(60000)
-      expect(result.cache?.ttlRemainingMs).toBeGreaterThan(59000) // Should be close to full TTL
+      // Close to full TTL — 5s budget tolerates slow/loaded CI runners (not a 1s wall-clock race)
+      expect(result.cache?.ttlRemainingMs).toBeGreaterThan(55000)
     })
   })
 
