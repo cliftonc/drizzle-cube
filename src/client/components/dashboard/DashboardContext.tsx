@@ -147,8 +147,8 @@ export interface DashboardContextValue {
   handlePortletSave: (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => Promise<void>
   handlePortletRefresh: (portletId: string, options?: { bustCache?: boolean }) => void
   handleLayoutChange: (layout: Layout) => void
-  handleDragStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | undefined) => void
-  handleResizeStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | undefined) => void
+  handleDragStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | null) => void
+  handleResizeStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | null) => void
   startRowResize: (rowIndex: number, event: MouseEvent<HTMLDivElement>) => void
   startColumnResize: (rowIndex: number, columnIndex: number, event: MouseEvent<HTMLDivElement>) => void
   handlePortletDragStart: (rowIndex: number, colIndex: number, portletId: string, event: DragEvent<HTMLDivElement>) => void
