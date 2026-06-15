@@ -8,8 +8,11 @@ Schema-aware intelligence utilities for AI agents — pure heuristic and schema-
 src/server/ai/
 ├── index.ts          Barrel exports
 ├── discovery.ts      discoverCubes, findBestFieldMatch — schema search and field matching
+├── discovery-helpers.ts   Pure per-field scoring helpers for discovery.ts
 ├── suggestion.ts     suggestQuery — natural-language to SemanticQuery conversion
+├── suggestion-helpers.ts  Pure step helpers for suggestQuery / time-expression parsing
 ├── validation.ts     validateQuery — query correctness checking with error/warning output
+├── validation-helpers.ts  Pure field/filter validation step helpers for validation.ts
 ├── mcp-prompts.ts    MCP_PROMPTS, prompt templates for LLM-based query building
 └── schemas.ts        QUERY_SCHEMAS — JSON schemas describing SemanticQuery structure
 ```

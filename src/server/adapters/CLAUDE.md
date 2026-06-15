@@ -81,7 +81,8 @@ adapters/
 ├── singlestore-adapter.ts    SingleStoreAdapter (extends MySQLAdapter)
 ├── duckdb-adapter.ts         DuckDBAdapter
 ├── databend-adapter.ts       DatabendAdapter
-└── snowflake-adapter.ts      SnowflakeAdapter
+├── snowflake-adapter.ts      SnowflakeAdapter
+└── window-function-builder.ts  Window-function (PARTITION/ORDER/frame) expression helpers for BaseDatabaseAdapter.buildWindowFunction
 
 executors/
 ├── base-executor.ts          BaseDatabaseExecutor

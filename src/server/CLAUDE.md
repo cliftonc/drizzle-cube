@@ -32,6 +32,7 @@ Comparison/funnel/flow/retention queries use dedicated builders that bypass the 
 ```
 src/server/
 ├── compiler.ts              SemanticLayerCompiler (re-exports validateQueryAgainstCubes)
+├── compiler-metadata.ts     Pure cube-metadata builders extracted from SemanticLayerCompiler.generateCubeMetadata
 ├── executor.ts              QueryExecutor — unified query orchestrator
 ├── query-validator.ts       validateQueryAgainstCubes (standalone; breaks compiler↔executor cycle)
 ├── execution/               Execution-phase helpers extracted from QueryExecutor
@@ -81,6 +82,8 @@ src/server/
 │       ├── predicates-processor.ts  applyPredicatesAndFinalize
 │       ├── selection-processor.ts   buildModifiedSelections
 │       ├── window-processor.ts      applyPostAggregationWindows
+│       ├── keys-dedup-processor.ts  KeysDeduplication CTE construction (multi-fact key dedup)
+│       ├── multi-fact-processor.ts  MultiFactMerge group-CTE materialization
 │       └── shared.ts               PhysicalBuildDependencies, getCubesFromPlan
 │
 ├── builders/                Dedicated query builders
@@ -90,9 +93,11 @@ src/server/
 │   ├── flow-query-builder.ts        FlowQueryBuilder
 │   ├── retention-query-builder.ts   RetentionQueryBuilder
 │   ├── filter-builder.ts            FilterBuilder
+│   ├── filter-operators.ts          Per-operator handlers for FilterBuilder.buildFilterCondition
 │   ├── measure-builder.ts           MeasureBuilder
 │   ├── group-by-builder.ts          GroupByBuilder
-│   └── date-time-builder.ts         DateTimeBuilder
+│   ├── date-time-builder.ts         DateTimeBuilder
+│   └── date-time-helpers.ts         Adapter-aware date/range conversions shared by DateTimeBuilder
 │
 ├── resolvers/               Cross-cube resolution
 │   ├── join-path-resolver.ts          JoinPathResolver
@@ -105,6 +110,7 @@ src/server/
 ├── explain/                 EXPLAIN plan parsers per engine
 │   ├── postgres-parser.ts, mysql-parser.ts, sqlite-parser.ts
 │   ├── duckdb-parser.ts, databend-parser.ts, snowflake-parser.ts
+│   ├── explain-tree.ts      Shared indentation-stack helper for building the operation tree
 │   └── index.ts
 │
 ├── prompts/                 AI prompt templates for natural-language query building

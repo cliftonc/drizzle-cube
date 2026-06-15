@@ -51,14 +51,15 @@ src/client/
 │   └── BatchCoordinator.ts       Request batching
 │
 ├── components/                    React components
-│   ├── AnalysisBuilder/           Query builder (~35 files, see AnalysisBuilder CLAUDE.md)
+│   ├── AnalysisBuilder/           Query builder (~50 files, see AnalysisBuilder CLAUDE.md)
 │   │   ├── index.tsx              Main entry
 │   │   ├── Analysis*.tsx          Query panel, chart config, results, AI, filters, axis, mode selector
-│   │   ├── Field*.tsx, Filter*.tsx  Field search modal, filter config modal
-│   │   ├── Metrics*.tsx, Breakdown*.tsx, LimitSection.tsx
+│   │   ├── Field*.tsx, Filter*.tsx  Field search modal/results, filter config modal, value input
+│   │   ├── Metrics*.tsx, MetricRow.tsx, Breakdown*.tsx, LimitSection.tsx
 │   │   ├── Funnel*.tsx, Flow*.tsx, Retention*.tsx  Mode-specific content/config
 │   │   ├── ExecutionPlanPanel.tsx, ExplainAIPanel.tsx  Debug/AI panels
-│   │   └── utils/                 fieldUtils, filterUtils, queryUtils, etc.
+│   │   ├── hooks/                 Co-located hooks (drag reorder, keyboard nav, imperative handle)
+│   │   └── utils/                 fieldUtils, filterUtils, queryUtils, sortUtils, etc.
 │   │
 │   ├── AgenticNotebook/           AI-driven notebook interface
 │   │   ├── index.tsx              Main entry
@@ -78,7 +79,7 @@ src/client/
 │   ├── AIAssistant/               AI assistant utilities
 │   │   ├── index.ts, types.ts, constants.ts, utils.ts
 │   │
-│   ├── DashboardFilters/          Dashboard filter components (~11 files)
+│   ├── DashboardFilters/          Dashboard filter components (~20 files, incl. co-located hooks)
 │   │   ├── CompactFilterBar.tsx, FilterChip.tsx, FilterValuePopover.tsx
 │   │   ├── DatePresetChips.tsx, CustomDateDropdown.tsx, XTDDropdown.tsx
 │   │   └── DashboardFilterConfigModal.tsx, FilterEditModal.tsx, etc.
@@ -92,6 +93,8 @@ src/client/
 │   │   ├── DateRangeFilter.tsx, DateRangeSelector.tsx
 │   │   ├── FilterBuilder.tsx, FilterGroup.tsx, FilterItem.tsx
 │   │   ├── FilterValueSelector.tsx, types.ts, utils.ts
+│   │   ├── filterItem/           FilterItem.tsx sub-components (field dropdown, date range) + helpers
+│   │   └── filterValueSelector/  FilterValueSelector.tsx inputs + state hook
 │   │
 │   ├── charts/                    Chart implementations (27 chart types)
 │   │   ├── *Chart.tsx + .config.ts  One pair per chart type (Bar, Line, Area, Pie, Scatter,
@@ -108,11 +111,14 @@ src/client/
 │   ├── AnalyticsDashboard.tsx     Dashboard container
 │   ├── AnalyticsPage.tsx          Full analytics page layout
 │   ├── AnalyticsPortlet.tsx       Individual dashboard widget
+│   ├── analyticsPortlet/          AnalyticsPortlet.tsx sub-components + hooks (query, drill, debug)
 │   ├── AnalysisBuilderLazy.tsx    Lazy-loaded AnalysisBuilder
 │   ├── ChartErrorBoundary.tsx     Chart error boundary
 │   ├── ChartTypeSelector.tsx      Chart type picker (driven by chartConfigRegistry)
 │   ├── DashboardGrid.tsx          Grid layout engine
 │   ├── DashboardPortletCard.tsx   Portlet card wrapper
+│   ├── dashboardPortletCard/      DashboardPortletCard.tsx sub-components + actions hook + helpers
+│   ├── portletAnalysisModal/      PortletAnalysisModal sibling helpers (save validation)
 │   ├── RowManagedLayout.tsx       Row-based layout engine
 │   ├── MobileStackedLayout.tsx    Mobile-responsive layout
 │   └── (modals & misc)            ConfirmModal, DashboardEditModal, DebugModal, Modal,
