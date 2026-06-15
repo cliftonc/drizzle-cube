@@ -6,9 +6,11 @@ export default defineConfig({
   plugins: [
     dts({
       insertTypesEntry: true,
-      rollupTypes: true,
+      bundleTypes: true,
       include: ['src/server/**/*.ts'],
-      tsconfigPath: './tsconfig.server.json'
+      tsconfigPath: './tsconfig.server.json',
+      outDir: 'dist/server',
+      entryRoot: 'src/server'
     })
   ],
   build: {

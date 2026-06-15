@@ -9,7 +9,8 @@ export default defineConfig({
       rollupTypes: false,
       include: ['src/adapters/**/*.ts'],
       exclude: ['src/adapters/index.ts'],
-      outDir: 'dist'
+      outDir: 'dist/adapters',
+      entryRoot: 'src/adapters'
     })
   ],
   build: {

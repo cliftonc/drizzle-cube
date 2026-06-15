@@ -303,6 +303,7 @@
     "@iconify-icons/heroicons-solid": "^1.2.6",
     "@iconify-icons/tabler": "^1.2.95",
     "@iconify/react": "^6.0.0",
+    "@microsoft/api-extractor": "^7.58.9",
     "@neondatabase/serverless": "^1.0.1",
     "@nivo/heatmap": "^0.99.0",
     "@playwright/test": "^1.58.2",
@@ -372,7 +373,8 @@
     "vite-plugin-dts": "^5.0.0",
     "vite-plugin-singlefile": "^2.3.2",
     "vitest": "^4.0.0",
-    "zod": "^4.0.0"
+    "zod": "^4.0.0",
+    "ajv": "^8.17.1"
   },
   "overrides": {
     "esbuild": ">=0.25.0",
