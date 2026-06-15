@@ -269,7 +269,7 @@ export default function DashboardCoordinator({
   }, [])
 
   // Handle drag stop - save when user finishes dragging (only if layout actually changed)
-  const handleDragStop = useCallback(async (layout: Layout, _oldItem: LayoutItem | null, _newItem: LayoutItem | null, _placeholder: LayoutItem | null, _e: Event, _element: HTMLElement | undefined) => {
+  const handleDragStop = useCallback(async (layout: Layout, _oldItem: LayoutItem | null, _newItem: LayoutItem | null, _placeholder: LayoutItem | null, _e: Event, _element: HTMLElement | null) => {
     if (!editable || !isEditMode || !onSave || !isInitialized) return
 
     // Only save if the layout actually changed from user interaction
@@ -318,7 +318,7 @@ export default function DashboardCoordinator({
   }, [config, editable, isEditMode, onConfigChange, onSave, isInitialized, actions])
 
   // Handle resize stop - update config and save (resize is user interaction)
-  const handleResizeStop = useCallback(async (layout: Layout, _oldItem: LayoutItem | null, _newItem: LayoutItem | null, _placeholder: LayoutItem | null, _e: Event, _element: HTMLElement | undefined) => {
+  const handleResizeStop = useCallback(async (layout: Layout, _oldItem: LayoutItem | null, _newItem: LayoutItem | null, _placeholder: LayoutItem | null, _e: Event, _element: HTMLElement | null) => {
     if (!editable || !isEditMode || !onConfigChange || !isInitialized) return
 
     // Only proceed if the layout actually changed from user interaction
