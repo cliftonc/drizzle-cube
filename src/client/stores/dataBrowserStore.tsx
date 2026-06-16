@@ -35,6 +35,9 @@ export interface DataBrowserStore {
   // Filters
   filters: Filter[]
 
+  // Quick text search (OR'd 'contains' across the cube's text dimensions)
+  searchText: string
+
   // UI state
   showFilterBar: boolean
   showColumnPicker: boolean
@@ -51,6 +54,7 @@ export interface DataBrowserStore {
   setPage: (page: number) => void
   setPageSize: (size: number) => void
   setFilters: (filters: Filter[]) => void
+  setSearchText: (text: string) => void
   toggleFilterBar: () => void
   setShowColumnPicker: (show: boolean) => void
   setColumnWidth: (column: string, width: number) => void
@@ -101,6 +105,7 @@ function createDataBrowserStore(options: DataBrowserStoreOptions = {}) {
     page: 0,
     pageSize: options.defaultPageSize ?? 20,
     filters: [],
+    searchText: '',
     showFilterBar: false,
     showColumnPicker: false,
     columnWidths: options.defaultCube ? loadColumnWidths(options.defaultCube) : {},
@@ -114,6 +119,7 @@ function createDataBrowserStore(options: DataBrowserStoreOptions = {}) {
         sortDirection: 'asc',
         page: 0,
         filters: [],
+        searchText: '',
         showFilterBar: false,
         columnWidths: loadColumnWidths(cubeName),
       }),
@@ -155,6 +161,8 @@ function createDataBrowserStore(options: DataBrowserStoreOptions = {}) {
     setPageSize: (size) => set({ pageSize: size, page: 0 }),
 
     setFilters: (filters) => set({ filters, page: 0 }),
+
+    setSearchText: (text) => set({ searchText: text, page: 0 }),
 
     toggleFilterBar: () =>
       set((state) => ({ showFilterBar: !state.showFilterBar })),
