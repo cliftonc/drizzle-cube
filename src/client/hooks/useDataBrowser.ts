@@ -11,7 +11,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useDataBrowserStore } from '../stores/dataBrowserStore.js'
 import { useCubeMeta } from '../providers/CubeProvider.js'
 import { useCubeLoadQuery } from './queries/useCubeLoadQuery.js'
-import type { CubeQuery } from '../types.js'
+import type { CubeQuery, Filter } from '../types.js'
 
 /**
  * Determine whether a field is a dimension on a given cube from metadata
@@ -43,6 +43,34 @@ export function getFieldType(
 }
 
 /**
+ * Get searchable text dimensions for a cube.
+ */
+export function getSearchableTextFields(
+  cubeName: string,
+  meta: { cubes: Array<{ name: string; dimensions: Array<{ name: string; type: string }> }> } | null
+): string[] {
+  if (!meta) return []
+  const cube = meta.cubes.find((c) => c.name === cubeName)
+  if (!cube) return []
+  return cube.dimensions
+    .filter((dimension) => dimension.type === 'string')
+    .map((dimension) => dimension.name)
+}
+
+function buildSearchFilter(searchText: string, searchableFields: string[]): Filter | null {
+  const term = searchText.trim()
+  if (!term || searchableFields.length === 0) return null
+
+  const filters: Filter[] = searchableFields.map((member) => ({
+    member,
+    operator: 'contains',
+    values: [term],
+  }))
+
+  return filters.length === 1 ? filters[0] : { type: 'or', filters }
+}
+
+/**
  * Get all browsable columns for a cube (dimensions + ungrouped-compatible measures)
  */
 export function getCubeColumns(
@@ -71,6 +99,7 @@ export function useDataBrowser() {
   const page = useDataBrowserStore((s) => s.page)
   const pageSize = useDataBrowserStore((s) => s.pageSize)
   const filters = useDataBrowserStore((s) => s.filters)
+  const searchText = useDataBrowserStore((s) => s.searchText)
   const showFilterBar = useDataBrowserStore((s) => s.showFilterBar)
   const showColumnPicker = useDataBrowserStore((s) => s.showColumnPicker)
 
@@ -85,6 +114,7 @@ export function useDataBrowser() {
       setPage: s.setPage,
       setPageSize: s.setPageSize,
       setFilters: s.setFilters,
+      setSearchText: s.setSearchText,
       toggleFilterBar: s.toggleFilterBar,
       setShowColumnPicker: s.setShowColumnPicker,
     }))
@@ -126,11 +156,20 @@ export function useDataBrowser() {
     }
 
     if (measures.length > 0) q.measures = measures
-    if (filters.length > 0) q.filters = filters
+
+    const searchFilter = buildSearchFilter(searchText, getSearchableTextFields(selectedCube, meta))
+    if (searchFilter) {
+      q.filters = filters.length > 0
+        ? [{ type: 'and', filters: [...filters, searchFilter] }]
+        : [searchFilter]
+    } else if (filters.length > 0) {
+      q.filters = filters
+    }
+
     if (effectiveSortColumn) q.order = { [effectiveSortColumn]: effectiveSortDirection }
 
     return q
-  }, [selectedCube, visibleColumns, filters, effectiveSortColumn, effectiveSortDirection, page, pageSize, meta])
+  }, [selectedCube, visibleColumns, filters, searchText, effectiveSortColumn, effectiveSortDirection, page, pageSize, meta])
 
   // Fetch data — keepPreviousData ON so pagination/sort keeps showing
   // stale data while new page loads. We detect cube switches by checking
@@ -177,6 +216,7 @@ export function useDataBrowser() {
     page,
     pageSize,
     filters,
+    searchText,
     showFilterBar,
     showColumnPicker,
 

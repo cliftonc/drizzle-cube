@@ -4,10 +4,14 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { useEffect } from 'react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DataBrowser from '../../../../src/client/components/DataBrowser'
-import type { CubeMeta } from '../../../../src/client/types'
+import { DataBrowserStoreProvider } from '../../../../src/client/stores/dataBrowserStore'
+import { useDataBrowser } from '../../../../src/client/hooks/useDataBrowser'
+import { useCubeLoadQuery } from '../../../../src/client/hooks/queries/useCubeLoadQuery'
+import type { CubeMeta, Filter } from '../../../../src/client/types'
 
 // Mock metadata
 const mockMeta: CubeMeta = {
@@ -22,6 +26,8 @@ const mockMeta: CubeMeta = {
         { name: 'Employees.id', type: 'number', title: 'ID', shortTitle: 'ID' },
         { name: 'Employees.name', type: 'string', title: 'Name', shortTitle: 'Name' },
         { name: 'Employees.email', type: 'string', title: 'Email', shortTitle: 'Email' },
+        { name: 'Employees.active', type: 'boolean', title: 'Active', shortTitle: 'Active' },
+        { name: 'Employees.hiredAt', type: 'time', title: 'Hired At', shortTitle: 'Hired At' },
       ],
       segments: [],
     },
@@ -32,6 +38,17 @@ const mockMeta: CubeMeta = {
       dimensions: [
         { name: 'Departments.id', type: 'number', title: 'ID', shortTitle: 'ID' },
         { name: 'Departments.name', type: 'string', title: 'Name', shortTitle: 'Name' },
+      ],
+      segments: [],
+    },
+    {
+      name: 'AuditEvents',
+      title: 'Audit Events',
+      measures: [],
+      dimensions: [
+        { name: 'AuditEvents.id', type: 'number', title: 'ID', shortTitle: 'ID' },
+        { name: 'AuditEvents.createdAt', type: 'time', title: 'Created At', shortTitle: 'Created At' },
+        { name: 'AuditEvents.success', type: 'boolean', title: 'Success', shortTitle: 'Success' },
       ],
       segments: [],
     },
@@ -106,6 +123,11 @@ vi.mock('../../../../src/client/hooks/queries/useCubeLoadQuery', () => ({
   })),
 }))
 
+const getLastLoadQueryArgument = () => {
+  const calls = vi.mocked(useCubeLoadQuery).mock.calls
+  return calls[calls.length - 1]?.[0]
+}
+
 describe('DataBrowser', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -124,13 +146,14 @@ describe('DataBrowser', () => {
       render(<DataBrowser />)
 
       expect(screen.getByText('Cubes')).toBeInTheDocument()
-      // Departments comes before Employees alphabetically
+      // Audit Events comes before Departments and Employees alphabetically
       const buttons = screen.getAllByRole('button').filter(b =>
-        b.textContent === 'Departments' || b.textContent === 'Employees'
+        b.textContent === 'Audit Events' || b.textContent === 'Departments' || b.textContent === 'Employees'
       )
-      expect(buttons).toHaveLength(2)
-      expect(buttons[0].textContent).toBe('Departments')
-      expect(buttons[1].textContent).toBe('Employees')
+      expect(buttons).toHaveLength(3)
+      expect(buttons[0].textContent).toBe('Audit Events')
+      expect(buttons[1].textContent).toBe('Departments')
+      expect(buttons[2].textContent).toBe('Employees')
     })
 
     it('should show "Select a cube" message when no cube is selected', () => {
@@ -226,6 +249,123 @@ describe('DataBrowser', () => {
       await user.type(screen.getByPlaceholderText('Search...'), 'zzzzz')
 
       expect(screen.getByText('No cubes found')).toBeInTheDocument()
+    })
+  })
+
+  describe('Quick search', () => {
+    it('should render a translated quick search input after selecting a cube', async () => {
+      const user = userEvent.setup()
+
+      render(<DataBrowser />)
+      await user.click(screen.getByText('Employees'))
+
+      expect(screen.getByPlaceholderText('Search rows...')).toBeInTheDocument()
+    })
+
+    it('should build an OR contains filter for string dimensions only', async () => {
+      const user = userEvent.setup()
+
+      render(<DataBrowser />)
+      await user.click(screen.getByText('Employees'))
+      await user.type(screen.getByPlaceholderText('Search rows...'), 'ali')
+
+      await waitFor(() => {
+        expect(getLastLoadQueryArgument()).toMatchObject({
+          filters: [
+            {
+              type: 'or',
+              filters: [
+                { member: 'Employees.name', operator: 'contains', values: ['ali'] },
+                { member: 'Employees.email', operator: 'contains', values: ['ali'] },
+              ],
+            },
+          ],
+        })
+      })
+      const searchFilters = (getLastLoadQueryArgument() as { filters?: unknown[] }).filters
+      expect(JSON.stringify(searchFilters)).not.toContain('Employees.id')
+      expect(JSON.stringify(searchFilters)).not.toContain('Employees.active')
+      expect(JSON.stringify(searchFilters)).not.toContain('Employees.hiredAt')
+    })
+
+    it('should clear the quick search from the query', async () => {
+      const user = userEvent.setup()
+
+      render(<DataBrowser />)
+      await user.click(screen.getByText('Employees'))
+      await user.type(screen.getByPlaceholderText('Search rows...'), 'ali')
+
+      await waitFor(() => {
+        expect(getLastLoadQueryArgument()).toHaveProperty('filters')
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Clear search' }))
+
+      await waitFor(() => {
+        expect(getLastLoadQueryArgument()).not.toHaveProperty('filters')
+      })
+      expect(screen.getByPlaceholderText('Search rows...')).toHaveValue('')
+    })
+
+    it('should not create a search filter when the selected cube has no text dimensions', async () => {
+      const user = userEvent.setup()
+
+      render(<DataBrowser />)
+      await user.click(screen.getByText('Audit Events'))
+      await user.type(screen.getByPlaceholderText('Search rows...'), 'ali')
+
+      await waitFor(() => {
+        expect(getLastLoadQueryArgument()).not.toHaveProperty('filters')
+      })
+    })
+
+    it('should AND quick search with structured filters', async () => {
+      const structuredFilter: Filter = { member: 'Employees.active', operator: 'equals', values: [true] }
+
+      function Harness() {
+        const {
+          query,
+          selectCube,
+          setFilters,
+          setSearchText,
+        } = useDataBrowser()
+
+        useEffect(() => {
+          selectCube('Employees', ['Employees.id', 'Employees.name', 'Employees.email'])
+          setFilters([structuredFilter])
+          setSearchText('ali')
+        }, [selectCube, setFilters, setSearchText])
+
+        return <pre data-testid="query">{JSON.stringify(query)}</pre>
+      }
+
+      render(
+        <DataBrowserStoreProvider>
+          <Harness />
+        </DataBrowserStoreProvider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('query').textContent).toContain('Employees.name')
+      })
+
+      expect(JSON.parse(screen.getByTestId('query').textContent || 'null')).toMatchObject({
+        filters: [
+          {
+            type: 'and',
+            filters: [
+              structuredFilter,
+              {
+                type: 'or',
+                filters: [
+                  { member: 'Employees.name', operator: 'contains', values: ['ali'] },
+                  { member: 'Employees.email', operator: 'contains', values: ['ali'] },
+                ],
+              },
+            ],
+          },
+        ],
+      })
     })
   })
 

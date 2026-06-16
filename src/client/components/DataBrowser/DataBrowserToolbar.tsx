@@ -9,6 +9,8 @@ import { useTranslation } from '../../hooks/useTranslation.js'
 
 const FilterIcon = getIcon('filter')
 const ColumnsIcon = getIcon('settings')
+const SearchIcon = getIcon('search')
+const CloseIcon = getIcon('close')
 const ChevronLeftIcon = getIcon('chevronLeft')
 const ChevronRightIcon = getIcon('chevronRight')
 const RefreshIcon = getIcon('refresh')
@@ -18,6 +20,10 @@ interface DataBrowserToolbarProps {
   showFilterBar: boolean
   filterCount: number
   onToggleFilterBar: () => void
+
+  // Quick search
+  searchText: string
+  onSearchTextChange: (searchText: string) => void
 
   // Column picker
   onToggleColumnPicker: () => void
@@ -40,6 +46,8 @@ export default function DataBrowserToolbar({
   showFilterBar,
   filterCount,
   onToggleFilterBar,
+  searchText,
+  onSearchTextChange,
   onToggleColumnPicker,
   page,
   pageSize,
@@ -72,6 +80,29 @@ export default function DataBrowserToolbar({
         )}
       </button>
 
+      {/* Quick search */}
+      <div className="dc:relative dc:w-56">
+        <SearchIcon className="dc:absolute dc:left-2 dc:top-1/2 dc:-translate-y-1/2 dc:w-3.5 dc:h-3.5 text-dc-text-muted" />
+        <input
+          type="text"
+          value={searchText}
+          onChange={(e) => onSearchTextChange(e.target.value)}
+          placeholder={t('dataBrowser.toolbar.searchPlaceholder')}
+          aria-label={t('dataBrowser.toolbar.searchAriaLabel')}
+          className="dc:w-full dc:pl-7 dc:pr-7 dc:py-1.5 dc:text-xs dc:rounded dc:border border-dc-border bg-dc-surface text-dc-text dc:placeholder:text-dc-text-muted dc:outline-none dc:focus:ring-1 focus:ring-dc-accent"
+        />
+        {searchText.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onSearchTextChange('')}
+            aria-label={t('dataBrowser.toolbar.clearSearch')}
+            className="dc:absolute dc:right-1.5 dc:top-1/2 dc:-translate-y-1/2 dc:p-0.5 dc:rounded text-dc-text-muted dc:hover:bg-dc-surface-hover dc:hover:text-dc-text dc:transition-colors"
+          >
+            <CloseIcon className="dc:w-3 dc:h-3" />
+          </button>
+        )}
+      </div>
+
       {/* Columns button */}
       <button
         onClick={onToggleColumnPicker}
@@ -93,7 +124,7 @@ export default function DataBrowserToolbar({
       <button
         onClick={onRefresh}
         className="dc:p-1 dc:rounded dc:hover:bg-dc-surface-hover dc:transition-colors"
-        title="Refresh"
+        title={t('dataBrowser.toolbar.refresh')}
       >
         <RefreshIcon className={`dc:w-3.5 dc:h-3.5 text-dc-text-muted ${isFetching ? 'dc:animate-spin' : ''}`} />
       </button>
