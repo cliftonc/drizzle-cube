@@ -18,10 +18,10 @@ import type {
   ChartDisplayConfig,
   CubeQuery,
   MultiQueryConfig,
-} from '../types'
-import type { ServerFunnelQuery } from './funnel'
-import type { ServerFlowQuery } from './flow'
-import type { ServerRetentionQuery } from './retention'
+} from '../types.js'
+import type { ServerFunnelQuery } from './funnel.js'
+import type { ServerFlowQuery } from './flow.js'
+import type { ServerRetentionQuery } from './retention.js'
 
 // ============================================================================
 // Chart Configuration

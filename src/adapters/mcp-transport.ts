@@ -1,10 +1,10 @@
-import type { SemanticLayerCompiler, SecurityContext } from '../server'
+import type { SemanticLayerCompiler, SecurityContext } from '../server/index.js'
 import {
   getDefaultMCPPrompts,
   getDefaultMcpInstructions,
   type MCPPrompt
-} from '../server/ai/mcp-prompts'
-import { QUERY_PARAMS_SCHEMA } from '../server/ai/query-schema'
+} from '../server/ai/mcp-prompts.js'
+import { QUERY_PARAMS_SCHEMA } from '../server/ai/query-schema.js'
 import {
   handleDiscover,
   handleValidate,
@@ -14,7 +14,7 @@ import {
   type ValidateRequest,
   type LoadRequest,
   type McpAppConfig
-} from './utils'
+} from './utils.js'
 
 // Re-export McpAppConfig for adapters that import from mcp-transport
 export type { McpAppConfig }
@@ -27,7 +27,7 @@ export const MCP_APP_RESOURCE_URI = 'ui://drizzle-cube/visualization.html'
 export const MCP_APP_MIME_TYPE = 'text/html;profile=mcp-app'
 
 // MCP App HTML loaded from generated file (built by scripts/generate-mcp-app-html.ts)
-import { mcpAppHtml } from '../mcp-app/generated-html'
+import { mcpAppHtml } from '../mcp-app/generated-html.js'
 
 /** Get the bundled MCP App HTML, optionally with locale config injected. Returns empty string if not yet built. */
 export function getMcpAppHtml(config?: McpAppConfig): string {

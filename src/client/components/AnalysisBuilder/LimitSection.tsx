@@ -6,8 +6,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import SectionHeading from './SectionHeading'
-import { useTranslation } from '../../hooks/useTranslation'
+import SectionHeading from './SectionHeading.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const LIMIT_PRESETS = [5, 10, 25, 50, 100, 500, 1000] as const
 

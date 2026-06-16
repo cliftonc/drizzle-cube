@@ -15,15 +15,15 @@ import {
   useDryRunQuery,
   useDryRunQueries,
   type DebugDataEntry,
-} from './queries'
-import { useCubeMeta } from '../providers/CubeProvider'
-import type { CubeQuery, MultiQueryConfig, FunnelBindingKey, QueryMergeStrategy, AnalysisType } from '../types'
-import type { ExecutionStatus } from '../components/AnalysisBuilder/types'
-import type { ServerFunnelQuery } from '../types/funnel'
-import type { ServerFlowQuery, FlowChartData } from '../types/flow'
-import type { ServerRetentionQuery, RetentionChartData } from '../types/retention'
-import { buildFunnelConfigFromQueries } from '../utils/funnelExecution'
-import { resolveActiveMode, pickByMode, computeExecutionResults, deriveModeOutputs, computeSkipFlags, computeExecutionStatus } from './analysisQueryExecutionModes'
+} from './queries/index.js'
+import { useCubeMeta } from '../providers/CubeProvider.js'
+import type { CubeQuery, MultiQueryConfig, FunnelBindingKey, QueryMergeStrategy, AnalysisType } from '../types.js'
+import type { ExecutionStatus } from '../components/AnalysisBuilder/types.js'
+import type { ServerFunnelQuery } from '../types/funnel.js'
+import type { ServerFlowQuery, FlowChartData } from '../types/flow.js'
+import type { ServerRetentionQuery, RetentionChartData } from '../types/retention.js'
+import { buildFunnelConfigFromQueries } from '../utils/funnelExecution.js'
+import { resolveActiveMode, pickByMode, computeExecutionResults, deriveModeOutputs, computeSkipFlags, computeExecutionStatus } from './analysisQueryExecutionModes.js'
 
 export interface UseAnalysisQueryExecutionOptions {
   /** Current query (for single-query mode) */
@@ -151,7 +151,7 @@ export interface UseAnalysisQueryExecutionResult {
    * Query warnings from the server (e.g., fan-out without dimensions).
    * Displayed as a banner above results.
    */
-  warnings: import('../shared/types').QueryWarning[] | undefined
+  warnings: import('../shared/types.js').QueryWarning[] | undefined
 }
 
 export function useAnalysisQueryExecution(

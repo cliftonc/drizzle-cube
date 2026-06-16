@@ -5,7 +5,7 @@ import {
   makeValueFormatter,
   resolveHeatMapColors,
   type HeatMapDisplayOptions
-} from './HeatMapChart.helpers'
+} from './HeatMapChart.helpers.js'
 
 interface HeatMapDatum {
   x: string

@@ -5,7 +5,7 @@
  * render function lean. No behaviour change — these mirror the original inline
  * logic exactly.
  */
-import type { ChartAxisConfig, ChartDisplayConfig } from '../../types'
+import type { ChartAxisConfig, ChartDisplayConfig } from '../../types.js'
 
 /** Extract the value field list from chart config (string | array | undefined). */
 export function getKpiValueFields(yAxis: ChartAxisConfig['yAxis']): string[] {

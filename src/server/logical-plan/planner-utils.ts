@@ -8,8 +8,8 @@
  * re-instantiating JoinPathResolver.
  */
 
-import type { Cube, SemanticQuery } from '../types'
-import { JoinPathResolver } from '../resolvers/join-path-resolver'
+import type { Cube, SemanticQuery } from '../types/index.js'
+import { JoinPathResolver } from '../resolvers/join-path-resolver.js'
 
 /**
  * Caches a JoinPathResolver per cubes map to avoid repeated instantiation.

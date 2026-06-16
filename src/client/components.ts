@@ -6,11 +6,11 @@
  */
 
 // Core analytics components (without charts)
-export { default as AnalyticsPortlet } from './components/AnalyticsPortlet'
-export { default as AnalyticsDashboard } from './components/AnalyticsDashboard'
+export { default as AnalyticsPortlet } from './components/AnalyticsPortlet.js'
+export { default as AnalyticsDashboard } from './components/AnalyticsDashboard.js'
 
 // Layout components
-export { default as DashboardGrid } from './components/DashboardGrid'
+export { default as DashboardGrid } from './components/DashboardGrid.js'
 // Composable dashboard pieces (DashboardGrid is a back-compat composition of these)
 export {
   DashboardProvider,
@@ -19,14 +19,14 @@ export {
   DashboardGridSurface,
   DashboardModals,
   useDashboardContext,
-} from './components/dashboard'
-export type { DashboardContextValue, DashboardProviderProps } from './components/dashboard'
-export { default as PortletContainer } from './components/PortletContainer'
+} from './components/dashboard/index.js'
+export type { DashboardContextValue, DashboardProviderProps } from './components/dashboard/index.js'
+export { default as PortletContainer } from './components/PortletContainer.js'
 
 // Modals and configuration
-export { default as DashboardEditModal } from './components/DashboardEditModal'
-export { default as Modal } from './components/Modal'
-export { default as AnalysisDisplayConfigPanel } from './components/AnalysisBuilder/AnalysisDisplayConfigPanel'
+export { default as DashboardEditModal } from './components/DashboardEditModal.js'
+export { default as Modal } from './components/Modal.js'
+export { default as AnalysisDisplayConfigPanel } from './components/AnalysisBuilder/AnalysisDisplayConfigPanel.js'
 
 // Component utilities
 export { 
@@ -36,10 +36,10 @@ export {
   findNextPosition,
   validateCubeQuery,
   createSamplePortlet
-} from './utils/index'
+} from './utils/index.js'
 
 // Component-related types
 export type {
   PortletConfig,
   DashboardConfig
-} from './types'
+} from './types.js'

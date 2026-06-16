@@ -14,7 +14,7 @@
  */
 
 import React, { useMemo, useState } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import {
   ComposedChart,
   Line,
@@ -23,12 +23,12 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts'
-import ChartContainer from './ChartContainer'
-import ChartTooltip from './ChartTooltip'
-import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
-import type { ChartProps } from '../../types'
-import type { RetentionChartData, RetentionResultRow, RetentionGranularity } from '../../types/retention'
-import { isRetentionData } from '../../types/retention'
+import ChartContainer from './ChartContainer.js'
+import ChartTooltip from './ChartTooltip.js'
+import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants.js'
+import type { ChartProps } from '../../types.js'
+import type { RetentionChartData, RetentionResultRow, RetentionGranularity } from '../../types/retention.js'
+import { isRetentionData } from '../../types/retention.js'
 
 /**
  * Retention display mode

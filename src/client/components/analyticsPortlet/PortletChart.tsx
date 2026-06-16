@@ -4,12 +4,12 @@
  * AnalyticsPortlet to keep the component flat. No behaviour change.
  */
 
-import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
-import { useTranslation } from '../../hooks/useTranslation'
-import type { ChartAxisConfig, ChartDisplayConfig, ChartType, CubeQuery } from '../../types'
-import type { FlowChartData } from '../../types/flow'
-import type { RetentionChartData } from '../../types/retention'
-import type { ColorPalette } from '../../utils/colorPalettes'
+import { LazyChart, isValidChartType } from '../../charts/ChartLoader.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import type { ChartAxisConfig, ChartDisplayConfig, ChartType, CubeQuery } from '../../types.js'
+import type { FlowChartData } from '../../types/flow.js'
+import type { RetentionChartData } from '../../types/retention.js'
+import type { ColorPalette } from '../../utils/colorPalettes.js'
 
 type Height = string | number
 

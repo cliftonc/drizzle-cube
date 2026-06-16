@@ -7,9 +7,9 @@
  */
 
 import { and, SQL } from 'drizzle-orm'
-import { t } from '../../i18n/runtime'
-import type { Cube, Filter, QueryContext } from '../types'
-import { resolveSqlExpression } from '../cube-utils'
+import { t } from '../../i18n/runtime.js'
+import type { Cube, Filter, QueryContext } from '../types/index.js'
+import { resolveSqlExpression } from '../cube-utils.js'
 
 /**
  * Type for CTE objects created by db.$with()

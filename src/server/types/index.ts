@@ -1,37 +1,37 @@
 // Re-exports all types for the Drizzle Cube semantic layer.
 
 // Core types
-export * from './core'
+export * from './core.js'
 
 // Query types
-export * from './query'
+export * from './query.js'
 
 // Funnel analysis types
-export * from './funnel'
+export * from './funnel.js'
 
 // Retention analysis types
-export * from './retention'
+export * from './retention.js'
 
 // Cube definitions
-export * from './cube'
+export * from './cube.js'
 
 // Database execution
-export * from './executor'
+export * from './executor.js'
 
 // Metadata and API types
-export * from './metadata'
+export * from './metadata.js'
 
 // Query analysis types
-export * from './analysis'
+export * from './analysis.js'
 
 // Analysis-mode config validation types
-export * from './validation'
+export * from './validation.js'
 
 // Utility functions and helpers
-export * from './utils'
+export * from './utils.js'
 
 // Cache types
-export * from './cache'
+export * from './cache.js'
 
 // NOTE: defineCube (a runtime helper) is intentionally NOT re-exported here.
 // The types package must not import runtime modules — doing so created a

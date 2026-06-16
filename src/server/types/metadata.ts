@@ -3,7 +3,7 @@
  * Used for UI rendering and query result annotations
  */
 
-import type { MeasureType, MeasureFormat, DimensionFormat, TimeGranularity } from './core'
+import type { MeasureType, MeasureFormat, DimensionFormat, TimeGranularity } from './core.js'
 
 /**
  * Cube relationship metadata for ERD visualization

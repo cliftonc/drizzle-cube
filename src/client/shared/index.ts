@@ -21,14 +21,14 @@ export type {
   DateRangeType,
   DateRangeOption,
   TimeGranularity
-} from './types'
+} from './types.js'
 
 // Constants
 export {
   FILTER_OPERATORS,
   DATE_RANGE_OPTIONS,
   TIME_GRANULARITIES
-} from './types'
+} from './types.js'
 
 // Utility functions
 export {
@@ -61,11 +61,11 @@ export {
   convertDateRangeTypeToValue,
   requiresNumberInput,
   formatDateForCube
-} from './utils'
+} from './utils.js'
 
 // Components
-export { default as QueryAnalysisPanel } from './components/QueryAnalysisPanel'
-export { default as CodeBlock } from './components/CodeBlock'
+export { default as QueryAnalysisPanel } from './components/QueryAnalysisPanel.js'
+export { default as CodeBlock } from './components/CodeBlock.js'
 
 // Chart defaults (smart chart type selection and configuration)
 export {
@@ -75,10 +75,10 @@ export {
   getSmartChartDefaults,
   shouldAutoSwitchChartType,
   mergeChartConfigWithDefaults
-} from './chartDefaults'
+} from './chartDefaults.js'
 
 export type {
   SmartChartDefaults,
   ChartAvailability,
   ChartAvailabilityMap
-} from './chartDefaults'
+} from './chartDefaults.js'

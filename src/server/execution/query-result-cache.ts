@@ -6,8 +6,8 @@
  * reported via onError) so caching never blocks query execution.
  */
 
-import type { SecurityContext, SemanticQuery, QueryResult, CacheConfig } from '../types'
-import { generateCacheKey } from '../cache-utils'
+import type { SecurityContext, SemanticQuery, QueryResult, CacheConfig } from '../types/index.js'
+import { generateCacheKey } from '../cache-utils.js'
 
 export class QueryResultCache {
   constructor(private readonly cacheConfig?: CacheConfig) {}

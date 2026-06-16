@@ -7,9 +7,9 @@
  */
 
 import { createContext, useContext, useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
-import type { FeaturesConfig, DashboardLayoutMode } from '../types'
-import { warnIfScreenshotLibMissing } from '../utils/thumbnail'
-import { warnIfExcelJsMissing } from '../utils/exportXlsx'
+import type { FeaturesConfig, DashboardLayoutMode } from '../types.js'
+import { warnIfScreenshotLibMissing } from '../utils/thumbnail.js'
+import { warnIfExcelJsMissing } from '../utils/exportXlsx.js'
 
 interface CubeFeaturesContextValue {
   features: FeaturesConfig

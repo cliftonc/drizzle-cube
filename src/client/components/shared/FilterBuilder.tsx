@@ -6,11 +6,11 @@
  */
 
 import React from 'react'
-import { getIcon } from '../../icons'
-import FilterItem from './FilterItem'
-import FilterGroup from './FilterGroup'
-import type { FilterBuilderProps } from './types'
-import type { SimpleFilter, GroupFilter } from '../../types'
+import { getIcon } from '../../icons/index.js'
+import FilterItem from './FilterItem.js'
+import FilterGroup from './FilterGroup.js'
+import type { FilterBuilderProps } from './types.js'
+import type { SimpleFilter, GroupFilter } from '../../types.js'
 import {
   isSimpleFilter,
   isGroupFilter,
@@ -21,8 +21,8 @@ import {
   createOrFilter,
   countFilters,
   getAllFilterableFields
-} from './utils'
-import { useTranslation } from '../../hooks/useTranslation'
+} from './utils.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const AddIcon = getIcon('add')
 const FilterIcon = getIcon('filter')

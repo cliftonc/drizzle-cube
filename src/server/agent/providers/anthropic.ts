@@ -3,7 +3,7 @@
  * Implements the LLMProvider interface for Claude models via @anthropic-ai/sdk.
  */
 
-import type { LLMProvider, ToolDefinition, InternalMessage, ToolResult, NormalizedEvent } from './types'
+import type { LLMProvider, ToolDefinition, InternalMessage, ToolResult, NormalizedEvent } from './types.js'
 
 export class AnthropicProvider implements LLMProvider {
   private client: any

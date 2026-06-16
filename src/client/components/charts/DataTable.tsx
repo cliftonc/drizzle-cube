@@ -6,9 +6,9 @@
  */
 
 import React, { useMemo } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import { useCubeMeta } from '../../providers/CubeProvider'
-import { getMeasureTypeIcon } from '../../icons'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { useCubeMeta } from '../../providers/CubeProvider.js'
+import { getMeasureTypeIcon } from '../../icons/index.js'
 import {
   hasTimeDimensionForPivot,
   pivotTableData,
@@ -17,9 +17,9 @@ import {
   type PivotedTableData,
   type PivotColumn,
   type PivotRow
-} from '../../utils/pivotUtils'
-import { formatAxisValue } from '../../utils/chartUtils'
-import type { ChartProps, AxisFormatConfig } from '../../types'
+} from '../../utils/pivotUtils.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import type { ChartProps, AxisFormatConfig } from '../../types.js'
 
 const DataTable = React.memo(function DataTable({
   data,

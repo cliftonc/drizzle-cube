@@ -5,11 +5,14 @@ import dts from 'vite-plugin-dts'
 export default defineConfig({
   plugins: [
     dts({
+      // Per-file declarations rooted at src/adapters so they land flat at
+      // dist/adapters/* (e.g. dist/adapters/fastify/index.d.ts) matching
+      // package.json#exports rather than nesting at dist/adapters/adapters.
+      // outDir defaults to vite's build.outDir (dist/adapters). See #877.
       insertTypesEntry: false,
-      rollupTypes: false,
       include: ['src/adapters/**/*.ts'],
       exclude: ['src/adapters/index.ts'],
-      outDir: 'dist'
+      entryRoot: 'src/adapters'
     })
   ],
   build: {

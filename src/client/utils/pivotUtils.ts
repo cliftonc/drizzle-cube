@@ -5,8 +5,8 @@
  * into a pivoted structure with time periods as columns.
  */
 
-import type { CubeQuery, CubeMeta } from '../types'
-import { formatTimeValue } from './chartUtils'
+import type { CubeQuery, CubeMeta } from '../types.js'
+import { formatTimeValue } from './chartUtils.js'
 
 /**
  * Derives ordered column list from a CubeQuery object.

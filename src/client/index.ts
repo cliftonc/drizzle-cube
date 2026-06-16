@@ -19,18 +19,18 @@
 import './styles.css'
 
 // Core analytics components
-export { default as AnalyticsPortlet } from './components/AnalyticsPortlet'
-export { default as AnalyticsDashboard } from './components/AnalyticsDashboard'
-export { default as AgenticNotebook } from './components/AgenticNotebook'
-export type { AgenticNotebookProps } from './components/AgenticNotebook'
-export { AnalyticsPage } from './components/AnalyticsPage'
-export { default as ChartErrorBoundary } from './components/ChartErrorBoundary'
-export { default as LoadingIndicator } from './components/LoadingIndicator'
-export type { LoadingIndicatorProps } from './components/LoadingIndicator'
+export { default as AnalyticsPortlet } from './components/AnalyticsPortlet.js'
+export { default as AnalyticsDashboard } from './components/AnalyticsDashboard.js'
+export { default as AgenticNotebook } from './components/AgenticNotebook/index.js'
+export type { AgenticNotebookProps } from './components/AgenticNotebook/index.js'
+export { AnalyticsPage } from './components/AnalyticsPage.js'
+export { default as ChartErrorBoundary } from './components/ChartErrorBoundary.js'
+export { default as LoadingIndicator } from './components/LoadingIndicator.js'
+export type { LoadingIndicatorProps } from './components/LoadingIndicator.js'
 
 // Data browser component
-export { default as DataBrowser } from './components/DataBrowser'
-export type { DataBrowserProps } from './components/DataBrowser'
+export { default as DataBrowser } from './components/DataBrowser/index.js'
+export type { DataBrowserProps } from './components/DataBrowser/index.js'
 
 // Lazy chart loading (for code splitting)
 // For static chart imports, use 'drizzle-cube/client/charts' instead
@@ -42,11 +42,11 @@ export {
   getAvailableChartTypes,
   isChartTypeAvailable,
   getUnavailableChartTypes
-} from './charts/ChartLoader'
-export type { LazyChartProps } from './charts/ChartLoader'
+} from './charts/ChartLoader.js'
+export type { LazyChartProps } from './charts/ChartLoader.js'
 
 // Layout components
-export { default as DashboardGrid } from './components/DashboardGrid'
+export { default as DashboardGrid } from './components/DashboardGrid.js'
 // Composable dashboard pieces (DashboardGrid is a back-compat composition of these)
 export {
   DashboardProvider,
@@ -55,30 +55,30 @@ export {
   DashboardGridSurface,
   DashboardModals,
   useDashboardContext,
-} from './components/dashboard'
-export type { DashboardContextValue, DashboardProviderProps } from './components/dashboard'
-export { default as PortletContainer } from './components/PortletContainer'
-export { default as DrillMenu } from './components/DrillMenu'
-export { default as DrillBreadcrumb } from './components/DrillBreadcrumb'
-export { DashboardThumbnailPlaceholder } from './components/DashboardThumbnailPlaceholder'
-export type { DashboardThumbnailPlaceholderProps } from './components/DashboardThumbnailPlaceholder'
+} from './components/dashboard/index.js'
+export type { DashboardContextValue, DashboardProviderProps } from './components/dashboard/index.js'
+export { default as PortletContainer } from './components/PortletContainer.js'
+export { default as DrillMenu } from './components/DrillMenu.js'
+export { default as DrillBreadcrumb } from './components/DrillBreadcrumb.js'
+export { DashboardThumbnailPlaceholder } from './components/DashboardThumbnailPlaceholder.js'
+export type { DashboardThumbnailPlaceholderProps } from './components/DashboardThumbnailPlaceholder.js'
 
 // Modals and configuration
-export { default as PortletAnalysisModal } from './components/PortletAnalysisModal'
-export { default as DashboardEditModal } from './components/DashboardEditModal'
-export { default as Modal } from './components/Modal'
-export { default as ConfirmModal } from './components/ConfirmModal'
+export { default as PortletAnalysisModal } from './components/PortletAnalysisModal.js'
+export { default as DashboardEditModal } from './components/DashboardEditModal.js'
+export { default as Modal } from './components/Modal.js'
+export { default as ConfirmModal } from './components/ConfirmModal.js'
 
 // Analysis Builder (search-based query builder)
-export { default as AnalysisBuilder } from './components/AnalysisBuilderLazy'
-export type { AnalysisBuilderRef } from './components/AnalysisBuilder/types'
-export { ExecutionPlanPanel } from './components/AnalysisBuilder/ExecutionPlanPanel'
-export { ExplainAIPanel } from './components/AnalysisBuilder/ExplainAIPanel'
+export { default as AnalysisBuilder } from './components/AnalysisBuilderLazy.js'
+export type { AnalysisBuilderRef } from './components/AnalysisBuilder/types.js'
+export { ExecutionPlanPanel } from './components/AnalysisBuilder/ExecutionPlanPanel.js'
+export { ExplainAIPanel } from './components/AnalysisBuilder/ExplainAIPanel.js'
 
 // Schema Visualization is exported separately via 'drizzle-cube/client/schema'
 // to avoid pulling @xyflow/react and elkjs into the main bundle.
 // Import: import { SchemaVisualization } from 'drizzle-cube/client/schema'
-export type { SchemaVisualizationProps } from './components/SchemaVisualization/index'
+export type { SchemaVisualizationProps } from './components/SchemaVisualization/index.js'
 
 // Data provider and hooks
 export {
@@ -88,11 +88,11 @@ export {
   useCubeApi,      // Only re-renders on API/auth changes
   useCubeMeta,     // Only re-renders on metadata changes
   useCubeFeatures  // Only re-renders on feature flag changes
-} from './providers/CubeProvider'
-export { ScrollContainerProvider, useScrollContainer } from './providers/ScrollContainerContext'
-export { useCubeFieldLabel } from './hooks/useCubeFieldLabel'
-export { createCubeClient } from './client/CubeClient'
-export { CubeClient } from './client/CubeClient'
+} from './providers/CubeProvider.js'
+export { ScrollContainerProvider, useScrollContainer } from './providers/ScrollContainerContext.js'
+export { useCubeFieldLabel } from './hooks/useCubeFieldLabel.js'
+export { createCubeClient } from './client/CubeClient.js'
+export { CubeClient } from './client/CubeClient.js'
 
 // TanStack Query hooks for data fetching
 export {
@@ -112,7 +112,7 @@ export {
   // Flow query hook
   useFlowQuery,
   createFlowQueryKey,
-} from './hooks/queries'
+} from './hooks/queries/index.js'
 export type {
   UseCubeMetaQueryOptions,
   UseCubeMetaQueryResult,
@@ -128,25 +128,25 @@ export type {
   // Flow query types
   UseFlowQueryOptions,
   UseFlowQueryResult,
-} from './hooks/queries'
+} from './hooks/queries/index.js'
 
 // Master coordination hook for AnalysisBuilder
-export { useAnalysisBuilder } from './hooks/useAnalysisBuilderHook'
+export { useAnalysisBuilder } from './hooks/useAnalysisBuilderHook.js'
 export type {
   UseAnalysisBuilderOptions,
   UseAnalysisBuilderResult,
-} from './hooks/useAnalysisBuilderHook'
+} from './hooks/useAnalysisBuilderHook.js'
 
 // Master coordination hook for DataBrowser
-export { useDataBrowser } from './hooks/useDataBrowser'
+export { useDataBrowser } from './hooks/useDataBrowser.js'
 
 // Master coordination hook for Dashboard
-export { useDashboard } from './hooks/useDashboardHook'
+export { useDashboard } from './hooks/useDashboardHook.js'
 export type {
   UseDashboardOptions,
   UseDashboardResult,
   UseDashboardActions,
-} from './hooks/useDashboardHook'
+} from './hooks/useDashboardHook.js'
 
 // Zustand stores - AnalysisBuilder
 export {
@@ -159,13 +159,13 @@ export {
   selectUIState,
   selectMultiQueryState,
   selectFunnelState,
-} from './stores/analysisBuilderStore'
+} from './stores/analysisBuilderStore.js'
 export type {
   AnalysisBuilderStore,
   AnalysisBuilderStoreState,
   AnalysisBuilderStoreActions,
   FieldModalMode,
-} from './stores/analysisBuilderStore'
+} from './stores/analysisBuilderStore.js'
 
 // Zustand stores - Dashboard
 export {
@@ -185,7 +185,7 @@ export {
   selectDebugDataActions,
   selectThumbnailDirty,
   selectAllActions,
-} from './stores/dashboardStore'
+} from './stores/dashboardStore.js'
 export type {
   DashboardStore,
   DashboardStoreState,
@@ -194,7 +194,7 @@ export type {
   DragState,
   CreateDashboardStoreOptions,
   DashboardStoreProviderProps,
-} from './stores/dashboardStore'
+} from './stores/dashboardStore.js'
 
 // Zustand stores - Notebook (Agentic AI)
 export {
@@ -209,7 +209,7 @@ export {
   selectChatState,
   selectChatActions,
   selectBlockActions,
-} from './stores/notebookStore'
+} from './stores/notebookStore.js'
 export type {
   NotebookStore,
   NotebookStoreState,
@@ -221,11 +221,11 @@ export type {
   MarkdownBlock,
   ChatMessage,
   ToolCallRecord,
-} from './stores/notebookStore'
+} from './stores/notebookStore.js'
 
 // Agent chat hook
-export { useAgentChat } from './hooks/useAgentChat'
-export type { UseAgentChatOptions, UseAgentChatResult } from './hooks/useAgentChat'
+export { useAgentChat } from './hooks/useAgentChat.js'
+export type { UseAgentChatOptions, UseAgentChatResult } from './hooks/useAgentChat.js'
 
 // Multi-query validation utilities
 export {
@@ -236,18 +236,18 @@ export {
   detectAsymmetricDateRanges,
   isMultiQueryValid,
   getValidationSummary
-} from './utils/multiQueryValidation'
+} from './utils/multiQueryValidation.js'
 export type {
   MultiQueryValidationError,
   MultiQueryValidationWarning,
   MultiQueryValidationResult
-} from './utils/multiQueryValidation'
+} from './utils/multiQueryValidation.js'
 
 // Performance hooks
-export { useTheme } from './hooks/useTheme'
-export { useScrollDetection } from './hooks/useScrollDetection'
-export { useElementVisibility } from './hooks/useElementVisibility'
-export { useDrillInteraction } from './hooks/useDrillInteraction'
+export { useTheme } from './hooks/useTheme.js'
+export { useScrollDetection } from './hooks/useScrollDetection.js'
+export { useElementVisibility } from './hooks/useElementVisibility.js'
+export { useDrillInteraction } from './hooks/useDrillInteraction.js'
 
 // Types
 export type {
@@ -288,7 +288,7 @@ export type {
   SankeyLink,
   FlowStartingStep,
   FlowResultRow,
-} from './types'
+} from './types.js'
 
 export {
   isQueryConfig,
@@ -305,7 +305,7 @@ export {
   createDefaultConfig,
   isValidAnalysisWorkspace,
   createDefaultWorkspace
-} from './types/analysisConfig'
+} from './types/analysisConfig.js'
 export type {
   AnalysisConfig,
   QueryAnalysisConfig,
@@ -313,28 +313,28 @@ export type {
   FlowAnalysisConfig,
   RetentionAnalysisConfig,
   AnalysisWorkspace
-} from './types/analysisConfig'
+} from './types/analysisConfig.js'
 
 // Multi-query type guard
-export { isMultiQueryConfig, isServerFunnelQuery, isServerFlowQuery, isSankeyData } from './types'
+export { isMultiQueryConfig, isServerFunnelQuery, isServerFlowQuery, isSankeyData } from './types.js'
 
 // Chart configuration types
 export type {
   ChartTypeConfig,
   DisplayOptionConfig,
   AxisDropZoneConfig
-} from './charts/chartConfigs'
+} from './charts/chartConfigs.js'
 
 // Chart plugin system
-export type { ChartDefinition } from './charts/chartPlugin'
-export { chartPluginRegistry } from './charts/chartPlugin'
+export type { ChartDefinition } from './charts/chartPlugin.js'
+export { chartPluginRegistry } from './charts/chartPlugin.js'
 
 // Utilities
-export { createDashboardLayout, formatChartData, highlightCodeBlocks } from './utils/index'
-export { migrateConfig, migrateLegacyPortlet } from './utils/configMigration'
-export { captureThumbnail, isThumbnailCaptureAvailable, warnIfScreenshotLibMissing } from './utils/thumbnail'
-export { exportPortletToXlsx, isExportAvailable, warnIfExcelJsMissing } from './utils/exportXlsx'
-export { compressAndEncode, decodeAndDecompress, generateShareUrl, parseShareUrl, isShareableSize } from './utils/shareUtils'
+export { createDashboardLayout, formatChartData, highlightCodeBlocks } from './utils/index.js'
+export { migrateConfig, migrateLegacyPortlet } from './utils/configMigration.js'
+export { captureThumbnail, isThumbnailCaptureAvailable, warnIfScreenshotLibMissing } from './utils/thumbnail.js'
+export { exportPortletToXlsx, isExportAvailable, warnIfExcelJsMissing } from './utils/exportXlsx.js'
+export { compressAndEncode, decodeAndDecompress, generateShareUrl, parseShareUrl, isShareableSize } from './utils/shareUtils.js'
 
 // Multi-query utilities
 export {
@@ -347,7 +347,7 @@ export {
   getQueryIndices,
   generateQueryLabel,
   validateMergeKey
-} from './utils/multiQueryUtils'
+} from './utils/multiQueryUtils.js'
 
 // Funnel utilities
 export {
@@ -358,7 +358,7 @@ export {
   isMinimumFunnelConfigValid,
   getAvailableBindingKeyDimensions,
   getBindingKeyLabel,
-} from './utils/funnelValidation'
+} from './utils/funnelValidation.js'
 export {
   // Keep for public API
   getBindingKeyField,
@@ -369,7 +369,7 @@ export {
   isFunnelData,
   // Backward compatibility (deprecated - use dedicated funnel mode instead)
   buildFunnelConfigFromQueries,
-} from './utils/funnelExecution'
+} from './utils/funnelExecution.js'
 
 // Theme utilities
 export {
@@ -382,8 +382,8 @@ export {
   isDarkMode,
   watchThemeChanges,
   THEME_PRESETS
-} from './theme'
-export type { ThemeColorTokens, ThemeConfig, Theme } from './theme'
+} from './theme/index.js'
+export type { ThemeColorTokens, ThemeConfig, Theme } from './theme/index.js'
 
 // Icon system
 export {
@@ -398,7 +398,7 @@ export {
   getChartTypeIcon,
   getFieldTypeIcon,
   DEFAULT_ICONS
-} from './icons'
+} from './icons/index.js'
 export type {
   IconCategory,
   IconProps,
@@ -407,4 +407,4 @@ export type {
   IconRegistry,
   IconName,
   PartialIconRegistry
-} from './icons'
+} from './icons/index.js'

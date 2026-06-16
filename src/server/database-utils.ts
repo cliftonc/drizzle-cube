@@ -4,14 +4,14 @@
  * Provides centralized adapter management and instantiation
  */
 
-import type { DatabaseAdapter } from './adapters/base-adapter'
-import { PostgresAdapter } from './adapters/postgres-adapter'
-import { MySQLAdapter } from './adapters/mysql-adapter'
-import { SQLiteAdapter } from './adapters/sqlite-adapter'
-import { SingleStoreAdapter } from './adapters/singlestore-adapter'
-import { DuckDBAdapter } from './adapters/duckdb-adapter'
-import { DatabendAdapter } from './adapters/databend-adapter'
-import { SnowflakeAdapter } from './adapters/snowflake-adapter'
+import type { DatabaseAdapter } from './adapters/base-adapter.js'
+import { PostgresAdapter } from './adapters/postgres-adapter.js'
+import { MySQLAdapter } from './adapters/mysql-adapter.js'
+import { SQLiteAdapter } from './adapters/sqlite-adapter.js'
+import { SingleStoreAdapter } from './adapters/singlestore-adapter.js'
+import { DuckDBAdapter } from './adapters/duckdb-adapter.js'
+import { DatabendAdapter } from './adapters/databend-adapter.js'
+import { SnowflakeAdapter } from './adapters/snowflake-adapter.js'
 
 /**
  * Create a database adapter for the specified engine type

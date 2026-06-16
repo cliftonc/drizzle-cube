@@ -14,8 +14,8 @@ import type {
   GroupFilter,
   DashboardConfig,
   SimpleFilter
-} from '../types'
-import { ensureAnalysisConfig } from './configMigration'
+} from '../types.js'
+import { ensureAnalysisConfig } from './configMigration.js'
 
 /**
  * Normalize a portlet filter mapping to entry objects.

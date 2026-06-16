@@ -7,17 +7,17 @@
  */
 
 import { useMemo, useEffect, useState, useCallback, DragEvent } from 'react'
-import { getIcon, getMeasureTypeIcon } from '../../icons'
-import SectionHeading from './SectionHeading'
-import AnalysisAxisDropZone from './AnalysisAxisDropZone'
-import ChartTypeSelector from '../ChartTypeSelector'
-import { useChartConfig } from '../../charts/lazyChartConfigRegistry'
-import type { ChartType, ChartAxisConfig } from '../../types'
-import type { MetricItem, BreakdownItem } from './types'
-import type { ChartAvailabilityMap } from '../../shared/chartDefaults'
-import type { MetaResponse } from '../../shared/types'
-import { useTranslation } from '../../hooks/useTranslation'
-import { applyAxisDrop, applyAxisRemove, applyAxisReorder } from './utils/axisConfigUtils'
+import { getIcon, getMeasureTypeIcon } from '../../icons/index.js'
+import SectionHeading from './SectionHeading.js'
+import AnalysisAxisDropZone from './AnalysisAxisDropZone.js'
+import ChartTypeSelector from '../ChartTypeSelector.js'
+import { useChartConfig } from '../../charts/lazyChartConfigRegistry.js'
+import type { ChartType, ChartAxisConfig } from '../../types.js'
+import type { MetricItem, BreakdownItem } from './types.js'
+import type { ChartAvailabilityMap } from '../../shared/chartDefaults.js'
+import type { MetaResponse } from '../../shared/types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { applyAxisDrop, applyAxisRemove, applyAxisReorder } from './utils/axisConfigUtils.js'
 
 const MeasureIcon = getIcon('measure')
 const DimensionIcon = getIcon('dimension')

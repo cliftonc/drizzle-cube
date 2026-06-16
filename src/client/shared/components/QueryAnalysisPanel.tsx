@@ -4,16 +4,16 @@
  */
 
 import React from 'react'
-import { getIcon } from '../../icons'
-import type { QueryAnalysis } from '../types'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import type { QueryAnalysis } from '../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import {
   formatReason,
   PrimaryCubeSection,
   JoinPathsSection,
   PreAggregationsSection,
   WarningsSection,
-} from './QueryAnalysisPanel.sections'
+} from './QueryAnalysisPanel.sections.js'
 
 interface QueryAnalysisPanelProps {
   analysis: QueryAnalysis

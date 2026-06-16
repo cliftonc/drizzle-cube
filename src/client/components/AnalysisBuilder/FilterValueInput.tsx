@@ -17,12 +17,12 @@
  */
 
 import type { ChangeEvent, MouseEvent, KeyboardEvent, RefObject } from 'react'
-import { getIcon } from '../../icons'
-import type { SimpleFilter, FilterOperator } from '../../types'
-import type { DateRangeType } from '../../shared/types'
-import { DATE_RANGE_OPTIONS } from '../../shared/types'
-import { requiresNumberInput } from '../../shared/utils'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import type { SimpleFilter, FilterOperator } from '../../types.js'
+import type { DateRangeType } from '../../shared/types.js'
+import { DATE_RANGE_OPTIONS } from '../../shared/types.js'
+import { requiresNumberInput } from '../../shared/utils.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const CloseIcon = getIcon('close')
 const ChevronDownIcon = getIcon('chevronDown')

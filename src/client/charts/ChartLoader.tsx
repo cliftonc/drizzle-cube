@@ -9,7 +9,7 @@
  */
 
 import { lazy, Suspense, ReactNode, LazyExoticComponent } from 'react'
-import type { BuiltInChartType, ChartType, ChartProps } from '../types'
+import type { BuiltInChartType, ChartType, ChartProps } from '../types.js'
 import {
   type LazyChartComponent,
   chartLoaderCache,
@@ -17,41 +17,41 @@ import {
   customChartMap,
   createSafeImport,
   createUnknownChartFallback
-} from './chartComponentRegistry'
+} from './chartComponentRegistry.js'
 
 // The custom-chart registration API lives in chartComponentRegistry to avoid an
 // import cycle (chartPlugin → ChartLoader → DataTable → CubeProvider → chartPlugin).
 // Re-exported here so existing import paths keep working.
-export { registerChartComponent, unregisterChartComponent } from './chartComponentRegistry'
+export { registerChartComponent, unregisterChartComponent } from './chartComponentRegistry.js'
 
 // Dynamic import functions for built-in chart types
 const chartImportMap: Record<BuiltInChartType, () => Promise<{ default: LazyChartComponent }>> = {
-  bar: () => import('../components/charts/BarChart'),
-  line: () => import('../components/charts/LineChart'),
-  area: () => import('../components/charts/AreaChart'),
-  pie: () => import('../components/charts/PieChart'),
-  scatter: () => import('../components/charts/ScatterChart'),
-  radar: () => import('../components/charts/RadarChart'),
-  radialBar: () => import('../components/charts/RadialBarChart'),
-  treemap: () => import('../components/charts/TreeMapChart'),
-  bubble: () => import('../components/charts/BubbleChart'),
-  table: () => import('../components/charts/DataTable'),
-  activityGrid: () => import('../components/charts/ActivityGridChart'),
-  kpiNumber: () => import('../components/charts/KpiNumber'),
-  kpiDelta: () => import('../components/charts/KpiDelta'),
-  kpiText: () => import('../components/charts/KpiText'),
-  markdown: () => import('../components/charts/MarkdownChart'),
-  funnel: () => import('../components/charts/FunnelChart'),
-  sankey: () => import('../components/charts/SankeyChart'),
-  sunburst: () => import('../components/charts/SunburstChart'),
-  heatmap: () => import('../components/charts/HeatMapChart'),
-  retentionHeatmap: () => import('../components/charts/RetentionHeatmap'),
-  retentionCombined: () => import('../components/charts/RetentionCombinedChart'),
-  boxPlot: () => import('../components/charts/BoxPlotChart'),
-  waterfall: () => import('../components/charts/WaterfallChart'),
-  candlestick: () => import('../components/charts/CandlestickChart'),
-  measureProfile: () => import('../components/charts/MeasureProfileChart'),
-  gauge: () => import('../components/charts/GaugeChart'),
+  bar: () => import('../components/charts/BarChart.js'),
+  line: () => import('../components/charts/LineChart.js'),
+  area: () => import('../components/charts/AreaChart.js'),
+  pie: () => import('../components/charts/PieChart.js'),
+  scatter: () => import('../components/charts/ScatterChart.js'),
+  radar: () => import('../components/charts/RadarChart.js'),
+  radialBar: () => import('../components/charts/RadialBarChart.js'),
+  treemap: () => import('../components/charts/TreeMapChart.js'),
+  bubble: () => import('../components/charts/BubbleChart.js'),
+  table: () => import('../components/charts/DataTable.js'),
+  activityGrid: () => import('../components/charts/ActivityGridChart.js'),
+  kpiNumber: () => import('../components/charts/KpiNumber.js'),
+  kpiDelta: () => import('../components/charts/KpiDelta.js'),
+  kpiText: () => import('../components/charts/KpiText.js'),
+  markdown: () => import('../components/charts/MarkdownChart.js'),
+  funnel: () => import('../components/charts/FunnelChart.js'),
+  sankey: () => import('../components/charts/SankeyChart.js'),
+  sunburst: () => import('../components/charts/SunburstChart.js'),
+  heatmap: () => import('../components/charts/HeatMapChart.js'),
+  retentionHeatmap: () => import('../components/charts/RetentionHeatmap.js'),
+  retentionCombined: () => import('../components/charts/RetentionCombinedChart.js'),
+  boxPlot: () => import('../components/charts/BoxPlotChart.js'),
+  waterfall: () => import('../components/charts/WaterfallChart.js'),
+  candlestick: () => import('../components/charts/CandlestickChart.js'),
+  measureProfile: () => import('../components/charts/MeasureProfileChart.js'),
+  gauge: () => import('../components/charts/GaugeChart.js'),
 }
 
 /**

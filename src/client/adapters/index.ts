@@ -6,32 +6,32 @@
  */
 
 // Export types and interface
-export type { ModeAdapter, ValidationResult } from './modeAdapter'
+export type { ModeAdapter, ValidationResult } from './modeAdapter.js'
 
 // Export registry
-export { adapterRegistry } from './adapterRegistry'
+export { adapterRegistry } from './adapterRegistry.js'
 
 // Export adapters
-export { queryModeAdapter } from './queryModeAdapter'
-export type { QuerySliceState } from './queryModeAdapter'
+export { queryModeAdapter } from './queryModeAdapter.js'
+export type { QuerySliceState } from './queryModeAdapter.js'
 
-export { funnelModeAdapter } from './funnelModeAdapter'
-export type { FunnelSliceState } from './funnelModeAdapter'
+export { funnelModeAdapter } from './funnelModeAdapter.js'
+export type { FunnelSliceState } from './funnelModeAdapter.js'
 
-export { flowModeAdapter } from './flowModeAdapter'
+export { flowModeAdapter } from './flowModeAdapter.js'
 
-export { retentionModeAdapter } from './retentionModeAdapter'
-export type { RetentionSliceState } from '../types/retention'
+export { retentionModeAdapter } from './retentionModeAdapter.js'
+export type { RetentionSliceState } from '../types/retention.js'
 
 // ============================================================================
 // Adapter Registration (Optional - Built-in adapters auto-initialize on access)
 // ============================================================================
 
-import { adapterRegistry } from './adapterRegistry'
-import { queryModeAdapter } from './queryModeAdapter'
-import { funnelModeAdapter } from './funnelModeAdapter'
-import { flowModeAdapter } from './flowModeAdapter'
-import { retentionModeAdapter } from './retentionModeAdapter'
+import { adapterRegistry } from './adapterRegistry.js'
+import { queryModeAdapter } from './queryModeAdapter.js'
+import { funnelModeAdapter } from './funnelModeAdapter.js'
+import { flowModeAdapter } from './flowModeAdapter.js'
+import { retentionModeAdapter } from './retentionModeAdapter.js'
 
 /**
  * Manually initialize and register all adapters.

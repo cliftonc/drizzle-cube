@@ -20,9 +20,9 @@ import type {
   PropagatingFilter,
   IntermediateJoinInfo,
   DownstreamJoinKeyInfo
-} from '../types/cube'
-import type { Filter } from '../types/query'
-import type { QueryWarning, TimeGranularity } from '../types/core'
+} from '../types/cube.js'
+import type { Filter } from '../types/query.js'
+import type { QueryWarning, TimeGranularity } from '../types/core.js'
 
 // ---------------------------------------------------------------------------
 // References — lightweight pointers into the cube registry

@@ -8,9 +8,9 @@
  */
 import { useCallback, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useNotebookStore, selectChatActions } from '../../stores/notebookStore'
-import { useAgentChat } from '../../hooks/useAgentChat'
-import type { PortletBlock, MarkdownBlock, ChatMessage as ChatMessageType } from '../../stores/notebookStore'
+import { useNotebookStore, selectChatActions } from '../../stores/notebookStore.js'
+import { useAgentChat } from '../../hooks/useAgentChat.js'
+import type { PortletBlock, MarkdownBlock, ChatMessage as ChatMessageType } from '../../stores/notebookStore.js'
 
 interface UseAgentChatControllerParams {
   agentEndpoint?: string

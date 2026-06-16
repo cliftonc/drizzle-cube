@@ -39,8 +39,8 @@ import {
   useDashboardStoreApi,
   type DashboardStore,
   type PortletDebugDataEntry,
-} from '../stores/dashboardStore'
-import { useCubeFeatures } from '../providers/CubeProvider'
+} from '../stores/dashboardStore.js'
+import { useCubeFeatures } from '../providers/CubeProvider.js'
 import type { LayoutItem } from 'react-grid-layout'
 import type {
   DashboardConfig,
@@ -50,10 +50,10 @@ import type {
   DashboardFilterMapping,
   DashboardGridSettings,
   DashboardLayoutMode,
-} from '../types'
-import { useGridLayoutEngine } from './dashboard/useGridLayoutEngine'
-import { useRowLayoutEngine } from './dashboard/useRowLayoutEngine'
-import { useDashboardController } from './dashboard/useDashboardController'
+} from '../types.js'
+import { useGridLayoutEngine } from './dashboard/useGridLayoutEngine.js'
+import { useRowLayoutEngine } from './dashboard/useRowLayoutEngine.js'
+import { useDashboardController } from './dashboard/useDashboardController.js'
 
 // ============================================================================
 // Types

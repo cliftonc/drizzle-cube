@@ -8,13 +8,13 @@
  */
 
 import { useState, useCallback } from 'react'
-import type { AnalysisBuilderState, AIState } from '../components/AnalysisBuilder/types'
-import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types'
-import type { ServerFunnelQuery } from '../types/funnel'
-import type { AnalysisType, AnalysisConfig } from '../types/analysisConfig'
-import { sendGeminiMessage, extractTextFromResponse } from '../components/AIAssistant/utils'
-import { generateId, generateMetricLabel } from '../components/AnalysisBuilder/utils'
-import { useCubeApi } from '../providers/CubeApiProvider'
+import type { AnalysisBuilderState, AIState } from '../components/AnalysisBuilder/types.js'
+import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types.js'
+import type { ServerFunnelQuery } from '../types/funnel.js'
+import type { AnalysisType, AnalysisConfig } from '../types/analysisConfig.js'
+import { sendGeminiMessage, extractTextFromResponse } from '../components/AIAssistant/utils.js'
+import { generateId, generateMetricLabel } from '../components/AnalysisBuilder/utils/index.js'
+import { useCubeApi } from '../providers/CubeApiProvider.js'
 
 /**
  * Check if a query object is a ServerFunnelQuery

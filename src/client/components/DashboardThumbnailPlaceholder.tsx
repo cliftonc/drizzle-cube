@@ -6,7 +6,7 @@
  * with "No preview" text.
  */
 
-import { getIcon } from '../icons'
+import { getIcon } from '../icons/index.js'
 
 const GridIcon = getIcon('segment')
 

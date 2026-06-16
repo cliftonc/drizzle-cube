@@ -3,7 +3,7 @@
  * Types for the agentic AI notebook handler
  */
 
-import type { ChartType, ChartAxisConfig, ChartDisplayConfig, DashboardConfig } from '../../client/types'
+import type { ChartType, ChartAxisConfig, ChartDisplayConfig, DashboardConfig } from '../../client/types.js'
 
 /**
  * A tool call from a prior conversation turn (for history replay)

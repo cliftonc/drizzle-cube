@@ -9,9 +9,9 @@
  * a host can either omit this component or pass `hideToolbar` to suppress it.
  */
 
-import FloatingEditToolbar from '../FloatingEditToolbar'
-import { useDashboardContext } from './DashboardContext'
-import DashboardEditBar from './DashboardEditBar'
+import FloatingEditToolbar from '../FloatingEditToolbar.js'
+import { useDashboardContext } from './DashboardContext.js'
+import DashboardEditBar from './DashboardEditBar.js'
 
 export default function DashboardToolbar() {
   const {

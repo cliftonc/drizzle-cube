@@ -13,10 +13,10 @@
  */
 
 import React, { useMemo, useState } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import type { ChartProps } from '../../types'
-import type { RetentionChartData, RetentionResultRow } from '../../types/retention'
-import { isRetentionData } from '../../types/retention'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import type { ChartProps } from '../../types.js'
+import type { RetentionChartData, RetentionResultRow } from '../../types/retention.js'
+import { isRetentionData } from '../../types/retention.js'
 
 /**
  * Get color with opacity based on retention rate

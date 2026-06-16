@@ -21,11 +21,11 @@ import {
   type ScaleOrdinal,
   type ScaleQuantize
 } from 'd3'
-import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
-import { formatAxisValue } from '../../utils/chartUtils'
-import { resolveThemeColors } from './BubbleChart.helpers'
-import type { BubbleData, BubbleDisplayOptions, BubbleFields } from './BubbleChart.helpers'
-import type { ColorPalette, CubeQuery } from '../../types'
+import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import { resolveThemeColors } from './BubbleChart.helpers.js'
+import type { BubbleData, BubbleDisplayOptions, BubbleFields } from './BubbleChart.helpers.js'
+import type { ColorPalette, CubeQuery } from '../../types.js'
 
 type ColorScale = ScaleOrdinal<string, string> | ScaleQuantize<string>
 type G = Selection<SVGGElement, unknown, null, undefined>

@@ -8,9 +8,9 @@
  */
 
 import React, { memo, useMemo } from 'react'
-import type { AnalysisType, CubeMeta } from '../../types'
-import { getIcon } from '../../icons'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { AnalysisType, CubeMeta } from '../../types.js'
+import { getIcon } from '../../icons/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const ChartBarIcon = getIcon('chartBar')
 const ChartFunnelIcon = getIcon('chartFunnel')

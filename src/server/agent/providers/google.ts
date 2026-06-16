@@ -3,7 +3,7 @@
  * Implements the LLMProvider interface for Google Gemini models via @google/generative-ai.
  */
 
-import type { LLMProvider, ToolDefinition, InternalMessage, ToolResult, NormalizedEvent, ContentBlock } from './types'
+import type { LLMProvider, ToolDefinition, InternalMessage, ToolResult, NormalizedEvent, ContentBlock } from './types.js'
 
 /**
  * Convert JSON Schema type strings to Gemini's uppercase SchemaType enum values.

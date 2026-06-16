@@ -6,11 +6,11 @@
  */
 
 import React from 'react'
-import { getIcon } from '../../icons'
-import DateRangeSelector from './DateRangeSelector'
-import type { DateRangeFilterProps } from './types'
-import { getTimeDimensionsWithDateRanges } from './utils'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import DateRangeSelector from './DateRangeSelector.js'
+import type { DateRangeFilterProps } from './types.js'
+import { getTimeDimensionsWithDateRanges } from './utils.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const AddIcon = getIcon('add')
 const CalendarIcon = getIcon('timeDimension')

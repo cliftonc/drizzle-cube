@@ -1,6 +1,6 @@
 import React, { Component, ReactNode } from 'react'
-import { getIcon } from '../icons'
-import { t } from '../../i18n/runtime'
+import { getIcon } from '../icons/index.js'
+import { t } from '../../i18n/runtime.js'
 
 const RefreshIcon = getIcon('refresh')
 

@@ -6,8 +6,8 @@
  */
 
 import { useState, useMemo } from 'react'
-import { getIcon } from '../../icons'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const SearchIcon = getIcon('search')
 const CubeIcon = getIcon('cube')

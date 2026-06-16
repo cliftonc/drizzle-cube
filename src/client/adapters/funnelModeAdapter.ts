@@ -5,16 +5,16 @@
  * Converts funnelSteps UI state to/from ServerFunnelQuery format.
  */
 
-import type { ModeAdapter, ValidationResult } from './modeAdapter'
-import { generateId } from '../components/AnalysisBuilder/utils'
+import type { ModeAdapter, ValidationResult } from './modeAdapter.js'
+import { generateId } from '../components/AnalysisBuilder/utils/index.js'
 import type {
   AnalysisConfig,
   FunnelAnalysisConfig,
   AnalysisType,
   ChartConfig,
-} from '../types/analysisConfig'
-import type { FunnelStepState, FunnelBindingKey, Filter } from '../types'
-import type { ServerFunnelQuery, ServerFunnelStep } from '../types/funnel'
+} from '../types/analysisConfig.js'
+import type { FunnelStepState, FunnelBindingKey, Filter } from '../types.js'
+import type { ServerFunnelQuery, ServerFunnelStep } from '../types/funnel.js'
 
 // ============================================================================
 // Funnel Slice State Type

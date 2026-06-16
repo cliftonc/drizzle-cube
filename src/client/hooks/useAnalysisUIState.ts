@@ -10,8 +10,8 @@
  */
 
 import { useState } from 'react'
-import { useAnalysisBuilderStore, type FieldModalMode } from '../stores/analysisBuilderStore'
-import type { QueryPanelTab } from '../components/AnalysisBuilder/types'
+import { useAnalysisBuilderStore, type FieldModalMode } from '../stores/analysisBuilderStore.js'
+import type { QueryPanelTab } from '../components/AnalysisBuilder/types.js'
 
 export interface UseAnalysisUIStateResult {
   /** Active tab in query panel */

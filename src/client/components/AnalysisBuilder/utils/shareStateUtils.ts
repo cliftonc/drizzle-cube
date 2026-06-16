@@ -6,7 +6,7 @@
  * component body stays small. Behaviour is identical to the previous inline IIFEs.
  */
 
-import type { AnalysisConfig } from '../../../types/analysisConfig'
+import type { AnalysisConfig } from '../../../types/analysisConfig.js'
 
 /**
  * Extract funnel initial state from a shared AnalysisConfig.

@@ -17,13 +17,13 @@
  */
 
 import type { ComponentType } from 'react'
-import type { ChartProps } from '../types'
-import type { ChartTypeConfig } from './chartConfigs'
-import type { IconProps } from '../icons/types'
-import { registerChartConfig, unregisterChartConfig, chartConfigRegistry } from './chartConfigRegistry'
-import { registerConfigToCache, unregisterConfigFromCache } from './lazyChartConfigRegistry'
-import { registerChartComponent, unregisterChartComponent } from './chartComponentRegistry'
-import { setCustomChartIconResolver } from '../icons/registry'
+import type { ChartProps } from '../types.js'
+import type { ChartTypeConfig } from './chartConfigs.js'
+import type { IconProps } from '../icons/types.js'
+import { registerChartConfig, unregisterChartConfig, chartConfigRegistry } from './chartConfigRegistry.js'
+import { registerConfigToCache, unregisterConfigFromCache } from './lazyChartConfigRegistry.js'
+import { registerChartComponent, unregisterChartComponent } from './chartComponentRegistry.js'
+import { setCustomChartIconResolver } from '../icons/registry.js'
 
 /**
  * Complete definition for registering a custom chart type.

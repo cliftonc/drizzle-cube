@@ -1,4 +1,4 @@
-import type { CubeQuery, CubeResultSet } from '../types'
+import type { CubeQuery, CubeResultSet } from '../types.js'
 
 /**
  * Represents a queued query with its resolver/rejector

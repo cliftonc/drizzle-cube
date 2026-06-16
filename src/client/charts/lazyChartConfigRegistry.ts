@@ -6,38 +6,38 @@
  */
 
 import { useState, useEffect } from 'react'
-import type { BuiltInChartType, ChartType } from '../types'
-import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs'
-import { defaultChartConfig } from './chartConfigs'
+import type { BuiltInChartType, ChartType } from '../types.js'
+import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs.js'
+import { defaultChartConfig } from './chartConfigs.js'
 
 // Config import map - lazy imports for built-in chart configs
 const configImportMap: Record<BuiltInChartType, () => Promise<{ [key: string]: ChartTypeConfig }>> = {
-  bar: () => import('../components/charts/BarChart.config'),
-  line: () => import('../components/charts/LineChart.config'),
-  area: () => import('../components/charts/AreaChart.config'),
-  pie: () => import('../components/charts/PieChart.config'),
-  scatter: () => import('../components/charts/ScatterChart.config'),
-  radar: () => import('../components/charts/RadarChart.config'),
-  radialBar: () => import('../components/charts/RadialBarChart.config'),
-  treemap: () => import('../components/charts/TreeMapChart.config'),
-  bubble: () => import('../components/charts/BubbleChart.config'),
-  table: () => import('../components/charts/DataTable.config'),
-  activityGrid: () => import('../components/charts/ActivityGridChart.config'),
-  kpiNumber: () => import('../components/charts/KpiNumber.config'),
-  kpiDelta: () => import('../components/charts/KpiDelta.config'),
-  kpiText: () => import('../components/charts/KpiText.config'),
-  markdown: () => import('../components/charts/MarkdownChart.config'),
-  funnel: () => import('../components/charts/FunnelChart.config'),
-  sankey: () => import('../components/charts/SankeyChart.config'),
-  sunburst: () => import('../components/charts/SunburstChart.config'),
-  heatmap: () => import('../components/charts/HeatMapChart.config'),
-  retentionHeatmap: () => import('../components/charts/RetentionHeatmap.config'),
-  retentionCombined: () => import('../components/charts/RetentionCombinedChart.config'),
-  boxPlot: () => import('../components/charts/BoxPlotChart.config'),
-  waterfall: () => import('../components/charts/WaterfallChart.config'),
-  candlestick: () => import('../components/charts/CandlestickChart.config'),
-  measureProfile: () => import('../components/charts/MeasureProfileChart.config'),
-  gauge: () => import('../components/charts/GaugeChart.config'),
+  bar: () => import('../components/charts/BarChart.config.js'),
+  line: () => import('../components/charts/LineChart.config.js'),
+  area: () => import('../components/charts/AreaChart.config.js'),
+  pie: () => import('../components/charts/PieChart.config.js'),
+  scatter: () => import('../components/charts/ScatterChart.config.js'),
+  radar: () => import('../components/charts/RadarChart.config.js'),
+  radialBar: () => import('../components/charts/RadialBarChart.config.js'),
+  treemap: () => import('../components/charts/TreeMapChart.config.js'),
+  bubble: () => import('../components/charts/BubbleChart.config.js'),
+  table: () => import('../components/charts/DataTable.config.js'),
+  activityGrid: () => import('../components/charts/ActivityGridChart.config.js'),
+  kpiNumber: () => import('../components/charts/KpiNumber.config.js'),
+  kpiDelta: () => import('../components/charts/KpiDelta.config.js'),
+  kpiText: () => import('../components/charts/KpiText.config.js'),
+  markdown: () => import('../components/charts/MarkdownChart.config.js'),
+  funnel: () => import('../components/charts/FunnelChart.config.js'),
+  sankey: () => import('../components/charts/SankeyChart.config.js'),
+  sunburst: () => import('../components/charts/SunburstChart.config.js'),
+  heatmap: () => import('../components/charts/HeatMapChart.config.js'),
+  retentionHeatmap: () => import('../components/charts/RetentionHeatmap.config.js'),
+  retentionCombined: () => import('../components/charts/RetentionCombinedChart.config.js'),
+  boxPlot: () => import('../components/charts/BoxPlotChart.config.js'),
+  waterfall: () => import('../components/charts/WaterfallChart.config.js'),
+  candlestick: () => import('../components/charts/CandlestickChart.config.js'),
+  measureProfile: () => import('../components/charts/MeasureProfileChart.config.js'),
+  gauge: () => import('../components/charts/GaugeChart.config.js'),
 }
 
 // Map from built-in chart type to expected export name

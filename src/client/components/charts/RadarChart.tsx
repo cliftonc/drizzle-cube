@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { RadarChart as RechartsRadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts'
-import ChartContainer from './ChartContainer'
-import ChartTooltip from './ChartTooltip'
-import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
-import { buildRadarData } from './radarChartHelpers'
-import { CHART_COLORS } from '../../utils/chartConstants'
-import { formatAxisValue } from '../../utils/chartUtils'
-import type { ChartProps } from '../../types'
+import ChartContainer from './ChartContainer.js'
+import ChartTooltip from './ChartTooltip.js'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates.js'
+import { buildRadarData } from './radarChartHelpers.js'
+import { CHART_COLORS } from '../../utils/chartConstants.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import type { ChartProps } from '../../types.js'
 
 const RadarChart = React.memo(function RadarChart({
   data,

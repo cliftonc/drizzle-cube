@@ -14,18 +14,18 @@ import type {
   Filter,
   MultiQueryConfig,
   ServerFunnelQuery
-} from '../../types'
-import { isMultiQueryConfig, isServerFunnelQuery } from '../../types'
-import type { ServerFlowQuery } from '../../types/flow'
-import { isServerFlowQuery } from '../../types/flow'
-import type { ServerRetentionQuery } from '../../types/retention'
-import { isServerRetentionQuery } from '../../types/retention'
+} from '../../types.js'
+import { isMultiQueryConfig, isServerFunnelQuery } from '../../types.js'
+import type { ServerFlowQuery } from '../../types/flow.js'
+import { isServerFlowQuery } from '../../types/flow.js'
+import type { ServerRetentionQuery } from '../../types/retention.js'
+import { isServerRetentionQuery } from '../../types/retention.js'
 import {
   getApplicableDashboardFilters,
   mergeDashboardAndPortletFilters,
   applyUniversalTimeFilters,
   mappingIncludesFilter
-} from '../../utils/filterUtils'
+} from '../../utils/filterUtils.js'
 
 export interface ParsedPortletQuery {
   queryObject: CubeQuery | null

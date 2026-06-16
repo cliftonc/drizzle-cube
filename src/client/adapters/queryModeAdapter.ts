@@ -5,26 +5,26 @@
  * Supports both single queries and multi-query configurations.
  */
 
-import type { ModeAdapter, ValidationResult } from './modeAdapter'
+import type { ModeAdapter, ValidationResult } from './modeAdapter.js'
 import type {
   AnalysisConfig,
   QueryAnalysisConfig,
   AnalysisType,
   ChartConfig,
-} from '../types/analysisConfig'
-import { generateId, generateMetricLabel } from '../components/AnalysisBuilder/utils'
-import { buildCompareDateRangeFromFilter } from '../components/AnalysisBuilder/utils/filterUtils'
+} from '../types/analysisConfig.js'
+import { generateId, generateMetricLabel } from '../components/AnalysisBuilder/utils/index.js'
+import { buildCompareDateRangeFromFilter } from '../components/AnalysisBuilder/utils/filterUtils.js'
 import type {
   CubeQuery,
   MultiQueryConfig,
   QueryMergeStrategy,
   Filter,
-} from '../types'
+} from '../types.js'
 import type {
   AnalysisBuilderState,
   MetricItem,
   BreakdownItem,
-} from '../components/AnalysisBuilder/types'
+} from '../components/AnalysisBuilder/types.js'
 
 // ============================================================================
 // Query Slice State Type

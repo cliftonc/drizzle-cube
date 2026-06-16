@@ -7,8 +7,8 @@
  * keeps the per-type logic next to the chart it configures.
  */
 
-import type { ChartType, ChartAxisConfig } from '../types'
-import type { MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types'
+import type { ChartType, ChartAxisConfig } from '../types.js'
+import type { MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types.js'
 
 /**
  * Resolved breakdown selections passed to every axis builder.

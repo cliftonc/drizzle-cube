@@ -27,9 +27,9 @@ import type {
   ChartAxisConfig,
   ChartDisplayConfig,
   CubeQuery,
-} from '../types'
-import type { FlowChartData } from '../types/flow'
-import type { RetentionChartData } from '../types/retention'
+} from '../types.js'
+import type { FlowChartData } from '../types/flow.js'
+import type { RetentionChartData } from '../types/retention.js'
 
 // ============================================================================
 // Types

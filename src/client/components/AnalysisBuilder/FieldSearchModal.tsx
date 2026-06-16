@@ -11,9 +11,9 @@
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { getIcon } from '../../icons'
-import type { FieldSearchModalProps, FieldOption } from './types'
-import type { MetaField } from '../../shared/types'
+import { getIcon } from '../../icons/index.js'
+import type { FieldSearchModalProps, FieldOption } from './types.js'
+import type { MetaField } from '../../shared/types.js'
 import {
   schemaToFieldOptions,
   filterFieldOptions,
@@ -23,11 +23,11 @@ import {
   getRecentFields,
   addRecentField,
   getRecentFieldOptions
-} from './utils'
-import FieldDetailPanel from './FieldDetailPanel'
-import FieldSearchResults from './FieldSearchResults'
-import { useFieldSearchKeyboard } from './hooks/useFieldSearchKeyboard'
-import { useTranslation } from '../../hooks/useTranslation'
+} from './utils/index.js'
+import FieldDetailPanel from './FieldDetailPanel.js'
+import FieldSearchResults from './FieldSearchResults.js'
+import { useFieldSearchKeyboard } from './hooks/useFieldSearchKeyboard.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const SearchIcon = getIcon('search')
 const CloseIcon = getIcon('close')

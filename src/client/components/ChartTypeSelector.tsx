@@ -1,10 +1,10 @@
 import { useMemo, useState, useSyncExternalStore } from 'react'
-import type { ChartType } from '../types'
-import type { ChartAvailabilityMap } from '../shared/chartDefaults'
-import { chartConfigRegistry } from '../charts/chartConfigRegistry'
-import { chartPluginRegistry } from '../charts/chartPlugin'
-import { getChartTypeIcon } from '../icons'
-import { useTranslation } from '../hooks/useTranslation'
+import type { ChartType } from '../types.js'
+import type { ChartAvailabilityMap } from '../shared/chartDefaults.js'
+import { chartConfigRegistry } from '../charts/chartConfigRegistry.js'
+import { chartPluginRegistry } from '../charts/chartPlugin.js'
+import { getChartTypeIcon } from '../icons/index.js'
+import { useTranslation } from '../hooks/useTranslation.js'
 
 interface ChartTypeSelectorProps {
   selectedType: ChartType

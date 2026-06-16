@@ -6,8 +6,8 @@
  */
 
 import { sql, SQL, StringChunk } from 'drizzle-orm'
-import { t } from '../i18n/runtime'
-import type { Cube, QueryContext } from './types/cube'
+import { t } from '../i18n/runtime.js'
+import type { Cube, QueryContext } from './types/cube.js'
 
 /**
  * Resolved measure SQL builders

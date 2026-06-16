@@ -10,11 +10,11 @@
  */
 
 import React, { memo, useMemo, useCallback, useState, useRef, useEffect } from 'react'
-import type { CubeMeta, FunnelBindingKey } from '../../types'
-import { getIcon } from '../../icons'
-import { getAvailableBindingKeyDimensions } from '../../utils/funnelValidation'
-import SectionHeading from './SectionHeading'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { CubeMeta, FunnelBindingKey } from '../../types.js'
+import { getIcon } from '../../icons/index.js'
+import { getAvailableBindingKeyDimensions } from '../../utils/funnelValidation.js'
+import SectionHeading from './SectionHeading.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const ChevronRightIcon = getIcon('chevronRight')

@@ -6,9 +6,9 @@
  */
 
 import { memo } from 'react'
-import type { ChartType } from '../../types'
-import SectionHeading from './SectionHeading'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { ChartType } from '../../types.js'
+import SectionHeading from './SectionHeading.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface FlowVisualizationPickerProps {
   chartType: ChartType

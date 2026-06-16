@@ -6,8 +6,8 @@
 import { Icon } from '@iconify/react'
 import type { IconifyIcon } from '@iconify/types'
 import type { ComponentType } from 'react'
-import { DEFAULT_ICONS } from './defaultIcons'
-import type { IconRegistry, IconName, IconDefinition, IconCategory, IconProps, PartialIconRegistry } from './types'
+import { DEFAULT_ICONS } from './defaultIcons.js'
+import type { IconRegistry, IconName, IconDefinition, IconCategory, IconProps, PartialIconRegistry } from './types.js'
 
 // Internal mutable registry - starts with defaults
 let _registry: IconRegistry = { ...DEFAULT_ICONS }

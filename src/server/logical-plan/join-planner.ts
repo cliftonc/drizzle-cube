@@ -10,15 +10,15 @@ import type {
   Cube,
   CubeJoin,
   SemanticQuery
-} from '../types'
+} from '../types/index.js'
 import {
   resolveCubeReference,
   getJoinType,
   reverseRelationship
-} from '../cube-utils'
-import { t } from '../../i18n/runtime'
-import { ResolverCache, analyzeCubeUsage } from './planner-utils'
-import type { JoinRef } from './types'
+} from '../cube-utils.js'
+import { t } from '../../i18n/runtime.js'
+import { ResolverCache, analyzeCubeUsage } from './planner-utils.js'
+import type { JoinRef } from './types.js'
 
 export class JoinPlanner {
   constructor(private readonly resolverCache: ResolverCache) {}

@@ -5,11 +5,11 @@
  */
 
 import { type ReactNode, type Ref } from 'react'
-import LoadingIndicator from '../LoadingIndicator'
-import { DrillBreadcrumb } from '../DrillBreadcrumb'
-import { useTranslation } from '../../hooks/useTranslation'
-import type { ChartType } from '../../types'
-import type { DrillPathEntry } from '../../types/drill'
+import LoadingIndicator from '../LoadingIndicator.js'
+import { DrillBreadcrumb } from '../DrillBreadcrumb.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import type { ChartType } from '../../types.js'
+import type { DrillPathEntry } from '../../types/drill.js'
 
 type Height = string | number
 

@@ -5,13 +5,13 @@
  */
 
 import { useMemo, memo } from 'react'
-import type { MetricsSectionProps } from './types'
-import type { MetaField } from '../../shared/types'
-import MetricRow from './MetricRow'
-import SectionHeading from './SectionHeading'
-import { getIcon } from '../../icons'
-import { useTranslation } from '../../hooks/useTranslation'
-import { useDragReorder } from './hooks/useDragReorder'
+import type { MetricsSectionProps } from './types.js'
+import type { MetaField } from '../../shared/types.js'
+import MetricRow from './MetricRow.js'
+import SectionHeading from './SectionHeading.js'
+import { getIcon } from '../../icons/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { useDragReorder } from './hooks/useDragReorder.js'
 
 // Get icon once at module level to avoid recreating
 const AddIcon = getIcon('add')

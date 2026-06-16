@@ -4,7 +4,7 @@
  * the original inline scoring; these helpers exist to reduce per-function complexity.
  */
 
-import type { CubeMetadata } from '../types/metadata'
+import type { CubeMetadata } from '../types/metadata.js'
 
 /** A measure or dimension as carried in cube metadata. */
 type Field = CubeMetadata['measures'][number] | CubeMetadata['dimensions'][number]

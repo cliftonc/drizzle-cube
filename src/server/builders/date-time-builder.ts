@@ -16,16 +16,16 @@ import {
   type AnyColumn
 } from 'drizzle-orm'
 
-import type { TimeGranularity, QueryContext } from '../types'
-import { resolveSqlExpression } from '../cube-utils'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
+import type { TimeGranularity, QueryContext } from '../types/index.js'
+import { resolveSqlExpression } from '../cube-utils.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import {
   dateToEngineValue,
   engineValueToDate,
   isDateOnlyString,
   normalizeDateValue,
   parseRelativeDateRangeValue
-} from './date-time-helpers'
+} from './date-time-helpers.js'
 
 export class DateTimeBuilder {
   constructor(private databaseAdapter: DatabaseAdapter) {}

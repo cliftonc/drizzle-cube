@@ -4,10 +4,10 @@
  * Functions for constructing CubeQuery objects from builder state.
  */
 
-import type { CubeQuery, Filter } from '../../../types'
-import type { MetricItem, BreakdownItem } from '../types'
-import { removeComparisonDateFilter, buildCompareDateRangeFromFilter } from './filterUtils'
-import { shouldIncludeFilter } from '../../../utils/filterUtils'
+import type { CubeQuery, Filter } from '../../../types.js'
+import type { MetricItem, BreakdownItem } from '../types.js'
+import { removeComparisonDateFilter, buildCompareDateRangeFromFilter } from './filterUtils.js'
+import { shouldIncludeFilter } from '../../../utils/filterUtils.js'
 
 /**
  * Convert metrics and breakdowns to CubeQuery format

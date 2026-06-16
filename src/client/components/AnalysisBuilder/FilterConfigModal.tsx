@@ -10,30 +10,30 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo, ChangeEvent } from 'react'
-import { getIcon } from '../../icons'
-import type { SimpleFilter, FilterOperator } from '../../types'
-import type { MetaResponse, DateRangeType } from '../../shared/types'
+import { getIcon } from '../../icons/index.js'
+import type { SimpleFilter, FilterOperator } from '../../types.js'
+import type { MetaResponse, DateRangeType } from '../../shared/types.js'
 import {
   FILTER_OPERATORS,
   DATE_RANGE_OPTIONS
-} from '../../shared/types'
+} from '../../shared/types.js'
 import {
   getAvailableOperators,
   convertDateRangeTypeToValue,
   requiresNumberInput
-} from '../../shared/utils'
-import { findFieldInSchema, getFieldTitle } from './utils'
-import { deriveRangeFromDateRange, resolveValueKeyboardAction } from './filterConfigModalUtils'
-import FilterValueInput from './FilterValueInput'
+} from '../../shared/utils.js'
+import { findFieldInSchema, getFieldTitle } from './utils/index.js'
+import { deriveRangeFromDateRange, resolveValueKeyboardAction } from './filterConfigModalUtils.js'
+import FilterValueInput from './FilterValueInput.js'
 import type {
   FilterFieldContext,
   DateRangeGroup,
   ComboBoxGroup,
   SimpleInputHandlers
-} from './FilterValueInput'
-import { useFilterValues } from '../../hooks/useFilterValues'
-import { useDebounce } from '../../hooks/useDebounce'
-import { useTranslation } from '../../hooks/useTranslation'
+} from './FilterValueInput.js'
+import { useFilterValues } from '../../hooks/useFilterValues.js'
+import { useDebounce } from '../../hooks/useDebounce.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const CloseIcon = getIcon('close')
 const ChevronDownIcon = getIcon('chevronDown')

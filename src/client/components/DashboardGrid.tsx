@@ -16,18 +16,18 @@
  */
 
 import type { ReactNode } from 'react'
-import DashboardProvider from './dashboard/DashboardProvider'
-import DashboardToolbar from './dashboard/DashboardToolbar'
-import DashboardFilterBar from './dashboard/DashboardFilterBar'
-import DashboardGridSurface from './dashboard/DashboardGridSurface'
-import DashboardModals from './dashboard/DashboardModals'
-import type { ColorPalette } from '../utils/colorPalettes'
+import DashboardProvider from './dashboard/DashboardProvider.js'
+import DashboardToolbar from './dashboard/DashboardToolbar.js'
+import DashboardFilterBar from './dashboard/DashboardFilterBar.js'
+import DashboardGridSurface from './dashboard/DashboardGridSurface.js'
+import DashboardModals from './dashboard/DashboardModals.js'
+import type { ColorPalette } from '../utils/colorPalettes.js'
 import type {
   DashboardConfig,
   DashboardFilter,
   CubeMeta,
   DashboardLayoutMode
-} from '../types'
+} from '../types.js'
 
 interface DashboardGridProps {
   config: DashboardConfig

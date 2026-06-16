@@ -5,14 +5,14 @@
  */
 
 import { useMemo, useRef, useState, useCallback } from 'react'
-import { getIcon } from '../icons'
-import AnalyticsPortlet from './AnalyticsPortlet'
+import { getIcon } from '../icons/index.js'
+import AnalyticsPortlet from './AnalyticsPortlet.js'
 
 const RefreshIcon = getIcon('refresh')
-import { ScrollContainerProvider } from '../providers/ScrollContainerContext'
-import type { DashboardFilter, DashboardConfig } from '../types'
-import type { ColorPalette } from '../utils/colorPalettes'
-import { ensureAnalysisConfig } from '../utils/configMigration'
+import { ScrollContainerProvider } from '../providers/ScrollContainerContext.js'
+import type { DashboardFilter, DashboardConfig } from '../types.js'
+import type { ColorPalette } from '../utils/colorPalettes.js'
+import { ensureAnalysisConfig } from '../utils/configMigration.js'
 
 /**
  * Finds the nearest scrollable ancestor of an element.

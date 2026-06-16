@@ -1,6 +1,6 @@
-import { CHART_COLORS } from '../../utils/chartConstants'
-import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
-import type { ColorPalette } from '../../types'
+import { CHART_COLORS } from '../../utils/chartConstants.js'
+import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils.js'
+import type { ColorPalette } from '../../types.js'
 
 /**
  * Co-located data-shaping helpers for RadialBarChart. The component supports a

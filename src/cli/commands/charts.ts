@@ -323,7 +323,7 @@ import { ${chartType}Config } from './${name}.config'
  * Custom chart definitions to pass to CubeProvider.
  *
  * Usage:
- *   import { customCharts } from './charts'
+ *   import { customCharts } from './charts.js'
  *
  *   <CubeProvider customCharts={customCharts} ...>
  *     <App />
@@ -352,7 +352,7 @@ import { ${configExportName} } from './${name}.config'
  * Custom chart definitions to pass to CubeProvider.
  *
  * Usage:
- *   import { customCharts } from './charts'
+ *   import { customCharts } from './charts.js'
  *
  *   <CubeProvider customCharts={customCharts} ...>
  *     <App />

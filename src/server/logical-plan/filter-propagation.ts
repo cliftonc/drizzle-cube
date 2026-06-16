@@ -13,8 +13,8 @@ import type {
   SemanticQuery,
   PropagatingFilter,
   Filter
-} from '../types'
-import { resolveCubeReference } from '../cube-utils'
+} from '../types/index.js'
+import { resolveCubeReference } from '../cube-utils.js'
 
 export class FilterPropagation {
   /**

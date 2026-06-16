@@ -7,10 +7,10 @@
  */
 
 import { memo, DragEvent } from 'react'
-import type { MetaField } from '../../shared/types'
-import type { BreakdownItem } from './types'
-import BreakdownItemCard from './BreakdownItemCard'
-import { getNextSortDirection } from './utils/sortUtils'
+import type { MetaField } from '../../shared/types.js'
+import type { BreakdownItem } from './types.js'
+import BreakdownItemCard from './BreakdownItemCard.js'
+import { getNextSortDirection } from './utils/sortUtils.js'
 
 interface BreakdownRowProps {
   breakdown: BreakdownItem

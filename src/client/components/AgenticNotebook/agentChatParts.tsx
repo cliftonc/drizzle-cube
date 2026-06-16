@@ -5,9 +5,9 @@
  * and empty state. No behaviour change.
  */
 import React from 'react'
-import LoadingIndicator from '../LoadingIndicator'
-import { getIcon } from '../../icons'
-import { useTranslation } from '../../hooks/useTranslation'
+import LoadingIndicator from '../LoadingIndicator.js'
+import { getIcon } from '../../icons/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const ThumbUpIcon = getIcon('thumbUp')
 const ThumbDownIcon = getIcon('thumbDown')

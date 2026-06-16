@@ -4,10 +4,10 @@
  */
 
 import React from 'react'
-import { getIcon } from '../../../icons'
-import { useTranslation } from '../../../hooks/useTranslation'
-import type { MetaField } from '../types'
-import { getFieldTypeIcon, getFieldTypeBadge } from './fieldVisuals'
+import { getIcon } from '../../../icons/index.js'
+import { useTranslation } from '../../../hooks/useTranslation.js'
+import type { MetaField } from '../types.js'
+import { getFieldTypeIcon, getFieldTypeBadge } from './fieldVisuals.js'
 
 const FilterIcon = getIcon('filter')
 const ChevronDownIcon = getIcon('chevronDown')

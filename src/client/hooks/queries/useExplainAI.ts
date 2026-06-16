@@ -19,9 +19,9 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import type { ExplainResult, AIExplainAnalysis } from '../../types'
-import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
-import { useCubeApi } from '../../providers/CubeApiProvider'
+import type { ExplainResult, AIExplainAnalysis } from '../../types.js'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
+import { useCubeApi } from '../../providers/CubeApiProvider.js'
 
 export interface UseExplainAIOptions {
   /**

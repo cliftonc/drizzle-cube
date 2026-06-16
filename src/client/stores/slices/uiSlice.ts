@@ -10,12 +10,12 @@
  */
 
 import type { StateCreator } from 'zustand'
-import type { AnalysisBuilderStore } from '../analysisBuilderStore'
+import type { AnalysisBuilderStore } from '../analysisBuilderStore.js'
 import type {
   QueryPanelTab,
   AIState,
-} from '../../components/AnalysisBuilder/types'
-import { createInitialState } from '../../components/AnalysisBuilder/utils'
+} from '../../components/AnalysisBuilder/types.js'
+import { createInitialState } from '../../components/AnalysisBuilder/utils/index.js'
 
 // ============================================================================
 // Types

@@ -3,24 +3,24 @@
  * Handles SQL execution with proper type coercion
  */
 
-export { BaseDatabaseExecutor } from './base-executor'
-export { PostgresExecutor, createPostgresExecutor } from './postgres-executor'
-export { MySQLExecutor, createMySQLExecutor } from './mysql-executor'
-export { SQLiteExecutor, createSQLiteExecutor } from './sqlite-executor'
-export { SingleStoreExecutor, createSingleStoreExecutor } from './singlestore-executor'
-export { DuckDBExecutor, createDuckDBExecutor } from './duckdb-executor'
-export { DatabendExecutor, createDatabendExecutor } from './databend-executor'
-export { SnowflakeExecutor, createSnowflakeExecutor } from './snowflake-executor'
+export { BaseDatabaseExecutor } from './base-executor.js'
+export { PostgresExecutor, createPostgresExecutor } from './postgres-executor.js'
+export { MySQLExecutor, createMySQLExecutor } from './mysql-executor.js'
+export { SQLiteExecutor, createSQLiteExecutor } from './sqlite-executor.js'
+export { SingleStoreExecutor, createSingleStoreExecutor } from './singlestore-executor.js'
+export { DuckDBExecutor, createDuckDBExecutor } from './duckdb-executor.js'
+export { DatabendExecutor, createDatabendExecutor } from './databend-executor.js'
+export { SnowflakeExecutor, createSnowflakeExecutor } from './snowflake-executor.js'
 
 // Re-export factory function for auto-detection
-import type { DrizzleDatabase, DatabaseExecutor } from '../types'
-import { createPostgresExecutor } from './postgres-executor'
-import { createMySQLExecutor } from './mysql-executor'
-import { createSQLiteExecutor } from './sqlite-executor'
-import { createSingleStoreExecutor } from './singlestore-executor'
-import { createDuckDBExecutor } from './duckdb-executor'
-import { createDatabendExecutor } from './databend-executor'
-import { createSnowflakeExecutor } from './snowflake-executor'
+import type { DrizzleDatabase, DatabaseExecutor } from '../types/index.js'
+import { createPostgresExecutor } from './postgres-executor.js'
+import { createMySQLExecutor } from './mysql-executor.js'
+import { createSQLiteExecutor } from './sqlite-executor.js'
+import { createSingleStoreExecutor } from './singlestore-executor.js'
+import { createDuckDBExecutor } from './duckdb-executor.js'
+import { createDatabendExecutor } from './databend-executor.js'
+import { createSnowflakeExecutor } from './snowflake-executor.js'
 
 /**
  * Auto-detect database type and create appropriate executor

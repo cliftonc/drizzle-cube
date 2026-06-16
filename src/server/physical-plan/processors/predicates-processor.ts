@@ -8,12 +8,12 @@ import type {
   PhysicalQueryPlan,
   QueryContext,
   SemanticQuery
-} from '../../types'
+} from '../../types/index.js'
 import type {
   CTEBuildState,
   JoinBuildState,
   PhysicalBuildDependencies
-} from './shared'
+} from './shared.js'
 
 /**
  * Applies WHERE/GROUP/HAVING/ORDER/LIMIT phases.

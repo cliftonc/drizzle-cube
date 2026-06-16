@@ -6,14 +6,14 @@
  * so it can detect each mode and validate its config.
  */
 
-import type { Cube, SemanticQuery } from '../types'
-import { safeKey } from '../cube-utils'
-import { validateQueryAgainstCubes } from '../query-validator'
-import type { ComparisonQueryBuilder } from '../builders/comparison-query-builder'
-import type { FunnelQueryBuilder } from '../builders/funnel-query-builder'
-import type { FlowQueryBuilder } from '../builders/flow-query-builder'
-import type { RetentionQueryBuilder } from '../builders/retention-query-builder'
-import { t } from '../../i18n/runtime'
+import type { Cube, SemanticQuery } from '../types/index.js'
+import { safeKey } from '../cube-utils.js'
+import { validateQueryAgainstCubes } from '../query-validator.js'
+import type { ComparisonQueryBuilder } from '../builders/comparison-query-builder.js'
+import type { FunnelQueryBuilder } from '../builders/funnel-query-builder.js'
+import type { FlowQueryBuilder } from '../builders/flow-query-builder.js'
+import type { RetentionQueryBuilder } from '../builders/retention-query-builder.js'
+import { t } from '../../i18n/runtime.js'
 
 export type QueryExecutionMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
 

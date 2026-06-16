@@ -1,13 +1,13 @@
-import type { DatabaseAdapter } from '../adapters/base-adapter'
-import type { DrizzleSqlBuilder } from './drizzle-sql-builder'
-import type { CTEBuilder } from '../builders/cte-builder'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
+import type { DrizzleSqlBuilder } from './drizzle-sql-builder.js'
+import type { CTEBuilder } from '../builders/cte-builder.js'
 import type {
   Cube,
   JoinCubePlanEntry,
   PhysicalQueryPlan,
   QueryContext,
   SemanticQuery
-} from '../types'
+} from '../types/index.js'
 import type {
   LogicalNode,
   QueryNode,
@@ -16,11 +16,11 @@ import type {
   KeysDeduplication,
   MultiFactMerge,
   JoinRef
-} from '../logical-plan'
+} from '../logical-plan/index.js'
 import {
   buildRegularJoinCondition,
   expandBelongsToManyJoin
-} from '../cube-utils'
+} from '../cube-utils.js'
 import {
   buildCTEState,
   buildModifiedSelections,
@@ -29,8 +29,8 @@ import {
   buildKeysDeduplicationQuery,
   buildMultiFactMergeQuery,
   getCubesFromPlan
-} from './processors'
-import type { PhysicalBuildDependencies } from './processors'
+} from './processors/index.js'
+import type { PhysicalBuildDependencies } from './processors/index.js'
 
 /**
  * Converts optimised logical plans into runtime physical query plans,

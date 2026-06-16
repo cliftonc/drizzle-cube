@@ -5,8 +5,8 @@
  * complexity without changing any output.
  */
 
-import type { CubeMetadata } from '../types/metadata'
-import { findBestFieldMatch } from './discovery'
+import type { CubeMetadata } from '../types/metadata.js'
+import { findBestFieldMatch } from './discovery.js'
 
 /** Format a Date as a YYYY-MM-DD string (UTC). */
 export function formatDate(d: Date): string {

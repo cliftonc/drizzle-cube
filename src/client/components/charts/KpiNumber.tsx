@@ -1,11 +1,11 @@
 import React, { useMemo, useCallback } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { Icon } from '@iconify/react'
 import infoCircleIcon from '@iconify-icons/tabler/info-circle'
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import DataHistogram from '../DataHistogram'
-import { parseTargetValues, calculateVariance, formatVariance } from '../../utils/targetUtils'
-import { filterIncompletePeriod } from '../../utils/periodUtils'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
+import DataHistogram from '../DataHistogram.js'
+import { parseTargetValues, calculateVariance, formatVariance } from '../../utils/targetUtils.js'
+import { filterIncompletePeriod } from '../../utils/periodUtils.js'
 import {
   getKpiValueFields,
   sortKpiData,
@@ -15,10 +15,10 @@ import {
   resolveValueColor,
   resolveVarianceColor,
   resolveDisplayLabel
-} from './KpiNumber.helpers'
-import { useKpiDimensions } from './useKpiDimensions'
-import { KpiCenteredState, kpiHeightStyle } from './KpiStates'
-import type { ChartProps } from '../../types'
+} from './KpiNumber.helpers.js'
+import { useKpiDimensions } from './useKpiDimensions.js'
+import { KpiCenteredState, kpiHeightStyle } from './KpiStates.js'
+import type { ChartProps } from '../../types.js'
 
 const KpiNumber = React.memo(function KpiNumber({
   data,

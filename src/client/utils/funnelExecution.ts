@@ -5,7 +5,7 @@
  * filters based on binding key values from the previous step.
  */
 
-import type { CubeQuery, SimpleFilter } from '../types'
+import type { CubeQuery, SimpleFilter } from '../types.js'
 
 /**
  * Default maximum number of binding key values to pass between funnel steps.
@@ -20,7 +20,7 @@ import type {
   FunnelStepResult,
   FunnelExecutionResult,
   FunnelChartData,
-} from '../types/funnel'
+} from '../types/funnel.js'
 
 /**
  * Extract the binding key field name for a specific query/cube.

@@ -1,6 +1,6 @@
-import { formatAxisValue } from '../../utils/chartUtils'
-import type { AxisFormatConfig } from '../../types'
-import type { ScatterPoint } from './ScatterChart.helpers'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import type { AxisFormatConfig } from '../../types.js'
+import type { ScatterPoint } from './ScatterChart.helpers.js'
 
 interface ScatterTooltipProps {
   active?: boolean

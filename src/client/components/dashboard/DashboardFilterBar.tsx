@@ -6,11 +6,11 @@
  * Reads everything from DashboardContext.
  */
 
-import { getIcon } from '../../icons'
-import { useTranslation } from '../../hooks/useTranslation'
-import DashboardFilterPanel from '../DashboardFilterPanel'
-import { useDashboardContext } from './DashboardContext'
-import type { DashboardFilter } from '../../types'
+import { getIcon } from '../../icons/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import DashboardFilterPanel from '../DashboardFilterPanel.js'
+import { useDashboardContext } from './DashboardContext.js'
+import type { DashboardFilter } from '../../types.js'
 
 const FilterIcon = getIcon('filter')
 

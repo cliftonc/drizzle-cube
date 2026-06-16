@@ -1,6 +1,6 @@
 import { useState, useCallback, type HTMLAttributes, type ReactNode, type MouseEvent, type DragEvent } from 'react'
-import type { DashboardGridSettings, PortletConfig, RowLayout } from '../types'
-import { ensureAnalysisConfig } from '../utils/configMigration'
+import type { DashboardGridSettings, PortletConfig, RowLayout } from '../types.js'
+import { ensureAnalysisConfig } from '../utils/configMigration.js'
 
 interface RowManagedLayoutProps {
   rows: RowLayout[]

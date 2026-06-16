@@ -5,22 +5,22 @@
  * Supports Anthropic, OpenAI, Google Gemini, and OpenAI-compatible providers.
  */
 
-import { t } from '../../i18n/runtime'
-import type { SemanticLayerCompiler } from '../compiler'
-import type { SecurityContext } from '../types'
-import type { AgentConfig, AgentSSEEvent, AgentHistoryMessage } from './types'
-import type { InternalMessage } from './providers/types'
-import { buildAgentSystemPrompt } from './system-prompt'
-import { getToolDefinitions, createToolExecutor } from './tools'
-import { createProvider } from './providers/factory'
-import type { ProviderName } from './providers/factory'
+import { t } from '../../i18n/runtime.js'
+import type { SemanticLayerCompiler } from '../compiler.js'
+import type { SecurityContext } from '../types/index.js'
+import type { AgentConfig, AgentSSEEvent, AgentHistoryMessage } from './types.js'
+import type { InternalMessage } from './providers/types.js'
+import { buildAgentSystemPrompt } from './system-prompt.js'
+import { getToolDefinitions, createToolExecutor } from './tools.js'
+import { createProvider } from './providers/factory.js'
+import type { ProviderName } from './providers/factory.js'
 import {
   safeObserve,
   rebuildMessagesFromHistory,
   consumeAssistantStream,
   executeToolCalls,
   pushFormattedResults,
-} from './handler-steps'
+} from './handler-steps.js'
 
 /** Default models per provider */
 const DEFAULT_MODELS: Record<string, string> = {

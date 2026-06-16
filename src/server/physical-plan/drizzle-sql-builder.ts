@@ -23,16 +23,16 @@ import type {
   Cube,
   QueryContext,
   PhysicalQueryPlan
-} from '../types'
+} from '../types/index.js'
 
-import { resolveSqlExpression } from '../cube-utils'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
-import { getFilterKey, getTimeDimensionFilterKey } from '../filter-cache'
-import { DateTimeBuilder } from '../builders/date-time-builder'
-import { FilterBuilder } from '../builders/filter-builder'
-import { GroupByBuilder } from '../builders/group-by-builder'
-import { MeasureBuilder } from '../builders/measure-builder'
-import type { ResolvedMeasures } from '../template-substitution'
+import { resolveSqlExpression } from '../cube-utils.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
+import { getFilterKey, getTimeDimensionFilterKey } from '../filter-cache.js'
+import { DateTimeBuilder } from '../builders/date-time-builder.js'
+import { FilterBuilder } from '../builders/filter-builder.js'
+import { GroupByBuilder } from '../builders/group-by-builder.js'
+import { MeasureBuilder } from '../builders/measure-builder.js'
+import type { ResolvedMeasures } from '../template-substitution.js'
 
 export class DrizzleSqlBuilder {
   private dateTimeBuilder: DateTimeBuilder

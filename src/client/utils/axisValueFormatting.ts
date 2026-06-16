@@ -3,7 +3,7 @@
  * per-unit formatting. Split out of chartUtils to keep each unit small.
  */
 
-import type { AxisFormatConfig } from '../types'
+import type { AxisFormatConfig } from '../types.js'
 
 /**
  * Get the currency code for a given locale.

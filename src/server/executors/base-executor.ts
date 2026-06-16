@@ -4,9 +4,9 @@
  */
 
 import type { SQL } from 'drizzle-orm'
-import type { DrizzleDatabase, DatabaseExecutor, ExplainOptions, ExplainResult, IndexInfo } from '../types'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
-import { createDatabaseAdapter } from '../database-utils'
+import type { DrizzleDatabase, DatabaseExecutor, ExplainOptions, ExplainResult, IndexInfo } from '../types/index.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
+import { createDatabaseAdapter } from '../database-utils.js'
 
 /**
  * Abstract base class for database executors

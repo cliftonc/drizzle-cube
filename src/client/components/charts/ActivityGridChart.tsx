@@ -1,19 +1,19 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { transition as _transition } from 'd3'
 // _transition import is for side effects only - it extends Selection.prototype with .transition()
 void _transition
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import { getTheme, watchThemeChanges, type Theme } from '../../theme'
-import { useChartDimensions } from './useChartDimensions'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
+import { getTheme, watchThemeChanges, type Theme } from '../../theme/index.js'
+import { useChartDimensions } from './useChartDimensions.js'
 import {
   firstDateField,
   getGridMapping,
   getQueryGranularity,
   buildGridData
-} from './ActivityGridChart.helpers'
-import { renderActivityGrid } from './ActivityGridChart.render'
-import type { ChartProps } from '../../types'
+} from './ActivityGridChart.helpers.js'
+import { renderActivityGrid } from './ActivityGridChart.render.js'
+import type { ChartProps } from '../../types.js'
 
 const ActivityGridChart = React.memo(function ActivityGridChart({
   data,

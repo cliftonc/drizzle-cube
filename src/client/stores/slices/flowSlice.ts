@@ -11,10 +11,10 @@
  */
 
 import type { StateCreator } from 'zustand'
-import type { AnalysisBuilderStore } from '../analysisBuilderStore'
-import type { Filter, FunnelBindingKey } from '../../types'
-import type { ServerFlowQuery, FlowStartingStep } from '../../types/flow'
-import { FLOW_MIN_DEPTH, FLOW_MAX_DEPTH } from '../../types/flow'
+import type { AnalysisBuilderStore } from '../analysisBuilderStore.js'
+import type { Filter, FunnelBindingKey } from '../../types.js'
+import type { ServerFlowQuery, FlowStartingStep } from '../../types/flow.js'
+import { FLOW_MIN_DEPTH, FLOW_MAX_DEPTH } from '../../types/flow.js'
 
 // ============================================================================
 // Types

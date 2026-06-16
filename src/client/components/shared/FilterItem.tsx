@@ -6,15 +6,15 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import { getIcon } from '../../icons'
-import FilterValueSelector from './FilterValueSelector'
-import type { FilterItemProps, MetaField, DateRangeType } from './types'
-import { getAllFilterableFields, getOrganizedFilterFields, getFieldType, getAvailableOperators, convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
-import { DATE_RANGE_OPTIONS } from './types'
-import { useTranslation } from '../../hooks/useTranslation'
-import { resolveDateRangeState } from './filterItem/dateRangeSync'
-import { FilterFieldDropdown } from './filterItem/FilterFieldDropdown'
-import { FilterDateRangeSelector } from './filterItem/FilterDateRangeSelector'
+import { getIcon } from '../../icons/index.js'
+import FilterValueSelector from './FilterValueSelector.js'
+import type { FilterItemProps, MetaField, DateRangeType } from './types.js'
+import { getAllFilterableFields, getOrganizedFilterFields, getFieldType, getAvailableOperators, convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils.js'
+import { DATE_RANGE_OPTIONS } from './types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { resolveDateRangeState } from './filterItem/dateRangeSync.js'
+import { FilterFieldDropdown } from './filterItem/FilterFieldDropdown.js'
+import { FilterDateRangeSelector } from './filterItem/FilterDateRangeSelector.js'
 
 const CloseIcon = getIcon('close')
 const ChevronDownIcon = getIcon('chevronDown')

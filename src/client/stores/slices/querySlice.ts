@@ -9,26 +9,26 @@
  */
 
 import type { StateCreator } from 'zustand'
-import type { AnalysisBuilderStore } from '../analysisBuilderStore'
+import type { AnalysisBuilderStore } from '../analysisBuilderStore.js'
 import type {
   Filter,
   SimpleFilter,
   QueryMergeStrategy,
   CubeQuery,
   MultiQueryConfig,
-} from '../../types'
+} from '../../types.js'
 import type {
   AnalysisBuilderState,
   MetricItem,
   BreakdownItem,
-} from '../../components/AnalysisBuilder/types'
+} from '../../components/AnalysisBuilder/types.js'
 import {
   generateId,
   generateMetricLabel,
   createInitialState,
   buildCubeQuery,
-} from '../../components/AnalysisBuilder/utils'
-import { convertDateRangeTypeToValue } from '../../shared/utils'
+} from '../../components/AnalysisBuilder/utils/index.js'
+import { convertDateRangeTypeToValue } from '../../shared/utils.js'
 
 // ============================================================================
 // Types

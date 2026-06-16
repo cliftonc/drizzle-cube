@@ -1,4 +1,4 @@
-import type { SecurityContext } from "../server";
+import type { SecurityContext } from "../server/index.js";
 
 export const DC_LOCALE_HEADER = "x-dc-locale";
 export const DEFAULT_LOCALE = "en-GB";

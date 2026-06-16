@@ -4,8 +4,8 @@
  */
 
 import type { HTMLAttributes, ReactNode, ComponentType, CSSProperties } from 'react'
-import type { ChartType, DashboardFilter, DashboardLayoutMode, PortletConfig } from '../../types'
-import type { ColorPalette } from '../../utils/colorPalettes'
+import type { ChartType, DashboardFilter, DashboardLayoutMode, PortletConfig } from '../../types.js'
+import type { ColorPalette } from '../../utils/colorPalettes.js'
 
 // Shape mirrors DashboardPortletCardProps; kept here to type the comparators.
 export interface DashboardPortletCardProps {

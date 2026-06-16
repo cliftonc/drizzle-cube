@@ -11,12 +11,12 @@
  */
 
 import React, { useMemo, useRef, useState, useEffect } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { Sankey, Tooltip, ResponsiveContainer } from 'recharts'
-import { CHART_COLORS } from '../../utils/chartConstants'
-import type { ChartProps } from '../../types'
-import type { FlowChartData } from '../../types/flow'
-import { isSankeyData } from '../../types/flow'
+import { CHART_COLORS } from '../../utils/chartConstants.js'
+import type { ChartProps } from '../../types.js'
+import type { FlowChartData } from '../../types/flow.js'
+import { isSankeyData } from '../../types/flow.js'
 
 /**
  * Color palette for Sankey nodes based on layer

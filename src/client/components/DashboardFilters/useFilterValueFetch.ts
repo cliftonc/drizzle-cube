@@ -11,9 +11,9 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import type { SimpleFilter } from '../../types'
-import { useFilterValues } from '../../hooks/useFilterValues'
-import { useDebounce } from '../../hooks/useDebounce'
+import type { SimpleFilter } from '../../types.js'
+import { useFilterValues } from '../../hooks/useFilterValues.js'
+import { useDebounce } from '../../hooks/useDebounce.js'
 
 interface OperatorMetaLike {
   supportsMultipleValues?: boolean

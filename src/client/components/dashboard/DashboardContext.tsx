@@ -20,9 +20,9 @@ import {
   type MutableRefObject
 } from 'react'
 import type { LayoutItem, Layout } from 'react-grid-layout'
-import type { UseDashboardActions } from '../../hooks/useDashboardHook'
-import type { DashboardDisplayMode } from '../../hooks/useResponsiveDashboard'
-import type { ColorPalette } from '../../utils/colorPalettes'
+import type { UseDashboardActions } from '../../hooks/useDashboardHook.js'
+import type { DashboardDisplayMode } from '../../hooks/useResponsiveDashboard.js'
+import type { ColorPalette } from '../../utils/colorPalettes.js'
 import type {
   DashboardConfig,
   PortletConfig,
@@ -33,7 +33,7 @@ import type {
   DashboardGridSettings,
   RowLayout,
   FeaturesConfig
-} from '../../types'
+} from '../../types.js'
 
 /**
  * Props accepted by DashboardProvider (the public composable entry point).

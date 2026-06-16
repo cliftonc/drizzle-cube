@@ -13,10 +13,10 @@
  * 3. Download button appears on portlets with data
  */
 
-import type { XlsExportFeatureConfig } from '../types'
-import type { FlowChartData } from '../types/flow'
-import type { RetentionChartData } from '../types/retention'
-import type { PortletDebugDataEntry } from '../stores/dashboardStore'
+import type { XlsExportFeatureConfig } from '../types.js'
+import type { FlowChartData } from '../types/flow.js'
+import type { RetentionChartData } from '../types/retention.js'
+import type { PortletDebugDataEntry } from '../stores/dashboardStore.js'
 
 // Type for ExcelJS module (optional dependency)
 type ExcelJSModule = { Workbook: new () => ExcelJSWorkbook }

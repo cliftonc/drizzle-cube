@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import DataHistogram from '../DataHistogram'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
+import DataHistogram from '../DataHistogram.js'
 import {
   extractValueFields,
   extractValues,
@@ -9,8 +9,8 @@ import {
   formatKpiNumber,
   processKpiTemplate,
   resolveValueColor
-} from './kpiTextHelpers'
-import type { ChartProps } from '../../types'
+} from './kpiTextHelpers.js'
+import type { ChartProps } from '../../types.js'
 
 const KpiText = React.memo(function KpiText({
   data,

@@ -22,7 +22,7 @@ export {
   useExplainQuery,
   createExplainQueryKey,
   useExplainAI,
-} from './hooks/queries'
+} from './hooks/queries/index.js'
 export type {
   UseCubeMetaQueryOptions,
   UseCubeMetaQueryResult,
@@ -43,17 +43,17 @@ export type {
   UseExplainQueryResult,
   UseExplainAIOptions,
   UseExplainAIResult,
-} from './hooks/queries'
+} from './hooks/queries/index.js'
 
 // Other hooks
-export { useDebounce } from './hooks/useDebounce'
-export { useDirtyStateTracking } from './hooks/useDirtyStateTracking'
-export type { UseDirtyStateTrackingOptions, UseDirtyStateTrackingResult } from './hooks/useDirtyStateTracking'
-export { useFilterValues } from './hooks/useFilterValues'
-export { useResponsiveDashboard } from './hooks/useResponsiveDashboard'
-export type { DashboardDisplayMode, UseResponsiveDashboardResult } from './hooks/useResponsiveDashboard'
-export { useNotebookLayout } from './hooks/useNotebookLayout'
-export type { NotebookLayoutMode, UseNotebookLayoutResult } from './hooks/useNotebookLayout'
+export { useDebounce } from './hooks/useDebounce.js'
+export { useDirtyStateTracking } from './hooks/useDirtyStateTracking.js'
+export type { UseDirtyStateTrackingOptions, UseDirtyStateTrackingResult } from './hooks/useDirtyStateTracking.js'
+export { useFilterValues } from './hooks/useFilterValues.js'
+export { useResponsiveDashboard } from './hooks/useResponsiveDashboard.js'
+export type { DashboardDisplayMode, UseResponsiveDashboardResult } from './hooks/useResponsiveDashboard.js'
+export { useNotebookLayout } from './hooks/useNotebookLayout.js'
+export type { NotebookLayoutMode, UseNotebookLayoutResult } from './hooks/useNotebookLayout.js'
 
 // Hook-related types
 export type {
@@ -61,4 +61,4 @@ export type {
   CubeQueryOptions,
   CubeResultSet,
   CubeApiOptions
-} from './types'
+} from './types.js'

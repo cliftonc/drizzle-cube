@@ -9,11 +9,11 @@
  */
 
 import React from 'react'
-import type { FilterValueSelectorProps } from './types'
+import type { FilterValueSelectorProps } from './types.js'
 import {
   useFilterValueSelectorState,
   COMBO_OPERATORS
-} from './filterValueSelector/useFilterValueSelectorState'
+} from './filterValueSelector/useFilterValueSelectorState.js'
 import {
   NoValueInput,
   DateRangeInput,
@@ -23,7 +23,7 @@ import {
   TextInput,
   MultiDateInput,
   ComboBoxInput
-} from './filterValueSelector/FilterValueInputs'
+} from './filterValueSelector/FilterValueInputs.js'
 
 const FilterValueSelector: React.FC<FilterValueSelectorProps> = (props) => {
   const { operator, values, onValuesChange } = props

@@ -1,4 +1,4 @@
-import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 
 /**
  * Configuration for the bubble chart type

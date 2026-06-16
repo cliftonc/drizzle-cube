@@ -6,10 +6,10 @@
  */
 
 import { useMemo } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import SectionHeading from '../AnalysisBuilder/SectionHeading'
-import type { AxisFormatConfig } from '../../types'
-import { formatAxisValue } from '../../utils/chartUtils'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import SectionHeading from '../AnalysisBuilder/SectionHeading.js'
+import type { AxisFormatConfig } from '../../types.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
 
 interface AxisFormatControlsProps {
   value: AxisFormatConfig

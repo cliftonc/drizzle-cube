@@ -5,11 +5,11 @@
  * complexity without changing output.
  */
 
-import { t } from '../../i18n/runtime'
-import type { TranslationKey } from '../../i18n/types'
-import type { CubeMetadata } from '../types/metadata'
-import type { SemanticQuery, Filter } from '../types/query'
-import type { ValidationError, ValidationWarning } from './validation'
+import { t } from '../../i18n/runtime.js'
+import type { TranslationKey } from '../../i18n/types.js'
+import type { CubeMetadata } from '../types/metadata.js'
+import type { SemanticQuery, Filter } from '../types/query.js'
+import type { ValidationError, ValidationWarning } from './validation.js'
 
 /** Validate that a required event-stream field is present and (if a string) a valid dimension. */
 export function validateRequiredDimensionField(

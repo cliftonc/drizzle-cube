@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import type { CubeMetaCube, CubeMetaMeasure, CubeMetaDimension } from '../../types'
-import { getIcon } from '../../icons'
+import type { CubeMetaCube, CubeMetaMeasure, CubeMetaDimension } from '../../types.js'
+import { getIcon } from '../../icons/index.js'
 
 export interface FieldSelection {
   cubeName: string

@@ -1,5 +1,5 @@
-import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { requiresMeasure } from '../../charts/chartConfigHelpers'
+import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
+import { requiresMeasure } from '../../charts/chartConfigHelpers.js'
 
 /**
  * Configuration for the KPI Text chart type

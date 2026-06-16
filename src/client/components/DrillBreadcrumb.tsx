@@ -4,8 +4,8 @@
  */
 
 import React from 'react'
-import type { DrillBreadcrumbProps } from '../types/drill'
-import { useTranslation } from '../hooks/useTranslation'
+import type { DrillBreadcrumbProps } from '../types/drill.js'
+import { useTranslation } from '../hooks/useTranslation.js'
 
 /**
  * Home icon for the root level

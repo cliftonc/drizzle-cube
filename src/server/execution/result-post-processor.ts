@@ -4,9 +4,9 @@
  * applies time-series gap filling. Extracted from QueryExecutor.
  */
 
-import type { SemanticQuery } from '../types'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
-import { applyGapFilling } from '../gap-filler'
+import type { SemanticQuery } from '../types/index.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
+import { applyGapFilling } from '../gap-filler.js'
 
 /**
  * Normalise time-dimension values in result rows and apply gap filling.

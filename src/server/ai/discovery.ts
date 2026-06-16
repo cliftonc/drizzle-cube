@@ -3,14 +3,14 @@
  * Schema-aware intelligence for discovering relevant cubes and fields
  */
 
-import type { CubeMetadata } from '../types/metadata'
-import { QUERY_SCHEMAS } from './schemas'
+import type { CubeMetadata } from '../types/metadata.js'
+import { QUERY_SCHEMAS } from './schemas.js'
 import {
   accumulateFieldScores,
   topScoredFields,
   scoreFieldForBestMatch,
   type ScoreFns,
-} from './discovery-helpers'
+} from './discovery-helpers.js'
 
 /**
  * Discovery result for a cube

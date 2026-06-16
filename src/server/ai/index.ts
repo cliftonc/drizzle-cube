@@ -8,29 +8,29 @@ export {
   findBestFieldMatch,
   type CubeDiscoveryResult,
   type DiscoveryOptions
-} from './discovery'
+} from './discovery.js'
 
 export {
   suggestQuery,
   type QuerySuggestion
-} from './suggestion'
+} from './suggestion.js'
 
 export {
   validateQuery,
   type ValidationResult,
   type ValidationError,
   type ValidationWarning
-} from './validation'
+} from './validation.js'
 
 export {
   QUERY_SCHEMAS,
   type QuerySchemas
-} from './schemas'
+} from './schemas.js'
 
 export {
   QUERY_PARAMS_SCHEMA,
   QUERY_LANGUAGE_REFERENCE
-} from './query-schema'
+} from './query-schema.js'
 
 export {
   MCP_PROMPTS,
@@ -43,4 +43,4 @@ export {
   getDefaultMCPPrompts,
   getDefaultMcpInstructions,
   type MCPPrompt
-} from './mcp-prompts'
+} from './mcp-prompts.js'

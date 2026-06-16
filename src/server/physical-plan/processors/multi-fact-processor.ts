@@ -9,9 +9,9 @@ import type {
   PhysicalQueryPlan,
   QueryContext,
   SemanticQuery
-} from '../../types'
-import { applyJoinByType } from './shared'
-import type { PhysicalBuildDependencies } from './shared'
+} from '../../types/index.js'
+import { applyJoinByType } from './shared.js'
+import type { PhysicalBuildDependencies } from './shared.js'
 
 type MultiFact = NonNullable<PhysicalQueryPlan['multiFactMerge']>
 

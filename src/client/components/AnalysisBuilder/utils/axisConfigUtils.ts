@@ -7,7 +7,7 @@
  * object and never mutate the input.
  */
 
-import type { ChartAxisConfig } from '../../../types'
+import type { ChartAxisConfig } from '../../../types.js'
 
 type AxisKey = keyof ChartAxisConfig
 

@@ -15,21 +15,21 @@
  */
 
 import { useCallback, useMemo, useRef } from 'react'
-import { useCubeFeatures } from '../providers/CubeProvider'
+import { useCubeFeatures } from '../providers/CubeProvider.js'
 import {
   useAnalysisBuilderStore,
   useAnalysisBuilderStoreApi,
-} from '../stores/analysisBuilderStore'
+} from '../stores/analysisBuilderStore.js'
 
 // Sub-hooks
-import { useAnalysisQueryBuilder } from './useAnalysisQueryBuilder'
-import { useAnalysisCombinedFields } from './useAnalysisCombinedFields'
-import { useAnalysisQueryExecution } from './useAnalysisQueryExecution'
-import { useAnalysisChartDefaults } from './useAnalysisChartDefaults'
-import { useAnalysisUIState } from './useAnalysisUIState'
-import { useAnalysisInitialization } from './useAnalysisInitialization'
+import { useAnalysisQueryBuilder } from './useAnalysisQueryBuilder.js'
+import { useAnalysisCombinedFields } from './useAnalysisCombinedFields.js'
+import { useAnalysisQueryExecution } from './useAnalysisQueryExecution.js'
+import { useAnalysisChartDefaults } from './useAnalysisChartDefaults.js'
+import { useAnalysisUIState } from './useAnalysisUIState.js'
+import { useAnalysisInitialization } from './useAnalysisInitialization.js'
 
-import type { ColorPalette } from '../utils/colorPalettes'
+import type { ColorPalette } from '../utils/colorPalettes.js'
 import type {
   CubeQuery,
   MultiQueryConfig,
@@ -41,19 +41,19 @@ import type {
   FunnelBindingKey,
   AnalysisType,
   FunnelStepState,
-} from '../types'
+} from '../types.js'
 import type {
   AnalysisBuilderState,
   MetricItem,
   BreakdownItem,
   ExecutionStatus,
   QueryPanelTab,
-} from '../components/AnalysisBuilder/types'
-import type { ChartAvailabilityMap } from '../shared/chartDefaults'
-import type { DebugDataEntry } from './queries'
-import type { MultiQueryValidationResult } from '../utils/multiQueryValidation'
-import type { MetaField } from '../shared/types'
-import type { ValidationResult } from '../adapters/modeAdapter'
+} from '../components/AnalysisBuilder/types.js'
+import type { ChartAvailabilityMap } from '../shared/chartDefaults.js'
+import type { DebugDataEntry } from './queries/index.js'
+import type { MultiQueryValidationResult } from '../utils/multiQueryValidation.js'
+import type { MetaField } from '../shared/types.js'
+import type { ValidationResult } from '../adapters/modeAdapter.js'
 
 // ============================================================================
 // Types
@@ -120,7 +120,7 @@ export interface UseAnalysisBuilderResult {
   /** Event dimension for flow mode (node labels in Sankey) */
   eventDimension: string | null
   /** Starting step configuration */
-  startingStep: import('../types/flow').FlowStartingStep
+  startingStep: import('../types/flow.js').FlowStartingStep
   /** Number of steps to explore before starting step */
   stepsBefore: number
   /** Number of steps to explore after starting step */
@@ -134,23 +134,23 @@ export interface UseAnalysisBuilderResult {
   /** Single cube for retention analysis */
   retentionCube: string | null
   /** Binding key for retention mode */
-  retentionBindingKey: import('../types/funnel').FunnelBindingKey | null
+  retentionBindingKey: import('../types/funnel.js').FunnelBindingKey | null
   /** Single timestamp dimension for retention mode */
   retentionTimeDimension: string | null
   /** Date range for cohort analysis (REQUIRED) */
-  retentionDateRange: import('../types/retention').DateRange
+  retentionDateRange: import('../types/retention.js').DateRange
   /** Cohort filters for retention mode */
-  retentionCohortFilters: import('../types').Filter[]
+  retentionCohortFilters: import('../types.js').Filter[]
   /** Activity filters for retention mode */
-  retentionActivityFilters: import('../types').Filter[]
+  retentionActivityFilters: import('../types.js').Filter[]
   /** Optional breakdown dimensions for segmenting the cohort */
-  retentionBreakdowns: import('../types/retention').RetentionBreakdownItem[]
+  retentionBreakdowns: import('../types/retention.js').RetentionBreakdownItem[]
   /** Granularity for viewing retention periods (day/week/month) */
-  retentionViewGranularity: import('../types/retention').RetentionGranularity
+  retentionViewGranularity: import('../types/retention.js').RetentionGranularity
   /** Number of periods for retention mode */
   retentionPeriods: number
   /** Retention calculation type */
-  retentionType: import('../types/retention').RetentionType
+  retentionType: import('../types/retention.js').RetentionType
   /** Display config for retention mode */
   retentionDisplayConfig: ChartDisplayConfig | undefined
 
@@ -172,7 +172,7 @@ export interface UseAnalysisBuilderResult {
    * Query warnings from the server (e.g., fan-out without dimensions).
    * Displayed as a banner above results.
    */
-  warnings: import('../shared/types').QueryWarning[] | undefined
+  warnings: import('../shared/types.js').QueryWarning[] | undefined
   /** In funnel mode, the actually executed queries with binding key dimension and IN filters */
   funnelExecutedQueries: CubeQuery[] | null
   /** In funnel mode, the actual server query { funnel: {...} } sent to the API */
@@ -188,7 +188,7 @@ export interface UseAnalysisBuilderResult {
   /** In retention mode, unified debug data (SQL, analysis, mode metadata) */
   retentionDebugData: DebugDataEntry | null
   /** In retention mode, the chart data (cohort × period matrix) */
-  retentionChartData: import('../types/retention').RetentionChartData | null
+  retentionChartData: import('../types/retention.js').RetentionChartData | null
   /** In retention mode, validation result (errors explaining why query cannot be built) */
   retentionValidation: { isValid: boolean; errors: string[]; warnings: string[] } | null
 
@@ -276,17 +276,17 @@ export interface UseAnalysisBuilderResult {
     setFlowDisplayConfig: (config: ChartDisplayConfig) => void
     // Retention Mode actions (simplified Mixpanel-style)
     setRetentionCube: (cube: string | null) => void
-    setRetentionBindingKey: (key: import('../types/funnel').FunnelBindingKey | null) => void
+    setRetentionBindingKey: (key: import('../types/funnel.js').FunnelBindingKey | null) => void
     setRetentionTimeDimension: (dim: string | null) => void
-    setRetentionDateRange: (range: import('../types/retention').DateRange) => void
-    setRetentionCohortFilters: (filters: import('../types').Filter[]) => void
-    setRetentionActivityFilters: (filters: import('../types').Filter[]) => void
-    setRetentionBreakdowns: (breakdowns: import('../types/retention').RetentionBreakdownItem[]) => void
-    addRetentionBreakdown: (breakdown: import('../types/retention').RetentionBreakdownItem) => void
+    setRetentionDateRange: (range: import('../types/retention.js').DateRange) => void
+    setRetentionCohortFilters: (filters: import('../types.js').Filter[]) => void
+    setRetentionActivityFilters: (filters: import('../types.js').Filter[]) => void
+    setRetentionBreakdowns: (breakdowns: import('../types/retention.js').RetentionBreakdownItem[]) => void
+    addRetentionBreakdown: (breakdown: import('../types/retention.js').RetentionBreakdownItem) => void
     removeRetentionBreakdown: (field: string) => void
-    setRetentionViewGranularity: (granularity: import('../types/retention').RetentionGranularity) => void
+    setRetentionViewGranularity: (granularity: import('../types/retention.js').RetentionGranularity) => void
     setRetentionPeriods: (periods: number) => void
-    setRetentionType: (type: import('../types/retention').RetentionType) => void
+    setRetentionType: (type: import('../types/retention.js').RetentionType) => void
     setRetentionDisplayConfig: (config: ChartDisplayConfig) => void
     setChartType: (type: ChartType) => void
     setChartConfig: (config: ChartAxisConfig) => void
@@ -316,7 +316,7 @@ export interface UseAnalysisBuilderResult {
   }
 
   // Refs (for imperative access)
-  getQueryConfig: () => CubeQuery | MultiQueryConfig | import('../types/funnel').ServerFunnelQuery
+  getQueryConfig: () => CubeQuery | MultiQueryConfig | import('../types/funnel.js').ServerFunnelQuery
   getChartConfig: () => {
     chartType: ChartType
     chartConfig: ChartAxisConfig

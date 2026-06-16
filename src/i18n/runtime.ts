@@ -1,5 +1,5 @@
 import en from './locales/en.json'
-import type { TranslationKey, TranslationParams } from './types'
+import type { TranslationKey, TranslationParams } from './types.js'
 
 let currentLocale = 'en-GB'
 let messages: Record<string, string> = en

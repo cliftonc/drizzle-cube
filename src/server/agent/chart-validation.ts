@@ -6,9 +6,9 @@
  * Builds per-chart-type guidance for the tool description.
  */
 
-import { t } from '../../i18n/runtime'
-import { chartConfigRegistry } from '../../client/charts/chartConfigRegistry'
-import type { ChartTypeConfig } from '../../client/charts/chartConfigs'
+import { t } from '../../i18n/runtime.js'
+import { chartConfigRegistry } from '../../client/charts/chartConfigRegistry.js'
+import type { ChartTypeConfig } from '../../client/charts/chartConfigs.js'
 
 interface ValidationResult {
   isValid: boolean

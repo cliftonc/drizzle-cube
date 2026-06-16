@@ -8,8 +8,8 @@
  */
 
 import { memo } from 'react'
-import type { ChartDisplayConfig } from '../../types'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { ChartDisplayConfig } from '../../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface LegacyBooleanOptionsProps {
   displayOptions?: string[]

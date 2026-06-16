@@ -7,11 +7,11 @@
  */
 
 import { memo, MouseEvent } from 'react'
-import type { FieldOption } from './types'
-import type { MetaResponse } from '../../shared/types'
-import FieldSearchItem from './FieldSearchItem'
-import { getCubeTitle } from './utils'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { FieldOption } from './types.js'
+import type { MetaResponse } from '../../shared/types.js'
+import FieldSearchItem from './FieldSearchItem.js'
+import { getCubeTitle } from './utils/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface FieldSearchResultsProps {
   mode: 'metrics' | 'breakdown' | 'filter' | 'dimensionFilter'

@@ -5,7 +5,7 @@
  * based on binding key values from the previous step's results.
  */
 
-import type { CubeQuery } from '../types'
+import type { CubeQuery } from '../types.js'
 
 /**
  * Binding key configuration - the dimension that links funnel steps together.

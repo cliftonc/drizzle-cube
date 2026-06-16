@@ -4,9 +4,9 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import { getIcon } from '../../icons'
-import { getSyntaxHighlighter, loadSyntaxHighlighter } from '../../utils/syntaxHighlighting'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import { getSyntaxHighlighter, loadSyntaxHighlighter } from '../../utils/syntaxHighlighting.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import './CodeBlock.css'
 
 interface CodeBlockProps {

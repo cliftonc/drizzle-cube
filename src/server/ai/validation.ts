@@ -3,17 +3,17 @@
  * Validate queries with helpful corrections and suggestions
  */
 
-import { t } from '../../i18n/runtime'
-import type { CubeMetadata } from '../types/metadata'
-import type { SemanticQuery, Filter } from '../types/query'
-import { findBestFieldMatch, levenshteinDistance } from './discovery'
+import { t } from '../../i18n/runtime.js'
+import type { CubeMetadata } from '../types/metadata.js'
+import type { SemanticQuery, Filter } from '../types/query.js'
+import { findBestFieldMatch, levenshteinDistance } from './discovery.js'
 import {
   validateRequiredDimensionField,
   buildCorrectedQuery,
   collectPerformanceWarnings,
   checkTimeDimensionType,
   validateMemberFilter,
-} from './validation-helpers'
+} from './validation-helpers.js'
 
 /**
  * Validation result with corrections

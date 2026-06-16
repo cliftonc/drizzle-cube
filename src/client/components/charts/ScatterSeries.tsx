@@ -1,7 +1,7 @@
 import { Scatter } from 'recharts'
-import { CHART_COLORS } from '../../utils/chartConstants'
-import type { ColorPalette } from '../../types'
-import type { ScatterPoint } from './ScatterChart.helpers'
+import { CHART_COLORS } from '../../utils/chartConstants.js'
+import type { ColorPalette } from '../../types.js'
+import type { ScatterPoint } from './ScatterChart.helpers.js'
 
 interface ScatterSeriesProps {
   hasSeries: boolean

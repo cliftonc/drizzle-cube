@@ -1,4 +1,4 @@
-import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 import {
   requiresMeasureAndDimension,
   stackTypeDisplayOption,
@@ -6,7 +6,7 @@ import {
   targetDisplayOption,
   leftYAxisFormatDisplayOption,
   rightYAxisFormatDisplayOption
-} from '../../charts/chartConfigHelpers'
+} from '../../charts/chartConfigHelpers.js'
 
 /**
  * Configuration for the area chart type

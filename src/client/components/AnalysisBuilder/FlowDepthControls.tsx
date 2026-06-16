@@ -6,10 +6,10 @@
  */
 
 import { memo } from 'react'
-import type { ChartType } from '../../types'
-import { FLOW_MIN_DEPTH, FLOW_MAX_DEPTH } from '../../types/flow'
-import SectionHeading from './SectionHeading'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { ChartType } from '../../types.js'
+import { FLOW_MIN_DEPTH, FLOW_MAX_DEPTH } from '../../types/flow.js'
+import SectionHeading from './SectionHeading.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface FlowDepthControlsProps {
   chartType: ChartType

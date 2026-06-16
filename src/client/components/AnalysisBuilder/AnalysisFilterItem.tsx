@@ -7,13 +7,13 @@
  */
 
 import { useState, useRef } from 'react'
-import { getIcon } from '../../icons'
-import type { SimpleFilter } from '../../types'
-import type { MetaResponse } from '../../shared/types'
-import { FILTER_OPERATORS } from '../../shared/types'
-import { getFieldTitle, findFieldInSchema } from './utils'
-import FilterConfigModal from './FilterConfigModal'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import type { SimpleFilter } from '../../types.js'
+import type { MetaResponse } from '../../shared/types.js'
+import { FILTER_OPERATORS } from '../../shared/types.js'
+import { getFieldTitle, findFieldInSchema } from './utils/index.js'
+import FilterConfigModal from './FilterConfigModal.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const CloseIcon = getIcon('close')
 const DimensionIcon = getIcon('dimension')

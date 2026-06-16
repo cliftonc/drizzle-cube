@@ -4,8 +4,8 @@
  * Extends MySQL executor since SingleStore is MySQL-compatible
  */
 
-import type { DrizzleDatabase } from '../types'
-import { MySQLExecutor } from './mysql-executor'
+import type { DrizzleDatabase } from '../types/index.js'
+import { MySQLExecutor } from './mysql-executor.js'
 
 export class SingleStoreExecutor extends MySQLExecutor {
   getEngineType(): 'singlestore' {

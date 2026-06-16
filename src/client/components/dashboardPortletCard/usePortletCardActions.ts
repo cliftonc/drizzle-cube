@@ -4,10 +4,10 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
-import { isPortletCopyAvailable, copyPortletToClipboard } from '../../utils/thumbnail'
-import { isExportAvailable, exportPortletToXlsx } from '../../utils/exportXlsx'
-import type { PortletDebugDataEntry } from '../../stores/dashboardStore'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
+import { isPortletCopyAvailable, copyPortletToClipboard } from '../../utils/thumbnail.js'
+import { isExportAvailable, exportPortletToXlsx } from '../../utils/exportXlsx.js'
+import type { PortletDebugDataEntry } from '../../stores/dashboardStore.js'
 
 export function usePortletCardActions(params: {
   portletTitle: string

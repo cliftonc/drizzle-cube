@@ -10,13 +10,13 @@
  */
 
 import { useMemo, useEffect, useRef, useCallback } from 'react'
-import { useAnalysisBuilderStore, selectChartConfig } from '../stores/analysisBuilderStore'
+import { useAnalysisBuilderStore, selectChartConfig } from '../stores/analysisBuilderStore.js'
 import { useShallow } from 'zustand/react/shallow'
-import { getAllChartAvailability, getSmartChartDefaults, shouldAutoSwitchChartType } from '../shared/chartDefaults'
-import { getColorPalette, type ColorPalette } from '../utils/colorPalettes'
-import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types'
-import type { MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types'
-import type { ChartAvailabilityMap } from '../shared/chartDefaults'
+import { getAllChartAvailability, getSmartChartDefaults, shouldAutoSwitchChartType } from '../shared/chartDefaults.js'
+import { getColorPalette, type ColorPalette } from '../utils/colorPalettes.js'
+import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types.js'
+import type { MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types.js'
+import type { ChartAvailabilityMap } from '../shared/chartDefaults.js'
 
 export interface UseAnalysisChartDefaultsOptions {
   /** External color palette (overrides local) */

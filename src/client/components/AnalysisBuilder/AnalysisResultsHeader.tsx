@@ -14,9 +14,9 @@
  *   - `display`  → view / visibility flags driving which controls render
  */
 
-import { getIcon } from '../../icons'
-import ColorPaletteSelector from '../ColorPaletteSelector'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import ColorPaletteSelector from '../ColorPaletteSelector.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const SuccessIcon = getIcon('success')
 const ErrorIcon = getIcon('error')

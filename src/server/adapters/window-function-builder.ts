@@ -8,7 +8,7 @@
  */
 
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
-import type { WindowFunctionType, WindowFunctionConfig } from './base-adapter'
+import type { WindowFunctionType, WindowFunctionConfig } from './base-adapter.js'
 
 type FieldExpr = AnyColumn | SQL | null
 

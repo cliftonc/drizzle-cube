@@ -1,11 +1,11 @@
-import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 import {
   requiresMeasureAndDimension,
   connectNullsDisplayOption,
   targetDisplayOption,
   leftYAxisFormatDisplayOption,
   rightYAxisFormatDisplayOption
-} from '../../charts/chartConfigHelpers'
+} from '../../charts/chartConfigHelpers.js'
 
 /**
  * Configuration for the line chart type

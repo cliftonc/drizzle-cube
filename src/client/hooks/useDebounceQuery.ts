@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { stableStringify } from '../shared/queryKey'
+import { stableStringify } from '../shared/queryKey.js'
 
 export interface UseDebounceQueryOptions {
   /**

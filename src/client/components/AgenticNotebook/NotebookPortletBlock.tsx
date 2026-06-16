@@ -8,14 +8,14 @@
 
 import React, { useState, useCallback } from 'react'
 import type { CSSProperties } from 'react'
-import type { PortletBlock } from '../../stores/notebookStore'
-import type { ChartAxisConfig, ChartDisplayConfig, ChartType } from '../../types'
-import type { ColorPalette } from '../../utils/colorPalettes'
-import type { FlowChartData } from '../../types/flow'
-import type { RetentionChartData } from '../../types/retention'
-import { getIcon } from '../../icons/registry'
-import AnalyticsPortlet from '../AnalyticsPortlet'
-import DebugModal from '../DebugModal'
+import type { PortletBlock } from '../../stores/notebookStore.js'
+import type { ChartAxisConfig, ChartDisplayConfig, ChartType } from '../../types.js'
+import type { ColorPalette } from '../../utils/colorPalettes.js'
+import type { FlowChartData } from '../../types/flow.js'
+import type { RetentionChartData } from '../../types/retention.js'
+import { getIcon } from '../../icons/registry.js'
+import AnalyticsPortlet from '../AnalyticsPortlet.js'
+import DebugModal from '../DebugModal.js'
 
 const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'currentColor' }
 

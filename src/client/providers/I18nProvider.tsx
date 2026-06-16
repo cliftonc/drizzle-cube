@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState, type ReactNode } from 'react'
-import { loadLocale, setTranslations, getLocale, getMessages, t as globalT } from '../../i18n/runtime'
-import type { TranslationKey, TranslationParams } from '../../i18n/types'
+import { loadLocale, setTranslations, getLocale, getMessages, t as globalT } from '../../i18n/runtime.js'
+import type { TranslationKey, TranslationParams } from '../../i18n/types.js'
 
 export interface I18nContextValue {
   t: (key: TranslationKey, params?: TranslationParams) => string

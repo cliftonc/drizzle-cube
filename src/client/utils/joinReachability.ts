@@ -7,8 +7,8 @@
  * auto-joins cubes referenced only in filters).
  */
 
-import type { CubeMeta, CubeMetaDimension, PortletConfig } from '../types'
-import { ensureAnalysisConfig } from './configMigration'
+import type { CubeMeta, CubeMetaDimension, PortletConfig } from '../types.js'
+import { ensureAnalysisConfig } from './configMigration.js'
 
 /**
  * Compute the set of cubes reachable from the given start cubes via join

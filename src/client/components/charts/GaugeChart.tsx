@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates.js'
 import {
   START_ANGLE,
   END_ANGLE,
@@ -11,9 +11,9 @@ import {
   buildThresholdBands,
   computeGaugeGeometry,
   formatGaugeValue
-} from './gaugeChartHelpers'
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import type { ChartProps, ThresholdBand } from '../../types'
+} from './gaugeChartHelpers.js'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
+import type { ChartProps, ThresholdBand } from '../../types.js'
 
 function Needle({ angle, radius }: { angle: number; radius: number }) {
   const needleLen = radius * 0.72

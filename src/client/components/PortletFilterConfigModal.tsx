@@ -11,10 +11,10 @@ import type {
   DashboardFilterMappingEntry,
   CubeMeta,
   PortletConfig
-} from '../types'
-import { normalizeFilterMapping, serializeFilterMapping } from '../utils/filterUtils'
-import { getReachableDimensionOptions } from '../utils/joinReachability'
-import { useTranslation } from '../hooks/useTranslation'
+} from '../types.js'
+import { normalizeFilterMapping, serializeFilterMapping } from '../utils/filterUtils.js'
+import { getReachableDimensionOptions } from '../utils/joinReachability.js'
+import { useTranslation } from '../hooks/useTranslation.js'
 
 interface PortletFilterConfigModalProps {
   isOpen: boolean

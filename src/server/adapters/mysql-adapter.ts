@@ -9,8 +9,8 @@
  */
 
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
-import type { TimeGranularity } from '../types'
-import { BaseDatabaseAdapter, type DatabaseCapabilities } from './base-adapter'
+import type { TimeGranularity } from '../types/index.js'
+import { BaseDatabaseAdapter, type DatabaseCapabilities } from './base-adapter.js'
 
 export class MySQLAdapter extends BaseDatabaseAdapter {
   getEngineType(): 'mysql' | 'singlestore' {

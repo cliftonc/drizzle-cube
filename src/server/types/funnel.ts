@@ -3,7 +3,7 @@
  * Supports query-time funnel definition with temporal ordering and conversion metrics
  */
 
-import type { Filter } from './query'
+import type { Filter } from './query.js'
 
 /**
  * Single-cube step definition - all steps use the same cube

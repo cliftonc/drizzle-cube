@@ -15,15 +15,15 @@ import type {
   CubeJoin,
   SemanticQuery,
   IntermediateJoinInfo
-} from '../types'
+} from '../types/index.js'
 import {
   resolveCubeReference,
   reverseRelationship
-} from '../cube-utils'
-import { categorizeForPostAggregation } from '../measure-classification'
-import { ResolverCache, analyzeCubeUsage } from './planner-utils'
-import { FilterPropagation } from './filter-propagation'
-import type { JoinRef } from './types'
+} from '../cube-utils.js'
+import { categorizeForPostAggregation } from '../measure-classification.js'
+import { ResolverCache, analyzeCubeUsage } from './planner-utils.js'
+import { FilterPropagation } from './filter-propagation.js'
+import type { JoinRef } from './types.js'
 import {
   type CTEJoinKey,
   type FoundJoinInfo,
@@ -31,7 +31,7 @@ import {
   deriveCTEJoinKeys,
   deriveDownstreamJoinKeys,
   findJoinInfoForCube
-} from './cte-planner-helpers'
+} from './cte-planner-helpers.js'
 
 export class CTEPlanner {
   constructor(

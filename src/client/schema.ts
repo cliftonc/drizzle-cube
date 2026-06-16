@@ -10,5 +10,5 @@
  *   import { SchemaVisualization } from 'drizzle-cube/client/schema'
  */
 
-export { SchemaVisualizationLazy as SchemaVisualization } from './components/SchemaVisualization/SchemaVisualizationLazy'
-export type { SchemaVisualizationProps } from './components/SchemaVisualization/index'
+export { SchemaVisualizationLazy as SchemaVisualization } from './components/SchemaVisualization/SchemaVisualizationLazy.js'
+export type { SchemaVisualizationProps } from './components/SchemaVisualization/index.js'

@@ -5,9 +5,9 @@
  * to avoid duplication. Only component-specific utilities are defined here.
  */
 
-import type { CubeQuery, Filter, SimpleFilter } from '../../types'
-import type { MetaField, MetaResponse } from './types'
-import { getSelectedFieldNames, validateFilterOperator } from './queryFieldUtils'
+import type { CubeQuery, Filter, SimpleFilter } from '../../types.js'
+import type { MetaField, MetaResponse } from './types.js'
+import { getSelectedFieldNames, validateFilterOperator } from './queryFieldUtils.js'
 
 // ============================================================================
 // Re-export concern-split sibling utilities (canonical source for each lives
@@ -18,18 +18,18 @@ export {
   getSortDirection,
   getSortTooltip,
   getNextSortDirection,
-} from './queryFieldUtils'
+} from './queryFieldUtils.js'
 
-export type { DatePreset } from './dateRangeUtils'
+export type { DatePreset } from './dateRangeUtils.js'
 export {
   DATE_PRESETS,
   XTD_OPTIONS,
   calculateDateRange,
   formatDateRangeDisplay,
   detectPresetFromDateRange,
-} from './dateRangeUtils'
+} from './dateRangeUtils.js'
 
-export { formatFilterValueDisplay } from './filterDisplayUtils'
+export { formatFilterValueDisplay } from './filterDisplayUtils.js'
 
 // ============================================================================
 // Re-export common utilities from shared module (canonical source)
@@ -65,7 +65,7 @@ export {
   convertDateRangeTypeToValue,
   requiresNumberInput,
   formatDateForCube,
-} from '../../shared/utils'
+} from '../../shared/utils.js'
 
 // Import for internal use
 import {
@@ -73,7 +73,7 @@ import {
   isGroupFilter,
   getCubeNameFromField,
   getAllFilterableFields,
-} from '../../shared/utils'
+} from '../../shared/utils.js'
 
 // ============================================================================
 // Component-specific utilities (unique to this module)

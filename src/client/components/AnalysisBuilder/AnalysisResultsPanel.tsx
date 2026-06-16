@@ -6,23 +6,23 @@
  */
 
 import React, { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react'
-import type { AnalysisResultsPanelProps } from './types'
-import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
-import { getIcon } from '../../icons'
-import { QueryAnalysisPanel, CodeBlock } from '../../shared'
-import ConfirmModal from '../ConfirmModal'
-import { useExplainQuery } from '../../hooks/queries/useExplainQuery'
-import { useExplainAI } from '../../hooks/queries/useExplainAI'
-import type { CubeQuery } from '../../types'
-import { ExecutionPlanPanel } from './ExecutionPlanPanel'
-import ResultsHeader from './AnalysisResultsHeader'
-import type { ResultsSummary, ResultsToolbarActions, ResultsDisplayFlags } from './AnalysisResultsHeader'
-import { generateExecutionPlanMarkdown } from './utils/executionPlanMarkdown'
-import { resolveDebugData, isChartViewEnabled, chartViewButtonTitle, computeHasResults, selectTableData, flowLinkNames, computeIsMultiQuery } from './utils/resultsPanelDerive'
-import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { AnalysisResultsPanelProps } from './types.js'
+import { LazyChart, isValidChartType } from '../../charts/ChartLoader.js'
+import { getIcon } from '../../icons/index.js'
+import { QueryAnalysisPanel, CodeBlock } from '../../shared/index.js'
+import ConfirmModal from '../ConfirmModal.js'
+import { useExplainQuery } from '../../hooks/queries/useExplainQuery.js'
+import { useExplainAI } from '../../hooks/queries/useExplainAI.js'
+import type { CubeQuery } from '../../types.js'
+import { ExecutionPlanPanel } from './ExecutionPlanPanel.js'
+import ResultsHeader from './AnalysisResultsHeader.js'
+import type { ResultsSummary, ResultsToolbarActions, ResultsDisplayFlags } from './AnalysisResultsHeader.js'
+import { generateExecutionPlanMarkdown } from './utils/executionPlanMarkdown.js'
+import { resolveDebugData, isChartViewEnabled, chartViewButtonTitle, computeHasResults, selectTableData, flowLinkNames, computeIsMultiQuery } from './utils/resultsPanelDerive.js'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 const SchemaVisualizationLazy = React.lazy(() =>
-  import('../SchemaVisualization/SchemaVisualizationLazy').then(m => ({ default: m.SchemaVisualizationLazy }))
+  import('../SchemaVisualization/SchemaVisualizationLazy.js').then(m => ({ default: m.SchemaVisualizationLazy }))
 )
 
 /**

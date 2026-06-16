@@ -4,7 +4,7 @@
  * (Groq, Together, Mistral, Ollama, etc.) via configurable baseURL.
  */
 
-import type { LLMProvider, ToolDefinition, InternalMessage, ToolResult, NormalizedEvent, ContentBlock } from './types'
+import type { LLMProvider, ToolDefinition, InternalMessage, ToolResult, NormalizedEvent, ContentBlock } from './types.js'
 
 type ActiveToolCalls = Map<number, { id: string; name: string; arguments: string }>
 

@@ -13,13 +13,13 @@
  * logical plan as the primary planning representation.
  */
 
-import type { Cube, QueryContext, PhysicalQueryPlan, QueryWarning, Measure } from '../types'
-import type { QueryAnalysis, PreAggregationAnalysis } from '../types/analysis'
-import type { SemanticQuery } from '../types/query'
-import type { LogicalPlanner } from './logical-planner'
-import { hasPostAggregationWindows } from '../measure-classification'
-import { resolveCubeReference } from '../cube-utils'
-import { t } from '../../i18n/runtime'
+import type { Cube, QueryContext, PhysicalQueryPlan, QueryWarning, Measure } from '../types/index.js'
+import type { QueryAnalysis, PreAggregationAnalysis } from '../types/analysis.js'
+import type { SemanticQuery } from '../types/query.js'
+import type { LogicalPlanner } from './logical-planner.js'
+import { hasPostAggregationWindows } from '../measure-classification.js'
+import { resolveCubeReference } from '../cube-utils.js'
+import { t } from '../../i18n/runtime.js'
 import type {
   LogicalNode,
   QueryNode,
@@ -35,7 +35,7 @@ import type {
   JoinRef,
   LogicalSchema,
   ColumnRef
-} from './types'
+} from './types.js'
 
 export interface LogicalPlanWithAnalysis {
   plan: QueryNode

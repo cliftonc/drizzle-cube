@@ -17,7 +17,7 @@ import {
   validateAcceptHeader,
   validateOriginHeader,
   type JsonRpcRequest
-} from '../mcp-transport'
+} from '../mcp-transport.js'
 
 /** MCP endpoint config fields the Next.js handler helpers depend on. */
 export interface NextMcpHandlerConfig {

@@ -11,7 +11,7 @@
 
 import { createContext, useContext, useRef, type ReactNode } from 'react'
 import { createStore, useStore, type StoreApi } from 'zustand'
-import type { Filter } from '../types'
+import type { Filter } from '../types.js'
 
 // ============================================================================
 // Types

@@ -6,12 +6,12 @@
  * closed they render nothing, so always mounting them is harmless.
  */
 
-import { useTranslation } from '../../hooks/useTranslation'
-import PortletAnalysisModal from '../PortletAnalysisModal'
-import TextPortletModal from '../TextPortletModal'
-import PortletFilterConfigModal from '../PortletFilterConfigModal'
-import ConfirmModal from '../ConfirmModal'
-import { useDashboardContext } from './DashboardContext'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import PortletAnalysisModal from '../PortletAnalysisModal.js'
+import TextPortletModal from '../TextPortletModal.js'
+import PortletFilterConfigModal from '../PortletFilterConfigModal.js'
+import ConfirmModal from '../ConfirmModal.js'
+import { useDashboardContext } from './DashboardContext.js'
 
 export default function DashboardModals() {
   const { t } = useTranslation()

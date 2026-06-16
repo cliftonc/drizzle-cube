@@ -5,8 +5,8 @@
  */
 
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
-import type { TimeGranularity } from '../types'
-import { buildWindowOverClause, buildWindowExpression } from './window-function-builder'
+import type { TimeGranularity } from '../types/index.js'
+import { buildWindowOverClause, buildWindowExpression } from './window-function-builder.js'
 
 /**
  * Database capabilities for feature detection

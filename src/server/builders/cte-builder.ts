@@ -16,10 +16,10 @@ import type {
   QueryContext,
   PhysicalQueryPlan,
   PropagatingFilter
-} from '../types'
+} from '../types/index.js'
 
-import { resolveSqlExpression } from '../cube-utils'
-import type { DrizzleSqlBuilder } from '../physical-plan/drizzle-sql-builder'
+import { resolveSqlExpression } from '../cube-utils.js'
+import type { DrizzleSqlBuilder } from '../physical-plan/drizzle-sql-builder.js'
 
 /**
  * CTE information type extracted from runtime physical plan context

@@ -1,7 +1,7 @@
 import { ReactElement, useState, useRef, useLayoutEffect, startTransition } from 'react'
 import { ResponsiveContainer } from 'recharts'
-import { useTranslation } from '../../hooks/useTranslation'
-import LoadingIndicator from '../LoadingIndicator'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import LoadingIndicator from '../LoadingIndicator.js'
 
 interface ChartContainerProps {
   children: ReactElement

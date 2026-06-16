@@ -12,7 +12,7 @@ export {
   type CoreSlice,
   type CoreSliceState,
   type CoreSliceActions,
-} from './coreSlice'
+} from './coreSlice.js'
 
 // Query slice - query states, merge strategy, query actions
 export {
@@ -21,7 +21,7 @@ export {
   type QuerySlice,
   type QuerySliceState,
   type QuerySliceActions,
-} from './querySlice'
+} from './querySlice.js'
 
 // Funnel slice - funnel steps, binding key, time dimension
 export {
@@ -30,7 +30,7 @@ export {
   type FunnelSlice,
   type FunnelSliceState,
   type FunnelSliceActions,
-} from './funnelSlice'
+} from './funnelSlice.js'
 
 // Flow slice - flow analysis, starting step, depth config
 export {
@@ -39,7 +39,7 @@ export {
   type FlowSlice,
   type FlowSliceState,
   type FlowSliceActions,
-} from './flowSlice'
+} from './flowSlice.js'
 
 // Retention slice - cohort-based retention analysis
 export {
@@ -47,8 +47,8 @@ export {
   createInitialRetentionState,
   type RetentionSlice,
   type RetentionSliceActions,
-} from './retentionSlice'
-export type { RetentionSliceState } from '../../types/retention'
+} from './retentionSlice.js'
+export type { RetentionSliceState } from '../../types/retention.js'
 
 // UI slice - tabs, views, modals, AI state
 export {
@@ -58,4 +58,4 @@ export {
   type UISliceState,
   type UISliceActions,
   type FieldModalMode,
-} from './uiSlice'
+} from './uiSlice.js'

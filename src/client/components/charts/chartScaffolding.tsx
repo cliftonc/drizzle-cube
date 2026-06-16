@@ -1,9 +1,9 @@
 import { Fragment } from 'react'
 import { YAxis, Line, Legend } from 'recharts'
-import { CHART_MARGINS } from '../../utils/chartConstants'
-import { formatAxisValue } from '../../utils/chartUtils'
-import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
-import type { AxisFormatConfig } from '../../types'
+import { CHART_MARGINS } from '../../utils/chartConstants.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils.js'
+import type { AxisFormatConfig } from '../../types.js'
 
 /**
  * Shared scaffolding for the Cartesian recharts charts (bar, line, area).

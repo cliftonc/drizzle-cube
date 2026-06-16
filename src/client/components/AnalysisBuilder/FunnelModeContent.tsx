@@ -6,13 +6,13 @@
  */
 
 import { memo, useState } from 'react'
-import type { CubeMeta, FunnelBindingKey, FunnelStepState, ChartType, ChartDisplayConfig } from '../../types'
-import type { FunnelPanelTab } from './types'
-import type { ColorPalette } from '../../utils/colorPalettes'
-import FunnelConfigPanel from './FunnelConfigPanel'
-import FunnelStepList from './FunnelStepList'
-import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { CubeMeta, FunnelBindingKey, FunnelStepState, ChartType, ChartDisplayConfig } from '../../types.js'
+import type { FunnelPanelTab } from './types.js'
+import type { ColorPalette } from '../../utils/colorPalettes.js'
+import FunnelConfigPanel from './FunnelConfigPanel.js'
+import FunnelStepList from './FunnelStepList.js'
+import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 export interface FunnelModeContentProps {
   /** Currently selected cube for funnel */

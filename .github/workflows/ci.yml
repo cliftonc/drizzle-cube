@@ -74,6 +74,12 @@ jobs:
       - name: Build adapters
         run: npm run build:adapters
 
+      - name: Build CLI
+        run: npm run build:cli
+
+      - name: Verify type resolution (NodeNext) & package exports
+        run: npm run check:exports
+
       - name: Cache build artifacts
         uses: actions/cache@v5
         with:

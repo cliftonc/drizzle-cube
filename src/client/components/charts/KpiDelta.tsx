@@ -1,20 +1,20 @@
 import React from "react";
-import { useTranslation } from '../../hooks/useTranslation';
+import { useTranslation } from '../../hooks/useTranslation.js';
 import { Icon } from "@iconify/react";
 import infoCircleIcon from "@iconify-icons/tabler/info-circle";
-import { useCubeFieldLabel } from "../../hooks/useCubeFieldLabel";
-import { filterIncompletePeriod } from "../../utils/periodUtils";
-import { formatKpiNumber, resolveDisplayLabel } from "./KpiNumber.helpers";
-import { useKpiDimensions } from "./useKpiDimensions";
-import { KpiCenteredState, kpiHeightStyle } from "./KpiStates";
+import { useCubeFieldLabel } from "../../hooks/useCubeFieldLabel.js";
+import { filterIncompletePeriod } from "../../utils/periodUtils.js";
+import { formatKpiNumber, resolveDisplayLabel } from "./KpiNumber.helpers.js";
+import { useKpiDimensions } from "./useKpiDimensions.js";
+import { KpiCenteredState, kpiHeightStyle } from "./KpiStates.js";
 import {
   toFieldList,
   sortByDimension,
   extractNumericValues,
   computeDelta,
   resolvePaletteColor,
-} from "./KpiDelta.helpers";
-import type { ChartProps } from "../../types";
+} from "./KpiDelta.helpers.js";
+import type { ChartProps } from "../../types.js";
 
 interface VarianceHistogramProps {
   values: number[];

@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Legend } from 'recharts'
-import ChartContainer from './ChartContainer'
-import ChartTooltip from './ChartTooltip'
-import AngledXAxisTick from './AngledXAxisTick'
-import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
-import { formatAxisValue } from '../../utils/chartUtils'
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import type { ChartProps } from '../../types'
+import ChartContainer from './ChartContainer.js'
+import ChartTooltip from './ChartTooltip.js'
+import AngledXAxisTick from './AngledXAxisTick.js'
+import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
+import type { ChartProps } from '../../types.js'
 
 /**
  * Pivots N measures from chartConfig.yAxis[] into sequential X-axis points.

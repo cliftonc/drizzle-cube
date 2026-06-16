@@ -9,8 +9,8 @@
  */
 
 import { useState, useCallback } from 'react'
-import type { AnalysisConfig } from '../types/analysisConfig'
-import { compressWithFallback } from '../utils/shareUtils'
+import type { AnalysisConfig } from '../types/analysisConfig.js'
+import { compressWithFallback } from '../utils/shareUtils.js'
 
 interface UseAnalysisShareOptions {
   /** Whether the current query is valid */

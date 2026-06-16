@@ -20,7 +20,7 @@ export {
   RechartsTreeMapChart,
   FunnelChart,
   DataTable
-} from './components/charts'
+} from './components/charts/index.js'
 
 // Lazy loading utilities for code splitting
 export {
@@ -31,9 +31,9 @@ export {
   getAvailableChartTypes,
   isChartTypeAvailable,
   getUnavailableChartTypes
-} from './charts/ChartLoader'
+} from './charts/ChartLoader.js'
 
-export type { LazyChartProps } from './charts/ChartLoader'
+export type { LazyChartProps } from './charts/ChartLoader.js'
 
 // Lazy chart config registry
 export {
@@ -45,27 +45,27 @@ export {
   preloadChartConfigs,
   loadAllChartConfigs,
   clearChartConfigCache
-} from './charts/lazyChartConfigRegistry'
+} from './charts/lazyChartConfigRegistry.js'
 
 // Chart utilities and constants
-export { formatChartData } from './utils/index'
+export { formatChartData } from './utils/index.js'
 export {
   CHART_COLORS,
   POSITIVE_COLOR,
   NEGATIVE_COLOR,
   CHART_MARGINS
-} from './utils/chartConstants'
+} from './utils/chartConstants.js'
 
 // Chart-related types
 export type {
   ChartType,
   ChartAxisConfig,
   ChartDisplayConfig
-} from './types'
+} from './types.js'
 
 // Chart configuration types
 export type {
   ChartTypeConfig,
   DisplayOptionConfig,
   AxisDropZoneConfig
-} from './charts/chartConfigs'
+} from './charts/chartConfigs.js'

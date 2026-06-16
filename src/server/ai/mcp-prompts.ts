@@ -12,7 +12,7 @@
  * QUERY_RULES_PROMPT and QUERY_BUILDING_PROMPT are kept as backward-compatible aliases.
  */
 
-import { QUERY_LANGUAGE_REFERENCE } from './query-schema'
+import { QUERY_LANGUAGE_REFERENCE } from './query-schema.js'
 
 export interface MCPPrompt {
   name: string

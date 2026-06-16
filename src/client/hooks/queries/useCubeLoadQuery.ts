@@ -14,13 +14,13 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
-import { useCubeApi } from '../../providers/CubeApiProvider'
-import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
-import type { CubeQuery, CubeResultSet } from '../../types'
-import type { QueryWarning } from '../../shared/types'
-import { cleanQueryForServer } from '../../shared/utils'
-import { stableStringify } from '../../shared/queryKey'
-import { useDebounceQuery } from '../useDebounceQuery'
+import { useCubeApi } from '../../providers/CubeApiProvider.js'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
+import type { CubeQuery, CubeResultSet } from '../../types.js'
+import type { QueryWarning } from '../../shared/types.js'
+import { cleanQueryForServer } from '../../shared/utils.js'
+import { stableStringify } from '../../shared/queryKey.js'
+import { useDebounceQuery } from '../useDebounceQuery.js'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300

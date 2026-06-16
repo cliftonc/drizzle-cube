@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import type { FlowChartData } from '../types/flow'
-import type { RetentionChartData } from '../types/retention'
-import { CodeBlock } from '../shared/components/CodeBlock'
-import { useTranslation } from '../hooks/useTranslation'
+import type { FlowChartData } from '../types/flow.js'
+import type { RetentionChartData } from '../types/retention.js'
+import { CodeBlock } from '../shared/components/CodeBlock.js'
+import { useTranslation } from '../hooks/useTranslation.js'
 
 interface DebugModalProps {
   chartConfig: any

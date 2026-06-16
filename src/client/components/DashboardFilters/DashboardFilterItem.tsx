@@ -6,12 +6,12 @@
  * Clicking the chip opens a modal for editing the filter configuration.
  */
 
-import { getIcon } from '../../icons'
-import type { DashboardFilter, SimpleFilter } from '../../types'
-import type { MetaResponse } from '../../shared/types'
-import { FILTER_OPERATORS } from '../../shared/types'
-import { findFieldInSchema, getFieldTitle } from '../AnalysisBuilder/utils'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import type { DashboardFilter, SimpleFilter } from '../../types.js'
+import type { MetaResponse } from '../../shared/types.js'
+import { FILTER_OPERATORS } from '../../shared/types.js'
+import { findFieldInSchema, getFieldTitle } from '../AnalysisBuilder/utils/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const CloseIcon = getIcon('close')
 const DimensionIcon = getIcon('dimension')

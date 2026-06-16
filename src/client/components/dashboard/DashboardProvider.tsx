@@ -13,9 +13,9 @@
  *   </DashboardProvider>
  */
 
-import { DashboardStoreProvider } from '../../stores/dashboardStore'
-import DashboardCoordinator from './DashboardCoordinator'
-import type { DashboardProviderProps } from './DashboardContext'
+import { DashboardStoreProvider } from '../../stores/dashboardStore.js'
+import DashboardCoordinator from './DashboardCoordinator.js'
+import type { DashboardProviderProps } from './DashboardContext.js'
 
 export default function DashboardProvider({ children, ...props }: DashboardProviderProps) {
   return (

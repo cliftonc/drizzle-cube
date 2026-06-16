@@ -8,10 +8,10 @@
  */
 
 import { lazy, Suspense, useState, useEffect } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import type { SchemaVisualizationProps } from './index'
-import { XyflowProvider } from './xyflowContext'
-import type { XyflowModule } from './xyflowContext'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import type { SchemaVisualizationProps } from './index.js'
+import { XyflowProvider } from './xyflowContext.js'
+import type { XyflowModule } from './xyflowContext.js'
 
 let loadFailed = false
 
@@ -48,7 +48,7 @@ function LoadingFallback() {
 }
 
 const LazySchemaVisualization = lazy(async () => {
-  const mod = await import('./index')
+  const mod = await import('./index.js')
   return { default: mod.SchemaVisualization }
 })
 

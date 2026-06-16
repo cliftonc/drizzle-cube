@@ -3,16 +3,16 @@
  * Parse natural language intent and generate query structure
  */
 
-import type { CubeMetadata } from '../types/metadata'
-import type { SemanticQuery, TimeDimension } from '../types/query'
-import { discoverCubes } from './discovery'
+import type { CubeMetadata } from '../types/metadata.js'
+import type { SemanticQuery, TimeDimension } from '../types/query.js'
+import { discoverCubes } from './discovery.js'
 import {
   parseRelativeNExpression,
   parseQuarterExpression,
   matchMeasuresInText,
   applyAggregationFallback,
   matchDimensions,
-} from './suggestion-helpers'
+} from './suggestion-helpers.js'
 
 /**
  * Suggested query result

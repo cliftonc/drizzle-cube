@@ -5,10 +5,10 @@
 
 import type { SQL } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
-import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
-import { BaseDatabaseExecutor } from './base-executor'
-import { parsePostgresExplain } from '../explain/postgres-parser'
-import { buildBoundSql, extractPostgresExplainLines } from './explain-utils'
+import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types/index.js'
+import { BaseDatabaseExecutor } from './base-executor.js'
+import { parsePostgresExplain } from '../explain/postgres-parser.js'
+import { buildBoundSql, extractPostgresExplainLines } from './explain-utils.js'
 
 /**
  * Normalize the result of db.execute() across different PostgreSQL drivers.

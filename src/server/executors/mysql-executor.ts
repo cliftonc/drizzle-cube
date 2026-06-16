@@ -5,10 +5,10 @@
 
 import type { SQL } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
-import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
-import { BaseDatabaseExecutor } from './base-executor'
-import { parseMySQLExplain } from '../explain/mysql-parser'
-import { buildBoundSql, normalizeMySQLExplainRows } from './explain-utils'
+import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types/index.js'
+import { BaseDatabaseExecutor } from './base-executor.js'
+import { parseMySQLExplain } from '../explain/mysql-parser.js'
+import { buildBoundSql, normalizeMySQLExplainRows } from './explain-utils.js'
 
 export class MySQLExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {

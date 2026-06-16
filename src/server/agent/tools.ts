@@ -4,13 +4,13 @@
  * Tool definitions are provider-agnostic — each provider wraps them in its own format.
  */
 
-import type { SemanticLayerCompiler } from '../compiler'
-import type { SecurityContext } from '../types'
-import type { AgentSSEEvent } from './types'
-import type { ToolDefinition } from './providers/types'
-import { handleDiscover, handleLoad, normalizeQueryFields } from '../query-handlers'
-import { validateChartConfig, inferChartConfig, buildChartRequirementsDescription } from './chart-validation'
-import { QUERY_PARAMS_SCHEMA } from '../ai/query-schema'
+import type { SemanticLayerCompiler } from '../compiler.js'
+import type { SecurityContext } from '../types/index.js'
+import type { AgentSSEEvent } from './types.js'
+import type { ToolDefinition } from './providers/types.js'
+import { handleDiscover, handleLoad, normalizeQueryFields } from '../query-handlers.js'
+import { validateChartConfig, inferChartConfig, buildChartRequirementsDescription } from './chart-validation.js'
+import { QUERY_PARAMS_SCHEMA } from '../ai/query-schema.js'
 
 /**
  * Result of executing a tool call

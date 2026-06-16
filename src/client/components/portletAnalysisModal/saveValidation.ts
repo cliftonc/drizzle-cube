@@ -3,7 +3,7 @@
  * the save handler flat.
  */
 
-import type { CubeQuery } from '../../types'
+import type { CubeQuery } from '../../types.js'
 
 /** True if a (possibly multi/funnel/flow/retention) query has content worth saving. */
 export function analysisConfigHasContent(query: any): boolean {

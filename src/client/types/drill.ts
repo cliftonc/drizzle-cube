@@ -3,7 +3,7 @@
  */
 
 import type { MouseEvent } from 'react'
-import type { CubeQuery, Filter, TimeGranularity, ChartAxisConfig } from '../types'
+import type { CubeQuery, Filter, TimeGranularity, ChartAxisConfig } from '../types.js'
 
 /**
  * Event fired when a user clicks on a data point in a chart
@@ -198,7 +198,7 @@ export interface UseDrillInteractionOptions {
   query: CubeQuery
 
   /** Cube metadata for computing drill options */
-  metadata: import('../types').CubeMeta | null
+  metadata: import('../types.js').CubeMeta | null
 
   /** Callback when query changes due to drill */
   onQueryChange: (query: CubeQuery) => void
@@ -207,13 +207,13 @@ export interface UseDrillInteractionOptions {
   chartConfig?: ChartAxisConfig
 
   /** Dashboard filters context (for dashboard-level drill) */
-  dashboardFilters?: import('../types').DashboardFilter[]
+  dashboardFilters?: import('../types.js').DashboardFilter[]
 
   /** Which dashboard filters apply to this portlet */
-  dashboardFilterMapping?: import('../types').DashboardFilterMapping
+  dashboardFilterMapping?: import('../types.js').DashboardFilterMapping
 
   /** Callback to update a dashboard filter */
-  onDashboardFilterChange?: (filterId: string, filter: import('../types').Filter) => void
+  onDashboardFilterChange?: (filterId: string, filter: import('../types.js').Filter) => void
 
   /** Whether drill is enabled (default: true) */
   enabled?: boolean

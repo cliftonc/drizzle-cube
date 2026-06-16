@@ -6,11 +6,11 @@ import type {
   AIQueryRequest,
   AIQueryResponse,
   AIConfig
-} from './types'
+} from './types.js'
 import { 
   AI_STORAGE_KEY,
   DEFAULT_AI_CONFIG
-} from './constants'
+} from './constants.js'
 
 /**
  * Send a user prompt to AI proxy (server builds system prompt)

@@ -16,26 +16,26 @@ import type {
   ExplainResult,
   ExecutionOptions,
   RLSSetupFn
-} from './types'
-import { createDatabaseExecutor } from './executors'
-import { QueryExecutor } from './executor'
-import { formatSqlString } from './sql-format'
-import { CalculatedMeasureResolver } from './resolvers/calculated-measure-resolver'
-import { validateTemplateSyntax } from './template-substitution'
+} from './types/index.js'
+import { createDatabaseExecutor } from './executors/index.js'
+import { QueryExecutor } from './executor.js'
+import { formatSqlString } from './sql-format.js'
+import { CalculatedMeasureResolver } from './resolvers/calculated-measure-resolver.js'
+import { validateTemplateSyntax } from './template-substitution.js'
 import {
   buildMeasureMetadata,
   buildDimensionMetadata,
   buildRelationshipMetadata,
   buildHierarchyMetadata
-} from './compiler-metadata'
-import { validateQueryAgainstCubes } from './query-validator'
-import type { PlanOptimiser } from './logical-plan'
-import { t } from '../i18n/runtime'
+} from './compiler-metadata.js'
+import { validateQueryAgainstCubes } from './query-validator.js'
+import type { PlanOptimiser } from './logical-plan/index.js'
+import { t } from '../i18n/runtime.js'
 
 // Re-exported for backward compatibility — the implementation now lives in
 // query-validator.ts so the executor can import it without depending on the
 // compiler (breaks the compiler ↔ executor cycle).
-export { validateQueryAgainstCubes } from './query-validator'
+export { validateQueryAgainstCubes } from './query-validator.js'
 
 export class SemanticLayerCompiler {
   private cubes: Map<string, Cube> = new Map()

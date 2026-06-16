@@ -4,15 +4,15 @@
  * component flat. No behaviour change.
  */
 
-import ChartErrorBoundary from '../ChartErrorBoundary'
-import { DrillMenu } from '../DrillMenu'
-import { DrillBreadcrumb } from '../DrillBreadcrumb'
-import { PortletChart } from './PortletChart'
-import type { ChartAxisConfig, ChartDisplayConfig, ChartType, CubeQuery } from '../../types'
-import type { FlowChartData } from '../../types/flow'
-import type { RetentionChartData } from '../../types/retention'
-import type { ColorPalette } from '../../utils/colorPalettes'
-import type { DrillInteraction } from '../../types/drill'
+import ChartErrorBoundary from '../ChartErrorBoundary.js'
+import { DrillMenu } from '../DrillMenu.js'
+import { DrillBreadcrumb } from '../DrillBreadcrumb.js'
+import { PortletChart } from './PortletChart.js'
+import type { ChartAxisConfig, ChartDisplayConfig, ChartType, CubeQuery } from '../../types.js'
+import type { FlowChartData } from '../../types/flow.js'
+import type { RetentionChartData } from '../../types/retention.js'
+import type { ColorPalette } from '../../utils/colorPalettes.js'
+import type { DrillInteraction } from '../../types/drill.js'
 
 type Height = string | number
 

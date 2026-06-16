@@ -6,10 +6,10 @@
  */
 
 import React, { useEffect, useRef, useCallback } from 'react'
-import FilterValueSelector from '../shared/FilterValueSelector'
-import type { SimpleFilter, CubeMeta } from '../../types'
-import type { MetaResponse } from '../../shared/types'
-import { useTranslation } from '../../hooks/useTranslation'
+import FilterValueSelector from '../shared/FilterValueSelector.js'
+import type { SimpleFilter, CubeMeta } from '../../types.js'
+import type { MetaResponse } from '../../shared/types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface FilterValuePopoverProps {
   filter: SimpleFilter

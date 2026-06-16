@@ -6,7 +6,7 @@
  * `isChartAvailable` switch to keep the public function flat.
  */
 
-import type { McpChartType } from './chartAutoSelect'
+import type { McpChartType } from './chartAutoSelect.js'
 
 export interface ChartShape {
   hasMeasure: boolean

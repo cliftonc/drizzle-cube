@@ -4,12 +4,12 @@
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import AnalyticsPortlet from './AnalyticsPortlet'
-import DebugModal from './DebugModal'
-import type { PortletConfig } from '../types'
-import type { FlowChartData } from '../types/flow'
-import type { RetentionChartData } from '../types/retention'
-import { ensureAnalysisConfig } from '../utils/configMigration'
+import AnalyticsPortlet from './AnalyticsPortlet.js'
+import DebugModal from './DebugModal.js'
+import type { PortletConfig } from '../types.js'
+import type { FlowChartData } from '../types/flow.js'
+import type { RetentionChartData } from '../types/retention.js'
+import { ensureAnalysisConfig } from '../utils/configMigration.js'
 
 interface PortletContainerProps {
   portlet: PortletConfig

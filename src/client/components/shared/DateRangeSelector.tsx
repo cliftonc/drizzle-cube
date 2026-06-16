@@ -6,10 +6,10 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import { getIcon } from '../../icons'
-import { DATE_RANGE_OPTIONS, type DateRangeType } from './types'
-import { convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import { DATE_RANGE_OPTIONS, type DateRangeType } from './types.js'
+import { convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const CloseIcon = getIcon('close')
 const CalendarIcon = getIcon('timeDimension')

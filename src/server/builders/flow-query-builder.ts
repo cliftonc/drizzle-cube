@@ -14,15 +14,15 @@
  */
 
 import { sql, SQL, and } from 'drizzle-orm'
-import { t } from '../../i18n/runtime'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
+import { t } from '../../i18n/runtime.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import type {
   FlowQueryConfig,
   FlowResultRow,
   SankeyNode,
   SankeyLink,
-} from '../types/flow'
-import type { AnalysisConfigValidationResult } from '../types/validation'
+} from '../types/flow.js'
+import type { AnalysisConfigValidationResult } from '../types/validation.js'
 import type {
   Cube,
   QueryContext,
@@ -30,12 +30,12 @@ import type {
   Filter,
   FilterCondition,
   LogicalFilter,
-} from '../types'
-import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
-import { hasFlowMode } from '../query-modes'
-import { combineWhere, resolveBindingKeyExpr, bindingKeyErrorsForPrefix, resolveTimeDimensionExpr, asGroupFilter, type WithSubquery } from './analysis-utils'
-import { FilterBuilder } from './filter-builder'
-import { DateTimeBuilder } from './date-time-builder'
+} from '../types/index.js'
+import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils.js'
+import { hasFlowMode } from '../query-modes.js'
+import { combineWhere, resolveBindingKeyExpr, bindingKeyErrorsForPrefix, resolveTimeDimensionExpr, asGroupFilter, type WithSubquery } from './analysis-utils.js'
+import { FilterBuilder } from './filter-builder.js'
+import { DateTimeBuilder } from './date-time-builder.js'
 
 /**
  * Resolved flow configuration with SQL expressions

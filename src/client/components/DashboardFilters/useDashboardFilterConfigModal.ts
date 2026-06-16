@@ -16,17 +16,17 @@
  */
 
 import { useState, useEffect, useCallback, ChangeEvent } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import type { DashboardFilter, SimpleFilter, FilterOperator } from '../../types'
-import type { MetaResponse, MetaField } from '../../shared/types'
-import type { FieldType } from '../AnalysisBuilder/types'
-import { FILTER_OPERATORS, DATE_RANGE_OPTIONS } from '../../shared/types'
-import { getAvailableOperators } from '../../shared/utils'
-import { findFieldInSchema, getFieldTitle } from '../AnalysisBuilder/utils'
-import { computeDirectInputValues } from './dashboardFilterConfigModalUtils'
-import { useFilterDropdowns } from './useFilterDropdowns'
-import { useFilterValueFetch } from './useFilterValueFetch'
-import { useDateRangeState } from './useDateRangeState'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import type { DashboardFilter, SimpleFilter, FilterOperator } from '../../types.js'
+import type { MetaResponse, MetaField } from '../../shared/types.js'
+import type { FieldType } from '../AnalysisBuilder/types.js'
+import { FILTER_OPERATORS, DATE_RANGE_OPTIONS } from '../../shared/types.js'
+import { getAvailableOperators } from '../../shared/utils.js'
+import { findFieldInSchema, getFieldTitle } from '../AnalysisBuilder/utils/index.js'
+import { computeDirectInputValues } from './dashboardFilterConfigModalUtils.js'
+import { useFilterDropdowns } from './useFilterDropdowns.js'
+import { useFilterValueFetch } from './useFilterValueFetch.js'
+import { useDateRangeState } from './useDateRangeState.js'
 
 interface UseDashboardFilterConfigModalParams {
   initialFilter: DashboardFilter

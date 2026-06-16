@@ -1,4 +1,4 @@
-import type { ChartAxisConfig } from '../../types'
+import type { ChartAxisConfig } from '../../types.js'
 
 /**
  * Discriminated error code returned by {@link resolveChartAxisFields} when the

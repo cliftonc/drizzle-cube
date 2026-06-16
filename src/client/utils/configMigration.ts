@@ -12,8 +12,8 @@ import type {
   FlowAnalysisConfig,
   RetentionAnalysisConfig,
   ChartConfig,
-} from '../types/analysisConfig'
-import { createDefaultQueryConfig, isValidAnalysisConfig } from '../types/analysisConfig'
+} from '../types/analysisConfig.js'
+import { createDefaultQueryConfig, isValidAnalysisConfig } from '../types/analysisConfig.js'
 import type {
   ChartType,
   ChartAxisConfig,
@@ -23,10 +23,10 @@ import type {
   FunnelBindingKey,
   QueryMergeStrategy,
   PortletConfig,
-} from '../types'
-import type { ServerFunnelQuery, ServerFunnelStep } from '../types/funnel'
-import type { ServerFlowQuery } from '../types/flow'
-import { isServerRetentionQuery } from '../types/retention'
+} from '../types.js'
+import type { ServerFunnelQuery, ServerFunnelStep } from '../types/funnel.js'
+import type { ServerFlowQuery } from '../types/flow.js'
+import { isServerRetentionQuery } from '../types/retention.js'
 
 // ============================================================================
 // Legacy Portlet Format

@@ -6,8 +6,8 @@
  */
 
 import { memo } from 'react'
-import { getIcon, getMeasureTypeIcon, getFieldTypeIcon } from '../../icons'
-import type { FieldSearchItemProps } from './types'
+import { getIcon, getMeasureTypeIcon, getFieldTypeIcon } from '../../icons/index.js'
+import type { FieldSearchItemProps } from './types.js'
 
 const CheckIcon = getIcon('check')
 

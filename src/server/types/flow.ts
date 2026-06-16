@@ -5,8 +5,8 @@
  * Flow analysis explores paths BEFORE and AFTER a defined starting step (bidirectional).
  */
 
-import type { Filter } from './query'
-import type { AnalysisConfigValidationResult } from './validation'
+import type { Filter } from './query.js'
+import type { AnalysisConfigValidationResult } from './validation.js'
 
 // ============================================================================
 // Flow Query Configuration

@@ -5,9 +5,9 @@
  */
 
 import React from 'react'
-import { getIcon } from '../../icons'
-import type { DashboardFilter } from '../../types'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import type { DashboardFilter } from '../../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const FilterIcon = getIcon('filter')
 const AddIcon = getIcon('add')

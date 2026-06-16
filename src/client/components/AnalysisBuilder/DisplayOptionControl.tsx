@@ -9,11 +9,11 @@
  */
 
 import type { ReactElement } from 'react'
-import type { ChartDisplayConfig, ColorPalette, AxisFormatConfig } from '../../types'
-import type { DisplayOptionConfig } from '../../charts/chartConfigs'
-import { AxisFormatControls } from '../charts/AxisFormatControls'
-import { useTranslation } from '../../hooks/useTranslation'
-import StringArrayInput from './StringArrayInput'
+import type { ChartDisplayConfig, ColorPalette, AxisFormatConfig } from '../../types.js'
+import type { DisplayOptionConfig } from '../../charts/chartConfigs.js'
+import { AxisFormatControls } from '../charts/AxisFormatControls.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import StringArrayInput from './StringArrayInput.js'
 
 type SetValue = (value: unknown) => void
 

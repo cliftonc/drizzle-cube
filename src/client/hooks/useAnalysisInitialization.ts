@@ -7,9 +7,9 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { useAnalysisBuilderStore } from '../stores/analysisBuilderStore'
-import { parseShareUrl, clearShareHash } from '../utils/shareUtils'
-import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types'
+import { useAnalysisBuilderStore } from '../stores/analysisBuilderStore.js'
+import { parseShareUrl, clearShareHash } from '../utils/shareUtils.js'
+import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types.js'
 
 export interface UseAnalysisInitializationOptions {
   /** Current query */

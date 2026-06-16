@@ -1,9 +1,9 @@
 import { forwardRef, lazy, Suspense } from 'react'
 import type { ForwardRefExoticComponent, RefAttributes } from 'react'
-import type { AnalysisBuilderProps, AnalysisBuilderRef } from './AnalysisBuilder/types'
-import LoadingIndicator from './LoadingIndicator'
+import type { AnalysisBuilderProps, AnalysisBuilderRef } from './AnalysisBuilder/types.js'
+import LoadingIndicator from './LoadingIndicator.js'
 
-const LazyAnalysisBuilder = lazy(() => import('./AnalysisBuilder')) as ForwardRefExoticComponent<
+const LazyAnalysisBuilder = lazy(() => import('./AnalysisBuilder/index.js')) as ForwardRefExoticComponent<
   AnalysisBuilderProps & RefAttributes<AnalysisBuilderRef>
 >
 

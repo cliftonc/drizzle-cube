@@ -4,8 +4,8 @@
  */
 
 // Export main classes with Drizzle integration
-export { SemanticLayerCompiler } from './compiler'
-export { QueryExecutor } from './executor'
+export { SemanticLayerCompiler } from './compiler.js'
+export { QueryExecutor } from './executor.js'
 
 // Query-mode detection (single source of truth for comparison/funnel/flow/retention)
 export {
@@ -16,30 +16,30 @@ export {
   hasFunnelMode,
   hasFlowMode,
   hasRetentionMode
-} from './query-modes'
-export type { QueryMode, QueryModeFlags } from './query-modes'
+} from './query-modes.js'
+export type { QueryMode, QueryModeFlags } from './query-modes.js'
 
 // Export unified query building
-export { LogicalPlanner } from './logical-plan'
-export { DrizzleSqlBuilder } from './physical-plan'
+export { LogicalPlanner } from './logical-plan/index.js'
+export { DrizzleSqlBuilder } from './physical-plan/index.js'
 export {
   CTEBuilder,
   ComparisonQueryBuilder,
   FunnelQueryBuilder,
   FlowQueryBuilder,
   RetentionQueryBuilder
-} from './builders'
+} from './builders/index.js'
 export {
   CalculatedMeasureResolver,
   JoinPathResolver
-} from './resolvers'
+} from './resolvers/index.js'
 
 // Export logical plan (multi-stage pipeline)
 export {
   LogicalPlanBuilder,
   IdentityOptimiser,
   OptimiserPipeline
-} from './logical-plan'
+} from './logical-plan/index.js'
 export type {
   LogicalNode,
   QueryNode,
@@ -51,10 +51,10 @@ export type {
   LogicalPlanWithAnalysis,
   PlanOptimiser,
   OptimiserContext
-} from './logical-plan'
+} from './logical-plan/index.js'
 
 // Export physical plan builder (logical -> Drizzle SQL)
-export { DrizzlePlanBuilder } from './physical-plan'
+export { DrizzlePlanBuilder } from './physical-plan/index.js'
 
 // Export database executors
 export {
@@ -72,7 +72,7 @@ export {
   DuckDBExecutor,
   DatabendExecutor,
   SnowflakeExecutor
-} from './executors'
+} from './executors/index.js'
 
 // Export cube utilities
 export {
@@ -80,10 +80,10 @@ export {
   createMultiCubeContext,
   resolveCubeReference,
   getJoinType
-} from './cube-utils'
+} from './cube-utils.js'
 
 // Export cube definitions
-export { defineCube } from './cube-utils'
+export { defineCube } from './cube-utils.js'
 
 // Export cache utilities
 export {
@@ -92,10 +92,10 @@ export {
   fnv1aHash,
   strongHash,
   getCubeInvalidationPattern
-} from './cache-utils'
+} from './cache-utils.js'
 
 // Export cache providers
-export { MemoryCacheProvider } from './cache-providers'
+export { MemoryCacheProvider } from './cache-providers/index.js'
 
 // Export AI prompt templates
 export {
@@ -112,11 +112,11 @@ export {
   buildExplainAnalysisPrompt,
   formatCubeSchemaForExplain,
   formatExistingIndexes
-} from './prompts'
-export type { Step0Result, PromptContext, DimensionValues, Step1Result } from './prompts'
+} from './prompts/index.js'
+export type { Step0Result, PromptContext, DimensionValues, Step1Result } from './prompts/index.js'
 
 // Export agent (agentic AI notebook)
-export { handleAgentChat, getToolDefinitions, createToolExecutor, buildAgentSystemPrompt } from './agent'
+export { handleAgentChat, getToolDefinitions, createToolExecutor, buildAgentSystemPrompt } from './agent/index.js'
 export type {
   AgentChatRequest,
   AgentConfig,
@@ -125,7 +125,7 @@ export type {
   PortletBlockData,
   MarkdownBlockData,
   ToolExecutionResult
-} from './agent'
+} from './agent/index.js'
 
 // Export AI-ready data layer utilities
 export {
@@ -133,7 +133,7 @@ export {
   findBestFieldMatch,
   suggestQuery,
   validateQuery as aiValidateQuery
-} from './ai'
+} from './ai/index.js'
 export type {
   CubeDiscoveryResult,
   DiscoveryOptions,
@@ -141,14 +141,14 @@ export type {
   ValidationResult as AIValidationResult,
   ValidationError as AIValidationError,
   ValidationWarning as AIValidationWarning
-} from './ai'
+} from './ai/index.js'
 
 // Import types for use in utility functions
-import type { DrizzleDatabase } from './types'
-import { SemanticLayerCompiler } from './compiler'
+import type { DrizzleDatabase } from './types/index.js'
+import { SemanticLayerCompiler } from './compiler.js'
 
 // Export all types
-export type * from './types'
+export type * from './types/index.js'
 
 // Re-export Drizzle SQL type for convenience
 export type { SQL } from 'drizzle-orm'

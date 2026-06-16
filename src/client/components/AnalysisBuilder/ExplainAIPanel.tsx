@@ -11,9 +11,9 @@
  */
 
 import React from 'react'
-import type { AIExplainAnalysis, ExplainRecommendation, ExplainIssue } from '../../types'
-import CodeBlock from '../../shared/components/CodeBlock'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { AIExplainAnalysis, ExplainRecommendation, ExplainIssue } from '../../types.js'
+import CodeBlock from '../../shared/components/CodeBlock.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface ExplainAIPanelProps {
   /** AI analysis result */

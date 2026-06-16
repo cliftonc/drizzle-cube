@@ -1,14 +1,14 @@
 import { sql, SQL } from 'drizzle-orm'
 
-import { resolveSqlExpression } from '../../cube-utils'
-import { MeasureBuilder } from '../../builders/measure-builder'
+import { resolveSqlExpression } from '../../cube-utils.js'
+import { MeasureBuilder } from '../../builders/measure-builder.js'
 import type {
   Cube,
   PhysicalQueryPlan,
   QueryContext,
   SemanticQuery
-} from '../../types'
-import type { PhysicalBuildDependencies, SelectionMap } from './shared'
+} from '../../types/index.js'
+import type { PhysicalBuildDependencies, SelectionMap } from './shared.js'
 
 /**
  * Applies post-aggregation window measures to the selection map.

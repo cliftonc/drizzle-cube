@@ -24,10 +24,10 @@ import type {
   Cube,
   QueryContext,
   PhysicalQueryPlan
-} from '../types'
+} from '../types/index.js'
 
-import { resolveSqlExpression } from '../cube-utils'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
+import { resolveSqlExpression } from '../cube-utils.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import {
   WINDOW_FUNCTION_TYPES,
   isWindowFunction as isWindowFunctionFn,
@@ -36,9 +36,9 @@ import {
   getDefaultWindowOperation as getDefaultWindowOperationFn,
   categorizeForPostAggregation as categorizeForPostAggregationFn,
   hasPostAggregationWindows as hasPostAggregationWindowsFn
-} from '../measure-classification'
-import { CalculatedMeasureResolver } from '../resolvers/calculated-measure-resolver'
-import { substituteTemplate, getMemberReferences, type ResolvedMeasures } from '../template-substitution'
+} from '../measure-classification.js'
+import { CalculatedMeasureResolver } from '../resolvers/calculated-measure-resolver.js'
+import { substituteTemplate, getMemberReferences, type ResolvedMeasures } from '../template-substitution.js'
 
 export class MeasureBuilder {
   constructor(private databaseAdapter: DatabaseAdapter) {}

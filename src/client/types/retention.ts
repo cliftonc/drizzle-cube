@@ -6,8 +6,8 @@
  * in subsequent time periods.
  */
 
-import type { Filter } from '../types'
-import type { FunnelBindingKey } from './funnel'
+import type { Filter } from '../types.js'
+import type { FunnelBindingKey } from './funnel.js'
 
 // ============================================================================
 // Date Range Types

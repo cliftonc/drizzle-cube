@@ -8,8 +8,8 @@
  * re-exported here to keep existing import paths stable.
  */
 
-export type { DerivedRange } from '../shared/dateRangeUtils'
-export { deriveRangeFromDateRange } from '../shared/dateRangeUtils'
+export type { DerivedRange } from '../shared/dateRangeUtils.js'
+export { deriveRangeFromDateRange } from '../shared/dateRangeUtils.js'
 
 /**
  * Compute the next filter `values` for a direct text/number input change.

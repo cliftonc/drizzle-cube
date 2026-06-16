@@ -5,19 +5,19 @@
  * Converts FlowSliceState UI state to/from ServerFlowQuery format.
  */
 
-import type { ModeAdapter, ValidationResult } from './modeAdapter'
+import type { ModeAdapter, ValidationResult } from './modeAdapter.js'
 import type {
   AnalysisConfig,
   FlowAnalysisConfig,
   AnalysisType,
   ChartConfig,
-} from '../types/analysisConfig'
-import type { Filter, FunnelBindingKey } from '../types'
+} from '../types/analysisConfig.js'
+import type { Filter, FunnelBindingKey } from '../types.js'
 import type {
   FlowSliceState,
   ServerFlowQuery,
   FlowStartingStep,
-} from '../types/flow'
+} from '../types/flow.js'
 
 // ============================================================================
 // Helper Functions

@@ -12,10 +12,10 @@
  */
 
 import { useState, memo } from 'react'
-import { ExplainAIPanel } from './ExplainAIPanel'
-import { SqlBlock, ExplainResults } from './ExecutionPlanPanelParts'
-import type { ExplainResult, AIExplainAnalysis } from '../../types'
-import { useTranslation } from '../../hooks/useTranslation'
+import { ExplainAIPanel } from './ExplainAIPanel.js'
+import { SqlBlock, ExplainResults } from './ExecutionPlanPanelParts.js'
+import type { ExplainResult, AIExplainAnalysis } from '../../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface ExecutionPlanPanelProps {
   /** The generated SQL to display */

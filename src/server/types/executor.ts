@@ -4,8 +4,8 @@
  */
 
 import type { SQL } from 'drizzle-orm'
-import type { DrizzleDatabase } from './core'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
+import type { DrizzleDatabase } from './core.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 
 /**
  * Database executor interface that wraps Drizzle ORM

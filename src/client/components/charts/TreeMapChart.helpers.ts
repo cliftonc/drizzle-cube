@@ -5,9 +5,9 @@
  * behaviour change — mirrors the original inline logic exactly.
  */
 import { scaleQuantize, scaleOrdinal } from 'd3'
-import { CHART_COLORS, CHART_COLORS_GRADIENT } from '../../utils/chartConstants'
-import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
-import type { AxisFormatConfig, ChartAxisConfig, ColorPalette, CubeQuery } from '../../types'
+import { CHART_COLORS, CHART_COLORS_GRADIENT } from '../../utils/chartConstants.js'
+import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils.js'
+import type { AxisFormatConfig, ChartAxisConfig, ColorPalette, CubeQuery } from '../../types.js'
 
 export interface TreemapDatum {
   name: string

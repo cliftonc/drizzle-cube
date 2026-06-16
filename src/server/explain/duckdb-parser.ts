@@ -4,8 +4,8 @@
  * Parses text format EXPLAIN output and normalizes to common structure
  */
 
-import type { ExplainOperation, ExplainResult, ExplainSummary } from '../types/executor'
-import { type ExplainStackEntry, countTreeIndent, pushOperationToTree } from './explain-tree'
+import type { ExplainOperation, ExplainResult, ExplainSummary } from '../types/executor.js'
+import { type ExplainStackEntry, countTreeIndent, pushOperationToTree } from './explain-tree.js'
 
 /** Mutable accumulator for summary stats gathered while walking the plan. */
 interface DuckDBPlanState {

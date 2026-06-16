@@ -10,12 +10,12 @@
  */
 
 import React, { useMemo } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import { CHART_COLORS } from '../../utils/chartConstants'
-import type { ChartProps } from '../../types'
-import type { FunnelChartData } from '../../types/funnel'
-import { toFunnelData, resolveFunnelDisplayOptions } from './FunnelChart.helpers'
-import { FunnelShapeView, FunnelVerticalView, FunnelHorizontalView } from './FunnelViews'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { CHART_COLORS } from '../../utils/chartConstants.js'
+import type { ChartProps } from '../../types.js'
+import type { FunnelChartData } from '../../types/funnel.js'
+import { toFunnelData, resolveFunnelDisplayOptions } from './FunnelChart.helpers.js'
+import { FunnelShapeView, FunnelVerticalView, FunnelHorizontalView } from './FunnelViews.js'
 
 /**
  * FunnelChart Component

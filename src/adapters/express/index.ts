@@ -15,9 +15,9 @@ import type {
   CacheConfig,
   ExplainOptions,
   RLSSetupFn
-} from '../../server'
-import type { AgentConfig } from '../../server/agent/types'
-import { SemanticLayerCompiler } from '../../server/compiler'
+} from '../../server/index.js'
+import type { AgentConfig } from '../../server/agent/types.js'
+import { SemanticLayerCompiler } from '../../server/compiler.js'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
@@ -29,7 +29,7 @@ import {
   formatErrorResponse,
   handleBatchRequest,
   type MCPOptions
-} from '../utils'
+} from '../utils.js'
 import {
   buildJsonRpcError,
   buildJsonRpcResult,
@@ -48,8 +48,8 @@ import {
   extractBearerToken,
   buildWwwAuthenticateChallenge,
   MCP_SESSION_ID_HEADER
-} from '../mcp-transport'
-import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
+} from '../mcp-transport.js'
+import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale.js'
 
 export interface ExpressAdapterOptions {
   /**
@@ -566,9 +566,9 @@ export function createCubeRouter(
      */
     router.post(`${basePath}/agent/chat`, async (req: Request, res: Response) => {
       try {
-        const { handleAgentChat } = await import('../../server/agent/handler')
+        const { handleAgentChat } = await import('../../server/agent/handler.js')
 
-        const { message, sessionId, history } = req.body as { message: string; sessionId?: string; history?: import('../../server/agent/types').AgentHistoryMessage[] }
+        const { message, sessionId, history } = req.body as { message: string; sessionId?: string; history?: import('../../server/agent/types.js').AgentHistoryMessage[] }
 
         if (!message || typeof message !== 'string') {
           return res.status(400).json({ error: 'message is required and must be a string' })

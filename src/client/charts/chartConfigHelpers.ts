@@ -1,4 +1,4 @@
-import type { ChartAvailabilityContext, ChartAvailability, DisplayOptionConfig } from './chartConfigs'
+import type { ChartAvailabilityContext, ChartAvailability, DisplayOptionConfig } from './chartConfigs.js'
 
 /**
  * Shared building blocks for chart `*.config.ts` files.

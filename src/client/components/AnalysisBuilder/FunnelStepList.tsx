@@ -6,11 +6,11 @@
  */
 
 import React, { memo, useCallback, useState } from 'react'
-import type { CubeMeta, FunnelStepState } from '../../types'
-import { getIcon } from '../../icons'
-import FunnelStepCard from './FunnelStepCard'
-import SectionHeading from './SectionHeading'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { CubeMeta, FunnelStepState } from '../../types.js'
+import { getIcon } from '../../icons/index.js'
+import FunnelStepCard from './FunnelStepCard.js'
+import SectionHeading from './SectionHeading.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const AddIcon = getIcon('add')
 

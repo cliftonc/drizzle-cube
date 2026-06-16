@@ -11,8 +11,8 @@ import type {
   MeasureType,
   DimensionType,
   TimeGranularity
-} from './core'
-import type { SemanticQuery } from './query'
+} from './core.js'
+import type { SemanticQuery } from './query.js'
 
 /**
  * Filter SQL cache used for parameter deduplication across CTEs and the main
@@ -437,7 +437,7 @@ export interface PropagatingFilter {
   /** The source cube whose filters need to propagate */
   sourceCube: Cube
   /** Filters from the source cube to apply */
-  filters: import('./query').Filter[]
+  filters: import('./query.js').Filter[]
   /** Join conditions linking source cube PK(s) to target cube FK(s) - supports composite keys */
   joinConditions: JoinKeyPair[]
   /** Pre-built filter SQL for parameter deduplication (optional, built during query planning) */
@@ -592,7 +592,7 @@ export interface PhysicalQueryPlan {
     }>
   }
   /** Warnings about potential query issues (e.g., fan-out without dimensions) */
-  warnings?: import('./core').QueryWarning[]
+  warnings?: import('./core.js').QueryWarning[]
 }
 
 

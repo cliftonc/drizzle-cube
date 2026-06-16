@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { transition as _transition } from 'd3'
 // _transition import is for side effects only - it extends Selection.prototype with .transition()
 void _transition
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import { useTheme } from '../../hooks/useTheme'
-import { useChartDimensions } from './useChartDimensions'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
+import { useTheme } from '../../hooks/useTheme.js'
+import { useChartDimensions } from './useChartDimensions.js'
 import {
   resolveBubbleDisplayOptions,
   resolveBubbleFields,
   transformBubbleData
-} from './BubbleChart.helpers'
-import { renderBubbleChart } from './BubbleChart.render'
-import type { ChartProps } from '../../types'
+} from './BubbleChart.helpers.js'
+import { renderBubbleChart } from './BubbleChart.render.js'
+import type { ChartProps } from '../../types.js'
 
 const BubbleChart = React.memo(function BubbleChart({
   data,

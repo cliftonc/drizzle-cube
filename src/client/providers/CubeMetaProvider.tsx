@@ -9,8 +9,8 @@
  */
 
 import { useCallback, useMemo, type ReactNode } from 'react'
-import { useCubeMetaQuery } from '../hooks/queries/useCubeMetaQuery'
-import { CubeMetaContext } from './CubeMetaContext'
+import { useCubeMetaQuery } from '../hooks/queries/useCubeMetaQuery.js'
+import { CubeMetaContext } from './CubeMetaContext.js'
 
 interface CubeMetaProviderProps {
   children: ReactNode

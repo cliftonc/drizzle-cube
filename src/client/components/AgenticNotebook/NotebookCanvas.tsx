@@ -4,16 +4,16 @@
 
 import React, { useCallback, useRef, useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useNotebookStore, selectBlocks, selectBlockActions } from '../../stores/notebookStore'
-import type { PortletBlock } from '../../stores/notebookStore'
-import type { PortletConfig } from '../../types'
-import type { ColorPalette } from '../../utils/colorPalettes'
-import { getColorPalette } from '../../utils/colorPalettes'
-import { ensureAnalysisConfig } from '../../utils/configMigration'
-import NotebookPortletBlock from './NotebookPortletBlock'
-import NotebookMarkdownBlock from './NotebookMarkdownBlock'
-import PortletAnalysisModal from '../PortletAnalysisModal'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useNotebookStore, selectBlocks, selectBlockActions } from '../../stores/notebookStore.js'
+import type { PortletBlock } from '../../stores/notebookStore.js'
+import type { PortletConfig } from '../../types.js'
+import type { ColorPalette } from '../../utils/colorPalettes.js'
+import { getColorPalette } from '../../utils/colorPalettes.js'
+import { ensureAnalysisConfig } from '../../utils/configMigration.js'
+import NotebookPortletBlock from './NotebookPortletBlock.js'
+import NotebookMarkdownBlock from './NotebookMarkdownBlock.js'
+import PortletAnalysisModal from '../PortletAnalysisModal.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 /**
  * Derive the block update payload from saved portlet data.

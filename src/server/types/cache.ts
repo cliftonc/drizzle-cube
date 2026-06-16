@@ -3,7 +3,7 @@
  * Provides pluggable caching for query results
  */
 
-import type { SecurityContext } from './core'
+import type { SecurityContext } from './core.js'
 
 /**
  * Return type for cache get operations

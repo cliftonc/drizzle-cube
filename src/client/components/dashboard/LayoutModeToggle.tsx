@@ -3,8 +3,8 @@
  */
 
 import type { ReactNode } from 'react'
-import { getIcon } from '../../icons'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const GridIcon = getIcon('segment')
 const RowsIcon = getIcon('table')

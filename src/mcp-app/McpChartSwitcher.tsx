@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { getChartTypeIcon } from '../client/icons'
-import { chartConfigRegistry } from '../client/charts/chartConfigRegistry'
-import { useTranslation } from '../client/hooks/useTranslation'
-import { isChartAvailable, type McpChartType } from './chartAutoSelect'
+import { getChartTypeIcon } from '../client/icons/index.js'
+import { chartConfigRegistry } from '../client/charts/chartConfigRegistry.js'
+import { useTranslation } from '../client/hooks/useTranslation.js'
+import { isChartAvailable, type McpChartType } from './chartAutoSelect.js'
 
 /** Chart types that have real components in the MCP app */
 const MCP_CHART_TYPES: McpChartType[] = [

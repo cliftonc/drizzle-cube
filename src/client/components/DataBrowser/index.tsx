@@ -12,14 +12,14 @@
  */
 
 import { useMemo, useCallback } from 'react'
-import { DataBrowserStoreProvider } from '../../stores/dataBrowserStore'
-import { useDataBrowser, getCubeColumns } from '../../hooks/useDataBrowser'
-import DataBrowserSidebar from './DataBrowserSidebar'
-import DataBrowserToolbar from './DataBrowserToolbar'
-import DataBrowserTable from './DataBrowserTable'
-import AnalysisFilterSection from '../AnalysisBuilder/AnalysisFilterSection'
-import FieldSearchModal from '../AnalysisBuilder/FieldSearchModal'
-import type { MetaResponse, MetaField } from '../../shared/types'
+import { DataBrowserStoreProvider } from '../../stores/dataBrowserStore.js'
+import { useDataBrowser, getCubeColumns } from '../../hooks/useDataBrowser.js'
+import DataBrowserSidebar from './DataBrowserSidebar.js'
+import DataBrowserToolbar from './DataBrowserToolbar.js'
+import DataBrowserTable from './DataBrowserTable.js'
+import AnalysisFilterSection from '../AnalysisBuilder/AnalysisFilterSection.js'
+import FieldSearchModal from '../AnalysisBuilder/FieldSearchModal.js'
+import type { MetaResponse, MetaField } from '../../shared/types.js'
 
 export interface DataBrowserProps {
   /** Additional CSS classes */

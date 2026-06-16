@@ -22,29 +22,29 @@
  */
 
 import { forwardRef, useMemo, useCallback } from 'react'
-import { useCubeFeatures, useCubeMeta } from '../../providers/CubeProvider'
-import { AnalysisBuilderStoreProvider } from '../../stores/analysisBuilderStore'
-import { useAnalysisBuilder } from '../../hooks/useAnalysisBuilderHook'
-import { useAnalysisBuilderStoreApi } from '../../stores/analysisBuilderStore'
-import { useAnalysisAI } from '../../hooks/useAnalysisAI'
-import { useAnalysisShare } from '../../hooks/useAnalysisShare'
-import { parseShareHash, decodeAndDecompress } from '../../utils/shareUtils'
+import { useCubeFeatures, useCubeMeta } from '../../providers/CubeProvider.js'
+import { AnalysisBuilderStoreProvider } from '../../stores/analysisBuilderStore.js'
+import { useAnalysisBuilder } from '../../hooks/useAnalysisBuilderHook.js'
+import { useAnalysisBuilderStoreApi } from '../../stores/analysisBuilderStore.js'
+import { useAnalysisAI } from '../../hooks/useAnalysisAI.js'
+import { useAnalysisShare } from '../../hooks/useAnalysisShare.js'
+import { parseShareHash, decodeAndDecompress } from '../../utils/shareUtils.js'
 import type {
   AnalysisBuilderProps,
   AnalysisBuilderRef,
-} from './types'
-import FieldSearchModal from './FieldSearchModal'
-import AnalysisResultsPanel from './AnalysisResultsPanel'
-import AnalysisQueryPanel from './AnalysisQueryPanel'
-import AnalysisAIPanel from './AnalysisAIPanel'
-import AnalysisModeErrorBoundary from './AnalysisModeErrorBoundary'
-import { useAnalysisBuilderImperativeHandle } from './hooks/useAnalysisBuilderImperativeHandle'
+} from './types.js'
+import FieldSearchModal from './FieldSearchModal.js'
+import AnalysisResultsPanel from './AnalysisResultsPanel.js'
+import AnalysisQueryPanel from './AnalysisQueryPanel.js'
+import AnalysisAIPanel from './AnalysisAIPanel.js'
+import AnalysisModeErrorBoundary from './AnalysisModeErrorBoundary.js'
+import { useAnalysisBuilderImperativeHandle } from './hooks/useAnalysisBuilderImperativeHandle.js'
 import {
   extractFunnelStateFromShare,
   extractFlowStateFromShare,
   extractRetentionStateFromShare
-} from './utils/shareStateUtils'
-import type { MetaResponse } from '../../shared/types'
+} from './utils/shareStateUtils.js'
+import type { MetaResponse } from '../../shared/types.js'
 
 /**
  * Inner component that uses the store (must be inside provider)

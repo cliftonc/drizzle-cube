@@ -7,7 +7,7 @@
 
 import { memo } from 'react'
 import type { ReactNode } from 'react'
-import { getIcon } from '../../icons'
+import { getIcon } from '../../icons/index.js'
 
 interface SortToggleButtonProps {
   sortDirection?: 'asc' | 'desc' | null

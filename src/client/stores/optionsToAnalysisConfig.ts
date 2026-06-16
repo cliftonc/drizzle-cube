@@ -12,21 +12,21 @@ import type {
   QueryMergeStrategy,
   CubeQuery,
   MultiQueryConfig,
-} from '../types'
-import { getDateRangeFromPreset, DEFAULT_DATE_RANGE_PRESET } from '../types/retention'
-import type { AnalysisBuilderState } from '../components/AnalysisBuilder/types'
+} from '../types.js'
+import { getDateRangeFromPreset, DEFAULT_DATE_RANGE_PRESET } from '../types/retention.js'
+import type { AnalysisBuilderState } from '../components/AnalysisBuilder/types.js'
 import {
   generateId,
   generateMetricLabel,
   createInitialState,
-} from '../components/AnalysisBuilder/utils'
-import { queryModeAdapter } from '../adapters/queryModeAdapter'
-import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
-import { flowModeAdapter } from '../adapters/flowModeAdapter'
-import { retentionModeAdapter } from '../adapters/retentionModeAdapter'
-import type { ModeAdapter } from '../adapters/modeAdapter'
-import type { AnalysisConfig, ChartConfig } from '../types/analysisConfig'
-import type { CreateStoreOptions } from './analysisBuilderStore'
+} from '../components/AnalysisBuilder/utils/index.js'
+import { queryModeAdapter } from '../adapters/queryModeAdapter.js'
+import { funnelModeAdapter } from '../adapters/funnelModeAdapter.js'
+import { flowModeAdapter } from '../adapters/flowModeAdapter.js'
+import { retentionModeAdapter } from '../adapters/retentionModeAdapter.js'
+import type { ModeAdapter } from '../adapters/modeAdapter.js'
+import type { AnalysisConfig, ChartConfig } from '../types/analysisConfig.js'
+import type { CreateStoreOptions } from './analysisBuilderStore.js'
 
 /**
  * Convert CubeQuery to AnalysisBuilderState

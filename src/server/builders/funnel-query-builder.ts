@@ -8,13 +8,13 @@
  */
 
 import { sql, SQL, and, eq } from 'drizzle-orm'
-import { t } from '../../i18n/runtime'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
+import { t } from '../../i18n/runtime.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import type {
   FunnelQueryConfig,
   FunnelStep,
   FunnelResultRow
-} from '../types/funnel'
+} from '../types/funnel.js'
 import type {
   Cube,
   QueryContext,
@@ -23,13 +23,13 @@ import type {
   FilterCondition,
   LogicalFilter,
   AnalysisConfigValidationResult
-} from '../types'
-import { resolveFilterFieldExpr } from '../cube-utils'
-import { hasFunnelMode } from '../query-modes'
-import { combineWhere, resolveBindingKeyExpr, bindingKeyErrorsForPrefix, resolveTimeDimensionExpr, asGroupFilter, type GroupFilterParts, type WithSubquery } from './analysis-utils'
-import { FilterBuilder } from './filter-builder'
-import { DateTimeBuilder } from './date-time-builder'
-import { JoinPathResolver } from '../resolvers/join-path-resolver'
+} from '../types/index.js'
+import { resolveFilterFieldExpr } from '../cube-utils.js'
+import { hasFunnelMode } from '../query-modes.js'
+import { combineWhere, resolveBindingKeyExpr, bindingKeyErrorsForPrefix, resolveTimeDimensionExpr, asGroupFilter, type GroupFilterParts, type WithSubquery } from './analysis-utils.js'
+import { FilterBuilder } from './filter-builder.js'
+import { DateTimeBuilder } from './date-time-builder.js'
+import { JoinPathResolver } from '../resolvers/join-path-resolver.js'
 
 /**
  * Info about a joined cube needed for cross-cube filtering

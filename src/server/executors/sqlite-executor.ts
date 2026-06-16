@@ -5,10 +5,10 @@
 
 import type { SQL } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
-import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
-import { BaseDatabaseExecutor } from './base-executor'
-import { parseSQLiteExplain } from '../explain/sqlite-parser'
-import { buildBoundSql, normalizeSQLiteExplainRows } from './explain-utils'
+import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types/index.js'
+import { BaseDatabaseExecutor } from './base-executor.js'
+import { parseSQLiteExplain } from '../explain/sqlite-parser.js'
+import { buildBoundSql, normalizeSQLiteExplainRows } from './explain-utils.js'
 
 export class SQLiteExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {

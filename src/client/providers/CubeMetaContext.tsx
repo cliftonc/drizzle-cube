@@ -6,7 +6,7 @@
  */
 
 import { createContext, useContext } from 'react'
-import type { CubeMeta, FieldLabelMap } from '../types'
+import type { CubeMeta, FieldLabelMap } from '../types.js'
 
 export interface CubeMetaContextValue {
   meta: CubeMeta | null

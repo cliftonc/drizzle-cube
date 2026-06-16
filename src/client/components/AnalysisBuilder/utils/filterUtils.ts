@@ -5,8 +5,8 @@
  * These handle both simple filters and nested group filters (AND/OR).
  */
 
-import type { Filter } from '../../../types'
-import { parseDateRange, calculatePriorPeriod, formatDateForCube } from '../../../../shared/date-utils'
+import type { Filter } from '../../../types.js'
+import { parseDateRange, calculatePriorPeriod, formatDateForCube } from '../../../../shared/date-utils.js'
 
 /**
  * Find date filter for a specific time dimension field

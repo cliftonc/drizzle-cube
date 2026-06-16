@@ -5,9 +5,9 @@
  */
 
 import { memo } from 'react'
-import type { MetricItemCardProps } from './types'
-import { getIcon, getMeasureTypeIcon } from '../../icons'
-import SortToggleButton from './SortToggleButton'
+import type { MetricItemCardProps } from './types.js'
+import { getIcon, getMeasureTypeIcon } from '../../icons/index.js'
+import SortToggleButton from './SortToggleButton.js'
 
 /**
  * MetricItemCard displays a selected metric with:

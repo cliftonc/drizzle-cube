@@ -7,8 +7,8 @@
  * single-function implementation.
  */
 
-import type { CubeQuery } from '../../../types'
-import type { QueryAnalysis } from '../../../shared/types'
+import type { CubeQuery } from '../../../types.js'
+import type { QueryAnalysis } from '../../../shared/types.js'
 
 type Lines = string[]
 

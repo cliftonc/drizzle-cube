@@ -3,7 +3,7 @@
  * Suitable for development, testing, or single-instance deployments
  */
 
-import type { CacheProvider, CacheGetResult } from '../types'
+import type { CacheProvider, CacheGetResult } from '../types/index.js'
 
 /**
  * Deep-clone a cached value so cache entries are isolated from external mutation.

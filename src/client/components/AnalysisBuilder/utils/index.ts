@@ -5,17 +5,17 @@
  */
 
 // ID Generation
-export { generateId, generateMetricLabel } from './idUtils'
+export { generateId, generateMetricLabel } from './idUtils.js'
 
 // Filter Manipulation
 export {
   findDateFilterForField,
   buildCompareDateRangeFromFilter,
   removeComparisonDateFilter
-} from './filterUtils'
+} from './filterUtils.js'
 
 // Query Building
-export { buildCubeQuery, hasQueryContent } from './queryUtils'
+export { buildCubeQuery, hasQueryContent } from './queryUtils.js'
 
 // State Persistence
 export {
@@ -25,7 +25,7 @@ export {
   saveStateToStorage,
   loadStateFromStorage,
   clearStateFromStorage
-} from './storageUtils'
+} from './storageUtils.js'
 
 // Field Metadata
 export {
@@ -39,11 +39,11 @@ export {
   groupFieldsByCube,
   getCubeNames,
   getCubeTitle
-} from './fieldUtils'
+} from './fieldUtils.js'
 
 // Recent Fields
 export {
   getRecentFields,
   addRecentField,
   getRecentFieldOptions
-} from './recentFieldsUtils'
+} from './recentFieldsUtils.js'

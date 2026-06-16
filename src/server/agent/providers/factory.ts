@@ -3,7 +3,7 @@
  * Creates the appropriate provider instance based on configuration.
  */
 
-import type { LLMProvider } from './types'
+import type { LLMProvider } from './types.js'
 
 export type ProviderName = 'anthropic' | 'openai' | 'google'
 
@@ -21,17 +21,17 @@ export async function createProvider(
 ): Promise<LLMProvider> {
   switch (provider) {
     case 'anthropic': {
-      const { AnthropicProvider } = await import('./anthropic')
+      const { AnthropicProvider } = await import('./anthropic.js')
       return new AnthropicProvider(apiKey)
     }
 
     case 'openai': {
-      const { OpenAIProvider } = await import('./openai')
+      const { OpenAIProvider } = await import('./openai.js')
       return new OpenAIProvider(apiKey, options)
     }
 
     case 'google': {
-      const { GoogleProvider } = await import('./google')
+      const { GoogleProvider } = await import('./google.js')
       return new GoogleProvider(apiKey)
     }
 

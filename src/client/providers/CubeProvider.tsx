@@ -13,17 +13,17 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { CubeApiProvider, useCubeApi } from './CubeApiProvider'
-import { CubeMetaProvider } from './CubeMetaProvider'
-import { useCubeMeta } from './CubeMetaContext'
-import { CubeFeaturesProvider, useCubeFeatures } from './CubeFeaturesProvider'
-import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig, DashboardLayoutMode, CubeMeta, FieldLabelMap } from '../types'
-import type { CubeClient } from '../client/CubeClient'
-import type { BatchCoordinator } from '../client/BatchCoordinator'
-import type { ChartDefinition } from '../charts/chartPlugin'
-import { chartPluginRegistry } from '../charts/chartPlugin'
-import { I18nProvider } from './I18nProvider'
-import { setDebugMode } from '../../i18n/runtime'
+import { CubeApiProvider, useCubeApi } from './CubeApiProvider.js'
+import { CubeMetaProvider } from './CubeMetaProvider.js'
+import { useCubeMeta } from './CubeMetaContext.js'
+import { CubeFeaturesProvider, useCubeFeatures } from './CubeFeaturesProvider.js'
+import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig, DashboardLayoutMode, CubeMeta, FieldLabelMap } from '../types.js'
+import type { CubeClient } from '../client/CubeClient.js'
+import type { BatchCoordinator } from '../client/BatchCoordinator.js'
+import type { ChartDefinition } from '../charts/chartPlugin.js'
+import { chartPluginRegistry } from '../charts/chartPlugin.js'
+import { I18nProvider } from './I18nProvider.js'
+import { setDebugMode } from '../../i18n/runtime.js'
 
 const DEFAULT_API_OPTIONS: CubeApiOptions = { apiUrl: '/cubejs-api/v1' }
 
