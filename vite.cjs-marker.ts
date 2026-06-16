@@ -17,8 +17,9 @@ export function cjsTypesMarker(dir = 'dist/cjs'): Plugin {
   return {
     name: 'cjs-types-marker',
     closeBundle() {
-      mkdirSync(resolve(dir), { recursive: true })
-      writeFileSync(resolve(dir, 'package.json'), '{\n  "type": "commonjs"\n}\n')
+      const cjsDir = resolve(dir)
+      mkdirSync(cjsDir, { recursive: true })
+      writeFileSync(resolve(cjsDir, 'package.json'), '{\n  "type": "commonjs"\n}\n')
     }
   }
 }
