@@ -911,6 +911,8 @@
   "dataBrowser.noRows": "Geen rijen geretourneerd voor deze query",
   "dataBrowser.toolbar.filters": "Filters",
   "dataBrowser.toolbar.columns": "Kolommen",
+  "dataBrowser.toolbar.searchPlaceholder": "Rijen zoeken…",
+  "dataBrowser.toolbar.clearSearch": "Zoekopdracht wissen",
   "dataBrowser.toolbar.rows": "{count} rijen",
   "dataBrowser.sidebar.cubes": "Kubussen",
   "dataBrowser.sidebar.searchPlaceholder": "Zoeken...",

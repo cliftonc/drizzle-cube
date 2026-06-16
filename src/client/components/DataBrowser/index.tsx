@@ -46,6 +46,7 @@ function DataBrowserInner({ className = '', maxHeight = '100vh', loadingComponen
     page,
     pageSize,
     filters,
+    quickSearch,
     showFilterBar,
     showColumnPicker,
     rawData,
@@ -61,6 +62,7 @@ function DataBrowserInner({ className = '', maxHeight = '100vh', loadingComponen
     setPage,
     setPageSize,
     setFilters,
+    setQuickSearch,
     toggleFilterBar,
     setShowColumnPicker,
     toggleColumn,
@@ -135,6 +137,8 @@ function DataBrowserInner({ className = '', maxHeight = '100vh', loadingComponen
             filterCount={filterCount}
             onToggleFilterBar={toggleFilterBar}
             onToggleColumnPicker={() => setShowColumnPicker(!showColumnPicker)}
+            quickSearch={quickSearch}
+            onQuickSearchChange={setQuickSearch}
             page={page}
             pageSize={pageSize}
             rowCount={rowCount}

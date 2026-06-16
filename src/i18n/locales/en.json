@@ -951,6 +951,8 @@
   "dataBrowser.noRows": "No rows returned for this query",
   "dataBrowser.toolbar.filters": "Filters",
   "dataBrowser.toolbar.columns": "Columns",
+  "dataBrowser.toolbar.searchPlaceholder": "Search rows…",
+  "dataBrowser.toolbar.clearSearch": "Clear search",
   "dataBrowser.toolbar.rows": "{count} rows",
   "dataBrowser.sidebar.cubes": "Cubes",
   "dataBrowser.sidebar.searchPlaceholder": "Search...",

@@ -12,6 +12,8 @@ const ColumnsIcon = getIcon('settings')
 const ChevronLeftIcon = getIcon('chevronLeft')
 const ChevronRightIcon = getIcon('chevronRight')
 const RefreshIcon = getIcon('refresh')
+const SearchIcon = getIcon('search')
+const CloseIcon = getIcon('close')
 
 interface DataBrowserToolbarProps {
   // Filter state
@@ -21,6 +23,10 @@ interface DataBrowserToolbarProps {
 
   // Column picker
   onToggleColumnPicker: () => void
+
+  // Quick text search
+  quickSearch: string
+  onQuickSearchChange: (value: string) => void
 
   // Pagination
   page: number
@@ -41,6 +47,8 @@ export default function DataBrowserToolbar({
   filterCount,
   onToggleFilterBar,
   onToggleColumnPicker,
+  quickSearch,
+  onQuickSearchChange,
   page,
   pageSize,
   rowCount,
@@ -80,6 +88,28 @@ export default function DataBrowserToolbar({
         <ColumnsIcon className="dc:w-3.5 dc:h-3.5" />
         {t('dataBrowser.toolbar.columns')}
       </button>
+
+      {/* Quick text search */}
+      <div className="dc:relative dc:flex-1 dc:max-w-xs">
+        <SearchIcon className="dc:absolute dc:left-2 dc:top-1/2 dc:-translate-y-1/2 dc:w-3.5 dc:h-3.5 text-dc-text-muted dc:pointer-events-none" />
+        <input
+          type="text"
+          value={quickSearch}
+          onChange={(e) => onQuickSearchChange(e.target.value)}
+          placeholder={t('dataBrowser.toolbar.searchPlaceholder')}
+          className="dc:w-full dc:pl-7 dc:pr-7 dc:py-1.5 dc:text-xs dc:rounded dc:border border-dc-border bg-dc-surface text-dc-text dc:outline-none dc:focus:ring-1 focus:ring-dc-accent"
+        />
+        {quickSearch && (
+          <button
+            onClick={() => onQuickSearchChange('')}
+            title={t('dataBrowser.toolbar.clearSearch')}
+            aria-label={t('dataBrowser.toolbar.clearSearch')}
+            className="dc:absolute dc:right-1.5 dc:top-1/2 dc:-translate-y-1/2 dc:p-0.5 dc:rounded dc:hover:bg-dc-surface-hover dc:transition-colors"
+          >
+            <CloseIcon className="dc:w-3.5 dc:h-3.5 text-dc-text-muted" />
+          </button>
+        )}
+      </div>
 
       {/* Spacer */}
       <div className="dc:flex-1" />
