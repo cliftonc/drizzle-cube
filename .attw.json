@@ -1,6 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@arethetypeswrong/cli/.attw.schema.json",
   "profile": "node16",
-  "excludeEntrypoints": ["client/styles.css"],
-  "ignoreRules": ["cjs-resolves-to-esm", "false-esm"]
+  "excludeEntrypoints": [
+    "client/styles.css"
+  ],
+  "ignoreRules": [
+    "cjs-resolves-to-esm"
+  ]
 }
