@@ -9,8 +9,8 @@
  */
 
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
-import type { AnalysisConfig } from '../types/analysisConfig'
-import { isValidAnalysisConfig } from '../types/analysisConfig'
+import type { AnalysisConfig } from '../types/analysisConfig.js'
+import { isValidAnalysisConfig } from '../types/analysisConfig.js'
 
 // Re-export for backward compatibility during transition
 export type { AnalysisConfig as ShareableState }

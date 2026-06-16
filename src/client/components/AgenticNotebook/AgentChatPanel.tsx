@@ -4,13 +4,13 @@
 
 import React, { useRef, useEffect, useCallback, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useNotebookStore, selectChatState } from '../../stores/notebookStore'
-import type { ChatMessage as ChatMessageType } from '../../stores/notebookStore'
-import ChatMessage from './ChatMessage'
-import ChatInput from './ChatInput'
-import { useAgentChatController } from './useAgentChatController'
-import { ChatHeader, FeedbackBar, ThinkingBubble, EmptyState, getChatPanelFlags } from './agentChatParts'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useNotebookStore, selectChatState } from '../../stores/notebookStore.js'
+import type { ChatMessage as ChatMessageType } from '../../stores/notebookStore.js'
+import ChatMessage from './ChatMessage.js'
+import ChatInput from './ChatInput.js'
+import { useAgentChatController } from './useAgentChatController.js'
+import { ChatHeader, FeedbackBar, ThinkingBubble, EmptyState, getChatPanelFlags } from './agentChatParts.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 /** Renders the message list, or the empty state when there are no messages. */
 function MessageList({

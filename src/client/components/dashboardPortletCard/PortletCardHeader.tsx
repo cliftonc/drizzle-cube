@@ -4,10 +4,10 @@
  */
 
 import React, { type CSSProperties, type ComponentType } from 'react'
-import type { PortletConfig } from '../../types'
-import DebugModal from '../DebugModal'
-import { getIcon } from '../../icons/registry'
-import type { PortletDebugDataEntry } from '../../stores/dashboardStore'
+import type { PortletConfig } from '../../types.js'
+import DebugModal from '../DebugModal.js'
+import { getIcon } from '../../icons/registry.js'
+import type { PortletDebugDataEntry } from '../../stores/dashboardStore.js'
 
 const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'currentColor' }
 

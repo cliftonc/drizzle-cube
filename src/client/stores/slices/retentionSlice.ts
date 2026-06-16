@@ -9,8 +9,8 @@
  */
 
 import type { StateCreator } from 'zustand'
-import type { AnalysisBuilderStore } from '../analysisBuilderStore'
-import type { Filter, FunnelBindingKey } from '../../types'
+import type { AnalysisBuilderStore } from '../analysisBuilderStore.js'
+import type { Filter, FunnelBindingKey } from '../../types.js'
 import type {
   ServerRetentionQuery,
   RetentionSliceState,
@@ -18,12 +18,12 @@ import type {
   RetentionType,
   DateRange,
   RetentionBreakdownItem,
-} from '../../types/retention'
+} from '../../types/retention.js'
 import {
   defaultRetentionSliceState,
   RETENTION_MIN_PERIODS,
   RETENTION_MAX_PERIODS,
-} from '../../types/retention'
+} from '../../types/retention.js'
 
 // ============================================================================
 // Types

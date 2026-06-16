@@ -11,10 +11,10 @@
  */
 
 import React, { useMemo, useCallback } from 'react'
-import { extractDashboardFields } from '../../utils/filterUtils'
-import DashboardFilterConfigModal from './DashboardFilterConfigModal'
-import type { DashboardFilter, CubeMeta, DashboardConfig } from '../../types'
-import type { MetaResponse } from '../../shared/types'
+import { extractDashboardFields } from '../../utils/filterUtils.js'
+import DashboardFilterConfigModal from './DashboardFilterConfigModal.js'
+import type { DashboardFilter, CubeMeta, DashboardConfig } from '../../types.js'
+import type { MetaResponse } from '../../shared/types.js'
 
 interface FilterEditModalProps {
   filter: DashboardFilter

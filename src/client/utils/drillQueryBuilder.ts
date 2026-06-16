@@ -10,12 +10,12 @@ import type {
   TimeGranularity,
   DashboardFilter,
   DashboardFilterMapping
-} from '../types'
+} from '../types.js'
 import type {
   DrillOption,
   DrillResult,
   ChartDataPointClickEvent
-} from '../types/drill'
+} from '../types/drill.js'
 
 /**
  * Generate a simple unique ID (no external dependency)

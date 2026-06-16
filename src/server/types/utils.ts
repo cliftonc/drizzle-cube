@@ -4,7 +4,7 @@
  */
 
 import type { SQL, AnyColumn } from 'drizzle-orm'
-import type { QueryContext } from './cube'
+import type { QueryContext } from './cube.js'
 
 /**
  * Type-level utility to extract the schema type from a cube reference

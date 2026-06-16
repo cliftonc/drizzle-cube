@@ -2,10 +2,10 @@
  * Shared utility functions used across QueryBuilder and AnalysisBuilder
  */
 
-import type { CubeQuery, Filter, SimpleFilter, GroupFilter } from '../types'
-import type { MetaField, MetaResponse } from './types'
-import { FILTER_OPERATORS } from './types'
-import { cleanQuery, transformFilterFromServer, transformQueryForUIImpl } from './queryTransforms'
+import type { CubeQuery, Filter, SimpleFilter, GroupFilter } from '../types.js'
+import type { MetaField, MetaResponse } from './types.js'
+import { FILTER_OPERATORS } from './types.js'
+import { cleanQuery, transformFilterFromServer, transformQueryForUIImpl } from './queryTransforms.js'
 
 // Re-exported from queryTransforms (its canonical home) to keep import paths stable.
 export { cleanQuery }

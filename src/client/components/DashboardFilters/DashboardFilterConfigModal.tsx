@@ -19,14 +19,14 @@
  * components. This file is the layout shell.
  */
 
-import { useTranslation } from '../../hooks/useTranslation'
-import { getIcon } from '../../icons'
-import type { DashboardFilter } from '../../types'
-import type { MetaResponse } from '../../shared/types'
-import FieldSearchModal from '../AnalysisBuilder/FieldSearchModal'
-import { useDashboardFilterConfigModal } from './useDashboardFilterConfigModal'
-import DashboardFilterValueInput from './DashboardFilterValueInput'
-import { FieldSelectionSection, OperatorSection } from './DashboardFilterConfigModalParts'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { getIcon } from '../../icons/index.js'
+import type { DashboardFilter } from '../../types.js'
+import type { MetaResponse } from '../../shared/types.js'
+import FieldSearchModal from '../AnalysisBuilder/FieldSearchModal.js'
+import { useDashboardFilterConfigModal } from './useDashboardFilterConfigModal.js'
+import DashboardFilterValueInput from './DashboardFilterValueInput.js'
+import { FieldSelectionSection, OperatorSection } from './DashboardFilterConfigModalParts.js'
 
 const CloseIcon = getIcon('close')
 

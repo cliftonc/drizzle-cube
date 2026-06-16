@@ -4,7 +4,7 @@
  */
 
 import type { CSSProperties } from 'react'
-import type { ChartType, ChartDisplayConfig } from '../../types'
+import type { ChartType, ChartDisplayConfig } from '../../types.js'
 
 export interface PortletDisplayModes {
   isMarkdownAutoHeight: boolean

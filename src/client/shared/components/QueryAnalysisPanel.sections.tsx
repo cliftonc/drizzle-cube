@@ -4,9 +4,9 @@
  */
 
 import React from 'react'
-import { getIcon } from '../../icons'
-import type { QueryAnalysis, JoinPathAnalysis } from '../types'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import type { QueryAnalysis, JoinPathAnalysis } from '../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 /**
  * Format reason string for display

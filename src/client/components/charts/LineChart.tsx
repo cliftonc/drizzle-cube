@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { LineChart as RechartsLineChart, XAxis, CartesianGrid } from 'recharts'
-import ChartContainer from './ChartContainer'
-import ChartTooltip from './ChartTooltip'
-import AngledXAxisTick from './AngledXAxisTick'
-import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
-import { resolveChartAxisFields } from './chartAxisResolution'
+import ChartContainer from './ChartContainer.js'
+import ChartTooltip from './ChartTooltip.js'
+import AngledXAxisTick from './AngledXAxisTick.js'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates.js'
+import { resolveChartAxisFields } from './chartAxisResolution.js'
 import {
   getDualAxisInfo,
   getYAxisChartMargins,
@@ -14,7 +14,7 @@ import {
   renderChartTargetLines,
   makeCartesianTooltipFormatter,
   renderHoverLegend
-} from './chartScaffolding'
+} from './chartScaffolding.js'
 import {
   makeComparisonTickFormatter,
   makeComparisonLabelFormatter,
@@ -22,9 +22,9 @@ import {
   makeSeriesKeyResolver,
   buildTimeSeriesData,
   renderLineSeries
-} from './cartesianChartHelpers'
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import type { ChartProps } from '../../types'
+} from './cartesianChartHelpers.js'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
+import type { ChartProps } from '../../types.js'
 
 const LineChart = React.memo(function LineChart({
   data,

@@ -5,20 +5,20 @@
  * For query analysis and meta types, see ../../shared/types.ts
  */
 
-import type { CubeQuery, FilterOperator, Filter, SimpleFilter, GroupFilter } from '../../types'
+import type { CubeQuery, FilterOperator, Filter, SimpleFilter, GroupFilter } from '../../types.js'
 
 // Re-export shared types that components need
 export type {
   MetaField,
   MetaResponse,
   DateRangeType
-} from '../../shared/types'
+} from '../../shared/types.js'
 
 export {
   FILTER_OPERATORS,
   DATE_RANGE_OPTIONS,
   TIME_GRANULARITIES
-} from '../../shared/types'
+} from '../../shared/types.js'
 
 // ============================================================================
 // Filter component prop types
@@ -26,7 +26,7 @@ export {
 
 export interface FilterBuilderProps {
   filters: Filter[]
-  schema: import('../../shared/types').MetaResponse | null
+  schema: import('../../shared/types.js').MetaResponse | null
   query: CubeQuery
   onFiltersChange: (filters: Filter[]) => void
   hideFieldSelector?: boolean // Hide the field selector (for universal time filters)
@@ -37,7 +37,7 @@ export interface FilterItemProps {
   index: number
   onFilterChange: (index: number, filter: SimpleFilter) => void
   onFilterRemove: (index: number) => void
-  schema: import('../../shared/types').MetaResponse | null
+  schema: import('../../shared/types.js').MetaResponse | null
   query: CubeQuery
   hideFieldSelector?: boolean // Hide the field selector (for read-only filters)
   hideOperatorSelector?: boolean // Hide the operator selector (for read-only filters)
@@ -50,7 +50,7 @@ export interface FilterGroupProps {
   onGroupChange: (index: number, group: GroupFilter) => void
   onGroupChangeWithUnwrap?: (index: number, group: GroupFilter) => void
   onGroupRemove: (index: number) => void
-  schema: import('../../shared/types').MetaResponse | null
+  schema: import('../../shared/types.js').MetaResponse | null
   query: CubeQuery
   depth: number
 }
@@ -60,7 +60,7 @@ export interface FilterValueSelectorProps {
   operator: FilterOperator
   values: any[]
   onValuesChange: (values: any[]) => void
-  schema: import('../../shared/types').MetaResponse | null
+  schema: import('../../shared/types.js').MetaResponse | null
 }
 
 // ============================================================================
@@ -70,7 +70,7 @@ export interface FilterValueSelectorProps {
 export interface DateRangeFilter {
   id: string
   timeDimension: string
-  rangeType: import('../../shared/types').DateRangeType
+  rangeType: import('../../shared/types.js').DateRangeType
   startDate?: string
   endDate?: string
 }

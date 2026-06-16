@@ -6,11 +6,11 @@
  */
 import type React from 'react'
 import { select, scaleQuantize, max, min, type Selection } from 'd3'
-import { CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
-import { getThemeColor } from './BubbleChart.helpers'
-import type { GridCell, GridMapping } from './ActivityGridChart.helpers'
-import type { ColorPalette } from '../../types'
-import type { ChartDataPointClickEvent } from '../../types/drill'
+import { CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants.js'
+import { getThemeColor } from './BubbleChart.helpers.js'
+import type { GridCell, GridMapping } from './ActivityGridChart.helpers.js'
+import type { ColorPalette } from '../../types.js'
+import type { ChartDataPointClickEvent } from '../../types/drill.js'
 
 type G = Selection<SVGGElement, unknown, null, undefined>
 

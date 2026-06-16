@@ -11,13 +11,13 @@
  */
 
 import { useState, useEffect, useCallback, ChangeEvent } from 'react'
-import type { SimpleFilter } from '../../types'
-import type { DateRangeType } from '../../shared/types'
+import type { SimpleFilter } from '../../types.js'
+import type { DateRangeType } from '../../shared/types.js'
 import {
   convertDateRangeTypeToValue,
   requiresNumberInput
-} from '../../shared/utils'
-import { deriveRangeFromDateRange } from './dashboardFilterConfigModalUtils'
+} from '../../shared/utils.js'
+import { deriveRangeFromDateRange } from './dashboardFilterConfigModalUtils.js'
 
 interface UseDateRangeStateParams {
   localFilter: SimpleFilter

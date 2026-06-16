@@ -11,28 +11,28 @@
  */
 
 import { memo, useState, useCallback, useMemo } from 'react'
-import type { CubeMeta, FunnelBindingKey, ChartType, ChartDisplayConfig, Filter } from '../../types'
-import type { ColorPalette } from '../../utils/colorPalettes'
+import type { CubeMeta, FunnelBindingKey, ChartType, ChartDisplayConfig, Filter } from '../../types.js'
+import type { ColorPalette } from '../../utils/colorPalettes.js'
 import type {
   DateRange,
   RetentionGranularity,
   RetentionType,
   RetentionBreakdownItem,
-} from '../../types/retention'
+} from '../../types/retention.js'
 import {
   RETENTION_GRANULARITY_OPTIONS,
   RETENTION_TYPE_OPTIONS,
   RETENTION_MIN_PERIODS,
   RETENTION_MAX_PERIODS,
-} from '../../types/retention'
-import type { MetaResponse } from '../../shared/types'
-import type { BreakdownItem } from './types'
-import RetentionConfigPanel, { DateRangeSelector } from './RetentionConfigPanel'
-import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
-import AnalysisFilterSection from './AnalysisFilterSection'
-import BreakdownSection from './BreakdownSection'
-import SectionHeading from './SectionHeading'
-import { useTranslation } from '../../hooks/useTranslation'
+} from '../../types/retention.js'
+import type { MetaResponse } from '../../shared/types.js'
+import type { BreakdownItem } from './types.js'
+import RetentionConfigPanel, { DateRangeSelector } from './RetentionConfigPanel.js'
+import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel.js'
+import AnalysisFilterSection from './AnalysisFilterSection.js'
+import BreakdownSection from './BreakdownSection.js'
+import SectionHeading from './SectionHeading.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 type RetentionPanelTab = 'config' | 'display'
 

@@ -16,7 +16,7 @@ import type {
   AnalysisConfig,
   AnalysisType,
   ChartConfig,
-} from '../types/analysisConfig'
+} from '../types/analysisConfig.js'
 
 // ============================================================================
 // Validation Result

@@ -12,11 +12,11 @@
 
 import { useQuery, useQueries } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { useCubeApi } from '../../providers/CubeApiProvider'
-import type { CubeQuery } from '../../types'
-import type { QueryAnalysis } from '../../components/AnalysisBuilder/types'
-import { cleanQueryForServer } from '../../shared/utils'
-import { stableStringify } from '../../shared/queryKey'
+import { useCubeApi } from '../../providers/CubeApiProvider.js'
+import type { CubeQuery } from '../../types.js'
+import type { QueryAnalysis } from '../../components/AnalysisBuilder/types.js'
+import { cleanQueryForServer } from '../../shared/utils.js'
+import { stableStringify } from '../../shared/queryKey.js'
 
 export type DryRunMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
 

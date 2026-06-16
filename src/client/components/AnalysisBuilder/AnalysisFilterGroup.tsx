@@ -7,11 +7,11 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { getIcon } from '../../icons'
-import type { Filter, SimpleFilter, GroupFilter } from '../../types'
-import type { MetaResponse } from '../../shared/types'
-import AnalysisFilterItem from './AnalysisFilterItem'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import type { Filter, SimpleFilter, GroupFilter } from '../../types.js'
+import type { MetaResponse } from '../../shared/types.js'
+import AnalysisFilterItem from './AnalysisFilterItem.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const AddIcon = getIcon('add')
 const CloseIcon = getIcon('close')

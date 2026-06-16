@@ -3,9 +3,9 @@
  * Extracted from FilterItem's sync effect to keep that effect flat.
  */
 
-import type { DateRangeType } from '../types'
-import { DATE_RANGE_OPTIONS } from '../types'
-import { convertDateRangeTypeToValue, requiresNumberInput } from '../utils'
+import type { DateRangeType } from '../types.js'
+import { DATE_RANGE_OPTIONS } from '../types.js'
+import { convertDateRangeTypeToValue, requiresNumberInput } from '../utils.js'
 
 export interface ResolvedDateRangeState {
   rangeType: DateRangeType

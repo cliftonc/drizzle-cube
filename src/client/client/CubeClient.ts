@@ -3,7 +3,7 @@
  * Replaces @cubejs-client/core with lighter implementation
  */
 
-import type { CubeQuery, CubeApiOptions, CubeResultSet, ExplainResult, ExplainOptions } from '../types'
+import type { CubeQuery, CubeApiOptions, CubeResultSet, ExplainResult, ExplainOptions } from '../types.js'
 
 export class CubeClient {
   private apiUrl: string

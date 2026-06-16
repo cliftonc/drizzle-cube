@@ -17,7 +17,7 @@ export {
   CUBE_META_QUERY_KEY,
   type UseCubeMetaQueryOptions,
   type UseCubeMetaQueryResult,
-} from './useCubeMetaQuery'
+} from './useCubeMetaQuery.js'
 
 // Single query data loading
 export {
@@ -26,7 +26,7 @@ export {
   createQueryKey,
   type UseCubeLoadQueryOptions,
   type UseCubeLoadQueryResult,
-} from './useCubeLoadQuery'
+} from './useCubeLoadQuery.js'
 
 // Multi-query data loading
 export {
@@ -34,7 +34,7 @@ export {
   createMultiQueryKey,
   type UseMultiCubeLoadQueryOptions,
   type UseMultiCubeLoadQueryResult,
-} from './useMultiCubeLoadQuery'
+} from './useMultiCubeLoadQuery.js'
 
 // Dry-run/debug data
 export {
@@ -53,13 +53,13 @@ export {
   type UseDryRunQueryResult,
   type UseMultiDryRunQueriesOptions,
   type UseMultiDryRunQueriesResult,
-} from './useDryRunQuery'
+} from './useDryRunQuery.js'
 
 // Funnel query data loading (sequential execution)
 export {
   useFunnelQuery,
   createFunnelQueryKey,
-} from './useFunnelQuery'
+} from './useFunnelQuery.js'
 
 // Flow query data loading (bidirectional Sankey)
 export {
@@ -67,14 +67,14 @@ export {
   createFlowQueryKey,
   type UseFlowQueryOptions,
   type UseFlowQueryResult,
-} from './useFlowQuery'
+} from './useFlowQuery.js'
 
 // Retention query data loading (cohort retention)
 export {
   useRetentionQuery,
   type UseRetentionQueryOptions,
   type UseRetentionQueryResult,
-} from './useRetentionQuery'
+} from './useRetentionQuery.js'
 
 // Explain query (execution plan)
 export {
@@ -82,11 +82,11 @@ export {
   createExplainQueryKey,
   type UseExplainQueryOptions,
   type UseExplainQueryResult,
-} from './useExplainQuery'
+} from './useExplainQuery.js'
 
 // Explain AI analysis (recommendations)
 export {
   useExplainAI,
   type UseExplainAIOptions,
   type UseExplainAIResult,
-} from './useExplainAI'
+} from './useExplainAI.js'

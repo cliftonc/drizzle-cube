@@ -14,17 +14,17 @@ import type {
   JoinPathAnalysis,
   JoinPathStep,
   QueryWarning
-} from '../types'
+} from '../types/index.js'
 import {
   getJoinType,
   reverseRelationship
-} from '../cube-utils'
+} from '../cube-utils.js'
 import {
   type InternalJoinPathStep,
   type PreferredPathCandidateScore,
   type PreferredPathSelection
-} from '../resolvers/join-path-resolver'
-import { ResolverCache, analyzeCubeUsage } from './planner-utils'
+} from '../resolvers/join-path-resolver.js'
+import { ResolverCache, analyzeCubeUsage } from './planner-utils.js'
 
 export class PlanAnalysisReporter {
   constructor(private readonly resolverCache: ResolverCache) {}

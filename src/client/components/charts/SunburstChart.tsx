@@ -13,12 +13,12 @@
  */
 
 import React, { useMemo, useRef, useState, useEffect } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { SunburstChart as RechartsSunburst, ResponsiveContainer, Tooltip } from 'recharts'
-import { CHART_COLORS } from '../../utils/chartConstants'
-import type { ChartProps } from '../../types'
-import type { FlowChartData, SankeyNode, SankeyLink } from '../../types/flow'
-import { isSankeyData } from '../../types/flow'
+import { CHART_COLORS } from '../../utils/chartConstants.js'
+import type { ChartProps } from '../../types.js'
+import type { FlowChartData, SankeyNode, SankeyLink } from '../../types/flow.js'
+import { isSankeyData } from '../../types/flow.js'
 
 /**
  * Hierarchical data structure for Recharts Sunburst

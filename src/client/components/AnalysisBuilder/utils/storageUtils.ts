@@ -4,8 +4,8 @@
  * Functions for saving and loading builder state from localStorage.
  */
 
-import type { Filter } from '../../../types'
-import type { MetricItem, BreakdownItem, AnalysisBuilderState, AnalysisBuilderStorageState } from '../types'
+import type { Filter } from '../../../types.js'
+import type { MetricItem, BreakdownItem, AnalysisBuilderState, AnalysisBuilderStorageState } from '../types.js'
 
 // Storage key for localStorage persistence
 // v3: Uses slice composition and AnalysisConfig format (clean break from v2)

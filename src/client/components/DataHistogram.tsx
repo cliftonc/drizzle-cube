@@ -1,5 +1,5 @@
 
-import { useTranslation } from '../hooks/useTranslation'
+import { useTranslation } from '../hooks/useTranslation.js'
 
 interface DataHistogramProps {
   /** Array of numeric values to create histogram from */

@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { RadialBarChart as RechartsRadialBarChart, RadialBar, Legend, Cell } from 'recharts'
-import ChartContainer from './ChartContainer'
-import ChartTooltip from './ChartTooltip'
-import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
-import { buildRadialData } from './radialBarChartHelpers'
-import { formatAxisValue } from '../../utils/chartUtils'
-import type { ChartProps } from '../../types'
+import ChartContainer from './ChartContainer.js'
+import ChartTooltip from './ChartTooltip.js'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates.js'
+import { buildRadialData } from './radialBarChartHelpers.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import type { ChartProps } from '../../types.js'
 
 const RadialBarChart = React.memo(function RadialBarChart({
   data,

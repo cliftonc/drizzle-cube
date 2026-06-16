@@ -6,9 +6,9 @@
  */
 
 import { createContext, useContext, useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
-import { createCubeClient, type CubeClient } from '../client/CubeClient'
-import type { CubeQueryOptions, CubeApiOptions } from '../types'
-import { BatchCoordinator } from '../client/BatchCoordinator'
+import { createCubeClient, type CubeClient } from '../client/CubeClient.js'
+import type { CubeQueryOptions, CubeApiOptions } from '../types.js'
+import { BatchCoordinator } from '../client/BatchCoordinator.js'
 
 interface CubeApiContextValue {
   cubeApi: CubeClient

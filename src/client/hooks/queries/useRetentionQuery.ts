@@ -7,18 +7,18 @@
 
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCubeApi } from '../../providers/CubeApiProvider'
-import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
-import { useDebounceQuery } from '../useDebounceQuery'
-import { stableStringify } from '../../shared/queryKey'
-import type { CubeQuery } from '../../types'
+import { useCubeApi } from '../../providers/CubeApiProvider.js'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
+import { useDebounceQuery } from '../useDebounceQuery.js'
+import { stableStringify } from '../../shared/queryKey.js'
+import type { CubeQuery } from '../../types.js'
 import type {
   ServerRetentionQuery,
   RetentionChartData,
   RetentionResultRow,
   RetentionSummary,
   RetentionGranularity,
-} from '../../types/retention'
+} from '../../types/retention.js'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300

@@ -6,7 +6,7 @@
  */
 
 // Re-export all utilities
-export * from './utils/index'
+export * from './utils/index.js'
 
 // Utility-specific types (if any exist in utils)
-export type {} from './types'
+export type {} from './types.js'

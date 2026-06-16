@@ -9,8 +9,8 @@
 import type {
   DrillOption,
   DrillPathEntry,
-} from '../types/drill'
-import type { ChartAxisConfig, CubeQuery } from '../types'
+} from '../types/drill.js'
+import type { ChartAxisConfig, CubeQuery } from '../types.js'
 
 /**
  * Find an existing drill-path level for the given option and compute the

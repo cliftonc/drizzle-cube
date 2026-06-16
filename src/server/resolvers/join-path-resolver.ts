@@ -6,8 +6,8 @@
  * Includes connectivity caching for performance optimization.
  */
 
-import type { Cube, CubeJoin } from '../types'
-import { resolveCubeReference, isolateSqlExpression } from '../cube-utils'
+import type { Cube, CubeJoin } from '../types/index.js'
+import { resolveCubeReference, isolateSqlExpression } from '../cube-utils.js'
 import { eq, and, sql, type SQL } from 'drizzle-orm'
 
 /**

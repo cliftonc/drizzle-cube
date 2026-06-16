@@ -1,6 +1,6 @@
 import { arc } from 'd3-shape'
-import { formatAxisValue } from '../../utils/chartUtils'
-import type { AxisFormatConfig, ThresholdBand } from '../../types'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import type { AxisFormatConfig, ThresholdBand } from '../../types.js'
 
 /**
  * Co-located helpers for GaugeChart: pure geometry/value math and threshold

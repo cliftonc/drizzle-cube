@@ -1,5 +1,5 @@
-import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { requiresMeasureAndDimension, valueFormatDisplayOption } from '../../charts/chartConfigHelpers'
+import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
+import { requiresMeasureAndDimension, valueFormatDisplayOption } from '../../charts/chartConfigHelpers.js'
 
 /**
  * Configuration for the radar chart type

@@ -6,9 +6,9 @@
  */
 
 import { memo } from 'react'
-import { getMeasureTypeIcon, getFieldTypeIcon } from '../../icons'
-import type { FieldDetailPanelProps } from './types'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getMeasureTypeIcon, getFieldTypeIcon } from '../../icons/index.js'
+import type { FieldDetailPanelProps } from './types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 function FieldDetailPanel({ field }: FieldDetailPanelProps) {
   const { t } = useTranslation()

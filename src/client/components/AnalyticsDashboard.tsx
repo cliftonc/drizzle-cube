@@ -5,11 +5,11 @@
  */
 
 import { useCallback, useMemo } from 'react'
-import DashboardGrid from './DashboardGrid'
-import { useCubeFeatures, useCubeMeta } from '../providers/CubeProvider'
-import { getColorPalette } from '../utils/colorPalettes'
-import { useDirtyStateTracking } from '../hooks/useDirtyStateTracking'
-import type { AnalyticsDashboardProps, DashboardConfig, DashboardFilter } from '../types'
+import DashboardGrid from './DashboardGrid.js'
+import { useCubeFeatures, useCubeMeta } from '../providers/CubeProvider.js'
+import { getColorPalette } from '../utils/colorPalettes.js'
+import { useDirtyStateTracking } from '../hooks/useDirtyStateTracking.js'
+import type { AnalyticsDashboardProps, DashboardConfig, DashboardFilter } from '../types.js'
 
 export default function AnalyticsDashboard({
   config,

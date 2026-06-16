@@ -9,7 +9,7 @@
  */
 
 import { useSyncExternalStore, useCallback } from 'react'
-import { getTheme, setTheme as setThemeUtil, watchThemeChanges, type Theme } from '../theme'
+import { getTheme, setTheme as setThemeUtil, watchThemeChanges, type Theme } from '../theme/index.js'
 
 // External store for theme state
 const themeStore = {

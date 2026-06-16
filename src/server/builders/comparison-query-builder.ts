@@ -15,10 +15,10 @@ import type {
   QueryResult,
   TimeGranularity,
   PeriodComparisonMetadata
-} from '../types'
-import { DateTimeBuilder } from './date-time-builder'
-import { hasComparisonMode } from '../query-modes'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
+} from '../types/index.js'
+import { DateTimeBuilder } from './date-time-builder.js'
+import { hasComparisonMode } from '../query-modes.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 
 /**
  * Normalized period range with start/end dates and metadata

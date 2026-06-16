@@ -14,9 +14,9 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { getIcon } from '../icons'
-import { COLOR_PALETTES } from '../utils/colorPalettes'
-import type { DashboardLayoutMode } from '../types'
+import { getIcon } from '../icons/index.js'
+import { COLOR_PALETTES } from '../utils/colorPalettes.js'
+import type { DashboardLayoutMode } from '../types.js'
 
 const EditIcon = getIcon('edit')
 const CheckIcon = getIcon('check')

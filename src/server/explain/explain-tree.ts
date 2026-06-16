@@ -6,7 +6,7 @@
  * centralises that stack management so individual parsers stay simple.
  */
 
-import type { ExplainOperation } from '../types/executor'
+import type { ExplainOperation } from '../types/executor.js'
 
 /** Stack entry tracking an operation and its indentation depth. */
 export interface ExplainStackEntry {

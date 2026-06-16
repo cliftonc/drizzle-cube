@@ -11,15 +11,15 @@
  * - Granularity = viewing periods
  */
 
-import type { ModeAdapter, ValidationResult } from './modeAdapter'
+import type { ModeAdapter, ValidationResult } from './modeAdapter.js'
 import type {
   AnalysisConfig,
   RetentionAnalysisConfig,
   AnalysisType,
   ChartConfig,
-} from '../types/analysisConfig'
-import type { Filter } from '../types'
-import type { FunnelBindingKey } from '../types/funnel'
+} from '../types/analysisConfig.js'
+import type { Filter } from '../types.js'
+import type { FunnelBindingKey } from '../types/funnel.js'
 import type {
   ServerRetentionQuery,
   RetentionSliceState,
@@ -27,8 +27,8 @@ import type {
   RetentionType,
   DateRange,
   RetentionBreakdownItem,
-} from '../types/retention'
-import { defaultRetentionSliceState, getDateRangeFromPreset, DEFAULT_DATE_RANGE_PRESET } from '../types/retention'
+} from '../types/retention.js'
+import { defaultRetentionSliceState, getDateRangeFromPreset, DEFAULT_DATE_RANGE_PRESET } from '../types/retention.js'
 
 // ============================================================================
 // Helper Functions

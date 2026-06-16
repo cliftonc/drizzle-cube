@@ -4,7 +4,7 @@
  * each unit small.
  */
 
-import type { CubeQuery, Filter, SimpleFilter, GroupFilter } from '../types'
+import type { CubeQuery, Filter, SimpleFilter, GroupFilter } from '../types.js'
 
 /**
  * Clean query object by removing empty arrays.

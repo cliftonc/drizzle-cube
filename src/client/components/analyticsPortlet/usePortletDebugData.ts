@@ -6,10 +6,10 @@
  */
 
 import { useEffect, useRef } from 'react'
-import type { AnalyticsPortletProps, ChartAxisConfig, ChartDisplayConfig, ChartType, CubeQuery, ServerFunnelQuery } from '../../types'
-import type { FlowChartData, ServerFlowQuery } from '../../types/flow'
-import type { RetentionChartData, ServerRetentionQuery } from '../../types/retention'
-import type { DrillPathEntry } from '../../types/drill'
+import type { AnalyticsPortletProps, ChartAxisConfig, ChartDisplayConfig, ChartType, CubeQuery, ServerFunnelQuery } from '../../types.js'
+import type { FlowChartData, ServerFlowQuery } from '../../types/flow.js'
+import type { RetentionChartData, ServerRetentionQuery } from '../../types/retention.js'
+import type { DrillPathEntry } from '../../types/drill.js'
 
 type DebugEntry = Parameters<NonNullable<AnalyticsPortletProps['onDebugDataReady']>>[0]
 type CacheInfo = DebugEntry['cacheInfo']

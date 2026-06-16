@@ -1,5 +1,5 @@
 import React from 'react'
-import { getMeasureTypeIcon } from '../icons'
+import { getMeasureTypeIcon } from '../icons/index.js'
 
 /**
  * Get the appropriate icon component for a given measure type

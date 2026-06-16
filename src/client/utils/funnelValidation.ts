@@ -7,15 +7,15 @@
  * - Cross-cube compatibility checks
  */
 
-import type { CubeQuery, CubeMeta } from '../types'
+import type { CubeQuery, CubeMeta } from '../types.js'
 import type {
   FunnelBindingKey,
   FunnelConfig,
   FunnelStep,
   FunnelValidationError,
   FunnelValidationResult,
-} from '../types/funnel'
-import { getCubeNameFromQuery } from './funnelExecution'
+} from '../types/funnel.js'
+import { getCubeNameFromQuery } from './funnelExecution.js'
 
 /**
  * Validate that a binding key dimension exists in the given cubes

@@ -6,9 +6,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useDrillInteraction } from '../../hooks/useDrillInteraction'
-import { useCubeMeta } from '../../providers/CubeMetaContext'
-import type { ChartAxisConfig, CubeQuery, DashboardFilter, DashboardFilterMapping } from '../../types'
+import { useDrillInteraction } from '../../hooks/useDrillInteraction.js'
+import { useCubeMeta } from '../../providers/CubeMetaContext.js'
+import type { ChartAxisConfig, CubeQuery, DashboardFilter, DashboardFilterMapping } from '../../types.js'
 
 export interface UsePortletDrillStateParams {
   queryObject: CubeQuery | null

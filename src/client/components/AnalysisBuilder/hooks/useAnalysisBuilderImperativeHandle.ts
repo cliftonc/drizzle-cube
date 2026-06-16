@@ -9,8 +9,8 @@
 import { useImperativeHandle } from 'react'
 import type { Ref } from 'react'
 import type { StoreApi } from 'zustand'
-import type { AnalysisBuilderRef } from '../types'
-import type { AnalysisBuilderStore } from '../../../stores/analysisBuilderStore'
+import type { AnalysisBuilderRef } from '../types.js'
+import type { AnalysisBuilderStore } from '../../../stores/analysisBuilderStore.js'
 
 interface ImperativeHandleDeps {
   getQueryConfig: AnalysisBuilderRef['getQueryConfig']

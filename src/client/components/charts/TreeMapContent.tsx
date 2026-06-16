@@ -1,9 +1,9 @@
 import React from 'react'
-import { CHART_COLORS } from '../../utils/chartConstants'
-import { formatAxisValue } from '../../utils/chartUtils'
-import type { AxisFormatConfig, ChartAxisConfig, ColorPalette, CubeQuery } from '../../types'
-import type { ChartDataPointClickEvent } from '../../types/drill'
-import type { TreemapDatum } from './TreeMapChart.helpers'
+import { CHART_COLORS } from '../../utils/chartConstants.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import type { AxisFormatConfig, ChartAxisConfig, ColorPalette, CubeQuery } from '../../types.js'
+import type { ChartDataPointClickEvent } from '../../types/drill.js'
+import type { TreemapDatum } from './TreeMapChart.helpers.js'
 
 interface TreeMapContentOptions {
   treemapData: TreemapDatum[]

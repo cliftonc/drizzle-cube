@@ -5,11 +5,11 @@
  * change.
  */
 
-import type { FlowChartData } from '../../types/flow'
-import type { RetentionChartData } from '../../types/retention'
-import type { CubeQuery, MultiQueryConfig, ServerFunnelQuery } from '../../types'
-import type { ServerFlowQuery } from '../../types/flow'
-import type { ServerRetentionQuery } from '../../types/retention'
+import type { FlowChartData } from '../../types/flow.js'
+import type { RetentionChartData } from '../../types/retention.js'
+import type { CubeQuery, MultiQueryConfig, ServerFunnelQuery } from '../../types.js'
+import type { ServerFlowQuery } from '../../types/flow.js'
+import type { ServerRetentionQuery } from '../../types/retention.js'
 
 export type PortletRenderKind =
   | 'config-required'

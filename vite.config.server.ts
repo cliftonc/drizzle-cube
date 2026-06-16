@@ -5,10 +5,14 @@ import dts from 'vite-plugin-dts'
 export default defineConfig({
   plugins: [
     dts({
+      // Emit one .d.ts per source file (NOT a bundled rollup) so declarations
+      // resolve under moduleResolution: nodenext/node16. entryRoot keeps the
+      // output flat at dist/server/* matching package.json#exports. outDir
+      // defaults to vite's build.outDir (dist/server). See #877.
       insertTypesEntry: true,
-      rollupTypes: true,
       include: ['src/server/**/*.ts'],
-      tsconfigPath: './tsconfig.server.json'
+      tsconfigPath: './tsconfig.server.json',
+      entryRoot: 'src/server'
     })
   ],
   build: {

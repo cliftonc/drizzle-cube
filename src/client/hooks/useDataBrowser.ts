@@ -8,10 +8,10 @@
 
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useDataBrowserStore } from '../stores/dataBrowserStore'
-import { useCubeMeta } from '../providers/CubeProvider'
-import { useCubeLoadQuery } from './queries/useCubeLoadQuery'
-import type { CubeQuery } from '../types'
+import { useDataBrowserStore } from '../stores/dataBrowserStore.js'
+import { useCubeMeta } from '../providers/CubeProvider.js'
+import { useCubeLoadQuery } from './queries/useCubeLoadQuery.js'
+import type { CubeQuery } from '../types.js'
 
 /**
  * Determine whether a field is a dimension on a given cube from metadata

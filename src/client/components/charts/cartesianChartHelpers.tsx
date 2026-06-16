@@ -1,15 +1,15 @@
 import React from 'react'
 import { Line, Area } from 'recharts'
-import { formatTimeValue, getFieldGranularity, transformChartDataWithSeries } from '../../utils/chartUtils'
-import { CHART_COLORS } from '../../utils/chartConstants'
+import { formatTimeValue, getFieldGranularity, transformChartDataWithSeries } from '../../utils/chartUtils.js'
+import { CHART_COLORS } from '../../utils/chartConstants.js'
 import {
   isComparisonData,
   getPeriodLabels,
   transformForOverlayMode,
   isPriorPeriodSeries,
   getPriorPeriodStrokeDashArray
-} from '../../utils/comparisonUtils'
-import type { ColorPalette } from '../../types'
+} from '../../utils/comparisonUtils.js'
+import type { ColorPalette } from '../../types.js'
 
 /**
  * Co-located helpers shared by the Cartesian time-series charts (Line, Area).

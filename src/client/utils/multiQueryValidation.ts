@@ -5,7 +5,7 @@
  * These help detect issues like measure collisions and granularity mismatches.
  */
 
-import type { CubeQuery, QueryMergeStrategy } from '../types'
+import type { CubeQuery, QueryMergeStrategy } from '../types.js'
 
 // TimeDimension type extracted from CubeQuery
 type TimeDimension = NonNullable<CubeQuery['timeDimensions']>[number]

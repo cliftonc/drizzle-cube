@@ -21,14 +21,14 @@ import type {
   PrimaryCubeAnalysis,
   JoinPathAnalysis,
   QueryWarning
-} from '../types'
+} from '../types/index.js'
 
-import { ResolverCache, analyzeCubeUsage } from './planner-utils'
-import { JoinPlanner } from './join-planner'
-import { CTEPlanner } from './cte-planner'
-import { FilterPropagation } from './filter-propagation'
-import { PlanAnalysisReporter } from './plan-analysis-reporter'
-import type { JoinRef } from './types'
+import { ResolverCache, analyzeCubeUsage } from './planner-utils.js'
+import { JoinPlanner } from './join-planner.js'
+import { CTEPlanner } from './cte-planner.js'
+import { FilterPropagation } from './filter-propagation.js'
+import { PlanAnalysisReporter } from './plan-analysis-reporter.js'
+import type { JoinRef } from './types.js'
 
 export class LogicalPlanner {
   // Shared resolver cache, reused across all planning phases for a cubes map.

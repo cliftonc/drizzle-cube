@@ -9,7 +9,7 @@ import type {
   DashboardConfig,
   DashboardGridSettings,
   RowLayoutColumn
-} from '../../types'
+} from '../../types.js'
 
 export const DEFAULT_GRID_SETTINGS: DashboardGridSettings = {
   cols: 12,

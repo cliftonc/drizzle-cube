@@ -4,9 +4,9 @@
  * Pure data-shaping + display-option resolution extracted from the component.
  * No behaviour change — mirrors the original inline logic exactly.
  */
-import type { ChartDisplayConfig } from '../../types'
-import type { FunnelChartData } from '../../types/funnel'
-import { formatDuration } from '../../utils/funnelExecution'
+import type { ChartDisplayConfig } from '../../types.js'
+import type { FunnelChartData } from '../../types/funnel.js'
+import { formatDuration } from '../../utils/funnelExecution.js'
 
 /** Check if data is already in funnel data format. */
 export function isFunnelData(data: unknown[]): data is FunnelChartData[] {

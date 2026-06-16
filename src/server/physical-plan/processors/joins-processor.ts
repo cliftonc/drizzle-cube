@@ -10,14 +10,14 @@ import type {
   JoinCubePlanEntry,
   PhysicalQueryPlan,
   QueryContext
-} from '../../types'
-import { applyJoinByType } from './shared'
+} from '../../types/index.js'
+import { applyJoinByType } from './shared.js'
 import type {
   CTEBuildState,
   JoinBuildState,
   PhysicalBuildDependencies,
   SelectionMap
-} from './shared'
+} from './shared.js'
 
 /**
  * Applies CTEs and JOIN graph construction to the query builder.

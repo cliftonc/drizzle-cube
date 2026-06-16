@@ -6,7 +6,7 @@
  * for explicit clears (saves empty state immediately, cancelling pending saves).
  */
 import { useCallback, useEffect, useRef } from 'react'
-import type { NotebookConfig } from '../../stores/notebookStore'
+import type { NotebookConfig } from '../../stores/notebookStore.js'
 
 interface UseNotebookAutosaveParams {
   blockCount: number

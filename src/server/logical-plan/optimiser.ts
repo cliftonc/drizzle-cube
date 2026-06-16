@@ -6,7 +6,7 @@
  * Future passes: pre-aggregation matching, plan simplification, etc.
  */
 
-import type { LogicalNode } from './types'
+import type { LogicalNode } from './types.js'
 
 /** Database engine the optimiser is targeting (all 7 supported engines). */
 export type OptimiserEngineType =

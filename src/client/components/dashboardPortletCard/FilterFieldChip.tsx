@@ -4,8 +4,8 @@
  */
 
 import { type CSSProperties, type ComponentType } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import type { EffectiveFilterField } from './filterField'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import type { EffectiveFilterField } from './filterField.js'
 
 interface FilterFieldChipProps {
   field: EffectiveFilterField

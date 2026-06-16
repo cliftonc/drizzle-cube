@@ -3,8 +3,8 @@
  * Extracted from DashboardPortletCard's memo.
  */
 
-import type { DashboardFilter, PortletConfig } from '../../types'
-import { getMappingMemberOverride } from '../../utils/filterUtils'
+import type { DashboardFilter, PortletConfig } from '../../types.js'
+import { getMappingMemberOverride } from '../../utils/filterUtils.js'
 
 export interface EffectiveFilterField {
   field: string

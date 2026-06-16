@@ -11,7 +11,7 @@ import type {
   MeasureAnnotation,
   DimensionAnnotation,
   TimeDimensionAnnotation
-} from '../types'
+} from '../types/index.js'
 
 /**
  * Generate annotations for UI metadata - unified approach.

@@ -6,7 +6,7 @@
  */
 
 import React, { useMemo } from 'react'
-import { DATE_PRESETS, calculateDateRange, formatDateRangeDisplay } from '../shared/utils'
+import { DATE_PRESETS, calculateDateRange, formatDateRangeDisplay } from '../shared/utils.js'
 
 interface DatePresetChipsProps {
   activePreset: string | null

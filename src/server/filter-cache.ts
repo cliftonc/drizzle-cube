@@ -9,7 +9,7 @@
  */
 
 import type { SQL } from 'drizzle-orm'
-import type { Filter, FilterCondition, FilterCache } from './types'
+import type { Filter, FilterCondition, FilterCache } from './types/index.js'
 
 /**
  * Generates a deterministic cache key for a filter

@@ -6,11 +6,11 @@
  * the previous inline JSX — pure extraction to keep the main render flat.
  */
 
-import { getIcon } from '../../icons'
-import type { MetaResponse } from '../../shared/types'
-import type { SimpleFilter, FilterOperator } from '../../types'
-import { useTranslation } from '../../hooks/useTranslation'
-import { getFieldTitle } from '../AnalysisBuilder/utils'
+import { getIcon } from '../../icons/index.js'
+import type { MetaResponse } from '../../shared/types.js'
+import type { SimpleFilter, FilterOperator } from '../../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { getFieldTitle } from '../AnalysisBuilder/utils/index.js'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const DimensionIcon = getIcon('dimension')

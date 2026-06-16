@@ -9,10 +9,10 @@
  */
 
 import type { StateCreator } from 'zustand'
-import type { AnalysisBuilderStore } from '../analysisBuilderStore'
-import type { FunnelStepState, FunnelBindingKey, FunnelConfig } from '../../types'
-import type { ServerFunnelQuery } from '../../types/funnel'
-import { generateId } from '../../components/AnalysisBuilder/utils'
+import type { AnalysisBuilderStore } from '../analysisBuilderStore.js'
+import type { FunnelStepState, FunnelBindingKey, FunnelConfig } from '../../types.js'
+import type { ServerFunnelQuery } from '../../types/funnel.js'
+import { generateId } from '../../components/AnalysisBuilder/utils/index.js'
 
 // ============================================================================
 // Types

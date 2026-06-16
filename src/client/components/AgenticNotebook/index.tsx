@@ -21,15 +21,15 @@ import {
   useNotebookStore,
   type NotebookBlock,
   type NotebookConfig,
-} from '../../stores/notebookStore'
-import NotebookCanvas from './NotebookCanvas'
-import AgentChatPanel from './AgentChatPanel'
-import { useNotebookAutosave } from './useNotebookAutosave'
-import { useNotebookLayout } from '../../hooks/useNotebookLayout'
-import { getChartTypeIcon, getIcon } from '../../icons/registry'
-import type { ColorPalette } from '../../types'
+} from '../../stores/notebookStore.js'
+import NotebookCanvas from './NotebookCanvas.js'
+import AgentChatPanel from './AgentChatPanel.js'
+import { useNotebookAutosave } from './useNotebookAutosave.js'
+import { useNotebookLayout } from '../../hooks/useNotebookLayout.js'
+import { getChartTypeIcon, getIcon } from '../../icons/registry.js'
+import type { ColorPalette } from '../../types.js'
 import type { ReactNode } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 export interface AgenticNotebookProps {
   /** Initial config to restore (saved notebooks) */

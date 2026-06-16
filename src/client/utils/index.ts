@@ -2,22 +2,22 @@
  * Utility functions for drizzle-cube client
  */
 
-import type { PortletConfig, DashboardConfig } from '../types'
+import type { PortletConfig, DashboardConfig } from '../types.js'
 
 // Re-export chart utilities
-export * from './chartUtils'
-export * from './chartConstants'
-export * from './measureIcons'
-export * from './periodUtils'
-export * from './pivotUtils'
-export * from './syntaxHighlighting'
-export * from './comparisonUtils'
+export * from './chartUtils.js'
+export * from './chartConstants.js'
+export * from './measureIcons.js'
+export * from './periodUtils.js'
+export * from './pivotUtils.js'
+export * from './syntaxHighlighting.js'
+export * from './comparisonUtils.js'
 
 // Thumbnail utilities (requires html2canvas peer dependency)
-export { captureThumbnail, isThumbnailCaptureAvailable } from './thumbnail'
+export { captureThumbnail, isThumbnailCaptureAvailable } from './thumbnail.js'
 
 // XLSX export utilities (requires exceljs peer dependency)
-export { exportPortletToXlsx, isExportAvailable } from './exportXlsx'
+export { exportPortletToXlsx, isExportAvailable } from './exportXlsx.js'
 
 /**
  * Create a dashboard layout from portlet configurations

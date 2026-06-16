@@ -4,8 +4,8 @@
  * Pure decisions about stacking and bar colouring extracted from the component
  * render body. No behaviour change — these mirror the original inline logic.
  */
-import { isValidNumericValue } from '../../utils/chartUtils'
-import type { ChartDisplayConfig } from '../../types'
+import { isValidNumericValue } from '../../utils/chartUtils.js'
+import type { ChartDisplayConfig } from '../../types.js'
 
 export interface StackMode {
   shouldStack: boolean

@@ -12,11 +12,11 @@
  */
 
 import React, { useState, useCallback } from 'react'
-import FilterEditModal from './DashboardFilters/FilterEditModal'
-import EditModeFilterList from './DashboardFilters/EditModeFilterList'
-import CompactFilterBar from './DashboardFilters/CompactFilterBar'
-import type { DashboardFilter, CubeMeta, DashboardConfig } from '../types'
-import type { MetaResponse } from '../shared/types'
+import FilterEditModal from './DashboardFilters/FilterEditModal.js'
+import EditModeFilterList from './DashboardFilters/EditModeFilterList.js'
+import CompactFilterBar from './DashboardFilters/CompactFilterBar.js'
+import type { DashboardFilter, CubeMeta, DashboardConfig } from '../types.js'
+import type { MetaResponse } from '../shared/types.js'
 
 interface DashboardFilterPanelProps {
   dashboardFilters: DashboardFilter[]

@@ -8,7 +8,7 @@
  * routing, validation, and dry-run reporting consistent.
  */
 
-import type { SemanticQuery } from './types'
+import type { SemanticQuery } from './types/index.js'
 
 export type QueryMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
 

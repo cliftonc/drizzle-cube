@@ -1,19 +1,19 @@
 import React, { useState } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { Treemap } from 'recharts'
-import ChartContainer from './ChartContainer'
-import ChartTooltip from './ChartTooltip'
-import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
-import { formatAxisValue } from '../../utils/chartUtils'
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
+import ChartContainer from './ChartContainer.js'
+import ChartTooltip from './ChartTooltip.js'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
 import {
   buildTreemapData,
   buildTreemapLegend,
   adjustHeightForLegend
-} from './TreeMapChart.helpers'
-import { makeTreeMapContent } from './TreeMapContent'
-import { TreeMapLegend } from './TreeMapLegend'
-import type { ChartProps } from '../../types'
+} from './TreeMapChart.helpers.js'
+import { makeTreeMapContent } from './TreeMapContent.js'
+import { TreeMapLegend } from './TreeMapLegend.js'
+import type { ChartProps } from '../../types.js'
 
 const TreeMapChart = React.memo(function TreeMapChart({
   data,

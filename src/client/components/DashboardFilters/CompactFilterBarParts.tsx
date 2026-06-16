@@ -7,13 +7,13 @@
  */
 
 import type { RefObject } from 'react'
-import { getIcon } from '../../icons'
-import DatePresetChips from './DatePresetChips'
-import CustomDateDropdown from './CustomDateDropdown'
-import XTDDropdown from './XTDDropdown'
-import FilterChip from './FilterChip'
-import type { DashboardFilter, CubeMeta } from '../../types'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import DatePresetChips from './DatePresetChips.js'
+import CustomDateDropdown from './CustomDateDropdown.js'
+import XTDDropdown from './XTDDropdown.js'
+import FilterChip from './FilterChip.js'
+import type { DashboardFilter, CubeMeta } from '../../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const AddIcon = getIcon('add')
 const CalendarIcon = getIcon('timeDimension')

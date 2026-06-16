@@ -12,7 +12,7 @@ import type {
   QueryContext,
   MultiCubeQueryContext,
   SqlExpression
-} from './types'
+} from './types/index.js'
 
 /**
  * Resolve cube reference (handles direct, lazy, and string name references)

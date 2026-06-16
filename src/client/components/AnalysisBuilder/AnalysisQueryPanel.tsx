@@ -6,10 +6,10 @@
  */
 
 import React, { memo, useCallback, useMemo } from 'react'
-import type { AnalysisQueryPanelProps, BreakdownItem } from './types'
-import type { MetaField } from '../../shared/types'
-import type { CubeMeta } from '../../types'
-import AnalysisTypeSelector from './AnalysisTypeSelector'
+import type { AnalysisQueryPanelProps, BreakdownItem } from './types.js'
+import type { MetaField } from '../../shared/types.js'
+import type { CubeMeta } from '../../types.js'
+import AnalysisTypeSelector from './AnalysisTypeSelector.js'
 import {
   AnalysisModeContent,
   shouldRenderModeContent,
@@ -18,8 +18,8 @@ import {
   MergeStrategyControls,
   AdapterValidationBanner,
   MultiQueryValidationBanner,
-} from './AnalysisQueryPanelParts'
-import { useTranslation } from '../../hooks/useTranslation'
+} from './AnalysisQueryPanelParts.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 /**
  * AnalysisQueryPanel displays the right-side query builder with:

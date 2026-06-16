@@ -1,12 +1,12 @@
 import type { SQL } from 'drizzle-orm'
 
-import type { DatabaseAdapter } from '../../adapters/base-adapter'
-import type { DrizzleSqlBuilder } from '../drizzle-sql-builder'
-import type { CTEBuilder } from '../../builders/cte-builder'
+import type { DatabaseAdapter } from '../../adapters/base-adapter.js'
+import type { DrizzleSqlBuilder } from '../drizzle-sql-builder.js'
+import type { CTEBuilder } from '../../builders/cte-builder.js'
 import type {
   Cube,
   PhysicalQueryPlan
-} from '../../types'
+} from '../../types/index.js'
 
 export interface PhysicalBuildDependencies {
   queryBuilder: DrizzleSqlBuilder

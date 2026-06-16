@@ -12,8 +12,8 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCubeApi } from '../../providers/CubeApiProvider'
-import type { CubeMeta, FieldLabelMap } from '../../types'
+import { useCubeApi } from '../../providers/CubeApiProvider.js'
+import type { CubeMeta, FieldLabelMap } from '../../types.js'
 
 // Query key for cube metadata
 export const CUBE_META_QUERY_KEY = ['cube', 'meta'] as const

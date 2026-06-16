@@ -3,7 +3,7 @@
  */
 
 import React, { useCallback, useRef, useEffect } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface ChatInputProps {
   value: string

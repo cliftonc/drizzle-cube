@@ -4,8 +4,8 @@ import type {
   PhysicalQueryPlan,
   QueryContext,
   SemanticQuery
-} from '../../types'
-import type { PhysicalBuildDependencies, CTEBuildState } from './shared'
+} from '../../types/index.js'
+import type { PhysicalBuildDependencies, CTEBuildState } from './shared.js'
 
 /**
  * Builds pre-aggregation CTE state used by selection/join/predicate processors.

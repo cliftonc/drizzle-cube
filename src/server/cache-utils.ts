@@ -3,7 +3,7 @@
  * Provides cache key generation and normalization functions
  */
 
-import type { SemanticQuery, Filter, TimeDimension, SecurityContext } from './types'
+import type { SemanticQuery, Filter, TimeDimension, SecurityContext } from './types/index.js'
 
 /**
  * Configuration for cache key generation

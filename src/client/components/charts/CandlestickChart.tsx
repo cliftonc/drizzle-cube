@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import { formatAxisValue } from '../../utils/chartUtils'
-import type { ChartProps } from '../../types'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import type { ChartProps } from '../../types.js'
 
 const BULL_COLOR_DEFAULT = '#22c55e'
 const BEAR_COLOR_DEFAULT = '#ef4444'

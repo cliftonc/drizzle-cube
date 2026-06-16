@@ -7,13 +7,13 @@
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
-import type { DashboardFilter, SimpleFilter } from '../../types'
+import type { DashboardFilter, SimpleFilter } from '../../types.js'
 import {
   detectPresetFromDateRange,
   calculateDateRange,
   formatDateRangeDisplay,
   XTD_OPTIONS
-} from '../shared/utils'
+} from '../shared/utils.js'
 
 export function useCompactFilterBar(
   dashboardFilters: DashboardFilter[],

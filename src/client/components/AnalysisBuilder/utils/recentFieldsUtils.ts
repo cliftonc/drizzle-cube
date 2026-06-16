@@ -4,9 +4,9 @@
  * Functions for tracking and retrieving recently used fields.
  */
 
-import type { FieldOption, RecentFieldsStorage } from '../types'
-import type { MetaResponse } from '../../../shared/types'
-import { schemaToFieldOptions } from './fieldUtils'
+import type { FieldOption, RecentFieldsStorage } from '../types.js'
+import type { MetaResponse } from '../../../shared/types.js'
+import { schemaToFieldOptions } from './fieldUtils.js'
 
 const RECENT_FIELDS_KEY = 'drizzle-cube-recent-fields'
 const MAX_RECENT_FIELDS = 10

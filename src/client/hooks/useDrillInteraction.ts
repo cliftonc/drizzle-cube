@@ -10,19 +10,19 @@ import type {
   DrillPathEntry,
   DrillInteraction,
   UseDrillInteractionOptions
-} from '../types/drill'
-import type { ChartAxisConfig, CubeQuery } from '../types'
+} from '../types/drill.js'
+import type { ChartAxisConfig, CubeQuery } from '../types.js'
 import {
   buildDrillOptions,
   buildDrillQuery,
   getMeasureDrillMembers
-} from '../utils/drillQueryBuilder'
-import { mappingIncludesFilter } from '../utils/filterUtils'
+} from '../utils/drillQueryBuilder.js'
+import { mappingIncludesFilter } from '../utils/filterUtils.js'
 import {
   findNavigateBackToExistingLevel,
   isDrillBackToRootGranularity,
   computeOriginalGranularity
-} from './drillNavigation'
+} from './drillNavigation.js'
 
 /**
  * Hook for managing drill-down interaction

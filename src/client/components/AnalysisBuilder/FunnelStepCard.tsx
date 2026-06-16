@@ -11,12 +11,12 @@
  */
 
 import React, { memo, useCallback, useState, useRef, useEffect, useMemo } from 'react'
-import type { CubeMeta, Filter, FunnelStepState } from '../../types'
-import type { MetaResponse } from '../../shared/types'
-import { getIcon } from '../../icons'
-import AnalysisFilterSection from './AnalysisFilterSection'
-import { getRelatedCubesSchema } from './utils/fieldUtils'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { CubeMeta, Filter, FunnelStepState } from '../../types.js'
+import type { MetaResponse } from '../../shared/types.js'
+import { getIcon } from '../../icons/index.js'
+import AnalysisFilterSection from './AnalysisFilterSection.js'
+import { getRelatedCubesSchema } from './utils/fieldUtils.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const DragHandleIcon = getIcon('menu')
 const CloseIcon = getIcon('close')

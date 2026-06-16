@@ -1,6 +1,6 @@
 import { useContext, useCallback } from 'react'
-import { I18nContext } from '../providers/I18nProvider'
-import type { TranslationKey, TranslationParams } from '../../i18n/types'
+import { I18nContext } from '../providers/I18nProvider.js'
+import type { TranslationKey, TranslationParams } from '../../i18n/types.js'
 
 /**
  * Hook to access translations within React components.

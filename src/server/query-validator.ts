@@ -7,10 +7,10 @@
  * circular dependency).
  */
 
-import type { SemanticQuery, Cube } from './types'
-import { resolveCubeReference } from './cube-utils'
-import { getActiveQueryModes } from './query-modes'
-import { t } from '../i18n/runtime'
+import type { SemanticQuery, Cube } from './types/index.js'
+import { resolveCubeReference } from './cube-utils.js'
+import { getActiveQueryModes } from './query-modes.js'
+import { t } from '../i18n/runtime.js'
 
 type ValidationMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
 

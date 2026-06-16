@@ -31,32 +31,32 @@ import type {
   FunnelConfig,
   AnalysisType,
   FunnelStepState,
-} from '../types'
-import type { ServerFunnelQuery } from '../types/funnel'
-import type { ServerFlowQuery, FlowStartingStep } from '../types/flow'
+} from '../types.js'
+import type { ServerFunnelQuery } from '../types/funnel.js'
+import type { ServerFlowQuery, FlowStartingStep } from '../types/flow.js'
 import type {
   ServerRetentionQuery,
   RetentionGranularity,
   RetentionType,
   DateRange,
   RetentionBreakdownItem,
-} from '../types/retention'
+} from '../types/retention.js'
 import type {
   AnalysisBuilderState,
   QueryPanelTab,
   AIState,
-} from '../components/AnalysisBuilder/types'
+} from '../components/AnalysisBuilder/types.js'
 import {
   createInitialState,
   STORAGE_KEY,
-} from '../components/AnalysisBuilder/utils'
-import { adapterRegistry } from '../adapters/adapterRegistry'
-import { queryModeAdapter } from '../adapters/queryModeAdapter'
-import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
-import { flowModeAdapter } from '../adapters/flowModeAdapter'
-import { retentionModeAdapter } from '../adapters/retentionModeAdapter'
-import type { AnalysisConfig, ChartConfig, AnalysisWorkspace } from '../types/analysisConfig'
-import { isValidAnalysisConfig, isValidAnalysisWorkspace } from '../types/analysisConfig'
+} from '../components/AnalysisBuilder/utils/index.js'
+import { adapterRegistry } from '../adapters/adapterRegistry.js'
+import { queryModeAdapter } from '../adapters/queryModeAdapter.js'
+import { funnelModeAdapter } from '../adapters/funnelModeAdapter.js'
+import { flowModeAdapter } from '../adapters/flowModeAdapter.js'
+import { retentionModeAdapter } from '../adapters/retentionModeAdapter.js'
+import type { AnalysisConfig, ChartConfig, AnalysisWorkspace } from '../types/analysisConfig.js'
+import { isValidAnalysisConfig, isValidAnalysisWorkspace } from '../types/analysisConfig.js'
 import {
   createCoreSlice,
   createQuerySlice,
@@ -69,8 +69,8 @@ import {
   createInitialFunnelState,
   createInitialFlowState,
   createInitialRetentionState,
-} from './slices'
-import { optionsToAnalysisConfig } from './optionsToAnalysisConfig'
+} from './slices/index.js'
+import { optionsToAnalysisConfig } from './optionsToAnalysisConfig.js'
 
 // Note: Adapters are registered in coreSlice.ts (single registration point)
 
@@ -520,7 +520,7 @@ export interface AnalysisBuilderStoreActions {
    * Validate current state using the adapter for the current analysis type.
    * Returns validation errors and warnings that can be displayed to the user.
    */
-  getValidation: () => import('../adapters/modeAdapter').ValidationResult
+  getValidation: () => import('../adapters/modeAdapter.js').ValidationResult
 }
 
 /**

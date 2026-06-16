@@ -7,15 +7,15 @@
  */
 
 import { useState, useCallback, useRef, DragEvent } from 'react'
-import { getIcon } from '../../icons'
-import SectionHeading from './SectionHeading'
-import type { Filter, SimpleFilter, GroupFilter } from '../../types'
-import type { MetaResponse, MetaField } from '../../shared/types'
-import FieldSearchModal from './FieldSearchModal'
-import AnalysisFilterItem from './AnalysisFilterItem'
-import AnalysisFilterGroup from './AnalysisFilterGroup'
-import { convertDateRangeTypeToValue } from '../../shared/utils'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import SectionHeading from './SectionHeading.js'
+import type { Filter, SimpleFilter, GroupFilter } from '../../types.js'
+import type { MetaResponse, MetaField } from '../../shared/types.js'
+import FieldSearchModal from './FieldSearchModal.js'
+import AnalysisFilterItem from './AnalysisFilterItem.js'
+import AnalysisFilterGroup from './AnalysisFilterGroup.js'
+import { convertDateRangeTypeToValue } from '../../shared/utils.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const AddIcon = getIcon('add')
 

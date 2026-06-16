@@ -8,9 +8,9 @@
  */
 
 import type { Context } from 'hono'
-import type { SemanticLayerCompiler } from '../../server/compiler'
-import type { SecurityContext } from '../../server'
-import type { AgentConfig, AgentHistoryMessage } from '../../server/agent/types'
+import type { SemanticLayerCompiler } from '../../server/compiler.js'
+import type { SecurityContext } from '../../server/index.js'
+import type { AgentConfig, AgentHistoryMessage } from '../../server/agent/types.js'
 
 interface AgentChatBody {
   message: string
@@ -88,7 +88,7 @@ export async function handleAgentChatRequest(
   extractSecurityContext: (c: Context) => Promise<SecurityContext>
 ): Promise<Response> {
   try {
-    const { handleAgentChat } = await import('../../server/agent/handler')
+    const { handleAgentChat } = await import('../../server/agent/handler.js')
 
     const body = await c.req.json()
     const { message, sessionId, history } = body as AgentChatBody

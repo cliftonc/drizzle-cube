@@ -6,8 +6,8 @@
  */
 
 import { useCallback, KeyboardEvent } from 'react'
-import { getIcon } from '../../icons'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const SparklesIcon = getIcon('sparkles')
 const ErrorIcon = getIcon('error')

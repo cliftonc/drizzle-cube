@@ -4,8 +4,8 @@
  * Pure colour math, field resolution, data transformation and nivo config
  * builders extracted from the component. No behaviour change.
  */
-import { formatTimeValue, formatAxisValue } from '../../utils/chartUtils'
-import type { AxisFormatConfig, ChartDisplayConfig } from '../../types'
+import { formatTimeValue, formatAxisValue } from '../../utils/chartUtils.js'
+import type { AxisFormatConfig, ChartDisplayConfig } from '../../types.js'
 
 /**
  * Maximum dimensions for heatmap to prevent browser lockup. 50x50 = 2500 cells.

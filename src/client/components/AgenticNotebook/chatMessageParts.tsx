@@ -5,8 +5,8 @@
  * chat bubble (markdown body, error row, tool-call list, tool-call indicator).
  */
 import React, { useState } from 'react'
-import type { ChatMessage as ChatMessageType, ToolCallRecord } from '../../stores/notebookStore'
-import LoadingIndicator from '../LoadingIndicator'
+import type { ChatMessage as ChatMessageType, ToolCallRecord } from '../../stores/notebookStore.js'
+import LoadingIndicator from '../LoadingIndicator.js'
 
 /** Simple inline markdown parser for bold, italic, and code in chat text */
 export function renderInlineMarkdown(text: string): React.ReactNode[] {

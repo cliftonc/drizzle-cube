@@ -11,7 +11,7 @@
  */
 
 import type { StateCreator } from 'zustand'
-import type { AnalysisBuilderStore } from '../analysisBuilderStore'
+import type { AnalysisBuilderStore } from '../analysisBuilderStore.js'
 // Import from barrel export to ensure adapters are auto-registered via initializeAdapters()
 import {
   adapterRegistry,
@@ -19,7 +19,7 @@ import {
   funnelModeAdapter,
   flowModeAdapter,
   retentionModeAdapter,
-} from '../../adapters'
+} from '../../adapters/index.js'
 import type {
   AnalysisConfig,
   AnalysisType,
@@ -29,8 +29,8 @@ import type {
   FunnelAnalysisConfig,
   FlowAnalysisConfig,
   RetentionAnalysisConfig,
-} from '../../types/analysisConfig'
-import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../types'
+} from '../../types/analysisConfig.js'
+import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../types.js'
 
 // ============================================================================
 // Types

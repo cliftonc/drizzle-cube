@@ -3,12 +3,12 @@
  * DashboardContext; rendered only when the top toolbar variant is active.
  */
 
-import { getIcon } from '../../icons'
-import { useTranslation } from '../../hooks/useTranslation'
-import ColorPaletteSelector from '../ColorPaletteSelector'
-import { TextIcon } from './dashboardGridUtils'
-import { useDashboardContext } from './DashboardContext'
-import LayoutModeToggle from './LayoutModeToggle'
+import { getIcon } from '../../icons/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import ColorPaletteSelector from '../ColorPaletteSelector.js'
+import { TextIcon } from './dashboardGridUtils.js'
+import { useDashboardContext } from './DashboardContext.js'
+import LayoutModeToggle from './LayoutModeToggle.js'
 
 const EditIcon = getIcon('edit')
 const CheckIcon = getIcon('check')

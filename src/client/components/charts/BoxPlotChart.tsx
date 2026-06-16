@@ -1,8 +1,8 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import { CHART_COLORS } from '../../utils/chartConstants'
-import { formatAxisValue } from '../../utils/chartUtils'
-import type { ChartProps } from '../../types'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { CHART_COLORS } from '../../utils/chartConstants.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import type { ChartProps } from '../../types.js'
 
 const MAX_BOXES = 50
 

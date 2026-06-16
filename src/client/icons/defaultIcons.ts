@@ -72,7 +72,7 @@ import chartRadar from '@iconify-icons/tabler/chart-radar'
 import radar2 from '@iconify-icons/tabler/radar-2'
 import chartTreemap from '@iconify-icons/tabler/chart-treemap'
 // Custom icons - better represents flow/funnel/retention visualizations
-import { flowIcon, funnelIcon, retentionIcon } from './customIcons'
+import { flowIcon, funnelIcon, retentionIcon } from './customIcons.js'
 import chartDonut4 from '@iconify-icons/tabler/chart-donut-4'
 import table from '@iconify-icons/tabler/table'
 import calendarStats from '@iconify-icons/tabler/calendar-stats'
@@ -86,7 +86,7 @@ import chartGridDots from '@iconify-icons/tabler/chart-grid-dots'
 import map from '@iconify-icons/heroicons-outline/map'
 import cubeOutline from '@iconify-icons/heroicons-outline/cube'
 
-import type { IconRegistry } from './types'
+import type { IconRegistry } from './types.js'
 
 /**
  * Default icon registry with all icons used in drizzle-cube

@@ -3,12 +3,12 @@
  * Builds a dynamic system prompt from cube metadata and MCP prompts
  */
 
-import type { CubeMetadata } from '../types'
+import type { CubeMetadata } from '../types/index.js'
 import {
   MCP_GUIDE_PROMPT,
   QUERY_LANGUAGE_PROMPT,
   DATE_FILTERING_PROMPT
-} from '../ai/mcp-prompts'
+} from '../ai/mcp-prompts.js'
 
 /** Append the measures section for a cube to the summary lines. */
 function appendMeasureLines(lines: string[], cube: CubeMetadata): void {

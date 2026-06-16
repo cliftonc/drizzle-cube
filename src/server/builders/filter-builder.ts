@@ -19,13 +19,13 @@ import type {
   FilterCondition,
   Cube,
   QueryContext
-} from '../types'
+} from '../types/index.js'
 
-import { resolveFilterFieldExpr } from '../cube-utils'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
-import { DateTimeBuilder } from './date-time-builder'
-import { applyFilterOperator } from './filter-operators'
-import { asGroupFilter } from './analysis-utils'
+import { resolveFilterFieldExpr } from '../cube-utils.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
+import { DateTimeBuilder } from './date-time-builder.js'
+import { applyFilterOperator } from './filter-operators.js'
+import { asGroupFilter } from './analysis-utils.js'
 
 export class FilterBuilder {
   constructor(

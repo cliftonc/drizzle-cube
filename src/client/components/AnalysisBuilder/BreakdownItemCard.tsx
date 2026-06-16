@@ -5,12 +5,12 @@
  */
 
 import { memo } from 'react'
-import type { BreakdownItemCardProps, TimeGranularity } from './types'
-import { TIME_GRANULARITIES } from './types'
-import { getIcon } from '../../icons'
-import { useTranslation } from '../../hooks/useTranslation'
-import SortToggleButton from './SortToggleButton'
-import BreakdownComparisonToggle from './BreakdownComparisonToggle'
+import type { BreakdownItemCardProps, TimeGranularity } from './types.js'
+import { TIME_GRANULARITIES } from './types.js'
+import { getIcon } from '../../icons/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import SortToggleButton from './SortToggleButton.js'
+import BreakdownComparisonToggle from './BreakdownComparisonToggle.js'
 
 /**
  * BreakdownItemCard displays a selected breakdown with:

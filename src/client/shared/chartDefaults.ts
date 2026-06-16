@@ -5,11 +5,11 @@
  * the user's current metrics and breakdowns selection.
  */
 
-import type { ChartType, ChartAxisConfig } from '../types'
-import type { MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types'
-import { chartConfigRegistry } from '../charts/chartConfigRegistry'
-import type { ChartAvailability, ChartAvailabilityContext } from '../charts/chartConfigs'
-import { getAxisBuilder } from './chartConfigBuilders'
+import type { ChartType, ChartAxisConfig } from '../types.js'
+import type { MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types.js'
+import { chartConfigRegistry } from '../charts/chartConfigRegistry.js'
+import type { ChartAvailability, ChartAvailabilityContext } from '../charts/chartConfigs.js'
+import { getAxisBuilder } from './chartConfigBuilders.js'
 
 // ============================================================================
 // Types
@@ -26,7 +26,7 @@ export interface SmartChartDefaults {
 }
 
 // Re-export from chartConfigs so existing imports keep working
-export type { ChartAvailability } from '../charts/chartConfigs'
+export type { ChartAvailability } from '../charts/chartConfigs.js'
 
 /**
  * Map of chart type availability statuses

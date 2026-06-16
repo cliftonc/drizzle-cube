@@ -10,10 +10,10 @@ import type {
   PhysicalQueryPlan,
   QueryContext,
   SemanticQuery
-} from '../../types'
-import { resolveSqlExpression } from '../../cube-utils'
-import { applyJoinByType, getCubesFromPlan } from './shared'
-import type { PhysicalBuildDependencies } from './shared'
+} from '../../types/index.js'
+import { resolveSqlExpression } from '../../cube-utils.js'
+import { applyJoinByType, getCubesFromPlan } from './shared.js'
+import type { PhysicalBuildDependencies } from './shared.js'
 
 /** Selections + GROUP BY collected for the keys CTE. */
 interface KeysCteSelectionState {

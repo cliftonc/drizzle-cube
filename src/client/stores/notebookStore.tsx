@@ -23,7 +23,7 @@ import type {
   ChartType,
   ChartAxisConfig,
   ChartDisplayConfig,
-} from '../types'
+} from '../types.js'
 
 // ============================================================================
 // Types

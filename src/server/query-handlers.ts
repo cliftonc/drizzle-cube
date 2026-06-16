@@ -11,11 +11,11 @@
  * compatibility, so existing import paths keep working.
  */
 
-import type { SemanticLayerCompiler } from './compiler'
-import type { SemanticQuery, SecurityContext } from './types'
-import { discoverCubes, type CubeDiscoveryResult } from './ai/discovery'
-import { QUERY_LANGUAGE_REFERENCE } from './ai/query-schema'
-import { DATE_FILTERING_PROMPT } from './ai/mcp-prompts'
+import type { SemanticLayerCompiler } from './compiler.js'
+import type { SemanticQuery, SecurityContext } from './types/index.js'
+import { discoverCubes, type CubeDiscoveryResult } from './ai/discovery.js'
+import { QUERY_LANGUAGE_REFERENCE } from './ai/query-schema.js'
+import { DATE_FILTERING_PROMPT } from './ai/mcp-prompts.js'
 
 /**
  * Discovery request body

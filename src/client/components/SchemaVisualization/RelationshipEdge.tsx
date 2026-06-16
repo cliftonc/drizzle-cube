@@ -1,6 +1,6 @@
 import type { Edge, EdgeProps } from '@xyflow/react'
-import type { CubeMetaRelationship } from '../../types'
-import { useXyflow } from './xyflowContext'
+import type { CubeMetaRelationship } from '../../types.js'
+import { useXyflow } from './xyflowContext.js'
 
 interface RelationshipEdgeData {
   relationship: CubeMetaRelationship

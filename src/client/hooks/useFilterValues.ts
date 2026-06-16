@@ -4,8 +4,8 @@
  */
 
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { useCubeLoadQuery } from './queries/useCubeLoadQuery'
-import type { CubeQuery } from '../types'
+import { useCubeLoadQuery } from './queries/useCubeLoadQuery.js'
+import type { CubeQuery } from '../types.js'
 
 interface UseFilterValuesResult {
   values: any[]

@@ -26,9 +26,9 @@ import {
   arrayOverlaps as drizzleArrayOverlaps
 } from 'drizzle-orm'
 
-import type { FilterOperator } from '../types'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
-import type { DateTimeBuilder } from './date-time-builder'
+import type { FilterOperator } from '../types/index.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
+import type { DateTimeBuilder } from './date-time-builder.js'
 
 /**
  * Context passed to every operator handler. Carries the resolved field

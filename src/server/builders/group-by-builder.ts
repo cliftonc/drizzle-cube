@@ -19,11 +19,11 @@ import type {
   QueryContext,
   JoinKeyInfo,
   PhysicalQueryPlan
-} from '../types'
+} from '../types/index.js'
 
-import { resolveSqlExpression } from '../cube-utils'
-import { DateTimeBuilder } from './date-time-builder'
-import { MeasureBuilder } from './measure-builder'
+import { resolveSqlExpression } from '../cube-utils.js'
+import { DateTimeBuilder } from './date-time-builder.js'
+import { MeasureBuilder } from './measure-builder.js'
 
 export class GroupByBuilder {
   constructor(private dateTimeBuilder: DateTimeBuilder) {}

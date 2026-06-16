@@ -6,11 +6,11 @@
  */
 
 import { useMemo } from 'react'
-import { useAnalysisBuilderStore } from '../stores/analysisBuilderStore'
-import { validateMultiQueryConfig, type MultiQueryValidationResult } from '../utils/multiQueryValidation'
-import { buildCubeQuery } from '../components/AnalysisBuilder/utils'
-import type { CubeQuery, MultiQueryConfig, QueryMergeStrategy } from '../types'
-import type { AnalysisBuilderState } from '../components/AnalysisBuilder/types'
+import { useAnalysisBuilderStore } from '../stores/analysisBuilderStore.js'
+import { validateMultiQueryConfig, type MultiQueryValidationResult } from '../utils/multiQueryValidation.js'
+import { buildCubeQuery } from '../components/AnalysisBuilder/utils/index.js'
+import type { CubeQuery, MultiQueryConfig, QueryMergeStrategy } from '../types.js'
+import type { AnalysisBuilderState } from '../components/AnalysisBuilder/types.js'
 
 export interface UseAnalysisQueryBuilderResult {
   /** Current query state (active query) */

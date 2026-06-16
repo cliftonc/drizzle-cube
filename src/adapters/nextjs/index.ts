@@ -13,9 +13,9 @@ import type {
   CacheConfig,
   ExplainOptions,
   RLSSetupFn
-} from '../../server'
-import type { AgentConfig } from '../../server/agent/types'
-import { SemanticLayerCompiler } from '../../server/compiler'
+} from '../../server/index.js'
+import type { AgentConfig } from '../../server/agent/types.js'
+import { SemanticLayerCompiler } from '../../server/compiler.js'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
@@ -35,7 +35,7 @@ import {
   type SuggestRequest,
   type ValidateRequest,
   type LoadRequest
-} from '../utils'
+} from '../utils.js'
 import {
   buildJsonRpcResult,
   buildMcpResources,
@@ -47,7 +47,7 @@ import {
   extractBearerToken,
   buildWwwAuthenticateChallenge,
   MCP_SESSION_ID_HEADER
-} from '../mcp-transport'
+} from '../mcp-transport.js'
 import {
   type ApplyCors,
   buildMcpGetResponse,
@@ -55,8 +55,8 @@ import {
   prepareMcpPostRequest,
   extractMcpSessionHeaders,
   buildMcpErrorPayload
-} from './mcp-handler'
-import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
+} from './mcp-handler.js'
+import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale.js'
 
 export interface NextCorsOptions {
   /**
@@ -1042,10 +1042,10 @@ export function createAgentChatHandler(
         )
       }
 
-      const { handleAgentChat } = await import('../../server/agent/handler')
+      const { handleAgentChat } = await import('../../server/agent/handler.js')
 
       const body = await request.json()
-      const { message, sessionId, history } = body as { message: string; sessionId?: string; history?: import('../../server/agent/types').AgentHistoryMessage[] }
+      const { message, sessionId, history } = body as { message: string; sessionId?: string; history?: import('../../server/agent/types.js').AgentHistoryMessage[] }
 
       if (!message || typeof message !== 'string') {
         return NextResponse.json(

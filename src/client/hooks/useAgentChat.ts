@@ -4,15 +4,15 @@
  */
 
 import { useRef, useCallback, useState } from 'react'
-import { useCubeApi } from '../providers/CubeProvider'
-import type { PortletBlock, MarkdownBlock } from '../stores/notebookStore'
+import { useCubeApi } from '../providers/CubeProvider.js'
+import type { PortletBlock, MarkdownBlock } from '../stores/notebookStore.js'
 import {
   formatUserFacingError,
   handleAgentEvent,
   dispatchSSEBlock,
   buildAgentHeaders,
   type AgentSSEEvent,
-} from './agentChatStream'
+} from './agentChatStream.js'
 
 export interface UseAgentChatOptions {
   /** Override default agent endpoint (default: apiUrl + '/agent/chat') */

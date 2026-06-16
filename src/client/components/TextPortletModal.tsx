@@ -6,14 +6,14 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { getIcon } from '../icons'
-import AnalysisDisplayConfigPanel from './AnalysisBuilder/AnalysisDisplayConfigPanel'
-import MarkdownChart from './charts/MarkdownChart'
-import { ensureAnalysisConfig } from '../utils/configMigration'
-import type { PortletConfig, ChartDisplayConfig } from '../types'
-import type { AnalysisConfig } from '../types/analysisConfig'
-import type { ColorPalette } from '../utils/colorPalettes'
-import { useTranslation } from '../hooks/useTranslation'
+import { getIcon } from '../icons/index.js'
+import AnalysisDisplayConfigPanel from './AnalysisBuilder/AnalysisDisplayConfigPanel.js'
+import MarkdownChart from './charts/MarkdownChart.js'
+import { ensureAnalysisConfig } from '../utils/configMigration.js'
+import type { PortletConfig, ChartDisplayConfig } from '../types.js'
+import type { AnalysisConfig } from '../types/analysisConfig.js'
+import type { ColorPalette } from '../utils/colorPalettes.js'
+import { useTranslation } from '../hooks/useTranslation.js'
 
 const CloseIcon = getIcon('close')
 

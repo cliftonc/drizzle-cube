@@ -5,10 +5,10 @@
 
 import type { SQL } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
-import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
-import { BaseDatabaseExecutor } from './base-executor'
-import { parseDatabendExplain } from '../explain/databend-parser'
-import { buildBoundSql } from './explain-utils'
+import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types/index.js'
+import { BaseDatabaseExecutor } from './base-executor.js'
+import { parseDatabendExplain } from '../explain/databend-parser.js'
+import { buildBoundSql } from './explain-utils.js'
 
 export class DatabendExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {

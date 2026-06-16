@@ -1,10 +1,10 @@
-import { CHART_COLORS_GRADIENT } from '../../utils/chartConstants'
-import type { AxisFormatConfig } from '../../types'
+import { CHART_COLORS_GRADIENT } from '../../utils/chartConstants.js'
+import type { AxisFormatConfig } from '../../types.js'
 import {
   seriesMinMax,
   formatSeriesValue,
   type LegendEntry
-} from './TreeMapChart.helpers'
+} from './TreeMapChart.helpers.js'
 
 interface TreeMapLegendProps {
   isNumericSeries: boolean

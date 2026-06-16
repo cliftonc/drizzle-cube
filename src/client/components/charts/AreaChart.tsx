@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { ComposedChart, XAxis, CartesianGrid } from 'recharts'
-import ChartContainer from './ChartContainer'
-import ChartTooltip from './ChartTooltip'
-import AngledXAxisTick from './AngledXAxisTick'
-import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
-import { resolveChartAxisFields } from './chartAxisResolution'
+import ChartContainer from './ChartContainer.js'
+import ChartTooltip from './ChartTooltip.js'
+import AngledXAxisTick from './AngledXAxisTick.js'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates.js'
+import { resolveChartAxisFields } from './chartAxisResolution.js'
 import {
   getDualAxisInfo,
   getYAxisChartMargins,
@@ -14,11 +14,11 @@ import {
   renderChartTargetLines,
   makeCartesianTooltipFormatter,
   renderHoverLegend
-} from './chartScaffolding'
-import { buildSeriesKeyToFieldMap, renderAreaSeries, resolveAreaStacking } from './cartesianChartHelpers'
-import { transformChartDataWithSeries } from '../../utils/chartUtils'
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import type { ChartProps } from '../../types'
+} from './chartScaffolding.js'
+import { buildSeriesKeyToFieldMap, renderAreaSeries, resolveAreaStacking } from './cartesianChartHelpers.js'
+import { transformChartDataWithSeries } from '../../utils/chartUtils.js'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
+import type { ChartProps } from '../../types.js'
 
 const AreaChart = React.memo(function AreaChart({
   data,

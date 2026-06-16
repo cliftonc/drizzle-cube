@@ -3,7 +3,7 @@
  * Parses SQLite EXPLAIN QUERY PLAN output and normalizes to common structure
  */
 
-import type { ExplainOperation, ExplainResult, ExplainSummary } from '../types/executor'
+import type { ExplainOperation, ExplainResult, ExplainSummary } from '../types/executor.js'
 
 /**
  * SQLite EXPLAIN QUERY PLAN row structure

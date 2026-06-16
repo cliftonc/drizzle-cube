@@ -1,4 +1,4 @@
-import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
+import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity } from '../../utils/chartUtils.js'
 
 /**
  * Co-located data-shaping helpers for RadarChart. The component supports a

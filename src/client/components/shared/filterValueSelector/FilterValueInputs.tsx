@@ -4,8 +4,8 @@
  */
 
 import React from 'react'
-import { getIcon } from '../../../icons'
-import { useTranslation } from '../../../hooks/useTranslation'
+import { getIcon } from '../../../icons/index.js'
+import { useTranslation } from '../../../hooks/useTranslation.js'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const CloseIcon = getIcon('close')

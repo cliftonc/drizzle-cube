@@ -2,9 +2,9 @@
  * Field type icon/badge helpers for the FilterItem field dropdown.
  */
 
-import { getIcon } from '../../../icons'
-import { getMeasureIcon } from '../../../utils/measureIcons'
-import type { MetaField } from '../types'
+import { getIcon } from '../../../icons/index.js'
+import { getMeasureIcon } from '../../../utils/measureIcons.js'
+import type { MetaField } from '../types.js'
 
 const DimensionIcon = getIcon('dimension')
 const TimeDimensionIcon = getIcon('timeDimension')

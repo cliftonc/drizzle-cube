@@ -7,9 +7,9 @@
  */
 
 import React, { Component, ReactNode } from 'react'
-import { getIcon } from '../../icons'
-import type { AnalysisType } from '../../types'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import type { AnalysisType } from '../../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const WarningIcon = getIcon('warning')
 const RefreshIcon = getIcon('refresh')

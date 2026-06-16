@@ -1,7 +1,7 @@
 import { FunnelChart as RechartsFunnelChart, Funnel, LabelList, Tooltip, Cell, ResponsiveContainer } from 'recharts'
-import { useTranslation } from '../../hooks/useTranslation'
-import type { FunnelChartData } from '../../types/funnel'
-import { getStepColor, getTimeMetricsLines, type FunnelDisplayOptions } from './FunnelChart.helpers'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import type { FunnelChartData } from '../../types/funnel.js'
+import { getStepColor, getTimeMetricsLines, type FunnelDisplayOptions } from './FunnelChart.helpers.js'
 
 interface FunnelViewProps {
   funnelData: FunnelChartData[]

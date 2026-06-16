@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import Markdown from 'markdown-to-jsx'
-import type { ChartProps } from '../../types'
+import type { ChartProps } from '../../types.js'
 
 // Header size classes per fontSize setting (stable constants, outside component)
 const headerSizes: Record<string, Record<number, string>> = {

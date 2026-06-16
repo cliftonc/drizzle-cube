@@ -8,8 +8,8 @@
 import React from 'react'
 import type { CSSProperties } from 'react'
 import Markdown from 'markdown-to-jsx'
-import type { MarkdownBlock } from '../../stores/notebookStore'
-import { getIcon } from '../../icons/registry'
+import type { MarkdownBlock } from '../../stores/notebookStore.js'
+import { getIcon } from '../../icons/registry.js'
 
 const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'currentColor' }
 

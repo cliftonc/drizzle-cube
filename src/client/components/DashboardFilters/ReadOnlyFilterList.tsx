@@ -5,15 +5,15 @@
  */
 
 import React, { useCallback } from 'react'
-import { getIcon } from '../../icons'
-import FilterItem from '../shared/FilterItem'
+import { getIcon } from '../../icons/index.js'
+import FilterItem from '../shared/FilterItem.js'
 
 const FilterIcon = getIcon('filter')
 const ClockIcon = getIcon('timeDimension')
-import DateRangeSelector from '../shared/DateRangeSelector'
-import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types'
-import type { MetaResponse } from '../../shared/types'
-import { useTranslation } from '../../hooks/useTranslation'
+import DateRangeSelector from '../shared/DateRangeSelector.js'
+import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types.js'
+import type { MetaResponse } from '../../shared/types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface ReadOnlyFilterListProps {
   dashboardFilters: DashboardFilter[]

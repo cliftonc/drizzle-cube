@@ -8,9 +8,9 @@
  */
 
 import type { ReactNode } from 'react'
-import { CodeBlock } from '../../shared'
-import type { ExplainResult } from '../../types'
-import { useTranslation } from '../../hooks/useTranslation'
+import { CodeBlock } from '../../shared/index.js'
+import type { ExplainResult } from '../../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 function SqlBlockShell({
   title,

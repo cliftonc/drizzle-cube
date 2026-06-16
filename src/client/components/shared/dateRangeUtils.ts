@@ -5,9 +5,9 @@
  * existing import paths stable.
  */
 
-import type { DateRangeType } from '../../shared/types'
-import { DATE_RANGE_OPTIONS } from '../../shared/types'
-import { convertDateRangeTypeToValue, requiresNumberInput } from '../../shared/utils'
+import type { DateRangeType } from '../../shared/types.js'
+import { DATE_RANGE_OPTIONS } from '../../shared/types.js'
+import { convertDateRangeTypeToValue, requiresNumberInput } from '../../shared/utils.js'
 
 /**
  * Date preset configuration for compact filter bar

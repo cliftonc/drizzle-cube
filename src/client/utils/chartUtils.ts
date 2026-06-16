@@ -1,6 +1,6 @@
-import type { FieldLabelMap, AxisFormatConfig } from '../types'
-import { abbreviateValue, formatByUnit } from './axisValueFormatting'
-import { parseTimestampParts, formatByGranularity, formatByHeuristic } from './timeValueFormatting'
+import type { FieldLabelMap, AxisFormatConfig } from '../types.js'
+import { abbreviateValue, formatByUnit } from './axisValueFormatting.js'
+import { parseTimestampParts, formatByGranularity, formatByHeuristic } from './timeValueFormatting.js'
 
 // Utility function to check if a value is a valid numeric value (not null, undefined, or NaN)
 // This is used to preserve null values instead of converting them to 0

@@ -23,30 +23,30 @@ import type {
   ExecutionOptions,
   QueryAnalysis,
   RLSSetupFn
-} from './types'
+} from './types/index.js'
 
-import { safeKey } from './cube-utils'
-import { FilterCacheManager } from './filter-cache'
-import { DrizzleSqlBuilder } from './physical-plan/drizzle-sql-builder'
-import { LogicalPlanner } from './logical-plan/logical-planner'
-import { CTEBuilder } from './builders/cte-builder'
-import type { DatabaseAdapter } from './adapters/base-adapter'
-import { buildAnnotations } from './execution/annotation-builder'
-import { postProcessResultRows } from './execution/result-post-processor'
-import { FilterCachePreloader } from './execution/filter-cache-preloader'
-import { ModeRouter } from './execution/mode-router'
-import type { QueryExecutionMode } from './execution/mode-router'
-import { QueryResultCache } from './execution/query-result-cache'
-import { ComparisonQueryBuilder } from './builders/comparison-query-builder'
-import type { NormalizedPeriod } from './builders/comparison-query-builder'
-import { FunnelQueryBuilder } from './builders/funnel-query-builder'
-import { FlowQueryBuilder } from './builders/flow-query-builder'
-import { RetentionQueryBuilder } from './builders/retention-query-builder'
-import { LogicalPlanBuilder, IdentityOptimiser } from './logical-plan'
-import type { PlanOptimiser, OptimiserEngineType, QueryNode } from './logical-plan'
-import { DrizzlePlanBuilder } from './physical-plan'
-import { t } from '../i18n/runtime'
-import type { TranslationKey } from '../i18n/types'
+import { safeKey } from './cube-utils.js'
+import { FilterCacheManager } from './filter-cache.js'
+import { DrizzleSqlBuilder } from './physical-plan/drizzle-sql-builder.js'
+import { LogicalPlanner } from './logical-plan/logical-planner.js'
+import { CTEBuilder } from './builders/cte-builder.js'
+import type { DatabaseAdapter } from './adapters/base-adapter.js'
+import { buildAnnotations } from './execution/annotation-builder.js'
+import { postProcessResultRows } from './execution/result-post-processor.js'
+import { FilterCachePreloader } from './execution/filter-cache-preloader.js'
+import { ModeRouter } from './execution/mode-router.js'
+import type { QueryExecutionMode } from './execution/mode-router.js'
+import { QueryResultCache } from './execution/query-result-cache.js'
+import { ComparisonQueryBuilder } from './builders/comparison-query-builder.js'
+import type { NormalizedPeriod } from './builders/comparison-query-builder.js'
+import { FunnelQueryBuilder } from './builders/funnel-query-builder.js'
+import { FlowQueryBuilder } from './builders/flow-query-builder.js'
+import { RetentionQueryBuilder } from './builders/retention-query-builder.js'
+import { LogicalPlanBuilder, IdentityOptimiser } from './logical-plan/index.js'
+import type { PlanOptimiser, OptimiserEngineType, QueryNode } from './logical-plan/index.js'
+import { DrizzlePlanBuilder } from './physical-plan/index.js'
+import { t } from '../i18n/runtime.js'
+import type { TranslationKey } from '../i18n/types.js'
 
 /** Log SQL when DC_DEBUG=true or DC_DEBUG=sql */
 function debugSql(label: string, query: { toSQL(): { sql: string; params: unknown[] } }) {
@@ -218,7 +218,7 @@ export class QueryExecutor {
     cubes: Map<string, Cube>,
     query: SemanticQuery,
     securityContext: SecurityContext
-  ): import('./logical-plan').QueryNode {
+  ): import('./logical-plan/index.js').QueryNode {
     const filterCache = new FilterCacheManager()
     const context = this.createQueryContext(securityContext, filterCache, query)
     this.filterCachePreloader.preload(query, filterCache, cubes, context)

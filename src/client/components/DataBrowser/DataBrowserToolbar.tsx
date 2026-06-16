@@ -4,8 +4,8 @@
  * Top toolbar with filter toggle, column picker, row count, and pagination.
  */
 
-import { getIcon } from '../../icons'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const FilterIcon = getIcon('filter')
 const ColumnsIcon = getIcon('settings')

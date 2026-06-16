@@ -10,18 +10,18 @@
  */
 
 import { sql, SQL, and } from 'drizzle-orm'
-import { t } from '../../i18n/runtime'
-import type { DatabaseAdapter } from '../adapters/base-adapter'
+import { t } from '../../i18n/runtime.js'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import type {
   RetentionQueryConfig,
   RetentionResultRow,
   RetentionDateRange
-} from '../types/retention'
+} from '../types/retention.js'
 import {
   isRetentionMultiCubeBindingKey,
   extractCubeFromTimeDimension,
   extractDimensionFromTimeDimension
-} from '../types/retention'
+} from '../types/retention.js'
 import type {
   Cube,
   QueryContext,
@@ -30,18 +30,18 @@ import type {
   FilterCondition,
   LogicalFilter,
   AnalysisConfigValidationResult
-} from '../types'
-import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
-import { hasRetentionMode } from '../query-modes'
+} from '../types/index.js'
+import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils.js'
+import { hasRetentionMode } from '../query-modes.js'
 import {
   combineWhere,
   resolveBindingKeyExpr,
   extractDimensionName,
   type BindingKeyErrors,
   type WithSubquery
-} from './analysis-utils'
-import { FilterBuilder } from './filter-builder'
-import { DateTimeBuilder } from './date-time-builder'
+} from './analysis-utils.js'
+import { FilterBuilder } from './filter-builder.js'
+import { DateTimeBuilder } from './date-time-builder.js'
 
 /**
  * Binding-key error messages for retention. Unlike funnel/flow these live under

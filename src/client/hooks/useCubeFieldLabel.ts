@@ -7,7 +7,7 @@
  */
 
 import { useContext, useMemo } from 'react'
-import { CubeMetaContext, type CubeMetaContextValue } from '../providers/CubeMetaContext'
+import { CubeMetaContext, type CubeMetaContextValue } from '../providers/CubeMetaContext.js'
 
 /**
  * Returns a stable reference to the getFieldLabel function.

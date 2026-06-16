@@ -3,10 +3,10 @@
  */
 
 import type { ReactNode } from 'react'
-import type { ColorPalette } from './utils/colorPalettes'
-import type { FunnelBindingKey } from './types/funnel'
-import type { FlowChartData } from './types/flow'
-import type { RetentionChartData } from './types/retention'
+import type { ColorPalette } from './utils/colorPalettes.js'
+import type { FunnelBindingKey } from './types/funnel.js'
+import type { FlowChartData } from './types/flow.js'
+import type { RetentionChartData } from './types/retention.js'
 
 // Time granularity type for drill-down support
 export type TimeGranularity = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'
@@ -88,7 +88,7 @@ export interface CubeMeta {
 export type FieldLabelMap = Record<string, string>
 
 // Re-export color palette types
-export type { ColorPalette } from './utils/colorPalettes'
+export type { ColorPalette } from './utils/colorPalettes.js'
 
 // Built-in chart types shipped with drizzle-cube
 export type BuiltInChartType =
@@ -295,7 +295,7 @@ export interface PortletConfig {
    * This is the single source of truth for all query/chart config.
    * New portlets only save this field. Legacy portlets are migrated on-the-fly.
    */
-  analysisConfig?: import('./types/analysisConfig').AnalysisConfig
+  analysisConfig?: import('./types/analysisConfig.js').AnalysisConfig
 
   // === Legacy fields (deprecated - for backward compatibility only) ===
   // These fields are optional and only used for reading old configurations.
@@ -588,7 +588,7 @@ export interface ChartProps {
 
   // Drill-down support
   /** Handler for data point clicks - fires ChartDataPointClickEvent */
-  onDataPointClick?: (event: import('./types/drill').ChartDataPointClickEvent) => void
+  onDataPointClick?: (event: import('./types/drill.js').ChartDataPointClickEvent) => void
   /** Whether drill-down is enabled (shows pointer cursor on clickable elements) */
   drillEnabled?: boolean
 }
@@ -654,13 +654,13 @@ export type {
   UseFunnelQueryOptions,
   UseFunnelQueryResult,
   ServerFunnelQuery,
-} from './types/funnel'
+} from './types/funnel.js'
 
 /**
  * Type guard to detect server funnel query format
  * Used to distinguish { funnel: {...} } from CubeQuery or MultiQueryConfig
  */
-export function isServerFunnelQuery(obj: unknown): obj is import('./types/funnel').ServerFunnelQuery {
+export function isServerFunnelQuery(obj: unknown): obj is import('./types/funnel.js').ServerFunnelQuery {
   return (
     typeof obj === 'object' &&
     obj !== null &&
@@ -680,9 +680,9 @@ export type {
   FlowChartData,
   FlowSliceState,
   FlowSliceActions,
-} from './types/flow'
+} from './types/flow.js'
 
-export { isServerFlowQuery, isSankeyData } from './types/flow'
+export { isServerFlowQuery, isSankeyData } from './types/flow.js'
 
 // ============================================================================
 // EXPLAIN PLAN TYPES
@@ -836,4 +836,4 @@ export type {
   DrillInteraction,
   DrillMenuProps,
   DrillBreadcrumbProps,
-} from './types/drill'
+} from './types/drill.js'

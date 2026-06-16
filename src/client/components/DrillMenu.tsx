@@ -6,7 +6,7 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { DrillMenuProps, DrillOption } from '../types/drill'
+import type { DrillMenuProps, DrillOption } from '../types/drill.js'
 
 /**
  * Icon components for drill options

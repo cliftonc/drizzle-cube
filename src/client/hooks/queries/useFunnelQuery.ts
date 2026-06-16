@@ -14,11 +14,11 @@
 
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCubeApi } from '../../providers/CubeApiProvider'
-import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
-import { useDebounceQuery } from '../useDebounceQuery'
-import { stableStringify } from '../../shared/queryKey'
-import type { CubeQuery } from '../../types'
+import { useCubeApi } from '../../providers/CubeApiProvider.js'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
+import { useDebounceQuery } from '../useDebounceQuery.js'
+import { stableStringify } from '../../shared/queryKey.js'
+import type { CubeQuery } from '../../types.js'
 import type {
   FunnelConfig,
   FunnelChartData,
@@ -26,11 +26,11 @@ import type {
   UseFunnelQueryResult,
   FunnelStepResult,
   FunnelExecutionResult,
-} from '../../types/funnel'
+} from '../../types/funnel.js'
 import {
   buildServerFunnelQuery,
   transformServerFunnelResult,
-} from '../../utils/funnelExecution'
+} from '../../utils/funnelExecution.js'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300
@@ -91,7 +91,7 @@ function buildEffectiveFunnelConfig(
     steps: (prebuiltServerQuery?.funnel?.steps || []).map((s, i) => ({
       id: `step-${i}`,
       name: s.name,
-      query: { filters: s.filter ? [s.filter as unknown as import('../../types').Filter] : [] },
+      query: { filters: s.filter ? [s.filter as unknown as import('../../types.js').Filter] : [] },
       timeToConvert: s.timeToConvert || undefined,
     })),
   }

@@ -3,7 +3,7 @@
  * This allows consistent adapter patterns across frameworks
  */
 
-import type { SemanticLayerCompiler, SecurityContext, DatabaseExecutor } from '../server'
+import type { SemanticLayerCompiler, SecurityContext, DatabaseExecutor } from '../server/index.js'
 
 /**
  * Base adapter configuration

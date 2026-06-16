@@ -4,8 +4,8 @@
  * Functions for working with field metadata from the schema.
  */
 
-import type { FieldOption, FieldType } from '../types'
-import type { MetaResponse, MetaField } from '../../../shared/types'
+import type { FieldOption, FieldType } from '../types.js'
+import type { MetaResponse, MetaField } from '../../../shared/types.js'
 
 /**
  * Get cube name from a field name (e.g., "Employees.count" -> "Employees")

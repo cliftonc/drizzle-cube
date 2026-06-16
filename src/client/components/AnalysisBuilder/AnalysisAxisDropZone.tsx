@@ -12,9 +12,9 @@
  */
 
 import { useState, useCallback, useRef, useEffect, DragEvent } from 'react'
-import { getIcon, getMeasureTypeIcon } from '../../icons'
-import type { AxisDropZoneConfig } from '../../charts/chartConfigs'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon, getMeasureTypeIcon } from '../../icons/index.js'
+import type { AxisDropZoneConfig } from '../../charts/chartConfigs.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const CloseIcon = getIcon('close')
 const DimensionIcon = getIcon('dimension')

@@ -10,25 +10,25 @@ import type {
   QueryAnalysis,
   QuerySuggestion,
   AIValidationResult
-} from '../server'
+} from '../server/index.js'
 import {
   suggestQuery,
   aiValidateQuery,
   getActiveQueryModes
-} from '../server'
+} from '../server/index.js'
 // Query handlers + SQL formatting live in the server layer so the in-process
 // agent can use them without a server→adapters import cycle. Re-exported here
 // for backwards-compatible import paths (adapters/utils).
-export { handleDiscover, handleLoad } from '../server/query-handlers'
-export type { DiscoverRequest, LoadRequest, DiscoverResponse } from '../server/query-handlers'
-export { formatSqlString } from '../server/sql-format'
-import { normalizeQueryFields } from '../server/query-handlers'
+export { handleDiscover, handleLoad } from '../server/query-handlers.js'
+export type { DiscoverRequest, LoadRequest, DiscoverResponse } from '../server/query-handlers.js'
+export { formatSqlString } from '../server/sql-format.js'
+import { normalizeQueryFields } from '../server/query-handlers.js'
 export { normalizeQueryFields }
 import type {
   MCPPromptResolver,
   MCPResourceResolver,
   MCPInstructionsResolver
-} from './mcp-transport'
+} from './mcp-transport.js'
 
 /**
  * Calculate query complexity based on query structure

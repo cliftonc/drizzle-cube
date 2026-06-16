@@ -7,10 +7,10 @@
  */
 
 import { memo, DragEvent } from 'react'
-import type { MetaField } from '../../shared/types'
-import type { MetricItem } from './types'
-import MetricItemCard from './MetricItemCard'
-import { getNextSortDirection } from './utils/sortUtils'
+import type { MetaField } from '../../shared/types.js'
+import type { MetricItem } from './types.js'
+import MetricItemCard from './MetricItemCard.js'
+import { getNextSortDirection } from './utils/sortUtils.js'
 
 interface MetricRowProps {
   metric: MetricItem

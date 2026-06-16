@@ -18,10 +18,10 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
-import { useCubeApi } from '../../providers/CubeApiProvider'
-import type { CubeQuery, ExplainResult, ExplainOptions } from '../../types'
-import { cleanQueryForServer } from '../../shared/utils'
-import { stableStringify } from '../../shared/queryKey'
+import { useCubeApi } from '../../providers/CubeApiProvider.js'
+import type { CubeQuery, ExplainResult, ExplainOptions } from '../../types.js'
+import { cleanQueryForServer } from '../../shared/utils.js'
+import { stableStringify } from '../../shared/queryKey.js'
 
 /**
  * Query type that can be explained - includes standard queries, funnel queries, flow queries, and retention queries

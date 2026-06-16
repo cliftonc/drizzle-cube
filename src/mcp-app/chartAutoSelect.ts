@@ -4,8 +4,8 @@
  * Operates on raw load results + query metadata (no CubeProvider context needed).
  */
 
-import type { ChartType } from '../client/types'
-import { isChartAvailableForShape } from './chartAvailability'
+import type { ChartType } from '../client/types.js'
+import { isChartAvailableForShape } from './chartAvailability.js'
 
 /** Chart types available in the MCP App (subset of full ChartType) */
 export type McpChartType = ChartType

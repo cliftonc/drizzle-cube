@@ -6,16 +6,16 @@
  */
 
 import { memo, useState, useCallback } from 'react'
-import type { CubeMeta, FunnelBindingKey, ChartType, ChartDisplayConfig, Filter } from '../../types'
-import type { ColorPalette } from '../../utils/colorPalettes'
-import type { FlowStartingStep } from '../../types/flow'
-import FlowConfigPanel from './FlowConfigPanel'
-import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
-import AnalysisFilterSection from './AnalysisFilterSection'
-import SectionHeading from './SectionHeading'
-import FlowVisualizationPicker from './FlowVisualizationPicker'
-import FlowDepthControls from './FlowDepthControls'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { CubeMeta, FunnelBindingKey, ChartType, ChartDisplayConfig, Filter } from '../../types.js'
+import type { ColorPalette } from '../../utils/colorPalettes.js'
+import type { FlowStartingStep } from '../../types/flow.js'
+import FlowConfigPanel from './FlowConfigPanel.js'
+import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel.js'
+import AnalysisFilterSection from './AnalysisFilterSection.js'
+import SectionHeading from './SectionHeading.js'
+import FlowVisualizationPicker from './FlowVisualizationPicker.js'
+import FlowDepthControls from './FlowDepthControls.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 type FlowPanelTab = 'config' | 'display'
 
@@ -190,7 +190,7 @@ const FlowModeContent = memo(function FlowModeContent({
                 </label>
                 <AnalysisFilterSection
                   filters={startingStep.filters}
-                  schema={schema as unknown as import('../../shared/types').MetaResponse | null}
+                  schema={schema as unknown as import('../../shared/types.js').MetaResponse | null}
                   onFiltersChange={handleFiltersChange}
                 />
               </div>

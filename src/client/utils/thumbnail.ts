@@ -11,7 +11,7 @@
  */
 
 import type { RefObject } from 'react'
-import type { ThumbnailFeatureConfig } from '../types'
+import type { ThumbnailFeatureConfig } from '../types.js'
 
 // Type definition for modern-screenshot (optional dependency)
 type ModernScreenshotModule = {

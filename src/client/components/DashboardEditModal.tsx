@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import Modal from './Modal'
-import { useTranslation } from '../hooks/useTranslation'
+import Modal from './Modal.js'
+import { useTranslation } from '../hooks/useTranslation.js'
 
 interface DashboardEditModalProps {
   isOpen: boolean

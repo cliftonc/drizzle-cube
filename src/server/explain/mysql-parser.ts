@@ -3,7 +3,7 @@
  * Parses MySQL EXPLAIN output and normalizes to common structure
  */
 
-import type { ExplainOperation, ExplainResult, ExplainSummary } from '../types/executor'
+import type { ExplainOperation, ExplainResult, ExplainSummary } from '../types/executor.js'
 
 /**
  * MySQL EXPLAIN row structure

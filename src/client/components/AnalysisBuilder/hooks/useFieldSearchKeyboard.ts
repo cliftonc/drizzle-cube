@@ -8,7 +8,7 @@
 
 import { useState, useCallback, useEffect, useRef, KeyboardEvent } from 'react'
 import type { RefObject } from 'react'
-import type { FieldOption } from '../types'
+import type { FieldOption } from '../types.js'
 
 export interface FieldSearchKeyboardApi {
   focusedField: FieldOption | null

@@ -27,7 +27,7 @@ export type {
   IconRegistry,
   IconName,
   PartialIconRegistry
-} from './types'
+} from './types.js'
 
 // Registry functions
 export {
@@ -41,7 +41,7 @@ export {
   getMeasureTypeIcon,
   getChartTypeIcon,
   getFieldTypeIcon
-} from './registry'
+} from './registry.js'
 
 // Default icons (for reference/extension)
-export { DEFAULT_ICONS } from './defaultIcons'
+export { DEFAULT_ICONS } from './defaultIcons.js'

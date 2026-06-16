@@ -5,7 +5,7 @@
  * It auto-configures from retention data and provides display mode selection.
  */
 
-import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 
 export const retentionCombinedConfig: ChartTypeConfig = {
   label: 'chart.retentionCombined.label',

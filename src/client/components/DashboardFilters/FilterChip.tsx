@@ -6,10 +6,10 @@
  */
 
 import React, { useState, useRef, useCallback } from 'react'
-import { getIcon } from '../../icons'
-import FilterValuePopover from './FilterValuePopover'
-import { formatFilterValueDisplay } from '../shared/utils'
-import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types'
+import { getIcon } from '../../icons/index.js'
+import FilterValuePopover from './FilterValuePopover.js'
+import { formatFilterValueDisplay } from '../shared/utils.js'
+import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types.js'
 
 const CloseIcon = getIcon('close')
 const EditIcon = getIcon('edit')

@@ -5,16 +5,16 @@
 
 import React, { useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useInView } from 'react-intersection-observer'
-import { useScrollContainer } from '../providers/ScrollContainerContext'
-import { useChartConfig } from '../charts/lazyChartConfigRegistry'
-import type { AnalyticsPortletProps } from '../types'
-import { parsePortletQuery } from './analyticsPortlet/parsePortletQuery'
-import { usePortletDrillState } from './analyticsPortlet/usePortletDrillState'
-import { usePortletQueryResults } from './analyticsPortlet/usePortletQueryResults'
-import { usePortletDebugData } from './analyticsPortlet/usePortletDebugData'
-import { resolvePortletRenderKind } from './analyticsPortlet/portletRenderState'
-import { PortletChartView } from './analyticsPortlet/PortletChartView'
-import { PortletStateView } from './analyticsPortlet/PortletStates'
+import { useScrollContainer } from '../providers/ScrollContainerContext.js'
+import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
+import type { AnalyticsPortletProps } from '../types.js'
+import { parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
+import { usePortletDrillState } from './analyticsPortlet/usePortletDrillState.js'
+import { usePortletQueryResults } from './analyticsPortlet/usePortletQueryResults.js'
+import { usePortletDebugData } from './analyticsPortlet/usePortletDebugData.js'
+import { resolvePortletRenderKind } from './analyticsPortlet/portletRenderState.js'
+import { PortletChartView } from './analyticsPortlet/PortletChartView.js'
+import { PortletStateView } from './analyticsPortlet/PortletStates.js'
 
 interface RefreshOptions {
   bustCache?: boolean

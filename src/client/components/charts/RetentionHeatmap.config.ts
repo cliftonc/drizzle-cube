@@ -5,7 +5,7 @@
  * It auto-configures from retention data and doesn't need typical axis configuration.
  */
 
-import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 
 export const retentionHeatmapConfig: ChartTypeConfig = {
   label: 'chart.retentionHeatmap.label',

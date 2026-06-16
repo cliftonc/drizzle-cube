@@ -13,6 +13,11 @@
     "./dist/client/styles.css"
   ],
   "exports": {
+    ".": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.js",
+      "require": "./dist/server/index.cjs"
+    },
     "./server": {
       "types": "./dist/server/index.d.ts",
       "import": "./dist/server/index.js",
@@ -149,7 +154,8 @@
     "quality:graph": "npx madge --image dependency-graph.svg --extensions ts,tsx src",
     "perf": "tsx perf/run.ts",
     "perf:seed": "tsx perf/run.ts --seed-only",
-    "prepublishOnly": "npm run lint && npm run typecheck && npm run build",
+    "check:exports": "attw --pack . && publint --level error",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run build && npm run check:exports",
     "dev:db:up": "cd dev && docker-compose up -d",
     "dev:db:down": "cd dev && docker-compose down",
     "dev:db:migrate": "cd dev && tsx scripts/migrate.ts",
@@ -183,7 +189,7 @@
   "homepage": "https://try.drizzle-cube.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cliftonc/drizzle-cube.git"
+    "url": "git+https://github.com/cliftonc/drizzle-cube.git"
   },
   "bugs": {
     "url": "https://github.com/cliftonc/drizzle-cube/issues"
@@ -293,6 +299,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.104.0",
+    "@arethetypeswrong/cli": "^0.18.3",
     "@crowdin/cli": "^4.14.1",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^10.0.0",
@@ -355,6 +362,7 @@
     "openai": "^6.25.0",
     "postcss": "^8.5.6",
     "postgres": "^3.4.7",
+    "publint": "^0.3.21",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-grid-layout": "^2.1.1",

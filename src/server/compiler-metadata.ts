@@ -14,8 +14,8 @@ import type {
   CubeRelationshipMetadata,
   HierarchyMetadata,
   TimeGranularity
-} from './types'
-import { resolveCubeReference } from './cube-utils'
+} from './types/index.js'
+import { resolveCubeReference } from './cube-utils.js'
 
 /** Default time granularities used when a time dimension omits `granularities`. */
 export const DEFAULT_TIME_GRANULARITIES: TimeGranularity[] = [

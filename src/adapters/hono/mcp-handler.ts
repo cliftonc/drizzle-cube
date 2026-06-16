@@ -24,7 +24,7 @@ import {
   MCP_SESSION_ID_HEADER,
   type JsonRpcRequest,
   type McpDispatchContext
-} from '../mcp-transport'
+} from '../mcp-transport.js'
 
 /** MCP endpoint config fields the handler helpers depend on. */
 export interface HonoMcpHandlerConfig {

@@ -4,7 +4,7 @@
  * Handles SingleStore-specific behaviors and limitations
  */
 
-import { MySQLAdapter } from './mysql-adapter'
+import { MySQLAdapter } from './mysql-adapter.js'
 
 export class SingleStoreAdapter extends MySQLAdapter {
   getEngineType(): 'singlestore' {

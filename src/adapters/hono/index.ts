@@ -14,9 +14,9 @@ import type {
   CacheConfig,
   ExplainOptions,
   RLSSetupFn
-} from '../../server'
-import type { AgentConfig } from '../../server/agent/types'
-import { SemanticLayerCompiler } from '../../server/compiler'
+} from '../../server/index.js'
+import type { AgentConfig } from '../../server/agent/types.js'
+import { SemanticLayerCompiler } from '../../server/compiler.js'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
@@ -27,7 +27,7 @@ import {
   formatMetaResponse,
   handleBatchRequest,
   type MCPOptions
-} from '../utils'
+} from '../utils.js'
 import {
   buildMcpResources,
   primeEventId,
@@ -36,14 +36,14 @@ import {
   serializeSseEvent,
   extractBearerToken,
   buildWwwAuthenticateChallenge
-} from '../mcp-transport'
+} from '../mcp-transport.js'
 import {
   prepareMcpPostRequest,
   clientWantsStream,
   dispatchMcpPost
-} from './mcp-handler'
-import { handleAgentChatRequest } from './agent-handler'
-import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
+} from './mcp-handler.js'
+import { handleAgentChatRequest } from './agent-handler.js'
+import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale.js'
 
 export interface HonoAdapterOptions {
   /**

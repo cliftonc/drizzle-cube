@@ -17,11 +17,11 @@ import {
   useRetentionQuery,
   createQueryKey,
   createMultiQueryKey
-} from '../../hooks/queries'
-import { cleanQueryForServer } from '../../shared/utils'
-import type { CubeQuery, MultiQueryConfig, ServerFunnelQuery } from '../../types'
-import type { FlowChartData, ServerFlowQuery } from '../../types/flow'
-import type { RetentionChartData, ServerRetentionQuery } from '../../types/retention'
+} from '../../hooks/queries/index.js'
+import { cleanQueryForServer } from '../../shared/utils.js'
+import type { CubeQuery, MultiQueryConfig, ServerFunnelQuery } from '../../types.js'
+import type { FlowChartData, ServerFlowQuery } from '../../types/flow.js'
+import type { RetentionChartData, ServerRetentionQuery } from '../../types/retention.js'
 
 interface RefreshOptions {
   bustCache?: boolean

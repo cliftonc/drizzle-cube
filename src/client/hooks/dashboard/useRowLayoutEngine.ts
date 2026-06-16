@@ -5,12 +5,12 @@ import type {
   DashboardLayoutMode,
   PortletConfig,
   RowLayout
-} from '../../types'
+} from '../../types.js'
 import {
   convertPortletsToRows,
   convertRowsToPortlets,
   normalizeRows
-} from './layoutUtils'
+} from './layoutUtils.js'
 
 interface UseRowLayoutEngineOptions {
   layoutMode: DashboardLayoutMode

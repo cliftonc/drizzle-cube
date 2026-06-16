@@ -7,7 +7,7 @@
  * original inline logic.
  */
 
-import type { DatabaseAdapter } from '../adapters/base-adapter'
+import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 
 /**
  * Convert a millisecond epoch to the engine's wire format:

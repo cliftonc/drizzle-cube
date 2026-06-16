@@ -13,9 +13,9 @@ import type {
   PreAggregationCTEInfo,
   QueryContext,
   SemanticQuery
-} from '../../types'
-import { applyPostAggregationWindows } from './window-processor'
-import type { PhysicalBuildDependencies, SelectionMap } from './shared'
+} from '../../types/index.js'
+import { applyPostAggregationWindows } from './window-processor.js'
+import type { PhysicalBuildDependencies, SelectionMap } from './shared.js'
 
 /**
  * Builds and rewrites selections (including CTE and window handling).

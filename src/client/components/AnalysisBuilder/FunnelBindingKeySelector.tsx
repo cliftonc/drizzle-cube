@@ -7,10 +7,10 @@
  */
 
 import React, { memo, useMemo, useCallback, useState, useRef, useEffect } from 'react'
-import type { CubeMeta, FunnelBindingKey } from '../../types'
-import { getIcon } from '../../icons'
-import { getAvailableBindingKeyDimensions, getBindingKeyLabel } from '../../utils/funnelValidation'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { CubeMeta, FunnelBindingKey } from '../../types.js'
+import { getIcon } from '../../icons/index.js'
+import { getAvailableBindingKeyDimensions, getBindingKeyLabel } from '../../utils/funnelValidation.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const CheckIcon = getIcon('check')

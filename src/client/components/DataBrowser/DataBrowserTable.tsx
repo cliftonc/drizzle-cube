@@ -9,11 +9,11 @@
  */
 
 import React, { useCallback, useRef } from 'react'
-import { getIcon } from '../../icons'
-import { getFieldType } from '../../hooks/useDataBrowser'
-import { useDataBrowserStore } from '../../stores/dataBrowserStore'
-import LoadingIndicator from '../LoadingIndicator'
-import { useTranslation } from '../../hooks/useTranslation'
+import { getIcon } from '../../icons/index.js'
+import { getFieldType } from '../../hooks/useDataBrowser.js'
+import { useDataBrowserStore } from '../../stores/dataBrowserStore.js'
+import LoadingIndicator from '../LoadingIndicator.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const SortAscIcon = getIcon('chevronUp')
 const SortDescIcon = getIcon('chevronDown')

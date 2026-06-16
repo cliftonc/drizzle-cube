@@ -1,14 +1,14 @@
 import React, { useState } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { ScatterChart as RechartsScatterChart, XAxis, YAxis, CartesianGrid, Legend, Tooltip } from 'recharts'
-import ChartContainer from './ChartContainer'
-import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
-import { resolveScatterAxisFields, transformScatterData, resolveScatterRenderState } from './ScatterChart.helpers'
-import { ScatterTooltip } from './ScatterTooltip'
-import { ScatterSeries } from './ScatterSeries'
-import { formatAxisValue } from '../../utils/chartUtils'
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import type { ChartProps } from '../../types'
+import ChartContainer from './ChartContainer.js'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates.js'
+import { resolveScatterAxisFields, transformScatterData, resolveScatterRenderState } from './ScatterChart.helpers.js'
+import { ScatterTooltip } from './ScatterTooltip.js'
+import { ScatterSeries } from './ScatterSeries.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
+import type { ChartProps } from '../../types.js'
 
 const ScatterChart = React.memo(function ScatterChart({
   data,

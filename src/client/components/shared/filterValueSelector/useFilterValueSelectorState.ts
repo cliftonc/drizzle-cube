@@ -5,10 +5,10 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import type { ChangeEvent } from 'react'
-import { useFilterValues } from '../../../hooks/useFilterValues'
-import { useDebounce } from '../../../hooks/useDebounce'
-import { FILTER_OPERATORS } from '../types'
-import type { FilterValueSelectorProps } from '../types'
+import { useFilterValues } from '../../../hooks/useFilterValues.js'
+import { useDebounce } from '../../../hooks/useDebounce.js'
+import { FILTER_OPERATORS } from '../types.js'
+import type { FilterValueSelectorProps } from '../types.js'
 
 const COMBO_OPERATORS = ['equals', 'notEquals', 'in', 'notIn']
 

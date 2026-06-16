@@ -5,8 +5,8 @@
  */
 
 import React, { useEffect, useRef } from 'react'
-import { getIcon } from '../../icons'
-import { XTD_OPTIONS, calculateDateRange, formatDateRangeDisplay } from '../shared/utils'
+import { getIcon } from '../../icons/index.js'
+import { XTD_OPTIONS, calculateDateRange, formatDateRangeDisplay } from '../shared/utils.js'
 
 const CheckIcon = getIcon('check')
 

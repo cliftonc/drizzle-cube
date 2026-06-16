@@ -4,9 +4,9 @@
  * Follows Cube.js naming conventions (fillMissingDates) but implements server-side.
  */
 
-import type { SemanticQuery, Filter, FilterCondition } from './types/query'
-import type { TimeGranularity } from './types/core'
-import { parseRelativeDateRange } from '../shared/date-utils'
+import type { SemanticQuery, Filter, FilterCondition } from './types/query.js'
+import type { TimeGranularity } from './types/core.js'
+import { parseRelativeDateRange } from '../shared/date-utils.js'
 
 /**
  * Maximum number of time buckets gap filling will generate. Beyond this, gap

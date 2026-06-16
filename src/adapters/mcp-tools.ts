@@ -29,19 +29,19 @@
  * @module
  */
 
-import type { SemanticLayerCompiler, SecurityContext } from '../server'
+import type { SemanticLayerCompiler, SecurityContext } from '../server/index.js'
 import type {
   DiscoverRequest,
   ValidateRequest,
   LoadRequest
-} from './utils'
+} from './utils.js'
 import {
   type CubeToolHandlerDeps,
   runDiscoverTool,
   runValidateTool,
   runLoadTool
-} from './mcp-tools-handlers'
-import type { MCPPrompt } from '../server/ai/mcp-prompts'
+} from './mcp-tools-handlers.js'
+import type { MCPPrompt } from '../server/ai/mcp-prompts.js'
 import {
   type MCPResource,
   type McpAppConfig,
@@ -51,11 +51,11 @@ import {
   getMcpAppHtml,
   MCP_APP_RESOURCE_URI,
   MCP_APP_MIME_TYPE
-} from './mcp-transport'
+} from './mcp-transport.js'
 
 // Re-export types consumers may need
 export type { MCPPrompt, MCPResource, DiscoverRequest, ValidateRequest, LoadRequest }
-export type { SecurityContext } from '../server'
+export type { SecurityContext } from '../server/index.js'
 
 /**
  * MCP tool content block (matches MCP spec)

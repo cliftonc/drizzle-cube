@@ -3,10 +3,10 @@
  * Includes query definitions, filters, and time dimensions
  */
 
-import type { TimeGranularity } from './core'
-import type { FunnelQueryConfig } from './funnel'
-import type { FlowQueryConfig } from './flow'
-import type { RetentionQueryConfig } from './retention'
+import type { TimeGranularity } from './core.js'
+import type { FunnelQueryConfig } from './funnel.js'
+import type { FlowQueryConfig } from './flow.js'
+import type { RetentionQueryConfig } from './retention.js'
 
 /**
  * Semantic query structure (Cube.js compatible)

@@ -1,8 +1,8 @@
 import React from 'react'
 import { Bar, Cell } from 'recharts'
-import { CHART_COLORS, POSITIVE_COLOR, NEGATIVE_COLOR } from '../../utils/chartConstants'
-import type { ColorPalette } from '../../types'
-import type { ChartDataPointClickEvent } from '../../types/drill'
+import { CHART_COLORS, POSITIVE_COLOR, NEGATIVE_COLOR } from '../../utils/chartConstants.js'
+import type { ColorPalette } from '../../types.js'
+import type { ChartDataPointClickEvent } from '../../types/drill.js'
 
 interface BarSeriesProps {
   seriesKey: string

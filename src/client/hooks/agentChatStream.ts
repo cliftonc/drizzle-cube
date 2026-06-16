@@ -5,7 +5,7 @@
  * No React imports — these are testable pure functions.
  */
 
-import type { PortletBlock, MarkdownBlock } from '../stores/notebookStore'
+import type { PortletBlock, MarkdownBlock } from '../stores/notebookStore.js'
 
 /** Clean up raw API errors into user-friendly messages */
 export function formatUserFacingError(message: string): string {

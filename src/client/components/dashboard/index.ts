@@ -5,10 +5,10 @@
  * which wires them together for you.
  */
 
-export { default as DashboardProvider } from './DashboardProvider'
-export { default as DashboardToolbar } from './DashboardToolbar'
-export { default as DashboardFilterBar } from './DashboardFilterBar'
-export { default as DashboardGridSurface } from './DashboardGridSurface'
-export { default as DashboardModals } from './DashboardModals'
-export { useDashboardContext } from './DashboardContext'
-export type { DashboardContextValue, DashboardProviderProps } from './DashboardContext'
+export { default as DashboardProvider } from './DashboardProvider.js'
+export { default as DashboardToolbar } from './DashboardToolbar.js'
+export { default as DashboardFilterBar } from './DashboardFilterBar.js'
+export { default as DashboardGridSurface } from './DashboardGridSurface.js'
+export { default as DashboardModals } from './DashboardModals.js'
+export { useDashboardContext } from './DashboardContext.js'
+export type { DashboardContextValue, DashboardProviderProps } from './DashboardContext.js'

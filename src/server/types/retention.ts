@@ -3,7 +3,7 @@
  * Supports cohort-based retention tracking with classic and rolling retention types
  */
 
-import type { Filter } from './query'
+import type { Filter } from './query.js'
 
 /**
  * Binding key mapping for multi-cube retention

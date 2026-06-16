@@ -6,6 +6,6 @@
  * depends on these utilities.
  */
 
-export * from './types'
-export * from './constants'
-export * from './utils'
+export * from './types.js'
+export * from './constants.js'
+export * from './utils.js'

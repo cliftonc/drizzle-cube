@@ -3,11 +3,11 @@
  * dropdown plus custom date inputs or a number input.
  */
 
-import { getIcon } from '../../../icons'
-import { useTranslation } from '../../../hooks/useTranslation'
-import type { DateRangeType } from '../types'
-import { DATE_RANGE_OPTIONS } from '../types'
-import { requiresNumberInput } from '../utils'
+import { getIcon } from '../../../icons/index.js'
+import { useTranslation } from '../../../hooks/useTranslation.js'
+import type { DateRangeType } from '../types.js'
+import { DATE_RANGE_OPTIONS } from '../types.js'
+import { requiresNumberInput } from '../utils.js'
 
 const ChevronDownIcon = getIcon('chevronDown')
 

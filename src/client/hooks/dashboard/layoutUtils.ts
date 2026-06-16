@@ -1,4 +1,4 @@
-import type { DashboardGridSettings, PortletConfig, RowLayout, RowLayoutColumn } from '../../types'
+import type { DashboardGridSettings, PortletConfig, RowLayout, RowLayoutColumn } from '../../types.js'
 
 export const createRowId = () => `row-${Date.now()}`
 

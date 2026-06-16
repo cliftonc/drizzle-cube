@@ -11,10 +11,10 @@
  */
 
 import React, { useMemo } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
-import { getFieldGranularity } from '../../utils/chartUtils'
-import { ChartEmptyState } from './ChartStates'
-import { HeatMapCanvas } from './HeatMapCanvas'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { getFieldGranularity } from '../../utils/chartUtils.js'
+import { ChartEmptyState } from './ChartStates.js'
+import { HeatMapCanvas } from './HeatMapCanvas.js'
 import {
   MAX_HEATMAP_ROWS,
   MAX_HEATMAP_COLS,
@@ -22,8 +22,8 @@ import {
   firstField,
   resolveHeatMapDisplayOptions,
   DEFAULT_HEATMAP_COLORS,
-} from './HeatMapChart.helpers'
-import type { ChartProps } from '../../types'
+} from './HeatMapChart.helpers.js'
+import type { ChartProps } from '../../types.js'
 
 /**
  * HeatMapChart Component

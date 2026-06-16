@@ -7,7 +7,7 @@
  * - __queryLabel: user-defined or auto-generated label for the query
  */
 
-import type { CubeResultSet, CubeQuery, QueryMergeStrategy } from '../types'
+import type { CubeResultSet, CubeQuery, QueryMergeStrategy } from '../types.js'
 
 /**
  * Metadata fields injected into multi-query data

@@ -11,9 +11,9 @@
  */
 
 import { lazy, ComponentType, LazyExoticComponent } from 'react'
-import type { BuiltInChartType, ChartType, ChartProps } from '../types'
-import { MissingDependencyFallback } from '../components/charts/MissingDependencyFallback'
-import { useTranslation } from '../hooks/useTranslation'
+import type { BuiltInChartType, ChartType, ChartProps } from '../types.js'
+import { MissingDependencyFallback } from '../components/charts/MissingDependencyFallback.js'
+import { useTranslation } from '../hooks/useTranslation.js'
 
 // Type for lazy-loaded chart components
 export type LazyChartComponent = ComponentType<ChartProps>

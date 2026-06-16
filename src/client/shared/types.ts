@@ -2,7 +2,7 @@
  * Shared type definitions used across QueryBuilder and AnalysisBuilder
  */
 
-import type { CubeQuery, FilterOperator } from '../types'
+import type { CubeQuery, FilterOperator } from '../types.js'
 
 // ============================================================================
 // Meta endpoint response types

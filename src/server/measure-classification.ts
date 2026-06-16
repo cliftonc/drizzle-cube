@@ -8,7 +8,7 @@
  * methods for the physical-plan/builder call sites.
  */
 
-import type { Cube } from './types'
+import type { Cube } from './types/index.js'
 
 /**
  * Measure types that are window functions. Window functions require special

@@ -4,8 +4,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { COLOR_PALETTES, getColorPalette } from '../utils/colorPalettes'
-import { getIcon } from '../icons'
+import { COLOR_PALETTES, getColorPalette } from '../utils/colorPalettes.js'
+import { getIcon } from '../icons/index.js'
 
 const ChevronDownIcon = getIcon('chevronDown')
 

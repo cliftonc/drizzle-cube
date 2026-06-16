@@ -9,9 +9,9 @@ import {
   getFieldGranularity,
   parseNumericValue,
   isValidNumericValue
-} from '../../utils/chartUtils'
-import { CHART_MARGINS } from '../../utils/chartConstants'
-import type { AxisFormatConfig, ChartAxisConfig, ChartDisplayConfig, CubeQuery } from '../../types'
+} from '../../utils/chartUtils.js'
+import { CHART_MARGINS } from '../../utils/chartConstants.js'
+import type { AxisFormatConfig, ChartAxisConfig, ChartDisplayConfig, CubeQuery } from '../../types.js'
 
 // Limit series to prevent performance issues with high-cardinality fields (e.g.,
 // dates). Above this, the chart falls back to single-series mode.

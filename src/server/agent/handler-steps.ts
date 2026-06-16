@@ -5,9 +5,9 @@
  * handler simply orchestrates them.
  */
 
-import type { AgentSSEEvent, AgentHistoryMessage, AgentConfig } from './types'
-import type { ContentBlock, InternalMessage, NormalizedEvent, ToolResult, LLMProvider } from './providers/types'
-import type { ToolExecutionResult } from './tools'
+import type { AgentSSEEvent, AgentHistoryMessage, AgentConfig } from './types.js'
+import type { ContentBlock, InternalMessage, NormalizedEvent, ToolResult, LLMProvider } from './providers/types.js'
+import type { ToolExecutionResult } from './tools.js'
 
 type AgentObservability = AgentConfig['observability']
 type ToolExecutorMap = Map<string, (input: Record<string, unknown>) => Promise<ToolExecutionResult>>

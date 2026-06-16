@@ -5,10 +5,10 @@
  * existing import paths stable.
  */
 
-import type { CubeQuery, SimpleFilter } from '../../types'
-import type { MetaResponse } from './types'
-import { FILTER_OPERATORS } from './types'
-import { getFieldType } from '../../shared/utils'
+import type { CubeQuery, SimpleFilter } from '../../types.js'
+import type { MetaResponse } from './types.js'
+import { FILTER_OPERATORS } from './types.js'
+import { getFieldType } from '../../shared/utils.js'
 
 /** Collect the set of field names currently selected by a query. */
 export function getSelectedFieldNames(query: CubeQuery): Set<string> {

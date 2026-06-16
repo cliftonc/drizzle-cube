@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react'
-import { useTranslation } from '../../hooks/useTranslation'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts'
-import ChartContainer from './ChartContainer'
-import ChartTooltip from './ChartTooltip'
-import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
-import { resolveChartAxisFields } from './chartAxisResolution'
-import { CHART_COLORS } from '../../utils/chartConstants'
-import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import type { ChartProps, CubeQuery } from '../../types'
+import ChartContainer from './ChartContainer.js'
+import ChartTooltip from './ChartTooltip.js'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates.js'
+import { resolveChartAxisFields } from './chartAxisResolution.js'
+import { CHART_COLORS } from '../../utils/chartConstants.js'
+import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils.js'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
+import type { ChartProps, CubeQuery } from '../../types.js'
 
 interface PieSlice {
   name: string

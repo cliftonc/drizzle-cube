@@ -6,12 +6,12 @@
  * portlets. Reads everything from DashboardContext.
  */
 
-import { getIcon } from '../../icons'
-import { useTranslation } from '../../hooks/useTranslation'
-import MobileStackedLayout from '../MobileStackedLayout'
-import ScaledGridWrapper from '../ScaledGridWrapper'
-import { TextIcon } from './dashboardGridUtils'
-import { useDashboardContext } from './DashboardContext'
+import { getIcon } from '../../icons/index.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import MobileStackedLayout from '../MobileStackedLayout.js'
+import ScaledGridWrapper from '../ScaledGridWrapper.js'
+import { TextIcon } from './dashboardGridUtils.js'
+import { useDashboardContext } from './DashboardContext.js'
 
 const ChartBarIcon = getIcon('measure')
 const AddIcon = getIcon('add')

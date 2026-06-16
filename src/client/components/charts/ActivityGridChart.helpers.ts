@@ -1,8 +1,8 @@
 /**
  * Co-located data/config helpers for ActivityGridChart (no D3 side effects).
  */
-import { formatTimeValue } from '../../utils/chartUtils'
-import type { CubeQuery } from '../../types'
+import { formatTimeValue } from '../../utils/chartUtils.js'
+import type { CubeQuery } from '../../types.js'
 
 export interface GridCell {
   x: number

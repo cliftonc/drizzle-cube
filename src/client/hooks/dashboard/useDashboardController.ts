@@ -1,6 +1,6 @@
 import { startTransition, useCallback, useRef, type MutableRefObject, type RefObject } from 'react'
 import type { StoreApi } from 'zustand'
-import { captureThumbnail } from '../../utils/thumbnail'
+import { captureThumbnail } from '../../utils/thumbnail.js'
 import type {
   DashboardConfig,
   DashboardFilterMapping,
@@ -9,16 +9,16 @@ import type {
   PortletConfig,
   RowLayout,
   ThumbnailFeatureConfig
-} from '../../types'
-import type { DashboardStore, DashboardStoreActions } from '../../stores/dashboardStore'
-import { mappingIncludesFilter } from '../../utils/filterUtils'
+} from '../../types.js'
+import type { DashboardStore, DashboardStoreActions } from '../../stores/dashboardStore.js'
+import { mappingIncludesFilter } from '../../utils/filterUtils.js'
 import {
   convertPortletsToRows,
   convertRowsToPortlets,
   createRowId,
   equalizeRowColumns,
   normalizeRows
-} from './layoutUtils'
+} from './layoutUtils.js'
 
 interface UseDashboardControllerOptions {
   allowedModes: DashboardLayoutMode[]

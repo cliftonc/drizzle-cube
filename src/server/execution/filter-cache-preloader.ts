@@ -6,10 +6,10 @@
  * Extracted from QueryExecutor. Depends on DrizzleSqlBuilder for filter SQL.
  */
 
-import type { Cube, SemanticQuery, QueryContext } from '../types'
-import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
-import { FilterCacheManager, getFilterKey, getTimeDimensionFilterKey, flattenFilters } from '../filter-cache'
-import type { DrizzleSqlBuilder } from '../physical-plan/drizzle-sql-builder'
+import type { Cube, SemanticQuery, QueryContext } from '../types/index.js'
+import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils.js'
+import { FilterCacheManager, getFilterKey, getTimeDimensionFilterKey, flattenFilters } from '../filter-cache.js'
+import type { DrizzleSqlBuilder } from '../physical-plan/drizzle-sql-builder.js'
 
 export class FilterCachePreloader {
   constructor(private readonly queryBuilder: DrizzleSqlBuilder) {}

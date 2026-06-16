@@ -6,8 +6,8 @@
  */
 
 import { useMemo } from 'react'
-import type { AnalysisBuilderState, MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types'
-import type { QueryMergeStrategy } from '../types'
+import type { AnalysisBuilderState, MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types.js'
+import type { QueryMergeStrategy } from '../types.js'
 
 export interface UseAnalysisCombinedFieldsOptions {
   queryState: AnalysisBuilderState

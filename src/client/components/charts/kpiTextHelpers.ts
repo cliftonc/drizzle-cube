@@ -1,4 +1,4 @@
-import type { ColorPalette } from '../../types'
+import type { ColorPalette } from '../../types.js'
 
 /**
  * Co-located pure helpers for KpiText: value extraction, statistics, number

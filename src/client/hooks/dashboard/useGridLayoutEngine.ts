@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import type { LayoutItem } from 'react-grid-layout'
 import type { StoreApi } from 'zustand'
-import type { DashboardStore } from '../../stores/dashboardStore'
+import type { DashboardStore } from '../../stores/dashboardStore.js'
 
 interface UseGridLayoutEngineOptions {
   storeApi: StoreApi<DashboardStore>

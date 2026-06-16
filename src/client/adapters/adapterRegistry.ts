@@ -18,12 +18,12 @@
  *   adapterRegistry.register(customAdapter)
  */
 
-import type { ModeAdapter } from './modeAdapter'
-import type { AnalysisType } from '../types/analysisConfig'
-import { queryModeAdapter } from './queryModeAdapter'
-import { funnelModeAdapter } from './funnelModeAdapter'
-import { flowModeAdapter } from './flowModeAdapter'
-import { retentionModeAdapter } from './retentionModeAdapter'
+import type { ModeAdapter } from './modeAdapter.js'
+import type { AnalysisType } from '../types/analysisConfig.js'
+import { queryModeAdapter } from './queryModeAdapter.js'
+import { funnelModeAdapter } from './funnelModeAdapter.js'
+import { flowModeAdapter } from './flowModeAdapter.js'
+import { retentionModeAdapter } from './retentionModeAdapter.js'
 
 // Internal storage for registered adapters
 const adapters = new Map<AnalysisType, ModeAdapter<unknown>>()

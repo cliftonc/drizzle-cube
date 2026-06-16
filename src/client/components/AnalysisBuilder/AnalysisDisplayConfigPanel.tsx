@@ -5,12 +5,12 @@
  * Extracted from AnalysisChartConfigPanel to be shown in its own tab.
  */
 
-import SectionHeading from './SectionHeading'
-import DisplayOptionControl from './DisplayOptionControl'
-import LegacyBooleanOptions from './LegacyBooleanOptions'
-import { useChartConfig } from '../../charts/lazyChartConfigRegistry'
-import type { ChartType, ChartDisplayConfig, ColorPalette } from '../../types'
-import { useTranslation } from '../../hooks/useTranslation'
+import SectionHeading from './SectionHeading.js'
+import DisplayOptionControl from './DisplayOptionControl.js'
+import LegacyBooleanOptions from './LegacyBooleanOptions.js'
+import { useChartConfig } from '../../charts/lazyChartConfigRegistry.js'
+import type { ChartType, ChartDisplayConfig, ColorPalette } from '../../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface AnalysisDisplayConfigPanelProps {
   chartType: ChartType

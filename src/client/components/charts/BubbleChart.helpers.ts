@@ -1,8 +1,8 @@
 /**
  * Co-located data/config helpers for BubbleChart (no D3 side effects here).
  */
-import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue } from '../../utils/chartUtils'
-import type { AxisFormatConfig, ChartAxisConfig, ChartDisplayConfig, CubeQuery } from '../../types'
+import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue } from '../../utils/chartUtils.js'
+import type { AxisFormatConfig, ChartAxisConfig, ChartDisplayConfig, CubeQuery } from '../../types.js'
 
 export interface BubbleData {
   x: number

@@ -11,12 +11,12 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { useCubeApi } from '../../providers/CubeApiProvider'
-import type { MultiQueryConfig, CubeResultSet } from '../../types'
-import { cleanQueryForServer } from '../../shared/utils'
-import { mergeQueryResults } from '../../utils/multiQueryUtils'
-import { stableStringify } from '../../shared/queryKey'
-import { useDebounceQuery } from '../useDebounceQuery'
+import { useCubeApi } from '../../providers/CubeApiProvider.js'
+import type { MultiQueryConfig, CubeResultSet } from '../../types.js'
+import { cleanQueryForServer } from '../../shared/utils.js'
+import { mergeQueryResults } from '../../utils/multiQueryUtils.js'
+import { stableStringify } from '../../shared/queryKey.js'
+import { useDebounceQuery } from '../useDebounceQuery.js'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300

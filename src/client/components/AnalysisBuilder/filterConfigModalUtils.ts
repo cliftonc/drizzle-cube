@@ -8,8 +8,8 @@
  * re-exported here to keep existing import paths stable.
  */
 
-export type { DerivedRange } from '../shared/dateRangeUtils'
-export { deriveRangeFromDateRange } from '../shared/dateRangeUtils'
+export type { DerivedRange } from '../shared/dateRangeUtils.js'
+export { deriveRangeFromDateRange } from '../shared/dateRangeUtils.js'
 
 /** Action the value-dropdown keyboard handler should apply, decided purely. */
 export type ValueKeyAction =

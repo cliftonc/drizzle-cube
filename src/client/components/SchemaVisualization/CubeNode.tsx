@@ -1,8 +1,8 @@
 import type { MouseEvent } from 'react'
-import type { CubeMetaCube } from '../../types'
-import { getIcon } from '../../icons'
-import { useXyflow } from './xyflowContext'
-import { useTranslation } from '../../hooks/useTranslation'
+import type { CubeMetaCube } from '../../types.js'
+import { getIcon } from '../../icons/index.js'
+import { useXyflow } from './xyflowContext.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface CubeNodeData {
   cube: CubeMetaCube

@@ -22,34 +22,34 @@ import {
   type Ref
 } from 'react'
 import ReactGridLayout, { verticalCompactor, type LayoutItem, type Layout } from 'react-grid-layout'
-import { getIcon } from '../../icons'
-import { useScrollDetection } from '../../hooks/useScrollDetection'
-import { useElementVisibility } from '../../hooks/useElementVisibility'
-import { useDragAutoScroll } from '../../hooks/useDragAutoScroll'
-import DashboardPortletCard from '../DashboardPortletCard'
-import RowManagedLayout from '../RowManagedLayout'
-import { ensureAnalysisConfig } from '../../utils/configMigration'
-import { useCubeFeatures } from '../../providers/CubeProvider'
-import { useResponsiveDashboard } from '../../hooks/useResponsiveDashboard'
-import { ScrollContainerProvider } from '../../providers/ScrollContainerContext'
-import { useDashboard } from '../../hooks/useDashboardHook'
+import { getIcon } from '../../icons/index.js'
+import { useScrollDetection } from '../../hooks/useScrollDetection.js'
+import { useElementVisibility } from '../../hooks/useElementVisibility.js'
+import { useDragAutoScroll } from '../../hooks/useDragAutoScroll.js'
+import DashboardPortletCard from '../DashboardPortletCard.js'
+import RowManagedLayout from '../RowManagedLayout.js'
+import { ensureAnalysisConfig } from '../../utils/configMigration.js'
+import { useCubeFeatures } from '../../providers/CubeProvider.js'
+import { useResponsiveDashboard } from '../../hooks/useResponsiveDashboard.js'
+import { ScrollContainerProvider } from '../../providers/ScrollContainerContext.js'
+import { useDashboard } from '../../hooks/useDashboardHook.js'
 import type {
   PortletConfig,
   DashboardFilterMapping,
   DashboardLayoutMode,
   RowLayout
-} from '../../types'
+} from '../../types.js'
 import {
   getGridSettings,
   equalizeRowColumns,
   adjustRowWidths,
   createRowId,
   findScrollableAncestor
-} from './dashboardGridUtils'
+} from './dashboardGridUtils.js'
 import DashboardContext, {
   type DashboardContextValue,
   type DashboardProviderProps
-} from './DashboardContext'
+} from './DashboardContext.js'
 
 const RefreshIcon = getIcon('refresh')
 const EditIcon = getIcon('edit')

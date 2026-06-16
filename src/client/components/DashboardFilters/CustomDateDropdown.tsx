@@ -5,8 +5,8 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { formatDateForCube, convertDateRangeTypeToValue } from '../shared/utils'
-import { useTranslation } from '../../hooks/useTranslation'
+import { formatDateForCube, convertDateRangeTypeToValue } from '../shared/utils.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 type TabType = 'fixed' | 'since' | 'last'
 type LastUnit = 'days' | 'weeks' | 'months' | 'quarters' | 'years'

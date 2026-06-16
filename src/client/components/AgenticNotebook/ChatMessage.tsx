@@ -3,8 +3,8 @@
  */
 
 import React from 'react'
-import type { ChatMessage as ChatMessageType } from '../../stores/notebookStore'
-import { getMessageFlags, getBubbleClass, ChatBubbleBody } from './chatMessageParts'
+import type { ChatMessage as ChatMessageType } from '../../stores/notebookStore.js'
+import { getMessageFlags, getBubbleClass, ChatBubbleBody } from './chatMessageParts.js'
 
 interface ChatMessageProps {
   message: ChatMessageType

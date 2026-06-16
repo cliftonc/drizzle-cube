@@ -6,7 +6,7 @@
  * single high-complexity dispatcher. Behaviour is identical to the inlined cases.
  */
 
-import type { SemanticLayerCompiler, SecurityContext } from '../server'
+import type { SemanticLayerCompiler, SecurityContext } from '../server/index.js'
 import {
   handleDiscover,
   handleValidate,
@@ -14,8 +14,8 @@ import {
   type DiscoverRequest,
   type ValidateRequest,
   type LoadRequest
-} from './utils'
-import type { MCPToolResult } from './mcp-tools'
+} from './utils.js'
+import type { MCPToolResult } from './mcp-tools.js'
 
 export interface CubeToolHandlerDeps {
   semanticLayer: SemanticLayerCompiler

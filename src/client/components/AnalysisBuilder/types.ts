@@ -20,12 +20,12 @@ import type {
   FunnelBindingKey,
   AnalysisType,
   FunnelStepState,
-} from '../../types'
-import type { ColorPalette } from '../../utils/colorPalettes'
-import type { MetaResponse, MetaField, MetaCube, QueryAnalysis } from '../../shared/types'
-import type { ChartAvailabilityMap } from '../../shared/chartDefaults'
-import type { MultiQueryValidationResult } from '../../utils/multiQueryValidation'
-import type { ValidationResult } from '../../adapters/modeAdapter'
+} from '../../types.js'
+import type { ColorPalette } from '../../utils/colorPalettes.js'
+import type { MetaResponse, MetaField, MetaCube, QueryAnalysis } from '../../shared/types.js'
+import type { ChartAvailabilityMap } from '../../shared/chartDefaults.js'
+import type { MultiQueryValidationResult } from '../../utils/multiQueryValidation.js'
+import type { ValidationResult } from '../../adapters/modeAdapter.js'
 
 // Re-export types from shared for convenience
 export type { MetaResponse, MetaField, MetaCube, QueryAnalysis }
@@ -122,7 +122,7 @@ export interface AIState {
     analysisType?: AnalysisType
   } | null
   /** Full AnalysisConfig snapshot for complete restore (handles funnel mode properly) */
-  previousConfig?: import('../../types/analysisConfig').AnalysisConfig | null
+  previousConfig?: import('../../types/analysisConfig.js').AnalysisConfig | null
 }
 
 // ============================================================================
@@ -359,7 +359,7 @@ export interface AnalysisQueryPanelProps {
   /** Event dimension for flow mode (node labels in Sankey) */
   eventDimension?: string | null
   /** Starting step configuration for flow mode */
-  startingStep?: import('../../types/flow').FlowStartingStep
+  startingStep?: import('../../types/flow.js').FlowStartingStep
   /** Number of steps to explore before starting step */
   stepsBefore?: number
   /** Number of steps to explore after starting step */
@@ -391,49 +391,49 @@ export interface AnalysisQueryPanelProps {
   /** Single cube for retention analysis */
   retentionCube?: string | null
   /** Binding key for retention analysis */
-  retentionBindingKey?: import('../../types').FunnelBindingKey | null
+  retentionBindingKey?: import('../../types.js').FunnelBindingKey | null
   /** Single timestamp dimension for retention */
   retentionTimeDimension?: string | null
   /** Date range for cohort analysis (REQUIRED) */
-  retentionDateRange?: import('../../types/retention').DateRange
+  retentionDateRange?: import('../../types/retention.js').DateRange
   /** Cohort filters - define who enters the cohort */
   retentionCohortFilters?: Filter[]
   /** Activity filters - define what counts as a return */
   retentionActivityFilters?: Filter[]
   /** Breakdown dimensions for segmentation */
-  retentionBreakdowns?: import('../../types/retention').RetentionBreakdownItem[]
+  retentionBreakdowns?: import('../../types/retention.js').RetentionBreakdownItem[]
   /** Granularity for viewing retention periods */
-  retentionViewGranularity?: import('../../types/retention').RetentionGranularity
+  retentionViewGranularity?: import('../../types/retention.js').RetentionGranularity
   /** Number of periods */
   retentionPeriods?: number
   /** Retention type */
-  retentionType?: import('../../types/retention').RetentionType
+  retentionType?: import('../../types/retention.js').RetentionType
   /** Retention display config */
   retentionDisplayConfig?: ChartDisplayConfig
   /** Callback when cube changes */
   onRetentionCubeChange?: (cube: string | null) => void
   /** Callback when retention binding key changes */
-  onRetentionBindingKeyChange?: (key: import('../../types').FunnelBindingKey | null) => void
+  onRetentionBindingKeyChange?: (key: import('../../types.js').FunnelBindingKey | null) => void
   /** Callback when time dimension changes */
   onRetentionTimeDimensionChange?: (dim: string | null) => void
   /** Callback when date range changes */
-  onRetentionDateRangeChange?: (range: import('../../types/retention').DateRange) => void
+  onRetentionDateRangeChange?: (range: import('../../types/retention.js').DateRange) => void
   /** Callback when cohort filters change */
   onRetentionCohortFiltersChange?: (filters: Filter[]) => void
   /** Callback when activity filters change */
   onRetentionActivityFiltersChange?: (filters: Filter[]) => void
   /** Callback when breakdowns change (set all) */
-  onRetentionBreakdownsChange?: (breakdowns: import('../../types/retention').RetentionBreakdownItem[]) => void
+  onRetentionBreakdownsChange?: (breakdowns: import('../../types/retention.js').RetentionBreakdownItem[]) => void
   /** Callback to add a breakdown */
-  onAddRetentionBreakdown?: (breakdown: import('../../types/retention').RetentionBreakdownItem) => void
+  onAddRetentionBreakdown?: (breakdown: import('../../types/retention.js').RetentionBreakdownItem) => void
   /** Callback to remove a breakdown */
   onRemoveRetentionBreakdown?: (field: string) => void
   /** Callback when granularity changes */
-  onRetentionViewGranularityChange?: (granularity: import('../../types/retention').RetentionGranularity) => void
+  onRetentionViewGranularityChange?: (granularity: import('../../types/retention.js').RetentionGranularity) => void
   /** Callback when periods changes */
   onRetentionPeriodsChange?: (periods: number) => void
   /** Callback when retention type changes */
-  onRetentionTypeChange?: (type: import('../../types/retention').RetentionType) => void
+  onRetentionTypeChange?: (type: import('../../types/retention.js').RetentionType) => void
   /** Callback when retention display config changes */
   onRetentionDisplayConfigChange?: (config: ChartDisplayConfig) => void
 }
@@ -606,7 +606,7 @@ export interface AnalysisResultsPanelProps {
   /**
    * Retention chart data (cohort × period matrix) for rendering.
    */
-  retentionChartData?: import('../../types/retention').RetentionChartData | null
+  retentionChartData?: import('../../types/retention.js').RetentionChartData | null
   /**
    * Retention validation result (errors explaining why query cannot be built).
    */
@@ -616,7 +616,7 @@ export interface AnalysisResultsPanelProps {
    * Query warnings from server (e.g., fan-out without dimensions).
    * Displayed as a banner above results.
    */
-  warnings?: import('../../shared/types').QueryWarning[]
+  warnings?: import('../../shared/types.js').QueryWarning[]
 
   // Schema visualization interaction
   /** Fields currently selected in the query (for highlighting in schema diagram) */
@@ -779,7 +779,7 @@ export interface AnalysisBuilderInitialFlowState {
   flowCube?: string | null
   flowBindingKey?: FunnelBindingKey | null
   flowTimeDimension?: string | null
-  startingStep?: import('../../types/flow').FlowStartingStep
+  startingStep?: import('../../types/flow.js').FlowStartingStep
   stepsBefore?: number
   stepsAfter?: number
   eventDimension?: string | null
@@ -796,13 +796,13 @@ export interface AnalysisBuilderInitialRetentionState {
   retentionCube?: string | null
   retentionBindingKey?: FunnelBindingKey | null
   retentionTimeDimension?: string | null
-  retentionDateRange?: import('../../types/retention').DateRange
+  retentionDateRange?: import('../../types/retention.js').DateRange
   retentionCohortFilters?: Filter[]
   retentionActivityFilters?: Filter[]
-  retentionBreakdowns?: import('../../types/retention').RetentionBreakdownItem[]
-  retentionViewGranularity?: import('../../types/retention').RetentionGranularity
+  retentionBreakdowns?: import('../../types/retention.js').RetentionBreakdownItem[]
+  retentionViewGranularity?: import('../../types/retention.js').RetentionGranularity
   retentionPeriods?: number
-  retentionType?: import('../../types/retention').RetentionType
+  retentionType?: import('../../types/retention.js').RetentionType
   retentionChartType?: ChartType
   retentionChartConfig?: ChartAxisConfig
   retentionDisplayConfig?: ChartDisplayConfig
@@ -876,7 +876,7 @@ export interface AnalysisBuilderRef {
    * Consumers should just JSON.stringify the result - no need to check the type.
    * @deprecated Use getAnalysisConfig() for Phase 3+ integrations
    */
-  getQueryConfig: () => CubeQuery | MultiQueryConfig | import('../../types/funnel').ServerFunnelQuery
+  getQueryConfig: () => CubeQuery | MultiQueryConfig | import('../../types/funnel.js').ServerFunnelQuery
   /** Get current chart configuration */
   getChartConfig: () => { chartType: ChartType; chartConfig: ChartAxisConfig; displayConfig: ChartDisplayConfig }
   /** Get the current analysis type (query or funnel) */
@@ -888,7 +888,7 @@ export interface AnalysisBuilderRef {
    * This is the canonical format for persisting analysis state.
    * Replaces getQueryConfig + getChartConfig + getAnalysisType.
    */
-  getAnalysisConfig: () => import('../../types/analysisConfig').AnalysisConfig
+  getAnalysisConfig: () => import('../../types/analysisConfig.js').AnalysisConfig
   /** Execute the current query */
   executeQuery: () => void
   /** Clear the current query */

@@ -11,9 +11,9 @@
  */
 
 import React from 'react'
-import type { DashboardFilter, CubeMeta } from '../../types'
-import { useCompactFilterBar } from './useCompactFilterBar'
-import { DesktopLayout, MobileLayout, type CompactFilterBarViewProps } from './CompactFilterBarParts'
+import type { DashboardFilter, CubeMeta } from '../../types.js'
+import { useCompactFilterBar } from './useCompactFilterBar.js'
+import { DesktopLayout, MobileLayout, type CompactFilterBarViewProps } from './CompactFilterBarParts.js'
 
 interface CompactFilterBarProps {
   dashboardFilters: DashboardFilter[]

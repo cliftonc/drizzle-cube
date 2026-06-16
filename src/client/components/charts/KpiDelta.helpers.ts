@@ -4,7 +4,7 @@
  * Pure data-shaping + colour resolution extracted from the component. No
  * behaviour change — these mirror the original inline logic exactly.
  */
-import type { ChartAxisConfig } from '../../types'
+import type { ChartAxisConfig } from '../../types.js'
 
 /** Coerce a config axis value (string | array | undefined) to a field list. */
 export function toFieldList(axis: ChartAxisConfig['yAxis']): string[] {

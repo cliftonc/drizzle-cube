@@ -7,9 +7,9 @@
  * readable and individually testable.
  */
 
-import type { Cube, CubeJoin, SemanticQuery } from '../types'
-import { resolveCubeReference } from '../cube-utils'
-import { extractCubeNamesFromFilter } from './planner-utils'
+import type { Cube, CubeJoin, SemanticQuery } from '../types/index.js'
+import { resolveCubeReference } from '../cube-utils.js'
+import { extractCubeNamesFromFilter } from './planner-utils.js'
 
 /** A resolved CTE join key (column names plus the underlying column objects). */
 export interface CTEJoinKey {
