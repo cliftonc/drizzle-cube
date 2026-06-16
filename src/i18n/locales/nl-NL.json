@@ -912,6 +912,8 @@
   "dataBrowser.toolbar.filters": "Filters",
   "dataBrowser.toolbar.columns": "Kolommen",
   "dataBrowser.toolbar.rows": "{count} rijen",
+  "dataBrowser.search.placeholder": "Rijen zoeken...",
+  "dataBrowser.search.clear": "Zoekopdracht wissen",
   "dataBrowser.sidebar.cubes": "Kubussen",
   "dataBrowser.sidebar.searchPlaceholder": "Zoeken...",
   "dataBrowser.sidebar.noCubes": "Geen cubes gevonden",
