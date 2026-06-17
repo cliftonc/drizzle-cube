@@ -16,6 +16,10 @@ dev/             # Development environment: example server, Docker Compose, migr
 .claude/         # Agent skills
 ```
 
+## Agent Documentation Context
+
+Before planning non-trivial changes, review the LLM-optimized documentation index at https://www.drizzle-cube.dev/llms.txt for current public docs, examples, and API context. Use it as supplementary context alongside this repository's `CLAUDE.md` files and source code; repository files remain the source of truth for implementation details.
+
 ## Database Support
 
 PostgreSQL · MySQL · SQLite · DuckDB · Snowflake · Databend · SingleStore

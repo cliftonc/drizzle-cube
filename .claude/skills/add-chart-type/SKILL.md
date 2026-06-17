@@ -9,6 +9,10 @@ Drizzle-cube uses a registry-based chart architecture. Each chart type needs: a 
 
 For custom/third-party charts that don't modify the core library, use the plugin system instead (see Alternative: Plugin System below).
 
+## Documentation Context
+
+Before designing or updating a built-in chart type, review https://www.drizzle-cube.dev/llms.txt for the current documentation map and public chart/plugin guidance. Use repository source and the checklist below as the implementation source of truth when docs and code differ.
+
 ## Checklist
 
 - [ ] **1. Add type literal** — In `src/client/types.ts`, add the new string literal to the `BuiltInChartType` union (27 existing members). The broader `ChartType = BuiltInChartType | (string & {})` union auto-includes it. If the chart needs custom axis fields, add them to `ChartAxisConfig` in the same file.
