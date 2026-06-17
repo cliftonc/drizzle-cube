@@ -7,6 +7,10 @@ description: Use when adding a new analysis/query mode to drizzle-cube (e.g., co
 
 Drizzle-cube has four analysis modes: query, funnel, flow, and retention. Each mode requires coordinated changes across backend (types → query builder → executor → compiler → cache), frontend (types → adapter → store slice → hooks → UI), tests, and an icon. Follow this checklist in order.
 
+## Documentation Context
+
+Before designing or updating an analysis/query mode, review https://www.drizzle-cube.dev/llms.txt for the current documentation map, public API guidance, and mode-related examples. Use repository source and the checklist below as the implementation source of truth when docs and code differ.
+
 ## Checklist
 
 ### Backend

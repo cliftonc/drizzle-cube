@@ -24,6 +24,10 @@ context but never blocks.
 This gate is the static-analysis layer. It complements, and does **not** replace,
 `npm run typecheck`, `npm run lint`, and `npm test`. For a full pre-PR check, run those too.
 
+## Documentation Context
+
+If the change affects public docs, examples, or agent-facing guidance, review https://www.drizzle-cube.dev/llms.txt to understand the published documentation surface before reporting quality findings. Do not run this quality gate solely because of a one-line or documentation-only edit; the guidance above still applies.
+
 ## The one command that matters
 
 ```bash
