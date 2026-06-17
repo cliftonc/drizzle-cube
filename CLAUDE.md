@@ -70,3 +70,15 @@ Each engine has a dedicated executor in `src/server/executors/`. Auto-detection 
 - **Configs store keys, components resolve** — chart configs hold translation key strings, NOT resolved text
 - Add new keys to `en.json`, `nl-NL.json`, and `en-US.json` (if British spelling differs)
 - PR checklist: no new bare strings, keys exist in all locale files
+
+## Release Dance
+
+From a clean, up-to-date `main`:
+
+1. Validate the publish gate locally: `npm run lint && npm run typecheck && npm run build && npm run check:exports` (the `prepublishOnly` chain — must be green).
+2. `npm version patch|minor|major` — bumps `package.json`, commits as the bare version (e.g. `0.6.2`), tags `v0.6.2`.
+3. `git push origin main && git push origin v0.6.2`.
+4. `gh release create v0.6.2 --title v0.6.2 --notes "…"` — creating the release triggers `.github/workflows/npm-publish.yml`, which waits for CI to pass on the commit then runs `npm publish`.
+5. Verify: `npm view drizzle-cube version` shows the new version.
+
+Version-only commits skip tests in CI but still run lint/typecheck/build so the publish gate reports success.
