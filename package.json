@@ -14,14 +14,24 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.js",
-      "require": "./dist/server/index.cjs"
+      "import": {
+        "types": "./dist/server/index.d.ts",
+        "default": "./dist/server/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server/index.d.ts",
+        "default": "./dist/server/index.cjs"
+      }
     },
     "./server": {
-      "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.js",
-      "require": "./dist/server/index.cjs"
+      "import": {
+        "types": "./dist/server/index.d.ts",
+        "default": "./dist/server/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server/index.d.ts",
+        "default": "./dist/server/index.cjs"
+      }
     },
     "./client": {
       "types": "./dist/client/index.d.ts",
@@ -57,39 +67,74 @@
     },
     "./client/styles.css": "./dist/client/styles.css",
     "./adapters/hono": {
-      "types": "./dist/adapters/hono/index.d.ts",
-      "import": "./dist/adapters/hono/index.js",
-      "require": "./dist/adapters/hono/index.cjs"
+      "import": {
+        "types": "./dist/adapters/hono/index.d.ts",
+        "default": "./dist/adapters/hono/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/adapters/hono/index.d.ts",
+        "default": "./dist/adapters/hono/index.cjs"
+      }
     },
     "./adapters/express": {
-      "types": "./dist/adapters/express/index.d.ts",
-      "import": "./dist/adapters/express/index.js",
-      "require": "./dist/adapters/express/index.cjs"
+      "import": {
+        "types": "./dist/adapters/express/index.d.ts",
+        "default": "./dist/adapters/express/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/adapters/express/index.d.ts",
+        "default": "./dist/adapters/express/index.cjs"
+      }
     },
     "./adapters/fastify": {
-      "types": "./dist/adapters/fastify/index.d.ts",
-      "import": "./dist/adapters/fastify/index.js",
-      "require": "./dist/adapters/fastify/index.cjs"
+      "import": {
+        "types": "./dist/adapters/fastify/index.d.ts",
+        "default": "./dist/adapters/fastify/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/adapters/fastify/index.d.ts",
+        "default": "./dist/adapters/fastify/index.cjs"
+      }
     },
     "./adapters/nextjs": {
-      "types": "./dist/adapters/nextjs/index.d.ts",
-      "import": "./dist/adapters/nextjs/index.js",
-      "require": "./dist/adapters/nextjs/index.cjs"
+      "import": {
+        "types": "./dist/adapters/nextjs/index.d.ts",
+        "default": "./dist/adapters/nextjs/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/adapters/nextjs/index.d.ts",
+        "default": "./dist/adapters/nextjs/index.cjs"
+      }
     },
     "./adapters/utils": {
-      "types": "./dist/adapters/utils.d.ts",
-      "import": "./dist/adapters/utils.js",
-      "require": "./dist/adapters/utils.cjs"
+      "import": {
+        "types": "./dist/adapters/utils.d.ts",
+        "default": "./dist/adapters/utils.js"
+      },
+      "require": {
+        "types": "./dist/cjs/adapters/utils.d.ts",
+        "default": "./dist/adapters/utils.cjs"
+      }
     },
     "./adapters/types": {
-      "types": "./dist/adapters/types.d.ts",
-      "import": "./dist/adapters/types.js",
-      "require": "./dist/adapters/types.cjs"
+      "import": {
+        "types": "./dist/adapters/types.d.ts",
+        "default": "./dist/adapters/types.js"
+      },
+      "require": {
+        "types": "./dist/cjs/adapters/types.d.ts",
+        "default": "./dist/adapters/types.cjs"
+      }
     },
     "./mcp": {
-      "types": "./dist/adapters/mcp-tools.d.ts",
-      "import": "./dist/adapters/mcp-tools.js",
-      "require": "./dist/adapters/mcp-tools.cjs"
+      "import": {
+        "types": "./dist/adapters/mcp-tools.d.ts",
+        "default": "./dist/adapters/mcp-tools.js"
+      },
+      "require": {
+        "types": "./dist/cjs/adapters/mcp-tools.d.ts",
+        "default": "./dist/adapters/mcp-tools.cjs"
+      }
     }
   },
   "files": [
@@ -105,6 +150,7 @@
     "dev:build-server": "vite build src/server --watch --mode development",
     "dev:build-client": "vite build src/client --watch --mode development",
     "dev:mcp-app": "vite build --config vite.config.mcp-app.ts --watch",
+    "prebuild": "node -e \"require('node:fs').rmSync('dist/cjs', { recursive: true, force: true })\"",
     "build": "npm run build:server && npm run build:mcp-app && npm run build:client && npm run build:adapters && npm run build:cli",
     "build:mcp-app": "vite build --config vite.config.mcp-app.ts && tsx scripts/generate-mcp-app-html.ts",
     "build:server": "vite build --config vite.config.server.ts",

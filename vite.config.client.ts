@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 import dts from 'vite-plugin-dts'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { cjsTypesMarker } from './vite.cjs-marker'
 
 const chartModuleNames = new Set([
   'ActivityGridChart',
@@ -58,13 +59,18 @@ export default defineConfig({
   plugins: [
     react(),
     dts({
+      // Client is ESM-only (no require condition), but the server's CJS
+      // declaration graph reaches into the client "island" (client/types,
+      // charts config registry, etc.). Mirror the client declarations into
+      // dist/cjs/client so those CJS references resolve as CJS. See #881.
       insertTypesEntry: true,
       rollupTypes: false,
       include: ['src/client/**/*.ts', 'src/client/**/*.tsx'],
       tsconfigPath: './tsconfig.client.json',
-      outDir: 'dist/client',
+      outDirs: ['dist/client', 'dist/cjs/client'],
       entryRoot: 'src/client'
     }),
+    cjsTypesMarker(),
     visualizer({
       filename: 'dist/client-bundle-stats.html',
       open: false,

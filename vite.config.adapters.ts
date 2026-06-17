@@ -1,19 +1,23 @@
 import { defineConfig } from 'vite'
 import { resolve } from 'path'
 import dts from 'vite-plugin-dts'
+import { cjsTypesMarker } from './vite.cjs-marker'
 
 export default defineConfig({
   plugins: [
     dts({
       // Per-file declarations rooted at src/adapters so they land flat at
       // dist/adapters/* (e.g. dist/adapters/fastify/index.d.ts) matching
-      // package.json#exports rather than nesting at dist/adapters/adapters.
-      // outDir defaults to vite's build.outDir (dist/adapters). See #877.
+      // package.json#exports rather than nesting at dist/adapters/adapters. #877.
+      // outDirs mirrors the same declarations into dist/cjs/adapters for the
+      // require.types condition (CJS via the dist/cjs/package.json marker). #881.
       insertTypesEntry: false,
       include: ['src/adapters/**/*.ts'],
       exclude: ['src/adapters/index.ts'],
-      entryRoot: 'src/adapters'
-    })
+      entryRoot: 'src/adapters',
+      outDirs: ['dist/adapters', 'dist/cjs/adapters']
+    }),
+    cjsTypesMarker()
   ],
   build: {
     lib: {
