@@ -14,6 +14,9 @@ import { lazy, ComponentType, LazyExoticComponent } from 'react'
 import type { BuiltInChartType, ChartType, ChartProps } from '../types.js'
 import { MissingDependencyFallback } from '../components/charts/MissingDependencyFallback.js'
 import { useTranslation } from '../hooks/useTranslation.js'
+// chartRegistry only imports pure helpers at runtime, so this stays free of the
+// import-map cycle that this module is careful to avoid.
+import { chartRegistry } from './chartRegistry.js'
 
 // Type for lazy-loaded chart components
 export type LazyChartComponent = ComponentType<ChartProps>
@@ -32,11 +35,8 @@ export const customChartMap = new Map<string, LazyExoticComponent<LazyChartCompo
  * Charts not listed here have no external dependencies (table, KPIs, markdown).
  */
 export const chartDependencyMap: Partial<Record<BuiltInChartType, { packageName: string; installCommand: string }>> = {
-  // Recharts-based charts
-  bar: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
+  // Recharts-based charts.
+  // Migrated charts (e.g. bar) declare deps on their chartRegistry entry instead.
   line: {
     packageName: 'recharts',
     installCommand: 'npm install recharts'
@@ -125,7 +125,10 @@ export function createUnknownChartFallback(chartType: string): LazyChartComponen
  * Creates a fallback component for a chart type with missing dependencies.
  */
 export function createFallbackComponent(chartType: ChartType): LazyChartComponent {
-  const depInfo = chartDependencyMap[chartType as BuiltInChartType]
+  // Migrated charts declare deps on their chartRegistry entry; fall back to the legacy map.
+  const depInfo =
+    chartRegistry[chartType as BuiltInChartType]?.dependencies ??
+    chartDependencyMap[chartType as BuiltInChartType]
 
   const FallbackComponent: LazyChartComponent = ({ height }) => (
     <MissingDependencyFallback
