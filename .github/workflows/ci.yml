@@ -230,8 +230,9 @@ jobs:
 
   test-databend:
     needs: detect-changes
-    if: needs.detect-changes.outputs.should-test == 'true'
     runs-on: ubuntu-latest
+    # Only run if Databend tests are explicitly enabled AND code actually changed
+    if: vars.HAS_DATABEND == 'true' && needs.detect-changes.outputs.should-test == 'true'
 
     services:
       databend:
