@@ -11,7 +11,7 @@ import '@testing-library/jest-dom'
 import { screen } from '@testing-library/react'
 import { createElement } from 'react'
 import { renderWithProviders } from '../../client-setup/test-utils'
-import { chartRegistry, toEagerConfig } from '../../../src/client/charts/chartRegistry'
+import { chartRegistry, composeChartConfig } from '../../../src/client/charts/chartRegistry'
 import { chartConfigRegistry } from '../../../src/client/charts/chartConfigRegistry'
 import { barChartConfig } from '../../../src/client/components/charts/BarChart.config'
 import {
@@ -45,20 +45,20 @@ describe('chartRegistry — entry shape', () => {
   })
 })
 
-describe('chartRegistry — toEagerConfig', () => {
+describe('chartRegistry — composeChartConfig', () => {
   it('composes the entry metadata over the full config shape', () => {
     const bar = chartRegistry.bar!
-    const eager = toEagerConfig(bar, barChartConfig)
+    const composed = composeChartConfig(bar, barChartConfig)
 
     // Metadata comes from the entry (its single declaration site)...
-    expect(eager.label).toBe('chart.bar.label')
-    expect(eager.description).toBe('chart.bar.description')
-    expect(eager.useCase).toBe('chart.bar.useCase')
-    expect(eager.isAvailable).toBe(bar.isAvailable)
+    expect(composed.label).toBe('chart.bar.label')
+    expect(composed.description).toBe('chart.bar.description')
+    expect(composed.useCase).toBe('chart.bar.useCase')
+    expect(composed.isAvailable).toBe(bar.isAvailable)
     // ...while the real drop zones / display options come from the config shape,
-    // so the eager (server/full) config stays usable for agent validation.
-    expect(eager.dropZones.map((z) => z.key)).toEqual(['xAxis', 'yAxis', 'series'])
-    expect(eager.clickableElements).toEqual({ bar: true })
+    // so the composed config stays usable for agent validation + the config panel.
+    expect(composed.dropZones.map((z) => z.key)).toEqual(['xAxis', 'yAxis', 'series'])
+    expect(composed.clickableElements).toEqual({ bar: true })
   })
 })
 
@@ -89,6 +89,19 @@ describe('chartRegistry — lazy config derivation (site 2)', () => {
     expect(config).not.toBeNull()
     expect(config!.dropZones.length).toBeGreaterThan(0)
     expect(config!.dropZones.map((z) => z.key)).toEqual(['xAxis', 'yAxis', 'series'])
+  })
+
+  it('composes the entry metadata over the lazy config so the public shape is complete', async () => {
+    // Public lazy API parity: getChartConfigAsync must return the same full
+    // metadata-bearing shape as non-migrated charts, not the stripped *.config.ts.
+    clearChartConfigCache()
+    const entry = chartRegistry.bar!
+    const config = await getChartConfigAsync('bar')
+
+    expect(config!.label).toBe(entry.label)
+    expect(config!.description).toBe(entry.description)
+    expect(config!.useCase).toBe(entry.useCase)
+    expect(config!.isAvailable).toBe(entry.isAvailable)
   })
 
   it('still resolves a sibling chart (line) via the legacy registry', async () => {

@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react'
 import type { BuiltInChartType, ChartType } from '../types.js'
 import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs.js'
 import { defaultChartConfig } from './chartConfigs.js'
-import { chartRegistry } from './chartRegistry.js'
+import { chartRegistry, composeChartConfig } from './chartRegistry.js'
 
 // Config import map - lazy imports for built-in chart configs.
 // Migrated charts (e.g. bar) resolve via their `chartRegistry` entry's `config`
@@ -94,12 +94,15 @@ export async function getChartConfigAsync(chartType: ChartType): Promise<ChartTy
     return configCache.get(chartType)!
   }
 
-  // Unified registry: migrated charts resolve the config object directly.
+  // Unified registry: migrated charts resolve the config object directly, then
+  // compose the entry metadata over it so the lazy public API returns the same
+  // full shape (label/description/useCase/isAvailable) as non-migrated charts.
   const entry = chartRegistry[chartType as BuiltInChartType]
   if (entry) {
     try {
-      const config = await entry.config()
-      if (config) {
+      const base = await entry.config()
+      if (base) {
+        const config = composeChartConfig(entry, base)
         configCache.set(chartType, config)
         return config
       }

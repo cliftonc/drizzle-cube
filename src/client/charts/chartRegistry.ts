@@ -82,17 +82,19 @@ export const chartRegistry: Partial<Record<BuiltInChartType, ChartRegistryEntry>
 setRegistryIconResolver((chartType) => chartRegistry[chartType as BuiltInChartType]?.icon)
 
 /**
- * Derives the eager `chartConfigRegistry` value for a migrated chart: the
- * entry's metadata composed over the chart's full config shape (`base`).
+ * Composes a migrated chart's full `ChartTypeConfig` from its entry: the entry's
+ * metadata (its single declaration site) laid over the chart's config shape
+ * (`base` — drop zones, display options, clickable elements, validation).
  *
- * The eager config is the server/full source — read synchronously for the
- * picker (label/description/useCase/isAvailable) AND by the server agent's chart
- * validation + tool guidance (dropZones/skipQuery). So it must stay fully
- * populated; `base` supplies the real drop zones and display options, while the
- * entry supplies the metadata (its single declaration site). The client's lazy
- * path resolves the same `base` via the entry's `config` thunk.
+ * Used by BOTH derivation paths so they return the same full shape as a
+ * non-migrated chart's `*.config.ts`:
+ * - eager `chartConfigRegistry` (server/full source — read synchronously for the
+ *   picker AND by the server agent's chart validation + tool guidance), with
+ *   `base` = the statically-imported config;
+ * - lazy `getChartConfigAsync` (client code-split path), with `base` = the
+ *   config resolved from the entry's `config` thunk.
  */
-export function toEagerConfig(entry: ChartRegistryEntry, base: ChartTypeConfig): ChartTypeConfig {
+export function composeChartConfig(entry: ChartRegistryEntry, base: ChartTypeConfig): ChartTypeConfig {
   return {
     ...base,
     label: entry.label,
