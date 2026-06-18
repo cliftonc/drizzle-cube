@@ -18,13 +18,22 @@ import {
   createSafeImport,
   createUnknownChartFallback
 } from './chartComponentRegistry.js'
+// Dynamic import functions for built-in chart **components** (the DOM-bearing,
+// client-only side of a chart). This stays separate from `chartRegistry` — which
+// is DOM-free and shared with the server — so importing the unified registry
+// never drags the chart component graph into server/agent code. Lazy loading is
+// a client-only optimisation.
 
 // The custom-chart registration API lives in chartComponentRegistry to avoid an
 // import cycle (chartPlugin → ChartLoader → DataTable → CubeProvider → chartPlugin).
 // Re-exported here so existing import paths keep working.
 export { registerChartComponent, unregisterChartComponent } from './chartComponentRegistry.js'
 
-// Dynamic import functions for built-in chart types
+// Dynamic import functions for built-in chart **components** — the DOM-bearing,
+// client-only side of a chart. Kept separate from the unified `chartRegistry`
+// (which is DOM-free and shared with the server agent) so importing the registry
+// never drags the chart component graph into server/MCP/agent code. Lazy loading
+// is a client-only optimisation.
 const chartImportMap: Record<BuiltInChartType, () => Promise<{ default: LazyChartComponent }>> = {
   bar: () => import('../components/charts/BarChart.js'),
   line: () => import('../components/charts/LineChart.js'),
@@ -71,7 +80,7 @@ function getLazyChart(chartType: ChartType): LazyExoticComponent<LazyChartCompon
     return chartLoaderCache.get(chartType)!
   }
 
-  // 3. Check built-in import map
+  // 3. Check built-in import map (the client component registry)
   const importFn = chartImportMap[chartType as BuiltInChartType]
   if (importFn) {
     const safeImport = createSafeImport(chartType, importFn)

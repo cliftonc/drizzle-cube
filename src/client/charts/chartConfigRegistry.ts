@@ -25,12 +25,18 @@ import { candlestickChartConfig } from '../components/charts/CandlestickChart.co
 import { measureProfileChartConfig } from '../components/charts/MeasureProfileChart.config.js'
 import { gaugeChartConfig } from '../components/charts/GaugeChart.config.js'
 import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs.js'
+import { chartRegistry, composeChartConfig } from './chartRegistry.js'
 
 /**
- * Registry of all chart type configurations
+ * Registry of all chart type configurations (the eager / full / server source).
+ *
+ * Migrated charts compose their entry's metadata (single source of truth) over
+ * their full config shape via `toEagerConfig`; the rest read their full
+ * `*.config.ts` directly. Drop zones / display options stay here in full because
+ * the server agent reads them synchronously for validation and tool guidance.
  */
 export const chartConfigRegistry: ChartConfigRegistry = {
-  bar: barChartConfig,
+  bar: composeChartConfig(chartRegistry.bar!, barChartConfig),
   line: lineChartConfig,
   area: areaChartConfig,
   pie: pieChartConfig,

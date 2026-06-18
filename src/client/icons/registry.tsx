@@ -26,6 +26,24 @@ export function setCustomChartIconResolver(
   _customIconResolver = resolver
 }
 
+// Resolver for icon names declared on unified chartRegistry entries (set by
+// chartRegistry.ts via setRegistryIconResolver). Injected rather than imported
+// so this foundational icon module stays free of the chart component graph —
+// statically importing chartRegistry would drag BarChart/ChartContainer into
+// every program that includes icons (incl. the DOM-less server-tests config).
+let _registryIconResolver: ((chartType: string) => IconName | undefined) | null = null
+
+/**
+ * Set the resolver that maps a chart type to its unified-registry icon name.
+ * Called by chartRegistry.ts during initialization.
+ * @internal
+ */
+export function setRegistryIconResolver(
+  resolver: (chartType: string) => IconName | undefined
+): void {
+  _registryIconResolver = resolver
+}
+
 // Cache for icon components to avoid recreating on every getIcon() call
 // This prevents React from unmounting/remounting icons on each render
 const _iconComponentCache = new Map<IconName, ComponentType<IconProps>>()
@@ -178,8 +196,22 @@ export function getMeasureTypeIcon(measureType: string | undefined): ComponentTy
  * @returns React component for the icon
  */
 export function getChartTypeIcon(chartType: string): ComponentType<IconProps> {
+  // Plugin overrides win first (hard precedence requirement): a custom chart —
+  // including one overriding a built-in like `bar` — may supply its own icon,
+  // which must take priority over the unified-registry and legacy lookups below.
+  if (_customIconResolver) {
+    const customIcon = _customIconResolver(chartType)
+    if (customIcon) return customIcon
+  }
+
+  // Unified registry: migrated charts declare their icon on the entry
+  // (theme-overridable via the icon registry). Falls back to the legacy typeMap.
+  const entryIcon = _registryIconResolver?.(chartType)
+  if (entryIcon) {
+    return getIcon(entryIcon)
+  }
+
   const typeMap: Record<string, IconName> = {
-    bar: 'chartBar',
     line: 'chartLine',
     area: 'chartArea',
     pie: 'chartPie',
@@ -203,12 +235,6 @@ export function getChartTypeIcon(chartType: string): ComponentType<IconProps> {
   const iconName = typeMap[chartType]
   if (iconName) {
     return getIcon(iconName)
-  }
-
-  // Check custom chart plugin icon resolver (set by chartPlugin.ts to avoid circular imports)
-  if (_customIconResolver) {
-    const customIcon = _customIconResolver(chartType)
-    if (customIcon) return customIcon
   }
 
   return getIcon('chartBar')

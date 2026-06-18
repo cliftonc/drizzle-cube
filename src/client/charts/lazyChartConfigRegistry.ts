@@ -9,10 +9,12 @@ import { useState, useEffect } from 'react'
 import type { BuiltInChartType, ChartType } from '../types.js'
 import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs.js'
 import { defaultChartConfig } from './chartConfigs.js'
+import { chartRegistry, composeChartConfig } from './chartRegistry.js'
 
-// Config import map - lazy imports for built-in chart configs
-const configImportMap: Record<BuiltInChartType, () => Promise<{ [key: string]: ChartTypeConfig }>> = {
-  bar: () => import('../components/charts/BarChart.config.js'),
+// Config import map - lazy imports for built-in chart configs.
+// Migrated charts (e.g. bar) resolve via their `chartRegistry` entry's `config`
+// thunk instead — their import path is defined once, in the entry.
+const configImportMap: Partial<Record<BuiltInChartType, () => Promise<{ [key: string]: ChartTypeConfig }>>> = {
   line: () => import('../components/charts/LineChart.config.js'),
   area: () => import('../components/charts/AreaChart.config.js'),
   pie: () => import('../components/charts/PieChart.config.js'),
@@ -40,9 +42,9 @@ const configImportMap: Record<BuiltInChartType, () => Promise<{ [key: string]: C
   gauge: () => import('../components/charts/GaugeChart.config.js'),
 }
 
-// Map from built-in chart type to expected export name
-const configExportNames: Record<BuiltInChartType, string> = {
-  bar: 'barChartConfig',
+// Map from built-in chart type to expected export name.
+// Migrated charts are absent — they resolve the config object directly via their entry.
+const configExportNames: Partial<Record<BuiltInChartType, string>> = {
   line: 'lineChartConfig',
   area: 'areaChartConfig',
   pie: 'pieChartConfig',
@@ -86,11 +88,32 @@ const configCache = new Map<ChartType, ChartTypeConfig>()
  * ```
  */
 export async function getChartConfigAsync(chartType: ChartType): Promise<ChartTypeConfig | null> {
-  // Check cache first
+  // Check cache first (plugin overrides land here via registerConfigToCache —
+  // their precedence stays ahead of the unified/legacy lookups below).
   if (configCache.has(chartType)) {
     return configCache.get(chartType)!
   }
 
+  // Unified registry: migrated charts resolve the config object directly, then
+  // compose the entry metadata over it so the lazy public API returns the same
+  // full shape (label/description/useCase/isAvailable) as non-migrated charts.
+  const entry = chartRegistry[chartType as BuiltInChartType]
+  if (entry) {
+    try {
+      const base = await entry.config()
+      if (base) {
+        const config = composeChartConfig(entry, base)
+        configCache.set(chartType, config)
+        return config
+      }
+      return null
+    } catch (error) {
+      console.error(`Failed to load config for chart type: ${chartType}`, error)
+      return null
+    }
+  }
+
+  // Legacy registry fallback for charts not yet migrated.
   const importFn = configImportMap[chartType as BuiltInChartType]
   if (!importFn) {
     return null
@@ -99,7 +122,7 @@ export async function getChartConfigAsync(chartType: ChartType): Promise<ChartTy
   try {
     const module = await importFn()
     const exportName = configExportNames[chartType as BuiltInChartType]
-    const config = module[exportName]
+    const config = exportName ? module[exportName] : undefined
 
     if (config) {
       configCache.set(chartType, config)
@@ -233,7 +256,10 @@ export async function preloadChartConfigs(chartTypes: ChartType[]): Promise<void
  * ```
  */
 export async function loadAllChartConfigs(): Promise<ChartConfigRegistry> {
-  const chartTypes = Object.keys(configImportMap) as ChartType[]
+  // Union legacy import map with migrated entries so every built-in is covered.
+  const chartTypes = [
+    ...new Set([...Object.keys(configImportMap), ...Object.keys(chartRegistry)]),
+  ] as ChartType[]
   await Promise.all(chartTypes.map(getChartConfigAsync))
 
   const registry: ChartConfigRegistry = {}
