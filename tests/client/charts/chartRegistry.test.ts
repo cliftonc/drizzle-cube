@@ -183,4 +183,22 @@ describe('chartRegistry — plugin override precedence (regression)', () => {
     const restored = await getChartConfigAsync('bar')
     expect(restored!.dropZones.map((z) => z.key)).toEqual(['xAxis', 'yAxis', 'series'])
   })
+
+  it('lets a custom bar icon override win over the unified entry icon, then restores it', () => {
+    const CustomIcon = () => createElement('svg', { 'data-testid': 'custom-bar-icon' })
+
+    chartPluginRegistry.register({
+      type: 'bar',
+      label: 'Custom Bar',
+      component: CustomBar,
+      icon: CustomIcon,
+      config: { label: 'Custom Bar', dropZones: [] },
+    })
+
+    // Plugin icon precedence must stay ahead of the unified entry lookup.
+    expect(getChartTypeIcon('bar')).toBe(CustomIcon)
+
+    chartPluginRegistry.unregister('bar')
+    expect(getChartTypeIcon('bar')).toBe(getIcon('chartBar'))
+  })
 })

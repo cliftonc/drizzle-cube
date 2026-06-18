@@ -196,7 +196,15 @@ export function getMeasureTypeIcon(measureType: string | undefined): ComponentTy
  * @returns React component for the icon
  */
 export function getChartTypeIcon(chartType: string): ComponentType<IconProps> {
-  // Unified registry first: migrated charts declare their icon on the entry
+  // Plugin overrides win first (hard precedence requirement): a custom chart —
+  // including one overriding a built-in like `bar` — may supply its own icon,
+  // which must take priority over the unified-registry and legacy lookups below.
+  if (_customIconResolver) {
+    const customIcon = _customIconResolver(chartType)
+    if (customIcon) return customIcon
+  }
+
+  // Unified registry: migrated charts declare their icon on the entry
   // (theme-overridable via the icon registry). Falls back to the legacy typeMap.
   const entryIcon = _registryIconResolver?.(chartType)
   if (entryIcon) {
@@ -227,12 +235,6 @@ export function getChartTypeIcon(chartType: string): ComponentType<IconProps> {
   const iconName = typeMap[chartType]
   if (iconName) {
     return getIcon(iconName)
-  }
-
-  // Check custom chart plugin icon resolver (set by chartPlugin.ts to avoid circular imports)
-  if (_customIconResolver) {
-    const customIcon = _customIconResolver(chartType)
-    if (customIcon) return customIcon
   }
 
   return getIcon('chartBar')
