@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781752318773,
+  "lastUpdate": 1781773145660,
   "repoUrl": "https://github.com/cliftonc/drizzle-cube",
   "entries": {
     "drizzle-cube": [
@@ -8339,6 +8339,275 @@ window.BENCHMARK_DATA = {
             "range": "± 0.0ms p95",
             "unit": "ms",
             "extra": "Cache-enabled executor, warm cache · p95 0.5ms · 700 rows"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "clifton.cunningham@gmail.com",
+            "name": "Clifton Cunningham",
+            "username": "cliftonc"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51102b5b931ca761de69d7289c3fd41c50055f7b",
+          "message": "feat(client): unified chartRegistry with Bar migrated end-to-end (#910) (#915)\n\n* feat(client): unified chartRegistry with Bar migrated end-to-end (#910)\n\nIntroduce a single `chartRegistry` map keyed by chart type as the source of\ntruth for a chart's DOM-free concerns, and migrate Bar through it: the eager\nconfig, lazy config, icon, and dependency lookups all derive from its one entry.\n\nKey decisions (diverging from the issue's resolved design, validated against the\ncodebase):\n\n- The entry is DOM-free and holds metadata + icon name + dependencies + a lazy\n  `config` thunk. The React component thunk is NOT on the entry — it pulls\n  recharts/ChartContainer/DOM globals, and the eager `chartConfigRegistry` (which\n  derives from `chartRegistry`) is imported transitively by the server agent\n  (`src/server/agent/chart-validation.ts`). Keeping the component in the\n  client-only `chartImportMap` keeps the registry importable server-side.\n- The eager config keeps REAL drop zones (not the proposed `dropZones: []`\n  placeholder): `chart-validation.ts` reads `config.dropZones` synchronously for\n  mandatory-zone validation and tool guidance, and the i18n key-coverage test\n  reads them too. `toEagerConfig(entry, base)` composes entry metadata over the\n  full config shape.\n- Eager metadata (label/description/useCase/isAvailable) moves out of\n  BarChart.config.ts into the entry (single source of truth).\n- The icon is wired via `setRegistryIconResolver` injection so `icons/registry`\n  never statically imports charts.\n- Plugin/cache precedence stays ahead of the unified lookup at every site; a\n  custom `bar` override still wins (regression-tested).\n\nTests: new tests/client/charts/chartRegistry.test.ts (13 tests). Gates green:\ntest:client, typecheck (all 3 tsconfig projects), lint, plus i18n + agent suites.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\n\n* fix(client): compose entry metadata over the lazy config too (PR #915 review)\n\ngetChartConfigAsync('bar') (and getChartConfigSync/loadAllChartConfigs after\ncaching) returned the stripped barChartConfig — label/description/useCase/\nisAvailable having moved to the entry — diverging from the full shape returned\nfor non-migrated charts. Compose the entry metadata over the resolved lazy\nconfig before caching so the lazy public API stays consistent.\n\nRenames toEagerConfig → composeChartConfig since it now serves both the eager\n(server/full) and lazy (client code-split) derivation paths.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\n\n* fix(client): plugin icon override must win over unified registry (PR #915 review)\n\ngetChartTypeIcon consulted the unified registry (and the legacy typeMap) before\nthe plugin icon resolver, so a custom chart overriding a built-in like `bar`\ncould never supply its own icon — violating the plugin-precedence requirement.\nMove the `_customIconResolver` check to the front: plugin → unified entry →\nlegacy typeMap → default. This also generalises plugin icon precedence to every\nbuilt-in (the typeMap previously short-circuited them all).\n\nAdds a regression test: a custom `bar` icon override wins, and the built-in\nchartBar icon is restored on unregister.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-06-18T10:56:27+02:00",
+          "tree_id": "ea8422c5b7a4d9555b6d51cc5928107260a704b2",
+          "url": "https://github.com/cliftonc/drizzle-cube/commit/51102b5b931ca761de69d7289c3fd41c50055f7b"
+        },
+        "date": 1781773145290,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "baseline.count-time-entries",
+            "value": 52.07,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "Count over ~730k time entries · p95 53.2ms · 1 rows"
+          },
+          {
+            "name": "baseline.sum-avg-productivity",
+            "value": 19.95,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Sum + avg over ~335k productivity rows · p95 20.3ms · 1 rows"
+          },
+          {
+            "name": "baseline.count-distinct",
+            "value": 143.04,
+            "range": "± 8.8ms p95",
+            "unit": "ms",
+            "extra": "Count distinct employees over time entries · p95 151.8ms · 1 rows"
+          },
+          {
+            "name": "baseline.min-max",
+            "value": 19.65,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Min + max lines of code · p95 20.1ms · 1 rows"
+          },
+          {
+            "name": "baseline.calculated-measure",
+            "value": 21.24,
+            "range": "± 2.4ms p95",
+            "unit": "ms",
+            "extra": "Calculated measure (productivity score) · p95 23.6ms · 1 rows"
+          },
+          {
+            "name": "multi.six-measures",
+            "value": 67.99,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Six measures on time entries · p95 68.5ms · 1 rows"
+          },
+          {
+            "name": "multi.mixed-types",
+            "value": 83.62,
+            "range": "± 5.4ms p95",
+            "unit": "ms",
+            "extra": "Mixed aggregation types on productivity · p95 89.0ms · 1 rows"
+          },
+          {
+            "name": "groupby.low-cardinality",
+            "value": 161.8,
+            "range": "± 12.5ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type (6 groups) · p95 174.3ms · 6 rows"
+          },
+          {
+            "name": "groupby.mid-cardinality",
+            "value": 133.86,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Group by department (~25 groups) · p95 134.4ms · 25 rows"
+          },
+          {
+            "name": "groupby.high-cardinality",
+            "value": 49.94,
+            "range": "± 27.3ms p95",
+            "unit": "ms",
+            "extra": "Group by employee (~700 groups) · p95 77.2ms · 700 rows"
+          },
+          {
+            "name": "groupby.two-dimensions",
+            "value": 356.3,
+            "range": "± 34.3ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type + department · p95 390.6ms · 150 rows"
+          },
+          {
+            "name": "filter.equals",
+            "value": 52.04,
+            "range": "± 2.8ms p95",
+            "unit": "ms",
+            "extra": "Equals filter (development entries) · p95 54.8ms · 1 rows"
+          },
+          {
+            "name": "filter.numeric-range",
+            "value": 18.87,
+            "range": "± 2.3ms p95",
+            "unit": "ms",
+            "extra": "Numeric range filter (linesOfCode > 100) · p95 21.1ms · 1 rows"
+          },
+          {
+            "name": "filter.string-contains",
+            "value": 1.3,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "String contains filter on employee name · p95 1.3ms · 1 rows"
+          },
+          {
+            "name": "filter.nested-and-or",
+            "value": 63.02,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Nested AND/OR filter on time entries · p95 63.4ms · 1 rows"
+          },
+          {
+            "name": "filter.in-list-100",
+            "value": 52.51,
+            "range": "± 8.6ms p95",
+            "unit": "ms",
+            "extra": "IN-list filter with 100 employee ids · p95 61.1ms · 1 rows"
+          },
+          {
+            "name": "time.day-granularity-year",
+            "value": 112.51,
+            "range": "± 16.7ms p95",
+            "unit": "ms",
+            "extra": "Daily time series over 2024 (~366 buckets) · p95 129.2ms · 262 rows"
+          },
+          {
+            "name": "time.month-granularity",
+            "value": 110.92,
+            "range": "± 0.9ms p95",
+            "unit": "ms",
+            "extra": "Monthly time series over 2024 · p95 111.8ms · 12 rows"
+          },
+          {
+            "name": "time.week-with-dimension",
+            "value": 32.65,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Weekly series split by allocation type (H1 2024) · p95 32.9ms · 104 rows"
+          },
+          {
+            "name": "time.gap-fill",
+            "value": 47.54,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "Daily series with fillMissingDates over 16 months · p95 48.6ms · 488 rows"
+          },
+          {
+            "name": "time.compare-date-range",
+            "value": 108.86,
+            "range": "± 1.3ms p95",
+            "unit": "ms",
+            "extra": "Period comparison Q1 vs Q2 2024 by month · p95 110.1ms · 6 rows"
+          },
+          {
+            "name": "join.belongs-to",
+            "value": 2.22,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Employees joined to departments · p95 2.5ms · 25 rows"
+          },
+          {
+            "name": "join.has-many-fanout",
+            "value": 285.26,
+            "range": "± 4.8ms p95",
+            "unit": "ms",
+            "extra": "Employee count with time-entry fan-out (~730k child rows) · p95 290.1ms · 25 rows"
+          },
+          {
+            "name": "join.many-to-many",
+            "value": 2.94,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Employees by team via junction table · p95 3.0ms · 40 rows"
+          },
+          {
+            "name": "join.three-cubes",
+            "value": 259.65,
+            "range": "± 1.6ms p95",
+            "unit": "ms",
+            "extra": "Departments + employees + time entries · p95 261.3ms · 25 rows"
+          },
+          {
+            "name": "rows.ordered-700",
+            "value": 72.38,
+            "range": "± 0.8ms p95",
+            "unit": "ms",
+            "extra": "~700 ordered group rows · p95 73.2ms · 700 rows"
+          },
+          {
+            "name": "rows.deep-offset",
+            "value": 18.04,
+            "range": "± 2.1ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped page at offset 100k (limit 1000) · p95 20.1ms · 1,000 rows"
+          },
+          {
+            "name": "rows.ungrouped-10k",
+            "value": 39.24,
+            "range": "± 14.9ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped raw rows (limit 10,000) · p95 54.1ms · 10,000 rows"
+          },
+          {
+            "name": "analysis.funnel",
+            "value": 129.42,
+            "range": "± 4.3ms p95",
+            "unit": "ms",
+            "extra": "Three-step funnel over ~335k events · p95 133.7ms · 3 rows"
+          },
+          {
+            "name": "analysis.flow",
+            "value": 40.52,
+            "range": "± 4.1ms p95",
+            "unit": "ms",
+            "extra": "Flow with 2 steps before/after · p95 44.7ms · 1 rows"
+          },
+          {
+            "name": "analysis.retention",
+            "value": 399.31,
+            "range": "± 3.2ms p95",
+            "unit": "ms",
+            "extra": "Monthly retention over 2024 (6 periods) · p95 402.5ms · 7 rows"
+          },
+          {
+            "name": "compile.simple",
+            "value": 0.12,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Compile simple aggregation query · p95 0.1ms · 0 rows"
+          },
+          {
+            "name": "compile.complex",
+            "value": 0.66,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Compile multi-cube query with filters + time dimension · p95 0.7ms · 0 rows"
+          },
+          {
+            "name": "cache.miss",
+            "value": 29.67,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, cache bypassed · p95 30.1ms · 700 rows"
+          },
+          {
+            "name": "cache.hit",
+            "value": 0.5,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, warm cache · p95 0.6ms · 700 rows"
           }
         ]
       }
