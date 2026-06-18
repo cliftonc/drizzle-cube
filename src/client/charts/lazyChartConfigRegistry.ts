@@ -6,10 +6,10 @@
  */
 
 import { useState, useEffect } from 'react'
-import type { BuiltInChartType, ChartType } from '../types.js'
+import type { ChartType } from '../types.js'
 import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs.js'
 import { defaultChartConfig } from './chartConfigs.js'
-import { chartRegistry, composeChartConfig } from './chartRegistry.js'
+import { chartRegistry, getChartEntry, composeChartConfig } from './chartRegistry.js'
 
 // Cache for loaded configs
 const configCache = new Map<ChartType, ChartTypeConfig>()
@@ -33,10 +33,12 @@ export async function getChartConfigAsync(chartType: ChartType): Promise<ChartTy
     return configCache.get(chartType)!
   }
 
-  // Unified registry: resolve the chart's config object via its entry's `config`
-  // thunk, then compose the entry metadata over it so the lazy public API returns
-  // the same full shape (label/description/useCase/isAvailable) as the eager one.
-  const entry = chartRegistry[chartType as BuiltInChartType]
+  // Unified registry (custom-first): resolve the chart's config object via its
+  // entry's `config` thunk, then compose the entry metadata over it so the lazy
+  // public API returns the same full shape (label/description/useCase/isAvailable)
+  // as the eager one. Using getChartEntry() means a registered plugin chart still
+  // rehydrates here after the public clearChartConfigCache() drops its cache slot.
+  const entry = getChartEntry(chartType)
   if (!entry) {
     return null
   }

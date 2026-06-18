@@ -6,7 +6,7 @@
  * entry shape and that all five derivation sites read Bar from the one entry.
  */
 
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import '@testing-library/jest-dom'
 import { screen } from '@testing-library/react'
 import { createElement } from 'react'
@@ -330,6 +330,25 @@ describe('chartRegistry — plugin unification (custom + built-in share one entr
     expect(getChartTypeIcon('myPlugin')).toBe(CustomIcon)
   })
 
+  it('resolves a plugin chart’s config after the cache is cleared (custom-first lookup)', async () => {
+    // clearChartConfigCache() is a public API. A registered plugin keeps a
+    // ChartRegistryEntry with a config thunk, so getChartConfigAsync must
+    // rehydrate from getChartEntry() rather than only the built-in registry.
+    chartPluginRegistry.register({
+      type: 'myPlugin',
+      label: 'My Plugin',
+      component: CustomChart,
+      config: {
+        label: 'My Plugin',
+        dropZones: [{ key: 'value', label: 'Value', acceptTypes: ['measure'] }],
+      },
+    })
+    clearChartConfigCache()
+    const config = await getChartConfigAsync('myPlugin')
+    expect(config).not.toBeNull()
+    expect(config!.dropZones.map((z) => z.key)).toEqual(['value'])
+  })
+
   it('surfaces a custom chart’s dependencies in the fallback via its entry', () => {
     chartPluginRegistry.register({
       type: 'myPlugin',
@@ -368,5 +387,24 @@ describe('chartRegistry — plugin unification (custom + built-in share one entr
     expect(getChartEntry('line')).toBe(chartRegistry.line)
     expect(getChartTypeIcon('line')).toBe(getIcon('chartLine'))
     expect(chartConfigRegistry.line.label).toBe('chart.line.label')
+  })
+})
+
+describe('chartRegistry — icon resolution is import-order independent', () => {
+  afterEach(() => {
+    vi.resetModules()
+  })
+
+  it('resolves built-in icons when the icon helper is imported standalone', async () => {
+    // A consumer may import the icon helper by itself (e.g. drizzle-cube/client
+    // icons) without any chart-registry import. Built-in icons must still resolve
+    // from the entry rather than silently falling back to the bar icon — i.e. the
+    // resolver cannot depend on chartRegistry's side-effectful module init.
+    vi.resetModules()
+    const icons = await import('../../../src/client/icons/registry')
+
+    expect(icons.getChartTypeIcon('line')).toBe(icons.getIcon('chartLine'))
+    expect(icons.getChartTypeIcon('line')).not.toBe(icons.getIcon('chartBar'))
+    expect(icons.getChartTypeIcon('gauge')).toBe(icons.getIcon('chartGauge'))
   })
 })

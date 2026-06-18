@@ -8,31 +8,17 @@ import type { IconifyIcon } from '@iconify/types'
 import type { ComponentType } from 'react'
 import { DEFAULT_ICONS } from './defaultIcons.js'
 import type { IconRegistry, IconName, IconDefinition, IconCategory, IconProps, PartialIconRegistry } from './types.js'
+// A chart's icon is declared on its unified registry entry (an IconName for
+// built-ins, a component for plugins), resolved custom-first via getChartEntry.
+// Imported directly — not injected — so chart icon resolution does NOT depend on
+// chartRegistry's module init having run first (importing the icon helper
+// standalone must still resolve built-in icons). This is safe: chartRegistry is
+// DOM-free (its chart-component thunks live in ChartLoader, not the entry), so
+// importing it here never drags the chart component graph into the icon module.
+import { getChartEntry } from '../charts/chartRegistry.js'
 
 // Internal mutable registry - starts with defaults
 let _registry: IconRegistry = { ...DEFAULT_ICONS }
-
-// Resolver for the icon declared on a chart's unified registry entry (set by
-// chartRegistry.ts via setRegistryIconResolver). Returns an IconName for
-// built-ins or a ready-made component for plugin charts — both built-in and
-// custom charts resolve their icon through this one resolver (custom-first).
-//
-// Injected rather than imported so this foundational icon module stays free of
-// the chart component graph — statically importing chartRegistry would drag
-// BarChart/ChartContainer into every program that includes icons (incl. the
-// DOM-less server-tests config).
-let _registryIconResolver: ((chartType: string) => IconName | ComponentType<IconProps> | undefined) | null = null
-
-/**
- * Set the resolver that maps a chart type to its unified-registry icon.
- * Called by chartRegistry.ts during initialization.
- * @internal
- */
-export function setRegistryIconResolver(
-  resolver: (chartType: string) => IconName | ComponentType<IconProps> | undefined
-): void {
-  _registryIconResolver = resolver
-}
 
 // Cache for icon components to avoid recreating on every getIcon() call
 // This prevents React from unmounting/remounting icons on each render
@@ -191,7 +177,7 @@ export function getChartTypeIcon(chartType: string): ComponentType<IconProps> {
   // built-in (e.g. `bar`) wins. A string is an IconName resolved via the icon
   // registry (theme-overridable); a component is used as-is (plugin icons).
   // Unknown types fall back to the bar icon.
-  const entryIcon = _registryIconResolver?.(chartType)
+  const entryIcon = getChartEntry(chartType)?.icon
   if (entryIcon) {
     return typeof entryIcon === 'string' ? getIcon(entryIcon) : entryIcon
   }

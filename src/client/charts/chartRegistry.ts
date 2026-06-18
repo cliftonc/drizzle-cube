@@ -29,7 +29,6 @@ import type {
   ChartAvailability,
 } from './chartConfigs.js'
 import { requiresMeasureAndDimension, requiresMeasure } from './chartConfigHelpers.js'
-import { setRegistryIconResolver } from '../icons/registry.js'
 
 const RECHARTS_DEP = { packageName: 'recharts', installCommand: 'npm install recharts' }
 
@@ -350,11 +349,9 @@ export function getCustomChartEntry(chartType: string): ChartRegistryEntry | und
   return customChartEntries.get(chartType)
 }
 
-// Wire the icon resolver so getChartTypeIcon() derives every chart's icon from
-// its unified entry (custom-first), without the icon module statically depending
-// on this one. The entry's `icon` is an IconName for built-ins or a component
-// for plugins — the icon helper handles both.
-setRegistryIconResolver((chartType) => getChartEntry(chartType)?.icon)
+// getChartTypeIcon() (in icons/registry) reads each chart's icon from its
+// unified entry via getChartEntry() — imported directly there, so icon
+// resolution does not depend on this module's init order.
 
 /**
  * Composes a migrated chart's full `ChartTypeConfig` from its entry: the entry's
