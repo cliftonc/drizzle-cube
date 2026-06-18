@@ -1,15 +1,16 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
-import { requiresMeasureAndDimension, valueFormatDisplayOption } from '../../charts/chartConfigHelpers.js'
+import { valueFormatDisplayOption } from '../../charts/chartConfigHelpers.js'
 
 /**
- * Configuration for the pie chart type
+ * Configuration for the pie chart type.
+ *
+ * Eager metadata (`label`, `description`, `useCase`, `isAvailable`) lives in the
+ * unified `chartRegistry` entry (the single source of truth) — see
+ * `src/client/charts/chartRegistry.ts`. This file owns the lazy-loaded shape:
+ * drop zones, display options, clickable elements, validation.
  */
 export const pieChartConfig: ChartTypeConfig = {
-  label: 'chart.pie.label',
-  description: 'chart.pie.description',
-  useCase: 'chart.pie.useCase',
   clickableElements: { slice: true },
-  isAvailable: requiresMeasureAndDimension,
   dropZones: [
     {
       key: 'xAxis',

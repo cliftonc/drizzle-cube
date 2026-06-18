@@ -83,6 +83,11 @@ import fileText from '@iconify-icons/tabler/file-text'
 import infoCircle from '@iconify-icons/tabler/info-circle'
 import selector from '@iconify-icons/tabler/selector'
 import chartGridDots from '@iconify-icons/tabler/chart-grid-dots'
+import boxPadding from '@iconify-icons/tabler/box-padding'
+import stairs from '@iconify-icons/tabler/stairs'
+import chartCandle from '@iconify-icons/tabler/chart-candle'
+import chartArrowsVertical from '@iconify-icons/tabler/chart-arrows-vertical'
+import gauge from '@iconify-icons/tabler/gauge'
 import map from '@iconify-icons/heroicons-outline/map'
 import cubeOutline from '@iconify-icons/heroicons-outline/cube'
 
@@ -156,6 +161,11 @@ export const DEFAULT_ICONS: IconRegistry = {
   chartSunburst: { icon: chartDonut4, category: 'chart' },
   chartHeatmap: { icon: chartGridDots, category: 'chart' },
   chartRetention: { icon: retentionIcon, category: 'chart' },
+  chartBoxPlot: { icon: boxPadding, category: 'chart' },
+  chartWaterfall: { icon: stairs, category: 'chart' },
+  chartCandlestick: { icon: chartCandle, category: 'chart' },
+  chartMeasureProfile: { icon: chartArrowsVertical, category: 'chart' },
+  chartGauge: { icon: gauge, category: 'chart' },
 
   // Measure type icons (solid)
   measureCount: { icon: bars3BottomLeftSolid, category: 'measure' },

@@ -11,12 +11,12 @@
  */
 
 import { lazy, ComponentType, LazyExoticComponent } from 'react'
-import type { BuiltInChartType, ChartType, ChartProps } from '../types.js'
+import type { ChartType, ChartProps } from '../types.js'
 import { MissingDependencyFallback } from '../components/charts/MissingDependencyFallback.js'
 import { useTranslation } from '../hooks/useTranslation.js'
 // chartRegistry only imports pure helpers at runtime, so this stays free of the
 // import-map cycle that this module is careful to avoid.
-import { chartRegistry } from './chartRegistry.js'
+import { getChartEntry } from './chartRegistry.js'
 
 // Type for lazy-loaded chart components
 export type LazyChartComponent = ComponentType<ChartProps>
@@ -29,77 +29,6 @@ export const failedChartTypes = new Set<ChartType>()
 
 // Registry for custom (plugin) chart components
 export const customChartMap = new Map<string, LazyExoticComponent<LazyChartComponent>>()
-
-/**
- * Maps chart types to their optional peer dependencies.
- * Charts not listed here have no external dependencies (table, KPIs, markdown).
- */
-export const chartDependencyMap: Partial<Record<BuiltInChartType, { packageName: string; installCommand: string }>> = {
-  // Recharts-based charts.
-  // Migrated charts (e.g. bar) declare deps on their chartRegistry entry instead.
-  line: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  area: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  pie: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  scatter: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  radar: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  radialBar: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  treemap: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  bubble: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  funnel: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  sankey: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  sunburst: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  // Nivo-based charts
-  heatmap: {
-    packageName: '@nivo/heatmap',
-    installCommand: 'npm install @nivo/heatmap'
-  },
-  waterfall: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  measureProfile: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
-  gauge: {
-    packageName: 'd3-shape',
-    installCommand: 'npm install d3-shape'
-  },
-  // Charts with no external deps: table, activityGrid, kpiNumber, kpiDelta, kpiText, markdown, retentionHeatmap, boxPlot, candlestick
-}
 
 /**
  * Creates a fallback component for an unknown/unregistered chart type.
@@ -125,10 +54,8 @@ export function createUnknownChartFallback(chartType: string): LazyChartComponen
  * Creates a fallback component for a chart type with missing dependencies.
  */
 export function createFallbackComponent(chartType: ChartType): LazyChartComponent {
-  // Migrated charts declare deps on their chartRegistry entry; fall back to the legacy map.
-  const depInfo =
-    chartRegistry[chartType as BuiltInChartType]?.dependencies ??
-    chartDependencyMap[chartType as BuiltInChartType]
+  // Dependencies are declared on the chart's unified entry (custom or built-in).
+  const depInfo = getChartEntry(chartType)?.dependencies
 
   const FallbackComponent: LazyChartComponent = ({ height }) => (
     <MissingDependencyFallback

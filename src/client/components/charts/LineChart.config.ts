@@ -1,6 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 import {
-  requiresMeasureAndDimension,
   connectNullsDisplayOption,
   targetDisplayOption,
   leftYAxisFormatDisplayOption,
@@ -8,14 +7,15 @@ import {
 } from '../../charts/chartConfigHelpers.js'
 
 /**
- * Configuration for the line chart type
+ * Configuration for the line chart type.
+ *
+ * Eager metadata (`label`, `description`, `useCase`, `isAvailable`) lives in the
+ * unified `chartRegistry` entry (the single source of truth) — see
+ * `src/client/charts/chartRegistry.ts`. This file owns the lazy-loaded shape:
+ * drop zones, display options, clickable elements, validation.
  */
 export const lineChartConfig: ChartTypeConfig = {
-  label: 'chart.line.label',
-  description: 'chart.line.description',
-  useCase: 'chart.line.useCase',
   clickableElements: { point: true },
-  isAvailable: requiresMeasureAndDimension,
   dropZones: [
     {
       key: 'xAxis',

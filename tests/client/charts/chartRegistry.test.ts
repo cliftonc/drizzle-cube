@@ -11,7 +11,7 @@ import '@testing-library/jest-dom'
 import { screen } from '@testing-library/react'
 import { createElement } from 'react'
 import { renderWithProviders } from '../../client-setup/test-utils'
-import { chartRegistry, composeChartConfig } from '../../../src/client/charts/chartRegistry'
+import { chartRegistry, composeChartConfig, getChartEntry } from '../../../src/client/charts/chartRegistry'
 import { chartConfigRegistry } from '../../../src/client/charts/chartConfigRegistry'
 import { barChartConfig } from '../../../src/client/components/charts/BarChart.config'
 import {
@@ -141,11 +141,86 @@ describe('chartRegistry — icon derivation (site 4)', () => {
 
 describe('chartRegistry — dependency derivation (site 5)', () => {
   it('builds the missing-dependency fallback for bar from the entry deps', () => {
-    // After bar is removed from the legacy chartDependencyMap, its deps must
-    // still resolve via the entry — the fallback shows recharts, not "unknown".
+    // Bar's deps resolve via its entry (the legacy chartDependencyMap is gone) —
+    // the fallback shows recharts, not "unknown".
     const Fallback = createFallbackComponent('bar')
     renderWithProviders(createElement(Fallback, { data: [] }))
     expect(screen.getByText('npm install recharts')).toBeInTheDocument()
+  })
+})
+
+// All built-in chart types, sourced from the loader's component map (the one
+// place every built-in must appear). Slice 2 requires each to be fully wired
+// through its chartRegistry entry — these assertions parametrize the Bar tests
+// above over every type.
+const BUILT_IN_TYPES = getAvailableChartTypes()
+
+describe('chartRegistry — completeness (every built-in has an entry)', () => {
+  it('has an entry for every built-in chart type the loader knows about', () => {
+    const missing = BUILT_IN_TYPES.filter((type) => !chartRegistry[type as keyof typeof chartRegistry])
+    expect(missing).toEqual([])
+  })
+
+  it('declares only known built-in types (no stray entries)', () => {
+    const stray = Object.keys(chartRegistry).filter((type) => !BUILT_IN_TYPES.includes(type as never))
+    expect(stray).toEqual([])
+  })
+})
+
+describe.each(BUILT_IN_TYPES)('chartRegistry — %s is wired through its entry', (type) => {
+  const entry = () => chartRegistry[type as keyof typeof chartRegistry]!
+
+  it('has a well-formed DOM-free entry (label key, icon, lazy config thunk, no component)', () => {
+    const e = entry()
+    expect(e).toBeDefined()
+    expect(typeof e.label).toBe('string')
+    expect(e.label.startsWith('chart.')).toBe(true)
+    expect(typeof e.icon).toBe('string')
+    expect(typeof e.config).toBe('function')
+    expect('component' in e).toBe(false)
+  })
+
+  it('derives eager chartConfigRegistry metadata from the single entry (site 1)', () => {
+    const e = entry()
+    const eager = chartConfigRegistry[type]
+    expect(eager).toBeDefined()
+    // Metadata is referentially the entry's — proves it is composed from the
+    // entry, not still read from the (now metadata-free) *.config.ts.
+    expect(eager.label).toBe(e.label)
+    expect(eager.description).toBe(e.description)
+    expect(eager.useCase).toBe(e.useCase)
+    expect(eager.isAvailable).toBe(e.isAvailable)
+    // Eager config is the server/full source — real drop zones must survive.
+    expect(Array.isArray(eager.dropZones)).toBe(true)
+  })
+
+  it('resolves the full composed shape via the lazy thunk (site 2)', async () => {
+    clearChartConfigCache()
+    const e = entry()
+    const config = await getChartConfigAsync(type)
+    expect(config).not.toBeNull()
+    expect(config!.label).toBe(e.label)
+    expect(config!.isAvailable).toBe(e.isAvailable)
+    // Lazy and eager derivations agree on the real drop zones.
+    expect(config!.dropZones.map((z) => z.key)).toEqual(
+      chartConfigRegistry[type].dropZones.map((z) => z.key)
+    )
+  })
+
+  it('resolves its icon from the entry (site 4)', () => {
+    const icon = entry().icon
+    // Built-ins always declare a string IconName; resolve it the same way the
+    // helper does so this stays valid against the widened entry icon type.
+    const expected = typeof icon === 'string' ? getIcon(icon) : icon
+    expect(getChartTypeIcon(type)).toBe(expected)
+  })
+
+  it('exposes dependencies (if any) through the entry for the fallback (site 5)', () => {
+    const deps = entry().dependencies
+    if (!deps) return
+    const Fallback = createFallbackComponent(type)
+    renderWithProviders(createElement(Fallback, { data: [] }))
+    expect(screen.getByText(deps.installCommand)).toBeInTheDocument()
   })
 })
 
@@ -200,5 +275,98 @@ describe('chartRegistry — plugin override precedence (regression)', () => {
 
     chartPluginRegistry.unregister('bar')
     expect(getChartTypeIcon('bar')).toBe(getIcon('chartBar'))
+  })
+})
+
+describe('chartRegistry — plugin unification (custom + built-in share one entry path)', () => {
+  const CustomChart = ({ data }: ChartProps) =>
+    createElement('div', { 'data-testid': 'plugin-chart' }, `rows:${data?.length ?? 0}`)
+  const CustomIcon = () => createElement('svg', { 'data-testid': 'plugin-icon' })
+
+  afterEach(() => {
+    chartPluginRegistry.unregister('myPlugin')
+    chartPluginRegistry.unregister('line')
+    clearChartConfigCache()
+  })
+
+  it('getChartEntry resolves a built-in via its registry entry', () => {
+    expect(getChartEntry('bar')).toBe(chartRegistry.bar)
+    expect(getChartEntry('line')).toBe(chartRegistry.line)
+    expect(getChartEntry('nope')).toBeUndefined()
+  })
+
+  it('register() produces a ChartRegistryEntry consumed through the unified lookup', async () => {
+    chartPluginRegistry.register({
+      type: 'myPlugin',
+      label: 'My Plugin',
+      component: CustomChart,
+      icon: CustomIcon,
+      dependencies: { packageName: 'cool-charts', installCommand: 'npm install cool-charts' },
+      config: {
+        label: 'My Plugin',
+        dropZones: [{ key: 'value', label: 'Value', acceptTypes: ['measure'] }],
+      },
+    })
+
+    const entry = getChartEntry('myPlugin')
+    expect(entry).toBeDefined()
+    // Same shape as a built-in entry: metadata, icon, deps, lazy config thunk.
+    expect(entry!.label).toBe('My Plugin')
+    expect(entry!.icon).toBe(CustomIcon)
+    expect(entry!.dependencies).toEqual({ packageName: 'cool-charts', installCommand: 'npm install cool-charts' })
+    expect(typeof entry!.config).toBe('function')
+    const resolved = await entry!.config()
+    expect(resolved.dropZones.map((z) => z.key)).toEqual(['value'])
+  })
+
+  it('routes a custom chart icon through the unified icon resolver', () => {
+    chartPluginRegistry.register({
+      type: 'myPlugin',
+      label: 'My Plugin',
+      component: CustomChart,
+      icon: CustomIcon,
+      config: { label: 'My Plugin', dropZones: [] },
+    })
+    expect(getChartTypeIcon('myPlugin')).toBe(CustomIcon)
+  })
+
+  it('surfaces a custom chart’s dependencies in the fallback via its entry', () => {
+    chartPluginRegistry.register({
+      type: 'myPlugin',
+      label: 'My Plugin',
+      component: CustomChart,
+      dependencies: { packageName: 'cool-charts', installCommand: 'npm install cool-charts' },
+      config: { label: 'My Plugin', dropZones: [] },
+    })
+    const Fallback = createFallbackComponent('myPlugin')
+    renderWithProviders(createElement(Fallback, { data: [] }))
+    expect(screen.getByText('npm install cool-charts')).toBeInTheDocument()
+  })
+
+  it('lets a custom override of a non-bar built-in (line) win, then restores it', async () => {
+    chartPluginRegistry.register({
+      type: 'line',
+      label: 'Custom Line',
+      component: CustomChart,
+      icon: CustomIcon,
+      config: {
+        label: 'Custom Line',
+        dropZones: [{ key: 'custom', label: 'Custom', acceptTypes: ['measure'] }],
+      },
+    })
+
+    // Custom entry takes precedence over the built-in across the unified path.
+    expect(getChartEntry('line')!.icon).toBe(CustomIcon)
+    expect(getChartTypeIcon('line')).toBe(CustomIcon)
+    expect(chartConfigRegistry.line.label).toBe('Custom Line')
+    const overridden = await getChartConfigAsync('line')
+    expect(overridden!.dropZones.map((z) => z.key)).toEqual(['custom'])
+
+    // Unregistering restores the built-in line entry.
+    chartPluginRegistry.unregister('line')
+    clearChartConfigCache()
+    expect(getChartEntry('line')).toBe(chartRegistry.line)
+    expect(getChartTypeIcon('line')).toBe(getIcon('chartLine'))
+    expect(chartConfigRegistry.line.label).toBe('chart.line.label')
   })
 })

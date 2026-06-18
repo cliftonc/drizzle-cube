@@ -11,67 +11,6 @@ import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs.js'
 import { defaultChartConfig } from './chartConfigs.js'
 import { chartRegistry, composeChartConfig } from './chartRegistry.js'
 
-// Config import map - lazy imports for built-in chart configs.
-// Migrated charts (e.g. bar) resolve via their `chartRegistry` entry's `config`
-// thunk instead — their import path is defined once, in the entry.
-const configImportMap: Partial<Record<BuiltInChartType, () => Promise<{ [key: string]: ChartTypeConfig }>>> = {
-  line: () => import('../components/charts/LineChart.config.js'),
-  area: () => import('../components/charts/AreaChart.config.js'),
-  pie: () => import('../components/charts/PieChart.config.js'),
-  scatter: () => import('../components/charts/ScatterChart.config.js'),
-  radar: () => import('../components/charts/RadarChart.config.js'),
-  radialBar: () => import('../components/charts/RadialBarChart.config.js'),
-  treemap: () => import('../components/charts/TreeMapChart.config.js'),
-  bubble: () => import('../components/charts/BubbleChart.config.js'),
-  table: () => import('../components/charts/DataTable.config.js'),
-  activityGrid: () => import('../components/charts/ActivityGridChart.config.js'),
-  kpiNumber: () => import('../components/charts/KpiNumber.config.js'),
-  kpiDelta: () => import('../components/charts/KpiDelta.config.js'),
-  kpiText: () => import('../components/charts/KpiText.config.js'),
-  markdown: () => import('../components/charts/MarkdownChart.config.js'),
-  funnel: () => import('../components/charts/FunnelChart.config.js'),
-  sankey: () => import('../components/charts/SankeyChart.config.js'),
-  sunburst: () => import('../components/charts/SunburstChart.config.js'),
-  heatmap: () => import('../components/charts/HeatMapChart.config.js'),
-  retentionHeatmap: () => import('../components/charts/RetentionHeatmap.config.js'),
-  retentionCombined: () => import('../components/charts/RetentionCombinedChart.config.js'),
-  boxPlot: () => import('../components/charts/BoxPlotChart.config.js'),
-  waterfall: () => import('../components/charts/WaterfallChart.config.js'),
-  candlestick: () => import('../components/charts/CandlestickChart.config.js'),
-  measureProfile: () => import('../components/charts/MeasureProfileChart.config.js'),
-  gauge: () => import('../components/charts/GaugeChart.config.js'),
-}
-
-// Map from built-in chart type to expected export name.
-// Migrated charts are absent — they resolve the config object directly via their entry.
-const configExportNames: Partial<Record<BuiltInChartType, string>> = {
-  line: 'lineChartConfig',
-  area: 'areaChartConfig',
-  pie: 'pieChartConfig',
-  scatter: 'scatterChartConfig',
-  radar: 'radarChartConfig',
-  radialBar: 'radialBarChartConfig',
-  treemap: 'treemapChartConfig',
-  bubble: 'bubbleChartConfig',
-  table: 'dataTableConfig',
-  activityGrid: 'activityGridChartConfig',
-  kpiNumber: 'kpiNumberConfig',
-  kpiDelta: 'kpiDeltaConfig',
-  kpiText: 'kpiTextConfig',
-  markdown: 'markdownConfig',
-  funnel: 'funnelChartConfig',
-  sankey: 'sankeyChartConfig',
-  sunburst: 'sunburstChartConfig',
-  heatmap: 'heatmapChartConfig',
-  retentionHeatmap: 'retentionHeatmapConfig',
-  retentionCombined: 'retentionCombinedConfig',
-  boxPlot: 'boxPlotChartConfig',
-  waterfall: 'waterfallChartConfig',
-  candlestick: 'candlestickChartConfig',
-  measureProfile: 'measureProfileChartConfig',
-  gauge: 'gaugeChartConfig',
-}
-
 // Cache for loaded configs
 const configCache = new Map<ChartType, ChartTypeConfig>()
 
@@ -94,37 +33,18 @@ export async function getChartConfigAsync(chartType: ChartType): Promise<ChartTy
     return configCache.get(chartType)!
   }
 
-  // Unified registry: migrated charts resolve the config object directly, then
-  // compose the entry metadata over it so the lazy public API returns the same
-  // full shape (label/description/useCase/isAvailable) as non-migrated charts.
+  // Unified registry: resolve the chart's config object via its entry's `config`
+  // thunk, then compose the entry metadata over it so the lazy public API returns
+  // the same full shape (label/description/useCase/isAvailable) as the eager one.
   const entry = chartRegistry[chartType as BuiltInChartType]
-  if (entry) {
-    try {
-      const base = await entry.config()
-      if (base) {
-        const config = composeChartConfig(entry, base)
-        configCache.set(chartType, config)
-        return config
-      }
-      return null
-    } catch (error) {
-      console.error(`Failed to load config for chart type: ${chartType}`, error)
-      return null
-    }
-  }
-
-  // Legacy registry fallback for charts not yet migrated.
-  const importFn = configImportMap[chartType as BuiltInChartType]
-  if (!importFn) {
+  if (!entry) {
     return null
   }
 
   try {
-    const module = await importFn()
-    const exportName = configExportNames[chartType as BuiltInChartType]
-    const config = exportName ? module[exportName] : undefined
-
-    if (config) {
+    const base = await entry.config()
+    if (base) {
+      const config = composeChartConfig(entry, base)
       configCache.set(chartType, config)
       return config
     }
@@ -256,10 +176,8 @@ export async function preloadChartConfigs(chartTypes: ChartType[]): Promise<void
  * ```
  */
 export async function loadAllChartConfigs(): Promise<ChartConfigRegistry> {
-  // Union legacy import map with migrated entries so every built-in is covered.
-  const chartTypes = [
-    ...new Set([...Object.keys(configImportMap), ...Object.keys(chartRegistry)]),
-  ] as ChartType[]
+  // Every built-in resolves through its chartRegistry entry.
+  const chartTypes = Object.keys(chartRegistry) as ChartType[]
   await Promise.all(chartTypes.map(getChartConfigAsync))
 
   const registry: ChartConfigRegistry = {}

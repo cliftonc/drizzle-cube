@@ -106,6 +106,11 @@ export interface IconRegistry {
   chartSunburst: IconDefinition
   chartHeatmap: IconDefinition
   chartRetention: IconDefinition
+  chartBoxPlot: IconDefinition
+  chartWaterfall: IconDefinition
+  chartCandlestick: IconDefinition
+  chartMeasureProfile: IconDefinition
+  chartGauge: IconDefinition
 
   // Measure type icons
   measureCount: IconDefinition

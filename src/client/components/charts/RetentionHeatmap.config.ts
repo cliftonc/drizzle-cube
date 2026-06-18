@@ -3,12 +3,16 @@
  *
  * The RetentionHeatmap is a specialized chart for retention analysis.
  * It auto-configures from retention data and doesn't need typical axis configuration.
+ *
+ * Eager metadata (`label`, `description`, `useCase`, `isAvailable`) lives in the
+ * unified `chartRegistry` entry (the single source of truth) — see
+ * `src/client/charts/chartRegistry.ts`. This file owns the lazy-loaded shape:
+ * drop zones, display options, clickable elements, validation.
  */
 
 import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 
 export const retentionHeatmapConfig: ChartTypeConfig = {
-  label: 'chart.retentionHeatmap.label',
   // RetentionHeatmap auto-configures from the retention data structure
   // No drop zones needed as the chart maps directly to cohort × period matrix
   dropZones: [],
@@ -30,7 +34,4 @@ export const retentionHeatmapConfig: ChartTypeConfig = {
       description: 'chart.option.showTooltip.description',
     },
   ],
-
-  description: 'chart.retentionHeatmap.description',
-  useCase: 'chart.retentionHeatmap.useCase',
 }
