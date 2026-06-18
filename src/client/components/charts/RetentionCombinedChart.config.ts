@@ -3,12 +3,16 @@
  *
  * The RetentionCombinedChart visualizes retention analysis data with multiple display modes.
  * It auto-configures from retention data and provides display mode selection.
+ *
+ * Eager metadata (`label`, `description`, `useCase`, `isAvailable`) lives in the
+ * unified `chartRegistry` entry (the single source of truth) — see
+ * `src/client/charts/chartRegistry.ts`. This file owns the lazy-loaded shape:
+ * drop zones, display options, clickable elements, validation.
  */
 
 import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 
 export const retentionCombinedConfig: ChartTypeConfig = {
-  label: 'chart.retentionCombined.label',
   // RetentionCombinedChart auto-configures from the retention data structure
   // No drop zones needed as the chart maps directly to retention result data
   dropZones: [],
@@ -49,7 +53,4 @@ export const retentionCombinedConfig: ChartTypeConfig = {
       description: 'chart.option.showTooltip.description',
     },
   ],
-
-  description: 'chart.retentionCombined.description',
-  useCase: 'chart.retentionCombined.useCase',
 }

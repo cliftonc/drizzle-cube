@@ -6,11 +6,13 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
  * Sunburst charts visualize hierarchical flow data as concentric rings.
  * They work with the same flow data as Sankey but show only "after" steps
  * radiating outward from the central starting step.
+ *
+ * Eager metadata (`label`, `description`, `useCase`, `isAvailable`) lives in the
+ * unified `chartRegistry` entry (the single source of truth) — see
+ * `src/client/charts/chartRegistry.ts`. This file owns the lazy-loaded shape:
+ * drop zones, display options, clickable elements, validation.
  */
 export const sunburstChartConfig: ChartTypeConfig = {
-  label: 'chart.sunburst.label',
-  description: 'chart.sunburst.description',
-  useCase: 'chart.sunburst.useCase',
   dropZones: [
     // Sunburst charts work with pre-calculated flow data like Sankey
     {

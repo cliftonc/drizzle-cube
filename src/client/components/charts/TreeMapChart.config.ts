@@ -1,14 +1,15 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
-import { requiresMeasureAndDimension, valueFormatDisplayOption } from '../../charts/chartConfigHelpers.js'
+import { valueFormatDisplayOption } from '../../charts/chartConfigHelpers.js'
 
 /**
- * Configuration for the treemap chart type
+ * Configuration for the treemap chart type.
+ *
+ * Eager metadata (`label`, `description`, `useCase`, `isAvailable`) lives in the
+ * unified `chartRegistry` entry (the single source of truth) — see
+ * `src/client/charts/chartRegistry.ts`. This file owns the lazy-loaded shape:
+ * drop zones, display options, clickable elements, validation.
  */
 export const treemapChartConfig: ChartTypeConfig = {
-  label: 'chart.treemap.label',
-  description: 'chart.treemap.description',
-  useCase: 'chart.treemap.useCase',
-  isAvailable: requiresMeasureAndDimension,
   dropZones: [
     {
       key: 'xAxis',

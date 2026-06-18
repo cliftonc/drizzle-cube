@@ -23,7 +23,34 @@ import type { IconProps } from '../icons/types.js'
 import { registerChartConfig, unregisterChartConfig, chartConfigRegistry } from './chartConfigRegistry.js'
 import { registerConfigToCache, unregisterConfigFromCache } from './lazyChartConfigRegistry.js'
 import { registerChartComponent, unregisterChartComponent } from './chartComponentRegistry.js'
-import { setCustomChartIconResolver } from '../icons/registry.js'
+import {
+  type ChartRegistryEntry,
+  registerCustomChartEntry,
+  unregisterCustomChartEntry,
+  getCustomChartEntry,
+} from './chartRegistry.js'
+
+/**
+ * Map a custom `ChartDefinition` onto the unified `ChartRegistryEntry` shape —
+ * the same shape built-in charts use — so both flow through one lookup path.
+ * `config` is the label-normalized config; the entry's lazy thunk resolves the
+ * provided config object directly (it is already in memory, not code-split).
+ */
+function chartDefinitionToEntry(
+  definition: ChartDefinition,
+  config: ChartTypeConfig
+): ChartRegistryEntry {
+  return {
+    label: config.label ?? definition.label,
+    // Plugins supply a ready-made icon component; absent one, use the bar icon.
+    icon: definition.icon ?? 'chartBar',
+    description: config.description,
+    useCase: config.useCase,
+    isAvailable: config.isAvailable,
+    dependencies: definition.dependencies,
+    config: async () => config,
+  }
+}
 
 /**
  * Complete definition for registering a custom chart type.
@@ -65,7 +92,6 @@ export interface ChartDefinition {
 class ChartPluginRegistry {
   private customCharts = new Map<string, ChartDefinition>()
   private builtInBackups = new Map<string, ChartTypeConfig>()
-  private iconMap = new Map<string, ComponentType<IconProps>>()
   private version = 0
   private listeners = new Set<() => void>()
 
@@ -93,7 +119,9 @@ class ChartPluginRegistry {
     // Store the definition
     this.customCharts.set(definition.type, definition)
 
-    // Register into the three internal registries
+    // Produce the unified entry — the single source of truth both built-in and
+    // custom charts share — and register the component graph alongside it.
+    registerCustomChartEntry(definition.type, chartDefinitionToEntry(definition, config))
     registerChartConfig(definition.type, config)
     registerConfigToCache(definition.type, config)
     registerChartComponent(
@@ -102,11 +130,6 @@ class ChartPluginRegistry {
       definition.lazyComponent,
       definition.dependencies
     )
-
-    // Store icon if provided
-    if (definition.icon) {
-      this.iconMap.set(definition.type, definition.icon)
-    }
 
     this.bump()
   }
@@ -119,7 +142,7 @@ class ChartPluginRegistry {
     if (!this.customCharts.has(type)) return
 
     this.customCharts.delete(type)
-    this.iconMap.delete(type)
+    unregisterCustomChartEntry(type)
 
     // Restore built-in backup if exists
     const backup = this.builtInBackups.get(type)
@@ -138,9 +161,12 @@ class ChartPluginRegistry {
     this.bump()
   }
 
-  /** Get the custom icon for a chart type, if registered */
+  /** Get the custom icon component for a chart type, if one was registered. */
   getIcon(type: string): ComponentType<IconProps> | undefined {
-    return this.iconMap.get(type)
+    // Derived from the unified entry — a string icon is a built-in IconName, so
+    // only a component value counts as a plugin-supplied icon here.
+    const icon = getCustomChartEntry(type)?.icon
+    return icon && typeof icon !== 'string' ? icon : undefined
   }
 
   /** Get all registered custom chart type strings */
@@ -182,7 +208,3 @@ class ChartPluginRegistry {
 
 /** Singleton chart plugin registry */
 export const chartPluginRegistry = new ChartPluginRegistry()
-
-// Wire up the icon resolver so getChartTypeIcon() can find custom chart icons
-// without creating a circular import
-setCustomChartIconResolver((chartType: string) => chartPluginRegistry.getIcon(chartType))

@@ -24,19 +24,20 @@ import { waterfallChartConfig } from '../components/charts/WaterfallChart.config
 import { candlestickChartConfig } from '../components/charts/CandlestickChart.config.js'
 import { measureProfileChartConfig } from '../components/charts/MeasureProfileChart.config.js'
 import { gaugeChartConfig } from '../components/charts/GaugeChart.config.js'
+import type { BuiltInChartType } from '../types.js'
 import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs.js'
 import { chartRegistry, composeChartConfig } from './chartRegistry.js'
 
 /**
- * Registry of all chart type configurations (the eager / full / server source).
- *
- * Migrated charts compose their entry's metadata (single source of truth) over
- * their full config shape via `toEagerConfig`; the rest read their full
- * `*.config.ts` directly. Drop zones / display options stay here in full because
- * the server agent reads them synchronously for validation and tool guidance.
+ * Statically-imported full config shapes (drop zones, display options, clickable
+ * elements, validation) for every built-in chart. These are the lazy-loaded
+ * side of a chart, but the eager registry below needs them synchronously because
+ * the server agent reads drop zones for mandatory-zone validation and tool
+ * guidance. Eager metadata (label/description/useCase/isAvailable) is NOT here —
+ * it lives on the `chartRegistry` entry, its single source of truth.
  */
-export const chartConfigRegistry: ChartConfigRegistry = {
-  bar: composeChartConfig(chartRegistry.bar!, barChartConfig),
+const baseConfigs: Record<BuiltInChartType, ChartTypeConfig> = {
+  bar: barChartConfig,
   line: lineChartConfig,
   area: areaChartConfig,
   pie: pieChartConfig,
@@ -63,6 +64,20 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   measureProfile: measureProfileChartConfig,
   gauge: gaugeChartConfig,
 }
+
+/**
+ * Registry of all chart type configurations (the eager / full / server source).
+ *
+ * Every built-in is composed from its `chartRegistry` entry's metadata (single
+ * source of truth) laid over its full config shape. Drop zones / display options
+ * stay here in full because the server agent reads them synchronously.
+ */
+export const chartConfigRegistry: ChartConfigRegistry = Object.fromEntries(
+  (Object.keys(chartRegistry) as BuiltInChartType[]).map((type) => [
+    type,
+    composeChartConfig(chartRegistry[type], baseConfigs[type]),
+  ])
+)
 
 /**
  * Register a custom chart config into the registry.

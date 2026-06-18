@@ -8,41 +8,17 @@ import type { IconifyIcon } from '@iconify/types'
 import type { ComponentType } from 'react'
 import { DEFAULT_ICONS } from './defaultIcons.js'
 import type { IconRegistry, IconName, IconDefinition, IconCategory, IconProps, PartialIconRegistry } from './types.js'
+// A chart's icon is declared on its unified registry entry (an IconName for
+// built-ins, a component for plugins), resolved custom-first via getChartEntry.
+// Imported directly — not injected — so chart icon resolution does NOT depend on
+// chartRegistry's module init having run first (importing the icon helper
+// standalone must still resolve built-in icons). This is safe: chartRegistry is
+// DOM-free (its chart-component thunks live in ChartLoader, not the entry), so
+// importing it here never drags the chart component graph into the icon module.
+import { getChartEntry } from '../charts/chartRegistry.js'
 
 // Internal mutable registry - starts with defaults
 let _registry: IconRegistry = { ...DEFAULT_ICONS }
-
-// Custom icon resolver for chart plugins (set by chartPlugin.ts to avoid circular imports)
-let _customIconResolver: ((chartType: string) => ComponentType<IconProps> | undefined) | null = null
-
-/**
- * Set a custom icon resolver for chart plugin types.
- * Called by chartPlugin.ts during initialization.
- * @internal
- */
-export function setCustomChartIconResolver(
-  resolver: (chartType: string) => ComponentType<IconProps> | undefined
-): void {
-  _customIconResolver = resolver
-}
-
-// Resolver for icon names declared on unified chartRegistry entries (set by
-// chartRegistry.ts via setRegistryIconResolver). Injected rather than imported
-// so this foundational icon module stays free of the chart component graph —
-// statically importing chartRegistry would drag BarChart/ChartContainer into
-// every program that includes icons (incl. the DOM-less server-tests config).
-let _registryIconResolver: ((chartType: string) => IconName | undefined) | null = null
-
-/**
- * Set the resolver that maps a chart type to its unified-registry icon name.
- * Called by chartRegistry.ts during initialization.
- * @internal
- */
-export function setRegistryIconResolver(
-  resolver: (chartType: string) => IconName | undefined
-): void {
-  _registryIconResolver = resolver
-}
 
 // Cache for icon components to avoid recreating on every getIcon() call
 // This prevents React from unmounting/remounting icons on each render
@@ -196,45 +172,14 @@ export function getMeasureTypeIcon(measureType: string | undefined): ComponentTy
  * @returns React component for the icon
  */
 export function getChartTypeIcon(chartType: string): ComponentType<IconProps> {
-  // Plugin overrides win first (hard precedence requirement): a custom chart —
-  // including one overriding a built-in like `bar` — may supply its own icon,
-  // which must take priority over the unified-registry and legacy lookups below.
-  if (_customIconResolver) {
-    const customIcon = _customIconResolver(chartType)
-    if (customIcon) return customIcon
-  }
-
-  // Unified registry: migrated charts declare their icon on the entry
-  // (theme-overridable via the icon registry). Falls back to the legacy typeMap.
-  const entryIcon = _registryIconResolver?.(chartType)
+  // Unified registry: every chart — built-in or plugin — declares its icon on
+  // its chartRegistry entry, resolved custom-first so a plugin override of a
+  // built-in (e.g. `bar`) wins. A string is an IconName resolved via the icon
+  // registry (theme-overridable); a component is used as-is (plugin icons).
+  // Unknown types fall back to the bar icon.
+  const entryIcon = getChartEntry(chartType)?.icon
   if (entryIcon) {
-    return getIcon(entryIcon)
-  }
-
-  const typeMap: Record<string, IconName> = {
-    line: 'chartLine',
-    area: 'chartArea',
-    pie: 'chartPie',
-    scatter: 'chartScatter',
-    bubble: 'chartBubble',
-    radar: 'chartRadar',
-    radialBar: 'chartRadialBar',
-    treemap: 'chartTreemap',
-    table: 'chartTable',
-    activityGrid: 'chartActivityGrid',
-    kpiNumber: 'chartKpiNumber',
-    kpiDelta: 'chartKpiDelta',
-    kpiText: 'chartKpiText',
-    markdown: 'chartMarkdown',
-    funnel: 'chartFunnel',
-    sankey: 'chartSankey',
-    sunburst: 'chartSunburst',
-    heatmap: 'chartHeatmap'
-  }
-
-  const iconName = typeMap[chartType]
-  if (iconName) {
-    return getIcon(iconName)
+    return typeof entryIcon === 'string' ? getIcon(entryIcon) : entryIcon
   }
 
   return getIcon('chartBar')

@@ -1,17 +1,14 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 
 /**
- * Configuration for the activity grid chart type
+ * Configuration for the activity grid chart type.
+ *
+ * Eager metadata (`label`, `description`, `useCase`, `isAvailable`) lives in the
+ * unified `chartRegistry` entry (the single source of truth) — see
+ * `src/client/charts/chartRegistry.ts`. This file owns the lazy-loaded shape:
+ * drop zones, display options, clickable elements, validation.
  */
 export const activityGridChartConfig: ChartTypeConfig = {
-  label: 'chart.activityGrid.label',
-  description: 'chart.activityGrid.description',
-  useCase: 'chart.activityGrid.useCase',
-  isAvailable: ({ measureCount, timeDimensionCount }) => {
-    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
-    if (timeDimensionCount < 1) return { available: false, reason: 'chart.availability.requiresTimeDimension' }
-    return { available: true }
-  },
   dropZones: [
     {
       key: 'dateField',

@@ -1,15 +1,15 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
-import { requiresMeasureAndDimension } from '../../charts/chartConfigHelpers.js'
 
 /**
- * Configuration for the waterfall chart type
+ * Configuration for the waterfall chart type.
+ *
+ * Eager metadata (`label`, `description`, `useCase`, `isAvailable`) lives in the
+ * unified `chartRegistry` entry (the single source of truth) — see
+ * `src/client/charts/chartRegistry.ts`. This file owns the lazy-loaded shape:
+ * drop zones, display options, clickable elements, validation.
  */
 export const waterfallChartConfig: ChartTypeConfig = {
-  label: 'chart.waterfall.label',
-  description: 'chart.waterfall.description',
-  useCase: 'chart.waterfall.useCase',
   clickableElements: { bar: true },
-  isAvailable: requiresMeasureAndDimension,
   displayOptions: ['showTooltip', 'hideHeader'],
   dropZones: [
     {
