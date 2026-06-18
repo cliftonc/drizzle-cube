@@ -86,3 +86,19 @@ From a clean, up-to-date `main`:
 5. Verify: `npm view drizzle-cube version` shows the new version.
 
 Version-only commits skip tests in CI but still run lint/typecheck/build so the publish gate reports success.
+
+## Agent skills
+
+Per-repo configuration for the engineering skills (`to-issues`, `triage`, `to-prd`, `qa`, `improve-codebase-architecture`, `diagnosing-bugs`, `tdd`).
+
+### Issue tracker
+
+Issues live as GitHub issues in `cliftonc/drizzle-cube` (the `origin` remote), managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical triage roles map to repo labels of the same name (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`); categories are `bug` / `enhancement`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context: `CONTEXT-MAP.md` at the root indexes per-area glossaries (`src/server/`, `src/client/`, `src/adapters/CONTEXT.md`), created lazily by `/domain-modeling`. See `docs/agents/domain.md`.
