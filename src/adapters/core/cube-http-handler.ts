@@ -1,10 +1,17 @@
 /**
- * Framework-agnostic core for the REST `/load` endpoint.
+ * Framework-agnostic core for the Cube.js REST + MCP HTTP surface.
  *
- * This is the deep module behind the framework adapters: it runs the full REST
- * load orchestration against an {@link HttpPort}, with no framework types inside.
+ * This is the deep module behind the framework adapters: it runs the full
+ * request orchestration (validate / execute / format) against an
+ * {@link HttpPort}, with no framework types inside. Adapters translate their
+ * req/res to a port and route to these handlers; they hold no request-handling
+ * logic of their own.
  *
- * NOTE: This is a DIFFERENT load orchestration from `handleLoad` in
+ * The REST `/load` flow lives here directly; the other REST endpoints
+ * (`meta`/`sql`/`dry-run`/`batch`/`explain`) and MCP POST are composed in from
+ * `rest-handlers.ts` and `mcp-handler.ts`.
+ *
+ * NOTE: This REST `/load` is a DIFFERENT load orchestration from `handleLoad` in
  * `src/server/query-handlers.ts`. That one is the MCP/agent-flavored load
  * (normalizes AI fields, throws on invalid, no cache control, returns raw
  * `{ data, annotation, query }`). This REST load does NOT normalize, maps
@@ -14,32 +21,46 @@
  */
 
 import type { SemanticLayerCompiler } from '../../server/compiler.js'
-import type { SemanticQuery, SecurityContext } from '../../server/index.js'
+import type { SemanticQuery } from '../../server/index.js'
+import type { MCPOptions } from '../utils.js'
 import { formatCubeResponse, formatErrorResponse } from '../utils.js'
-import { resolveRequestLocale, withLocaleInSecurityContext } from '../locale.js'
-import type { HttpPort } from './http-port.js'
+import type { HttpPort, McpHttpPort } from './http-port.js'
+import {
+  resolveSecurityContext,
+  type BaseSecurityContextThunk
+} from './security-context.js'
+import { createRestHandlers, type RestHandlers } from './rest-handlers.js'
+import { createMcpPostHandler } from './mcp-handler.js'
 
-/** Returns the base (pre-locale) security context for a request. */
-export type BaseSecurityContextThunk = () => SecurityContext | Promise<SecurityContext>
+export type { BaseSecurityContextThunk } from './security-context.js'
 
 export interface CubeHttpHandlerOptions {
-  /** The semantic layer the load flow validates and executes against. */
+  /** The semantic layer the handlers validate and execute against. */
   semanticLayer: SemanticLayerCompiler
-  /** Called once in the catch-all 500 path with the thrown error (e.g. for logging). */
+  /** Called in the REST `/load` catch-all 500 path with the thrown error (e.g. for logging). */
   onError: (error: unknown) => void
+  /**
+   * MCP endpoint config. Resolved once into the MCP POST handler. When omitted,
+   * MCP defaults are used; the adapter decides whether to route the MCP path.
+   */
+  mcp?: MCPOptions
 }
 
-export interface CubeHttpHandler {
+export interface CubeHttpHandler extends RestHandlers {
   handleLoadGet<TRes>(port: HttpPort<TRes>, getBaseSecurityContext: BaseSecurityContextThunk): Promise<TRes>
   handleLoadPost<TRes>(port: HttpPort<TRes>, getBaseSecurityContext: BaseSecurityContextThunk): Promise<TRes>
+  handleMcpPost<TRes>(port: McpHttpPort<TRes>, getBaseSecurityContext: BaseSecurityContextThunk): Promise<TRes>
 }
 
 /**
- * Build the REST `/load` handlers (GET + POST) once. Each entry point owns its
- * own request extraction, then funnels into the shared `runLoad` tail.
+ * Build all HTTP handlers once. Each REST entry point owns its own request
+ * extraction, then funnels into a shared validate/execute/format tail.
  */
 export function createCubeHttpHandler(options: CubeHttpHandlerOptions): CubeHttpHandler {
-  const { semanticLayer, onError } = options
+  const { semanticLayer, onError, mcp = {} } = options
+
+  const restHandlers = createRestHandlers(semanticLayer)
+  const { handleMcpPost } = createMcpPostHandler(semanticLayer, mcp)
 
   /** Map an unexpected (thrown) error to a 500, logging it via the injected onError. */
   function handleCatchAll<TRes>(error: unknown, port: HttpPort<TRes>): TRes {
@@ -56,8 +77,7 @@ export function createCubeHttpHandler(options: CubeHttpHandlerOptions): CubeHttp
     getBaseSecurityContext: BaseSecurityContextThunk
   ): Promise<TRes> {
     // Merge the request locale into the (pre-locale) security context here in the core.
-    const requestLocale = resolveRequestLocale((name) => port.getHeader(name))
-    const securityContext = withLocaleInSecurityContext(await getBaseSecurityContext(), requestLocale)
+    const securityContext = await resolveSecurityContext(getBaseSecurityContext, (n) => port.getHeader(n))
 
     const validation = semanticLayer.validateQuery(query)
     if (!validation.isValid) {
@@ -113,5 +133,10 @@ export function createCubeHttpHandler(options: CubeHttpHandlerOptions): CubeHttp
     }
   }
 
-  return { handleLoadGet, handleLoadPost }
+  return {
+    handleLoadGet,
+    handleLoadPost,
+    handleMcpPost,
+    ...restHandlers
+  }
 }
