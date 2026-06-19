@@ -46,6 +46,7 @@ import {
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
+import { SemanticLayerCompiler } from '../../src/server'
 
 // Mock Next.js environment
 const mockNextUrl = {
@@ -731,6 +732,52 @@ describe('Next.js Adapter', () => {
 
       const data = await response.json() as any
       expect(data.error).toContain('empty')
+    })
+  })
+
+  describe('shared SemanticLayerCompiler (issue #907)', () => {
+    it('backs every createCubeHandlers handler with a single compiler, registering cubes once', () => {
+      const spy = vi.spyOn(SemanticLayerCompiler.prototype, 'registerCube')
+      try {
+        createCubeHandlers(adapterOptions)
+
+        // Cube registration runs once, not once per handler.
+        expect(spy.mock.calls.length).toBe(adapterOptions.cubes.length)
+        // All registrations target one and the same compiler instance.
+        expect(new Set(spy.mock.contexts).size).toBe(1)
+      } finally {
+        spy.mockRestore()
+      }
+    })
+
+    it('keeps standalone single-handler factories independent (each builds its own compiler)', () => {
+      const spy = vi.spyOn(SemanticLayerCompiler.prototype, 'registerCube')
+      try {
+        createLoadHandler(adapterOptions)
+        createMetaHandler(adapterOptions)
+
+        // Two separate standalone factory calls => two distinct compilers.
+        expect(new Set(spy.mock.contexts).size).toBe(2)
+      } finally {
+        spy.mockRestore()
+      }
+    })
+
+    it('returns working load and meta handlers backed by the shared compiler', async () => {
+      skipIfDuckDB()
+      const handlers = createCubeHandlers(adapterOptions)
+
+      const loadResponse = await handlers.load(
+        createMockNextRequest('POST', { measures: ['Employees.count'] })
+      )
+      expect(loadResponse.status).toBe(200)
+      const loadData = await loadResponse.json() as any
+      expect(Array.isArray(loadData.results)).toBe(true)
+
+      const metaResponse = await handlers.meta(createMockNextRequest('GET'))
+      expect(metaResponse.status).toBe(200)
+      const metaData = await metaResponse.json() as any
+      expect(metaData.cubes.some((c: any) => c.name === 'Employees')).toBe(true)
     })
   })
 })
