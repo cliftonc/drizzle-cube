@@ -8,9 +8,10 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { getIcon } from '../../icons/index.js'
-import type { Filter, SimpleFilter, GroupFilter } from '../../types.js'
+import type { Filter, GroupFilter } from '../../types.js'
 import type { MetaResponse } from '../../shared/types.js'
 import AnalysisFilterItem from './AnalysisFilterItem.js'
+import { isSimpleFilter, isGroupFilter, toggleGroupType } from '../../shared/filters/index.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
 
 const AddIcon = getIcon('add')
@@ -31,20 +32,6 @@ interface AnalysisFilterGroupProps {
   depth?: number
   /** Whether to hide the remove button (for top-level groups) */
   hideRemoveButton?: boolean
-}
-
-/**
- * Check if a filter is a simple filter
- */
-function isSimpleFilter(filter: Filter): filter is SimpleFilter {
-  return 'member' in filter && typeof (filter as SimpleFilter).member === 'string'
-}
-
-/**
- * Check if a filter is a group filter
- */
-function isGroupFilter(filter: Filter): filter is GroupFilter {
-  return 'type' in filter && ((filter as GroupFilter).type === 'and' || (filter as GroupFilter).type === 'or')
 }
 
 export default function AnalysisFilterGroup({
@@ -73,8 +60,7 @@ export default function AnalysisFilterGroup({
 
   // Toggle group type (AND <-> OR)
   const handleToggleType = useCallback(() => {
-    const newType = group.type === 'and' ? 'or' : 'and'
-    onUpdate({ ...group, type: newType })
+    onUpdate(toggleGroupType(group))
   }, [group, onUpdate])
 
   // Update a nested filter at a specific index

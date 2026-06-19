@@ -9,12 +9,20 @@
 import { useState, useCallback, useRef, DragEvent } from 'react'
 import { getIcon } from '../../icons/index.js'
 import SectionHeading from './SectionHeading.js'
-import type { Filter, SimpleFilter, GroupFilter } from '../../types.js'
+import type { Filter, SimpleFilter } from '../../types.js'
 import type { MetaResponse, MetaField } from '../../shared/types.js'
 import FieldSearchModal from './FieldSearchModal.js'
 import AnalysisFilterItem from './AnalysisFilterItem.js'
 import AnalysisFilterGroup from './AnalysisFilterGroup.js'
 import { convertDateRangeTypeToValue } from '../../shared/utils.js'
+import {
+  isSimpleFilter,
+  isGroupFilter,
+  countFilters,
+  addFilterAtPath,
+  removeFilterAtIndex,
+  extractFilterMembers
+} from '../../shared/filters/index.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
 
 const AddIcon = getIcon('add')
@@ -30,98 +38,6 @@ interface AnalysisFilterSectionProps {
   onFieldDropped?: (field: string) => void
   /** Only allow dimension filters (no measures) - used for funnel step filters */
   dimensionsOnly?: boolean
-}
-
-/**
- * Check if a filter is a simple filter (has member property)
- */
-function isSimpleFilter(filter: Filter): filter is SimpleFilter {
-  return 'member' in filter && typeof (filter as SimpleFilter).member === 'string'
-}
-
-/**
- * Check if a filter is a group filter
- */
-function isGroupFilter(filter: Filter): filter is GroupFilter {
-  return 'type' in filter && ((filter as GroupFilter).type === 'and' || (filter as GroupFilter).type === 'or')
-}
-
-/**
- * Count all simple filters in a filter tree
- */
-function countFilters(filters: Filter[]): number {
-  let count = 0
-  for (const filter of filters) {
-    if (isSimpleFilter(filter)) {
-      count++
-    } else if (isGroupFilter(filter)) {
-      count += countFilters(filter.filters)
-    }
-  }
-  return count
-}
-
-/**
- * Get all simple filter member names from a filter tree
- */
-function getSelectedFields(filters: Filter[]): string[] {
-  const fields: string[] = []
-  for (const filter of filters) {
-    if (isSimpleFilter(filter)) {
-      fields.push(filter.member)
-    } else if (isGroupFilter(filter)) {
-      fields.push(...getSelectedFields(filter.filters))
-    }
-  }
-  return fields
-}
-
-/**
- * Add a filter at a specific path in the filter tree
- * Path is an array of indices, e.g., [0, 2] means filters[0].filters[2]
- */
-function addFilterAtPath(filters: Filter[], path: number[], newFilter: SimpleFilter): Filter[] {
-  if (path.length === 0) {
-    // Add to root level
-    if (filters.length === 0) {
-      return [newFilter]
-    } else if (filters.length === 1 && isSimpleFilter(filters[0])) {
-      // Wrap in AND group
-      return [{ type: 'and', filters: [filters[0], newFilter] }]
-    } else if (filters.length === 1 && isGroupFilter(filters[0])) {
-      // Add to existing group
-      return [{
-        ...filters[0],
-        filters: [...filters[0].filters, newFilter]
-      }]
-    } else {
-      // Wrap all in AND group
-      return [{ type: 'and', filters: [...filters, newFilter] }]
-    }
-  }
-
-  // Navigate to the target group and add
-  const [firstIndex, ...restPath] = path
-  const newFilters = [...filters]
-  const targetFilter = newFilters[firstIndex]
-
-  if (isGroupFilter(targetFilter)) {
-    if (restPath.length === 0) {
-      // Add to this group
-      newFilters[firstIndex] = {
-        ...targetFilter,
-        filters: [...targetFilter.filters, newFilter]
-      }
-    } else {
-      // Recurse deeper
-      newFilters[firstIndex] = {
-        ...targetFilter,
-        filters: addFilterAtPath(targetFilter.filters, restPath, newFilter)
-      }
-    }
-  }
-
-  return newFilters
 }
 
 export default function AnalysisFilterSection({
@@ -169,7 +85,7 @@ export default function AnalysisFilterSection({
   }, [onFieldDropped])
 
   // Get selected field names for the modal
-  const selectedFields = getSelectedFields(filters)
+  const selectedFields = extractFilterMembers(filters)
 
   // Handle adding a new filter via field selection
   const handleFieldSelected = useCallback(
@@ -213,18 +129,7 @@ export default function AnalysisFilterSection({
   // Handle removing a top-level filter
   const handleRemoveTopLevelFilter = useCallback(
     (index: number) => {
-      const newFilters = filters.filter((_, i) => i !== index)
-
-      // If we have a single group with one filter, unwrap it
-      if (newFilters.length === 1 && isGroupFilter(newFilters[0])) {
-        const group = newFilters[0]
-        if (group.filters.length === 1) {
-          onFiltersChange([group.filters[0]])
-          return
-        }
-      }
-
-      onFiltersChange(newFilters)
+      onFiltersChange(removeFilterAtIndex(filters, index))
     },
     [filters, onFiltersChange]
   )
