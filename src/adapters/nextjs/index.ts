@@ -163,6 +163,16 @@ export interface NextAdapterOptions {
    * to configure RLS (e.g., set JWT claims and switch Postgres roles), then runs the query.
    */
   rlsSetup?: RLSSetupFn
+
+  /**
+   * Pre-built semantic layer to reuse across handlers.
+   * When provided, the adapter reuses this compiler instead of constructing a
+   * new one (and skips cube registration — register cubes on it yourself).
+   * `createCubeHandlers` sets this internally so every handler it returns shares
+   * one compiler, keeping metadata/result caches consistent. Mirrors the Hono
+   * adapter's `semanticLayer` option.
+   */
+  semanticLayer?: SemanticLayerCompiler
 }
 
 export interface RouteContext {
@@ -191,6 +201,12 @@ export interface CubeHandlers {
 function createSemanticLayer(
   options: NextAdapterOptions
 ): SemanticLayerCompiler {
+  // Reuse a pre-built compiler when one is injected (e.g. by createCubeHandlers)
+  // so all handlers share a single metadata/result cache.
+  if (options.semanticLayer) {
+    return options.semanticLayer
+  }
+
   const { cubes, drizzle, schema, engineType, cache, rlsSetup } = options
 
   // Validate required options
@@ -873,23 +889,28 @@ export function createCubeHandlers(
 ): CubeHandlers {
   const { mcp = { enabled: true } } = options
 
+  // Build the semantic layer once and inject it into every handler so they all
+  // share one metadata/result cache (cube registration runs a single time).
+  const semanticLayer = createSemanticLayer(options)
+  const sharedOptions: NextAdapterOptions = { ...options, semanticLayer }
+
   const handlers: CubeHandlers = {
-    load: createLoadHandler(options),
-    meta: createMetaHandler(options),
-    sql: createSqlHandler(options),
-    dryRun: createDryRunHandler(options),
-    batch: createBatchHandler(options),
-    explain: createExplainHandler(options)
+    load: createLoadHandler(sharedOptions),
+    meta: createMetaHandler(sharedOptions),
+    sql: createSqlHandler(sharedOptions),
+    dryRun: createDryRunHandler(sharedOptions),
+    batch: createBatchHandler(sharedOptions),
+    explain: createExplainHandler(sharedOptions)
   }
 
   // Add MCP handlers if enabled
   if (mcp.enabled !== false) {
-    handlers.mcpRpc = createMcpRpcHandler(options)
+    handlers.mcpRpc = createMcpRpcHandler(sharedOptions)
   }
 
   // Add agent handler if configured
   if (options.agent) {
-    handlers.agentChat = createAgentChatHandler(options)
+    handlers.agentChat = createAgentChatHandler(sharedOptions)
   }
 
   return handlers

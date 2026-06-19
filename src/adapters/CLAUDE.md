@@ -56,7 +56,7 @@ All framework option interfaces extend the same shape:
 
 ## Structural Difference: Next.js
 
-Express, Fastify, and Hono export **router/app creators** (`createCubeRouter`, `cubePlugin`, `createCubeRoutes`) that mount all endpoints at once. Next.js instead exports **individual handler creators** (`createLoadHandler`, `createMcpRpcHandler`, etc.) designed for App Router route files — each route file re-exports the relevant handler as `GET`/`POST`/`DELETE`. A convenience `createCubeHandlers` returns all handlers as a single object.
+Express, Fastify, and Hono export **router/app creators** (`createCubeRouter`, `cubePlugin`, `createCubeRoutes`) that mount all endpoints at once. Next.js instead exports **individual handler creators** (`createLoadHandler`, `createMcpRpcHandler`, etc.) designed for App Router route files — each route file re-exports the relevant handler as `GET`/`POST`/`DELETE`. A convenience `createCubeHandlers` returns all handlers as a single object; it builds one `SemanticLayerCompiler` and injects it (via the `semanticLayer` option) into every handler, so they share one metadata/result cache. Standalone single-handler factories still build their own compiler.
 
 ## MCP Transport (mcp-transport.ts)
 
