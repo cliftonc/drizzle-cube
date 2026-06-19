@@ -12,6 +12,7 @@ HTTP + MCP adapter layer: maps Cube.js-compatible endpoints onto Express, Fastif
 | express/index.ts | `ExpressAdapterOptions`, `createCubeRouter`, `mountCubeRoutes`, `createCubeApp` | Express router/app factory |
 | fastify/index.ts | `FastifyAdapterOptions`, `cubePlugin`, `registerCubeRoutes`, `createCubeApp` | Fastify plugin + app factory |
 | hono/index.ts | `HonoAdapterOptions`, `createCubeRoutes`, `mountCubeRoutes`, `createCubeApp` | Hono routes/app factory |
+| core/index.ts | `HttpPort`, `createCubeHttpHandler`, `CubeHttpHandler`, `CubeHttpHandlerOptions`, `BaseSecurityContextThunk` | Framework-agnostic HTTP handler seam — generic `HttpPort<TRes>` port + deep `createCubeHttpHandler` core (REST `/load` GET+POST). Public so third parties can build adapters for other frameworks. Express `/load` is migrated onto it; others follow. |
 | nextjs/index.ts | `NextAdapterOptions`, `createLoadHandler`, `createMetaHandler`, `createSqlHandler`, `createDryRunHandler`, `createBatchHandler`, `createExplainHandler`, `createDiscoverHandler`, `createSuggestHandler`, `createValidateHandler`, `createMcpRpcHandler`, `createAgentChatHandler`, `createCubeHandlers` | Next.js App Router — individual handler creators (not a router) |
 
 ## API Endpoints

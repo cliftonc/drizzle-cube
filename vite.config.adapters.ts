@@ -26,6 +26,7 @@ export default defineConfig({
         'express/index': resolve(__dirname, 'src/adapters/express/index.ts'),
         'fastify/index': resolve(__dirname, 'src/adapters/fastify/index.ts'),
         'nextjs/index': resolve(__dirname, 'src/adapters/nextjs/index.ts'),
+        'core/index': resolve(__dirname, 'src/adapters/core/index.ts'),
         'utils': resolve(__dirname, 'src/adapters/utils.ts'),
         'types': resolve(__dirname, 'src/adapters/types.ts'),
         'mcp-tools': resolve(__dirname, 'src/adapters/mcp-tools.ts')
