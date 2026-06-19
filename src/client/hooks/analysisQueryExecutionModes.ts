@@ -1,5 +1,5 @@
 /**
- * Pure mode-selection helpers for useAnalysisQueryExecution.
+ * Pure mode-selection helpers for useAnalysisQuery.
  *
  * The hook coordinates five execution modes (retention, flow, funnel, multi,
  * single). Almost every derived value is "pick the field from whichever mode is

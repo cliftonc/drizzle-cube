@@ -1,8 +1,16 @@
 /**
- * useAnalysisQueryExecution
+ * useAnalysisQuery
  *
- * Coordinates TanStack Query execution for single, multi-query, and funnel modes.
- * Provides unified loading states, results, and refetch functionality.
+ * Execution responsibility for the Analysis Builder. Coordinates TanStack Query
+ * execution for single, multi-query, funnel, flow, and retention modes — the
+ * five TanStack hooks, mode routing, skip flags, unified loading/error states,
+ * results, debug data, and refetch. The "re-run on state change" path lives
+ * here, readable top-to-bottom.
+ *
+ * Pure mode-selection helpers stay extracted in `analysisQueryExecutionModes.ts`.
+ *
+ * Inputs flow in from `useAnalysisState` (query specs + validity); outputs flow
+ * out to `useAnalysisEffects` (results + hasDebounced) and the public facade.
  */
 
 import { useMemo, useCallback } from 'react'
@@ -25,7 +33,7 @@ import type { ServerRetentionQuery, RetentionChartData } from '../types/retentio
 import { buildFunnelConfigFromQueries } from '../utils/funnelExecution.js'
 import { resolveActiveMode, pickByMode, computeExecutionResults, deriveModeOutputs, computeSkipFlags, computeExecutionStatus } from './analysisQueryExecutionModes.js'
 
-export interface UseAnalysisQueryExecutionOptions {
+export interface UseAnalysisQueryOptions {
   /** Current query (for single-query mode) */
   currentQuery: CubeQuery
   /** All queries (for dry-run and multi-query) */
@@ -75,7 +83,7 @@ export interface UseAnalysisQueryExecutionOptions {
   retentionValidation?: { isValid: boolean; errors: string[]; warnings: string[] } | null
 }
 
-export interface UseAnalysisQueryExecutionResult {
+export interface UseAnalysisQueryResult {
   /** Query execution status */
   executionStatus: ExecutionStatus
   /** Query results (merged for multi-query) */
@@ -154,9 +162,9 @@ export interface UseAnalysisQueryExecutionResult {
   warnings: import('../shared/types.js').QueryWarning[] | undefined
 }
 
-export function useAnalysisQueryExecution(
-  options: UseAnalysisQueryExecutionOptions
-): UseAnalysisQueryExecutionResult {
+export function useAnalysisQuery(
+  options: UseAnalysisQueryOptions
+): UseAnalysisQueryResult {
   const {
     currentQuery,
     allQueries,

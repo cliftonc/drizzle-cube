@@ -138,10 +138,11 @@ src/client/
 │   ├── dashboard/                 Dashboard layout hooks
 │   │   ├── useDashboardController.ts, useGridLayoutEngine.ts
 │   │   ├── useRowLayoutEngine.ts, layoutUtils.ts
-│   ├── useAnalysisBuilderHook.ts  AnalysisBuilder master coordinator
-│   ├── useAnalysisAI.ts           AI-assisted query building
-│   ├── useAnalysis*.ts            Chart defaults, combined fields, init, query builder,
-│   │                              query execution, share, UI state
+│   ├── useAnalysisBuilderHook.ts  AnalysisBuilder public facade (useAnalysisBuilder)
+│   ├── useAnalysisState.ts        State: store reads/derivation, query specs, chart config, UI state
+│   ├── useAnalysisQuery.ts        Query: execution only (5 TanStack hooks, mode routing, hasDebounced)
+│   ├── useAnalysisEffects.ts      Effects: init/URL, AI, share, chart auto-switch
+│   ├── analysisQueryExecutionModes.ts  Pure mode-routing / skip-flag helpers
 │   ├── useAgentChat.ts            Agent chat hook
 │   ├── useDashboardHook.ts        Dashboard master coordinator
 │   ├── useDataBrowser.ts          Data browser coordination

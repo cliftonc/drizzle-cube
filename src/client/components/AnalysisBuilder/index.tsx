@@ -9,9 +9,9 @@
  * - Auto-execute queries on field changes
  *
  * This refactored version uses:
- * - `useAnalysisBuilder` master hook for all state and data fetching
- * - `useAnalysisShare` for share URL functionality
- * - `useAnalysisAI` for AI query generation
+ * - `useAnalysisBuilder` master hook for all state, data fetching, AI, and share
+ *   (AI + share are driven from the facade's `useAnalysisEffects`; this component
+ *   no longer calls `useAnalysisAI`/`useAnalysisShare` directly — see #914)
  * - Zustand store (via Context) for state management
  * - TanStack Query (via the master hook) for data fetching
  *
@@ -26,8 +26,6 @@ import { useCubeFeatures, useCubeMeta } from '../../providers/CubeProvider.js'
 import { AnalysisBuilderStoreProvider } from '../../stores/analysisBuilderStore.js'
 import { useAnalysisBuilder } from '../../hooks/useAnalysisBuilderHook.js'
 import { useAnalysisBuilderStoreApi } from '../../stores/analysisBuilderStore.js'
-import { useAnalysisAI } from '../../hooks/useAnalysisAI.js'
-import { useAnalysisShare } from '../../hooks/useAnalysisShare.js'
 import { parseShareHash, decodeAndDecompress } from '../../utils/shareUtils.js'
 import type {
   AnalysisBuilderProps,
@@ -85,85 +83,12 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
     })
 
     // ========================================================================
-    // AI Hook - Provides AI query generation functionality
+    // AI + Share — now driven by the facade's useAnalysisEffects (#914).
+    // The component reads AI/share state and actions off `analysis` directly;
+    // no glue lives here anymore. storeApi is still needed for the ref handle.
     // ========================================================================
-
-    // Get the store API for AI integration
     const storeApi = useAnalysisBuilderStoreApi()
-
-    const {
-      aiState,
-      handleOpenAI,
-      handleCloseAI,
-      handleAIPromptChange,
-      handleGenerateAI,
-      handleAcceptAI,
-      handleCancelAI
-    } = useAnalysisAI({
-      state: analysis.queryState,
-      setState: (updater) => {
-        // AI hook needs to update metrics, breakdowns, filters, order, and limit all at once
-        // Use the store's updateQueryState to apply the full state update
-        const state = storeApi.getState()
-        state.updateQueryState(analysis.activeQueryIndex, (prev) => {
-          const newState = typeof updater === 'function' ? updater(prev) : updater
-          return {
-            ...prev,
-            metrics: newState.metrics,
-            breakdowns: newState.breakdowns,
-            filters: newState.filters,
-            order: newState.order,
-            limit: newState.limit,
-          }
-        })
-      },
-      chartType: analysis.chartType,
-      setChartType: analysis.actions.setChartType,
-      chartConfig: analysis.chartConfig,
-      setChartConfig: analysis.actions.setChartConfig,
-      displayConfig: analysis.displayConfig,
-      setDisplayConfig: analysis.actions.setDisplayConfig,
-      setUserManuallySelectedChart: () => {
-        // The store handles this internally via setChartTypeManual
-      },
-      setActiveView: analysis.actions.setActiveView,
-      aiEndpoint: features?.aiEndpoint,
-      // Funnel mode support
-      analysisType: analysis.analysisType,
-      setAnalysisType: analysis.actions.setAnalysisType,
-      loadFunnelFromServerQuery: (serverQuery) => {
-        // Create a FunnelAnalysisConfig and load it via the store
-        const funnelConfig = {
-          version: 1 as const,
-          analysisType: 'funnel' as const,
-          activeView: 'chart' as const,
-          charts: {
-            funnel: {
-              chartType: 'funnel' as const,
-              chartConfig: {},
-              displayConfig: {},
-            },
-          },
-          query: serverQuery,
-        }
-        storeApi.getState().load(funnelConfig)
-      },
-      // Full config snapshot/restore for complete undo (handles funnel mode properly)
-      getFullConfig: () => storeApi.getState().save(),
-      loadFullConfig: (config) => storeApi.getState().load(config),
-    })
-
-    // ========================================================================
-    // Share Hook - Provides share URL functionality
-    // Uses store.save() to get AnalysisConfig directly (Phase 3)
-    // ========================================================================
-    const {
-      shareButtonState,
-      handleShare
-    } = useAnalysisShare({
-      isValidQuery: analysis.isValidQuery,
-      getAnalysisConfig: () => storeApi.getState().save(),
-    })
+    const { aiState, shareButtonState } = analysis
 
     // ========================================================================
     // Derived Values
@@ -250,13 +175,13 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
           {aiState.isOpen && (
             <AnalysisAIPanel
               userPrompt={aiState.userPrompt}
-              onPromptChange={handleAIPromptChange}
+              onPromptChange={analysis.actions.setAIPrompt}
               isGenerating={aiState.isGenerating}
               error={aiState.error}
               hasGeneratedQuery={aiState.hasGeneratedQuery}
-              onGenerate={handleGenerateAI}
-              onAccept={handleAcceptAI}
-              onCancel={handleCancelAI}
+              onGenerate={analysis.actions.generateAI}
+              onAccept={analysis.actions.acceptAI}
+              onCancel={analysis.actions.cancelAI}
             />
           )}
 
@@ -286,7 +211,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               // Debug props - per-query debug data for multi-query mode
               debugDataPerQuery={analysis.debugDataPerQuery}
               // Share props (hidden when viewing shared analysis with initialQuery)
-              onShareClick={hideShare ? undefined : handleShare}
+              onShareClick={hideShare ? undefined : analysis.actions.share}
               canShare={hideShare ? false : analysis.isValidQuery}
               shareButtonState={shareButtonState}
               // Refresh props
@@ -300,7 +225,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               // AI props
               enableAI={features?.enableAI !== false}
               isAIOpen={aiState.isOpen}
-              onAIToggle={aiState.isOpen ? handleCloseAI : handleOpenAI}
+              onAIToggle={aiState.isOpen ? analysis.actions.closeAI : analysis.actions.openAI}
               // Multi-query props
               queryCount={analysis.queryStates.length}
               perQueryResults={analysis.perQueryResults ?? undefined}

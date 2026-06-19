@@ -1,33 +1,29 @@
 /**
- * useAnalysisBuilder - Master Coordination Hook
+ * useAnalysisBuilder - Master Coordination Hook (public facade)
  *
- * The single hook that provides everything AnalysisBuilder needs.
- * Orchestrates sub-hooks for modular, maintainable code:
+ * The single public hook that provides everything AnalysisBuilder needs. Its
+ * return shape is the stable public contract. Internally it composes three
+ * responsibility-grouped hooks along a strictly acyclic State → Query → Effects
+ * data flow (#914):
  *
- * - useAnalysisQueryBuilder: Query state, building, validation
- * - useAnalysisCombinedFields: Multi-query field merging
- * - useAnalysisQueryExecution: TanStack Query data fetching
- * - useAnalysisChartDefaults: Chart configuration and smart defaults
- * - useAnalysisUIState: UI state (tabs, modals, view toggle)
- * - useAnalysisInitialization: Side effects (URL loading, callbacks)
+ * - useAnalysisState   — store reads/derivation, query-spec building, combined
+ *                        fields, chart config + availability, validation, UI
+ *                        state. NO dependency on execution.
+ * - useAnalysisQuery   — execution only: the 5 TanStack hooks, mode routing,
+ *                        skip flags, results/loading/error/debug, hasDebounced.
+ * - useAnalysisEffects — init/URL parsing, AI (reads + writes store directly),
+ *                        share, chart-type auto-switch (sole hasDebounced
+ *                        consumer), and external onQueryChange/onChartConfigChange.
  *
  * IMPORTANT: This hook must be used within AnalysisBuilderStoreProvider
  */
 
-import { useCallback, useMemo, useRef } from 'react'
 import { useCubeFeatures } from '../providers/CubeProvider.js'
-import {
-  useAnalysisBuilderStore,
-  useAnalysisBuilderStoreApi,
-} from '../stores/analysisBuilderStore.js'
 
-// Sub-hooks
-import { useAnalysisQueryBuilder } from './useAnalysisQueryBuilder.js'
-import { useAnalysisCombinedFields } from './useAnalysisCombinedFields.js'
-import { useAnalysisQueryExecution } from './useAnalysisQueryExecution.js'
-import { useAnalysisChartDefaults } from './useAnalysisChartDefaults.js'
-import { useAnalysisUIState } from './useAnalysisUIState.js'
-import { useAnalysisInitialization } from './useAnalysisInitialization.js'
+// Responsibility-grouped hooks
+import { useAnalysisState } from './useAnalysisState.js'
+import { useAnalysisQuery } from './useAnalysisQuery.js'
+import { useAnalysisEffects } from './useAnalysisEffects.js'
 
 import type { ColorPalette } from '../utils/colorPalettes.js'
 import type {
@@ -328,723 +324,269 @@ export interface UseAnalysisBuilderResult {
 // ============================================================================
 // Hook Implementation
 // ============================================================================
-
 export function useAnalysisBuilder(
   options: UseAnalysisBuilderOptions = {}
 ): UseAnalysisBuilderResult {
   const { initialData, externalColorPalette, onQueryChange, onChartConfigChange } = options
 
-  // Get context
+  // Get context (AI endpoint for Effects)
   const { features } = useCubeFeatures()
 
-  // Get store API for direct access
-  const storeApi = useAnalysisBuilderStoreApi()
-
   // =========================================================================
-  // Sub-Hooks Orchestration
+  // Responsibility-grouped composition: State → Query → Effects
   // =========================================================================
 
-  // 1. Query Builder (query state, building, validation)
-  const queryBuilder = useAnalysisQueryBuilder()
+  // 1. State — store reads/derivation, query specs, chart config, UI state.
+  const state = useAnalysisState({ externalColorPalette })
 
-  // 2. Combined Fields (multi-query field merging)
-  const combinedFields = useAnalysisCombinedFields({
-    queryState: queryBuilder.queryState,
-    queryStates: queryBuilder.queryStates,
-    isMultiQueryMode: queryBuilder.isMultiQueryMode,
-    mergeStrategy: queryBuilder.mergeStrategy,
-    activeQueryIndex: queryBuilder.activeQueryIndex,
-  })
-
-  // Get funnel binding key from store for funnel mode
-  const funnelBindingKey = useAnalysisBuilderStore((s) => s.funnelBindingKey)
-
-  // Get analysis type state (must be before computed values that use it)
-  const analysisType = useAnalysisBuilderStore((s) => s.analysisType)
-  const funnelCube = useAnalysisBuilderStore((s) => s.funnelCube)
-  const funnelSteps = useAnalysisBuilderStore((s) => s.funnelSteps)
-  const activeFunnelStepIndex = useAnalysisBuilderStore((s) => s.activeFunnelStepIndex)
-  const funnelTimeDimension = useAnalysisBuilderStore((s) => s.funnelTimeDimension)
-
-  // Get funnel mode enabled state (computed to avoid function call in selector)
-  // This includes filter-only step validation
-  const isFunnelModeEnabled = useMemo(() => {
-    if (analysisType !== 'funnel') return false
-    if (!funnelBindingKey?.dimension) return false
-    if (!funnelTimeDimension) return false
-    if (!funnelSteps || funnelSteps.length < 2) return false
-    // All steps must have at least one filter
-    return funnelSteps.every((step) => step.filters.length > 0)
-  }, [analysisType, funnelBindingKey, funnelTimeDimension, funnelSteps])
-  // Phase 4: Read from charts map instead of legacy fields
-  // Use stable selectors to avoid infinite loop from creating new objects
-  const funnelChartType = useAnalysisBuilderStore((s) => s.charts.funnel?.chartType) || 'funnel'
-  const funnelChartConfigFromStore = useAnalysisBuilderStore((s) => s.charts.funnel?.chartConfig)
-  const funnelChartConfig = useMemo(() => funnelChartConfigFromStore || {}, [funnelChartConfigFromStore])
-
-  // Get flow mode state
-  const flowCube = useAnalysisBuilderStore((s) => s.flowCube)
-  const flowBindingKey = useAnalysisBuilderStore((s) => s.flowBindingKey)
-  const flowTimeDimension = useAnalysisBuilderStore((s) => s.flowTimeDimension)
-  const eventDimension = useAnalysisBuilderStore((s) => s.eventDimension)
-  const startingStep = useAnalysisBuilderStore((s) => s.startingStep)
-  const stepsBefore = useAnalysisBuilderStore((s) => s.stepsBefore)
-  const stepsAfter = useAnalysisBuilderStore((s) => s.stepsAfter)
-  const joinStrategy = useAnalysisBuilderStore((s) => s.joinStrategy)
-  // Flow display config from charts map - use stable selector to avoid infinite loop
-  const flowDisplayConfigFromStore = useAnalysisBuilderStore((state) => state.charts.flow?.displayConfig)
-  const flowDisplayConfig = useMemo(
-    () => flowDisplayConfigFromStore || { showLegend: true, showGrid: true, showTooltip: true },
-    [flowDisplayConfigFromStore]
-  )
-  // Flow chart type from charts map - needed for outputMode in query
-  const flowChartType = useAnalysisBuilderStore((state) => state.charts.flow?.chartType) || 'sankey'
-
-  // Build server funnel query from dedicated funnelSteps (when analysisType === 'funnel')
-  // Note: funnelSteps must be in dependency array so query rebuilds when filters change
-  const buildFunnelQueryFromSteps = useAnalysisBuilderStore((s) => s.buildFunnelQueryFromSteps)
-  const serverFunnelQuery = useMemo(() => {
-    if (analysisType !== 'funnel') return null
-    return buildFunnelQueryFromSteps()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- funnelSteps triggers rebuild when step filters change
-  }, [analysisType, buildFunnelQueryFromSteps, funnelSteps])
-
-  const buildFlowQuery = useAnalysisBuilderStore((s) => s.buildFlowQuery)
-
-  // Build server flow query (when analysisType === 'flow')
-  // Note: flowChartType is included because it determines outputMode (sankey vs sunburst aggregation)
-  const serverFlowQuery = useMemo(() => {
-    if (analysisType !== 'flow') return null
-    return buildFlowQuery()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- flow config values trigger rebuild when they change in store
-  }, [analysisType, buildFlowQuery, flowCube, flowBindingKey, flowTimeDimension, eventDimension, startingStep, stepsBefore, stepsAfter, flowChartType, joinStrategy])
-
-  // Get retention state from store (simplified Mixpanel-style)
-  const retentionCube = useAnalysisBuilderStore((s) => s.retentionCube)
-  const retentionBindingKey = useAnalysisBuilderStore((s) => s.retentionBindingKey)
-  const retentionTimeDimension = useAnalysisBuilderStore((s) => s.retentionTimeDimension)
-  const retentionDateRange = useAnalysisBuilderStore((s) => s.retentionDateRange)
-  const retentionCohortFilters = useAnalysisBuilderStore((s) => s.retentionCohortFilters)
-  const retentionActivityFilters = useAnalysisBuilderStore((s) => s.retentionActivityFilters)
-  const retentionBreakdowns = useAnalysisBuilderStore((s) => s.retentionBreakdowns)
-  const retentionViewGranularity = useAnalysisBuilderStore((s) => s.retentionViewGranularity)
-  const retentionPeriods = useAnalysisBuilderStore((s) => s.retentionPeriods)
-  const retentionType = useAnalysisBuilderStore((s) => s.retentionType)
-  const buildRetentionQuery = useAnalysisBuilderStore((s) => s.buildRetentionQuery)
-  const getRetentionValidation = useAnalysisBuilderStore((s) => s.getRetentionValidation)
-
-  // Retention display config from charts map
-  const retentionDisplayConfig = useAnalysisBuilderStore((s) => s.charts.retention?.displayConfig)
-
-  // Retention actions (simplified Mixpanel-style)
-  const setRetentionCube = useAnalysisBuilderStore((s) => s.setRetentionCube)
-  const setRetentionBindingKey = useAnalysisBuilderStore((s) => s.setRetentionBindingKey)
-  const setRetentionTimeDimension = useAnalysisBuilderStore((s) => s.setRetentionTimeDimension)
-  const setRetentionDateRange = useAnalysisBuilderStore((s) => s.setRetentionDateRange)
-  const setRetentionCohortFilters = useAnalysisBuilderStore((s) => s.setRetentionCohortFilters)
-  const setRetentionActivityFilters = useAnalysisBuilderStore((s) => s.setRetentionActivityFilters)
-  const setRetentionBreakdowns = useAnalysisBuilderStore((s) => s.setRetentionBreakdowns)
-  const addRetentionBreakdown = useAnalysisBuilderStore((s) => s.addRetentionBreakdown)
-  const removeRetentionBreakdown = useAnalysisBuilderStore((s) => s.removeRetentionBreakdown)
-  const setRetentionViewGranularity = useAnalysisBuilderStore((s) => s.setRetentionViewGranularity)
-  const setRetentionPeriods = useAnalysisBuilderStore((s) => s.setRetentionPeriods)
-  const setRetentionType = useAnalysisBuilderStore((s) => s.setRetentionType)
-
-  // Build server retention query (when analysisType === 'retention')
-  const serverRetentionQuery = useMemo(() => {
-    if (analysisType !== 'retention') return null
-    return buildRetentionQuery()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- retention config values trigger rebuild when they change in store
-  }, [
-    analysisType,
-    buildRetentionQuery,
-    retentionCube,
-    retentionBindingKey,
-    retentionTimeDimension,
-    retentionDateRange,
-    retentionBreakdowns,
-    retentionViewGranularity,
-    retentionPeriods,
-    retentionType,
-    retentionCohortFilters,
-    retentionActivityFilters,
-  ])
-
-  // Get retention validation (memoized based on config changes)
-  const retentionValidation = useMemo(() => {
-    if (analysisType !== 'retention') return null
-    return getRetentionValidation()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- retention config values trigger rebuild
-  }, [
-    analysisType,
-    getRetentionValidation,
-    retentionCube,
-    retentionBindingKey,
-    retentionTimeDimension,
-    retentionDateRange,
-  ])
-
-  // Compute effective isValidQuery that considers funnel, flow, and retention modes
-  // In funnel mode, the query is valid when serverFunnelQuery is not null
-  // In flow mode, the query is valid when serverFlowQuery is not null
-  // In retention mode, the query is valid when serverRetentionQuery is not null
-  const effectiveIsValidQuery = useMemo(() => {
-    if (analysisType === 'retention') {
-      // Retention mode: valid when we have a buildable retention query
-      return serverRetentionQuery !== null
-    }
-    if (analysisType === 'flow') {
-      // Flow mode: valid when we have a buildable flow query
-      return serverFlowQuery !== null
-    }
-    if (analysisType === 'funnel') {
-      // Funnel mode: valid when we have a buildable funnel query
-      return serverFunnelQuery !== null
-    }
-    // Query/Multi mode: use the standard validation
-    return queryBuilder.isValidQuery ?? false
-  }, [analysisType, serverRetentionQuery, serverFlowQuery, serverFunnelQuery, queryBuilder.isValidQuery])
-
-  // 3. Query Execution (TanStack Query integration)
-  const queryExecution = useAnalysisQueryExecution({
-    currentQuery: queryBuilder.currentQuery,
-    allQueries: queryBuilder.allQueries,
-    multiQueryConfig: queryBuilder.multiQueryConfig,
-    isMultiQueryMode: queryBuilder.isMultiQueryMode,
-    isValidQuery: effectiveIsValidQuery,
+  // 2. Query — execution only (reads State's query specs + validity).
+  const query = useAnalysisQuery({
+    currentQuery: state.currentQuery,
+    allQueries: state.allQueries,
+    multiQueryConfig: state.multiQueryConfig,
+    isMultiQueryMode: state.isMultiQueryMode,
+    isValidQuery: state.effectiveIsValidQuery,
     initialData,
-    mergeStrategy: queryBuilder.mergeStrategy,
-    funnelBindingKey,
-    isFunnelModeEnabled,
-    // New: pass analysisType and serverFunnelQuery for explicit mode routing
-    analysisType,
-    serverFunnelQuery,
-    // Flow mode: pass serverFlowQuery
-    serverFlowQuery,
-    // Retention mode: pass serverRetentionQuery
-    serverRetentionQuery,
-    // Retention mode: pass validation for debug panel
-    retentionValidation,
+    mergeStrategy: state.mergeStrategy,
+    funnelBindingKey: state.funnelBindingKey,
+    isFunnelModeEnabled: state.isFunnelModeEnabled,
+    analysisType: state.analysisType,
+    serverFunnelQuery: state.serverFunnelQuery,
+    serverFlowQuery: state.serverFlowQuery,
+    serverRetentionQuery: state.serverRetentionQuery,
+    retentionValidation: state.retentionValidation,
   })
 
-  // 4. Chart Defaults (chart config, availability, smart defaults)
-  const chartDefaults = useAnalysisChartDefaults({
-    externalColorPalette,
-    combinedMetrics: combinedFields.combinedMetrics,
-    combinedBreakdowns: combinedFields.combinedBreakdowns,
-    hasDebounced: queryExecution.hasDebounced,
-  })
-
-  // 5. UI State (tabs, modals, view toggle)
-  const uiState = useAnalysisUIState()
-
-  // 6. Initialization (URL loading, callbacks - side effects only)
-  useAnalysisInitialization({
-    currentQuery: queryBuilder.currentQuery,
-    isValidQuery: queryBuilder.isValidQuery ?? false,
-    chartType: chartDefaults.chartType,
-    chartConfig: chartDefaults.chartConfig,
-    displayConfig: chartDefaults.displayConfig,
+  // 3. Effects — init/URL, AI, share, chart auto-switch (reads State + Query).
+  const effects = useAnalysisEffects({
+    state,
+    query,
+    aiEndpoint: features?.aiEndpoint,
     onQueryChange,
     onChartConfigChange,
   })
 
   // =========================================================================
-  // Store Actions (not covered by sub-hooks)
-  // =========================================================================
-
-  // Metric actions
-  const openMetricsModal = useAnalysisBuilderStore((state) => state.openMetricsModal)
-  const addMetric = useAnalysisBuilderStore((state) => state.addMetric)
-  const removeMetric = useAnalysisBuilderStore((state) => state.removeMetric)
-  const toggleMetric = useAnalysisBuilderStore((state) => state.toggleMetric)
-  const reorderMetrics = useAnalysisBuilderStore((state) => state.reorderMetrics)
-
-  // Breakdown actions
-  const openBreakdownsModal = useAnalysisBuilderStore((state) => state.openBreakdownsModal)
-  const addBreakdown = useAnalysisBuilderStore((state) => state.addBreakdown)
-  const removeBreakdown = useAnalysisBuilderStore((state) => state.removeBreakdown)
-  const toggleBreakdown = useAnalysisBuilderStore((state) => state.toggleBreakdown)
-  const setBreakdownGranularity = useAnalysisBuilderStore((state) => state.setBreakdownGranularity)
-  const toggleBreakdownComparison = useAnalysisBuilderStore((state) => state.toggleBreakdownComparison)
-  const reorderBreakdowns = useAnalysisBuilderStore((state) => state.reorderBreakdowns)
-
-  // Filter actions
-  const setFilters = useAnalysisBuilderStore((state) => state.setFilters)
-  const dropFieldToFilter = useAnalysisBuilderStore((state) => state.dropFieldToFilter)
-  const setOrder = useAnalysisBuilderStore((state) => state.setOrder)
-  const setLimit = useAnalysisBuilderStore((state) => state.setLimit)
-
-  // Utility actions
-  const clearQuery = useAnalysisBuilderStore((state) => state.clearQuery)
-  const clearCurrentMode = useAnalysisBuilderStore((state) => state.clearCurrentMode)
-
-  // Funnel actions (legacy)
-  const setFunnelBindingKey = useAnalysisBuilderStore((state) => state.setFunnelBindingKey)
-
-  // Analysis Type actions (new)
-  const setAnalysisType = useAnalysisBuilderStore((state) => state.setAnalysisType)
-
-  // Funnel Mode actions (new dedicated state)
-  const setFunnelCube = useAnalysisBuilderStore((state) => state.setFunnelCube)
-  const addFunnelStep = useAnalysisBuilderStore((state) => state.addFunnelStep)
-  const removeFunnelStep = useAnalysisBuilderStore((state) => state.removeFunnelStep)
-  const updateFunnelStep = useAnalysisBuilderStore((state) => state.updateFunnelStep)
-  const setActiveFunnelStepIndex = useAnalysisBuilderStore((state) => state.setActiveFunnelStepIndex)
-  const reorderFunnelSteps = useAnalysisBuilderStore((state) => state.reorderFunnelSteps)
-  const setFunnelTimeDimension = useAnalysisBuilderStore((state) => state.setFunnelTimeDimension)
-
-  // Funnel display config (for Display tab in funnel mode)
-  // Phase 4: Read from charts map - use stable selector to avoid infinite loop
-  const funnelDisplayConfigFromStore = useAnalysisBuilderStore((state) => state.charts.funnel?.displayConfig)
-  const funnelDisplayConfig = useMemo(
-    () => funnelDisplayConfigFromStore || { showLegend: true, showGrid: true, showTooltip: true },
-    [funnelDisplayConfigFromStore]
-  )
-  const setFunnelDisplayConfig = useAnalysisBuilderStore((state) => state.setFunnelDisplayConfig)
-
-  // Flow Mode actions
-  const setFlowCube = useAnalysisBuilderStore((state) => state.setFlowCube)
-  const setFlowBindingKey = useAnalysisBuilderStore((state) => state.setFlowBindingKey)
-  const setFlowTimeDimension = useAnalysisBuilderStore((state) => state.setFlowTimeDimension)
-  const setEventDimension = useAnalysisBuilderStore((state) => state.setEventDimension)
-  const setStartingStepName = useAnalysisBuilderStore((state) => state.setStartingStepName)
-  const setStartingStepFilters = useAnalysisBuilderStore((state) => state.setStartingStepFilters)
-  const setStepsBefore = useAnalysisBuilderStore((state) => state.setStepsBefore)
-  const setStepsAfter = useAnalysisBuilderStore((state) => state.setStepsAfter)
-  const setJoinStrategy = useAnalysisBuilderStore((state) => state.setJoinStrategy)
-  // Flow display config action - creates setFlowDisplayConfig wrapper using charts map pattern
-  const setFlowDisplayConfig = useCallback(
-    (config: ChartDisplayConfig) => {
-      storeApi.setState((state) => ({
-        charts: {
-          ...state.charts,
-          flow: {
-            ...(state.charts.flow || { chartType: 'sankey', chartConfig: {}, displayConfig: {} }),
-            displayConfig: config,
-          },
-        },
-      }))
-    },
-    [storeApi]
-  )
-
-  // Retention display config action - creates setRetentionDisplayConfig wrapper using charts map pattern
-  const setRetentionDisplayConfig = useCallback(
-    (config: ChartDisplayConfig) => {
-      storeApi.setState((state) => ({
-        charts: {
-          ...state.charts,
-          retention: {
-            ...(state.charts.retention || { chartType: 'retentionCombined', chartConfig: {}, displayConfig: {} }),
-            displayConfig: config,
-          },
-        },
-      }))
-    },
-    [storeApi]
-  )
-
-  // AI state and actions
-  const aiState = useAnalysisBuilderStore((state) => state.aiState)
-  const openAI = useAnalysisBuilderStore((state) => state.openAI)
-  const closeAI = useAnalysisBuilderStore((state) => state.closeAI)
-  const setAIPrompt = useAnalysisBuilderStore((state) => state.setAIPrompt)
-  const setAIGenerating = useAnalysisBuilderStore((state) => state.setAIGenerating)
-  const setAIError = useAnalysisBuilderStore((state) => state.setAIError)
-  const setAIHasGeneratedQuery = useAnalysisBuilderStore((state) => state.setAIHasGeneratedQuery)
-  const saveAIPreviousState = useAnalysisBuilderStore((state) => state.saveAIPreviousState)
-  const restoreAIPreviousState = useAnalysisBuilderStore((state) => state.restoreAIPreviousState)
-
-  // =========================================================================
-  // Share State
-  // =========================================================================
-
-  const shareButtonStateRef = useRef<'idle' | 'copied' | 'copied-no-chart'>('idle')
-  const canShare = effectiveIsValidQuery
-
-  // =========================================================================
-  // Adapter Validation (NEW - Phase 5)
-  // =========================================================================
-
-  const getValidation = useAnalysisBuilderStore((state) => state.getValidation)
-  // Note: Dependencies trigger recomputation when store values change.
-  // getValidation reads values from store closure, but we need the memo to
-  // recompute when the underlying state changes.
-  const adapterValidation = useMemo(
-    () => getValidation(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      getValidation,
-      queryBuilder.queryStates,
-      analysisType,
-      // Funnel deps
-      funnelSteps,
-      funnelBindingKey,
-      funnelTimeDimension,
-      // Flow deps
-      flowCube,
-      flowBindingKey,
-      flowTimeDimension,
-      eventDimension,
-      startingStep,
-      stepsBefore,
-      stepsAfter,
-      joinStrategy,
-    ]
-  )
-
-  // =========================================================================
-  // Action Callbacks
-  // =========================================================================
-
-  const applyBreakdownSelection = useCallback(
-    (field: MetaField, fieldType: 'measure' | 'dimension' | 'timeDimension') => {
-      // In retention mode, add to retention breakdowns instead of query breakdowns
-      if (analysisType === 'retention' && fieldType === 'dimension') {
-        addRetentionBreakdown({ field: field.name })
-      } else {
-        toggleBreakdown(field.name, fieldType === 'timeDimension')
-      }
-    },
-    [analysisType, addRetentionBreakdown, toggleBreakdown]
-  )
-
-  const handleFieldSelected = useCallback(
-    (
-      field: MetaField,
-      fieldType: 'measure' | 'dimension' | 'timeDimension',
-      _cubeName: string,
-      keepOpen?: boolean
-    ) => {
-      if (uiState.fieldModalMode === 'metrics' && fieldType === 'measure') {
-        toggleMetric(field.name)
-      } else if (uiState.fieldModalMode === 'breakdown') {
-        applyBreakdownSelection(field, fieldType)
-      }
-      if (!keepOpen) {
-        uiState.closeFieldModal()
-      }
-    },
-    [uiState, toggleMetric, applyBreakdownSelection]
-  )
-
-  const generateAI = useCallback(async () => {
-    if (!features?.aiEndpoint) return
-    saveAIPreviousState()
-    setAIGenerating(true)
-    setAIError(null)
-
-    try {
-      // AI generation logic would go here
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      setAIHasGeneratedQuery(true)
-    } catch (err) {
-      setAIError(err instanceof Error ? err.message : 'Failed to generate query')
-    } finally {
-      setAIGenerating(false)
-    }
-  }, [features?.aiEndpoint, saveAIPreviousState, setAIGenerating, setAIError, setAIHasGeneratedQuery])
-
-  const acceptAI = useCallback(() => {
-    closeAI()
-    setAIHasGeneratedQuery(false)
-  }, [closeAI, setAIHasGeneratedQuery])
-
-  const cancelAI = useCallback(() => {
-    restoreAIPreviousState()
-    closeAI()
-  }, [restoreAIPreviousState, closeAI])
-
-  const share = useCallback(async () => {
-    shareButtonStateRef.current = 'copied'
-    setTimeout(() => {
-      shareButtonStateRef.current = 'idle'
-    }, 2000)
-  }, [])
-
-  // =========================================================================
-  // Ref API Functions
-  // =========================================================================
-
-  const getQueryConfig = useCallback(() => {
-    const state = storeApi.getState()
-
-    // Handle dedicated funnel mode (analysisType === 'funnel')
-    if (state.analysisType === 'funnel') {
-      // Return ServerFunnelQuery format built from funnelSteps
-      const funnelQuery = state.buildFunnelQueryFromSteps()
-      if (funnelQuery) {
-        return funnelQuery
-      }
-      // Fallback to single query if funnel isn't properly configured yet
-      return state.buildCurrentQuery()
-    }
-
-    // Handle multi-query mode (legacy funnel mode with mergeStrategy === 'funnel' is included here)
-    if (state.queryStates.length > 1) {
-      return {
-        queries: state.buildAllQueries(),
-        mergeStrategy: state.mergeStrategy,
-        mergeKeys: state.getMergeKeys(),
-        queryLabels: state.queryStates.map((_, i) => `Q${i + 1}`),
-        // Include funnel-specific config when in funnel mode
-        funnelBindingKey: state.funnelBindingKey,
-        stepTimeToConvert: state.stepTimeToConvert,
-      }
-    }
-
-    // Single query mode
-    return state.buildCurrentQuery()
-  }, [storeApi])
-
-  const getChartConfig = useCallback(() => {
-    const state = storeApi.getState()
-
-    // Phase 4: Read from charts map based on analysis type
-    const config = state.charts[state.analysisType]
-    if (config) {
-      return {
-        chartType: config.chartType,
-        chartConfig: config.chartConfig,
-        displayConfig: config.displayConfig,
-      }
-    }
-
-    // Fallback to defaults
-    return {
-      chartType: chartDefaults.chartType,
-      chartConfig: chartDefaults.chartConfig,
-      displayConfig: chartDefaults.displayConfig,
-    }
-  }, [storeApi, chartDefaults.chartType, chartDefaults.chartConfig, chartDefaults.displayConfig])
-
-  const getAnalysisType = useCallback(() => {
-    return storeApi.getState().analysisType
-  }, [storeApi])
-
-  // =========================================================================
-  // Return Value
+  // Assemble the public return shape (stable contract — additive only)
   // =========================================================================
 
   return {
-    // Query state (from queryBuilder)
-    queryState: queryBuilder.queryState,
-    queryStates: queryBuilder.queryStates,
-    activeQueryIndex: queryBuilder.activeQueryIndex,
-    mergeStrategy: queryBuilder.mergeStrategy,
-    isMultiQueryMode: queryBuilder.isMultiQueryMode,
-    mergeKeys: queryBuilder.mergeKeys,
-    currentQuery: queryBuilder.currentQuery,
-    allQueries: queryBuilder.allQueries,
-    multiQueryConfig: queryBuilder.multiQueryConfig,
-    multiQueryValidation: queryBuilder.multiQueryValidation,
+    // Query state
+    queryState: state.queryState,
+    queryStates: state.queryStates,
+    activeQueryIndex: state.activeQueryIndex,
+    mergeStrategy: state.mergeStrategy,
+    isMultiQueryMode: state.isMultiQueryMode,
+    mergeKeys: state.mergeKeys,
+    currentQuery: state.currentQuery,
+    allQueries: state.allQueries,
+    multiQueryConfig: state.multiQueryConfig,
+    multiQueryValidation: state.multiQueryValidation,
 
     // Funnel state (legacy)
-    funnelBindingKey,
-    isFunnelModeEnabled,
+    funnelBindingKey: state.funnelBindingKey,
+    isFunnelModeEnabled: state.isFunnelModeEnabled,
 
-    // Analysis Type state (new)
-    analysisType,
-    funnelCube,
-    funnelSteps,
-    activeFunnelStepIndex,
-    funnelTimeDimension,
-    funnelChartType,
-    funnelChartConfig,
-    funnelDisplayConfig,
+    // Analysis Type state
+    analysisType: state.analysisType,
+    funnelCube: state.funnelCube,
+    funnelSteps: state.funnelSteps,
+    activeFunnelStepIndex: state.activeFunnelStepIndex,
+    funnelTimeDimension: state.funnelTimeDimension,
+    funnelChartType: state.funnelChartType,
+    funnelChartConfig: state.funnelChartConfig,
+    funnelDisplayConfig: state.funnelDisplayConfig,
 
-    // Flow state (new)
-    flowCube,
-    flowBindingKey,
-    flowTimeDimension,
-    eventDimension,
-    startingStep,
-    stepsBefore,
-    stepsAfter,
-    joinStrategy,
-    flowDisplayConfig,
+    // Flow state
+    flowCube: state.flowCube,
+    flowBindingKey: state.flowBindingKey,
+    flowTimeDimension: state.flowTimeDimension,
+    eventDimension: state.eventDimension,
+    startingStep: state.startingStep,
+    stepsBefore: state.stepsBefore,
+    stepsAfter: state.stepsAfter,
+    joinStrategy: state.joinStrategy,
+    flowDisplayConfig: state.flowDisplayConfig,
 
-    // Retention state (simplified Mixpanel-style)
-    retentionCube,
-    retentionBindingKey,
-    retentionTimeDimension,
-    retentionDateRange,
-    retentionCohortFilters,
-    retentionActivityFilters,
-    retentionBreakdowns,
-    retentionViewGranularity,
-    retentionPeriods,
-    retentionType,
-    retentionDisplayConfig,
+    // Retention state
+    retentionCube: state.retentionCube,
+    retentionBindingKey: state.retentionBindingKey,
+    retentionTimeDimension: state.retentionTimeDimension,
+    retentionDateRange: state.retentionDateRange,
+    retentionCohortFilters: state.retentionCohortFilters,
+    retentionActivityFilters: state.retentionActivityFilters,
+    retentionBreakdowns: state.retentionBreakdowns,
+    retentionViewGranularity: state.retentionViewGranularity,
+    retentionPeriods: state.retentionPeriods,
+    retentionType: state.retentionType,
+    retentionDisplayConfig: state.retentionDisplayConfig,
 
-    // Data fetching (from queryExecution)
-    executionStatus: queryExecution.executionStatus,
-    executionResults: queryExecution.executionResults,
-    perQueryResults: queryExecution.perQueryResults,
-    isLoading: queryExecution.isLoading,
-    isFetching: queryExecution.isFetching,
-    error: queryExecution.error,
-    isValidQuery: effectiveIsValidQuery,
-    debugDataPerQuery: queryExecution.debugDataPerQuery,
-    needsRefresh: queryExecution.needsRefresh,
-    warnings: queryExecution.warnings,
-    funnelExecutedQueries: queryExecution.funnelExecutedQueries,
-    funnelServerQuery: queryExecution.funnelServerQuery,
-    funnelDebugData: queryExecution.funnelDebugData,
-    flowServerQuery: queryExecution.flowServerQuery,
-    flowDebugData: queryExecution.flowDebugData,
-    retentionServerQuery: queryExecution.retentionServerQuery,
-    retentionDebugData: queryExecution.retentionDebugData,
-    retentionChartData: queryExecution.retentionChartData,
-    retentionValidation: queryExecution.retentionValidation,
+    // Data fetching (from query)
+    executionStatus: query.executionStatus,
+    executionResults: query.executionResults,
+    perQueryResults: query.perQueryResults,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    error: query.error,
+    isValidQuery: state.effectiveIsValidQuery,
+    debugDataPerQuery: query.debugDataPerQuery,
+    needsRefresh: query.needsRefresh,
+    warnings: query.warnings,
+    funnelExecutedQueries: query.funnelExecutedQueries,
+    funnelServerQuery: query.funnelServerQuery,
+    funnelDebugData: query.funnelDebugData,
+    flowServerQuery: query.flowServerQuery,
+    flowDebugData: query.flowDebugData,
+    retentionServerQuery: query.retentionServerQuery,
+    retentionDebugData: query.retentionDebugData,
+    retentionChartData: query.retentionChartData,
+    retentionValidation: query.retentionValidation,
 
-    // Chart configuration (from chartDefaults)
-    // Note: Funnel chart type is determined by analysisType === 'funnel', not mergeStrategy
-    chartType: chartDefaults.chartType,
-    chartConfig: chartDefaults.chartConfig,
-    displayConfig: chartDefaults.displayConfig,
-    colorPalette: chartDefaults.colorPalette,
-    localPaletteName: chartDefaults.localPaletteName,
-    chartAvailability: chartDefaults.chartAvailability,
-    combinedMetrics: combinedFields.combinedMetrics,
-    combinedBreakdowns: combinedFields.combinedBreakdowns,
-    effectiveBreakdowns: combinedFields.effectiveBreakdowns,
+    // Chart configuration (from state)
+    chartType: state.chartType,
+    chartConfig: state.chartConfig,
+    displayConfig: state.displayConfig,
+    colorPalette: state.colorPalette,
+    localPaletteName: state.localPaletteName,
+    chartAvailability: state.chartAvailability,
+    combinedMetrics: state.combinedMetrics,
+    combinedBreakdowns: state.combinedBreakdowns,
+    effectiveBreakdowns: state.effectiveBreakdowns,
 
-    // UI state (from uiState)
-    activeTab: uiState.activeTab,
-    activeView: uiState.activeView,
-    displayLimit: uiState.displayLimit,
-    showFieldModal: uiState.showFieldModal,
-    fieldModalMode: uiState.fieldModalMode,
-    activeTableIndex: uiState.activeTableIndex,
-    userManuallySelectedChart: uiState.userManuallySelectedChart,
+    // UI state (from state)
+    activeTab: state.activeTab,
+    activeView: state.activeView,
+    displayLimit: state.displayLimit,
+    showFieldModal: state.showFieldModal,
+    fieldModalMode: state.fieldModalMode,
+    activeTableIndex: state.activeTableIndex,
+    userManuallySelectedChart: state.userManuallySelectedChart,
 
-    // AI state
+    // AI state (from effects)
     aiState: {
-      isOpen: aiState.isOpen,
-      userPrompt: aiState.userPrompt,
-      isGenerating: aiState.isGenerating,
-      error: aiState.error,
-      hasGeneratedQuery: aiState.hasGeneratedQuery,
+      isOpen: effects.aiState.isOpen,
+      userPrompt: effects.aiState.userPrompt,
+      isGenerating: effects.aiState.isGenerating,
+      error: effects.aiState.error,
+      hasGeneratedQuery: effects.aiState.hasGeneratedQuery,
     },
 
-    // Share state
-    shareButtonState: shareButtonStateRef.current,
-    canShare,
+    // Share state (from effects)
+    shareButtonState: effects.shareButtonState,
+    canShare: effects.canShare,
 
-    // Adapter validation (NEW - Phase 5)
-    adapterValidation,
+    // Adapter validation (from state)
+    adapterValidation: state.adapterValidation,
 
     // Actions
     actions: {
-      // Query state (from queryBuilder)
-      setActiveQueryIndex: queryBuilder.setActiveQueryIndex,
-      setMergeStrategy: queryBuilder.setMergeStrategy,
+      // Query state
+      setActiveQueryIndex: state.actions.setActiveQueryIndex,
+      setMergeStrategy: state.actions.setMergeStrategy,
 
       // Metrics
-      openMetricsModal,
-      addMetric,
-      removeMetric,
-      toggleMetric,
-      reorderMetrics,
+      openMetricsModal: state.actions.openMetricsModal,
+      addMetric: state.actions.addMetric,
+      removeMetric: state.actions.removeMetric,
+      toggleMetric: state.actions.toggleMetric,
+      reorderMetrics: state.actions.reorderMetrics,
 
       // Breakdowns
-      openBreakdownsModal,
-      addBreakdown,
-      removeBreakdown,
-      toggleBreakdown,
-      setBreakdownGranularity,
-      toggleBreakdownComparison,
-      reorderBreakdowns,
+      openBreakdownsModal: state.actions.openBreakdownsModal,
+      addBreakdown: state.actions.addBreakdown,
+      removeBreakdown: state.actions.removeBreakdown,
+      toggleBreakdown: state.actions.toggleBreakdown,
+      setBreakdownGranularity: state.actions.setBreakdownGranularity,
+      toggleBreakdownComparison: state.actions.toggleBreakdownComparison,
+      reorderBreakdowns: state.actions.reorderBreakdowns,
 
       // Filters
-      setFilters,
-      dropFieldToFilter,
-      setOrder,
-      setLimit,
+      setFilters: state.actions.setFilters,
+      dropFieldToFilter: state.actions.dropFieldToFilter,
+      setOrder: state.actions.setOrder,
+      setLimit: state.actions.setLimit,
 
-      // Multi-query (from queryBuilder)
-      addQuery: queryBuilder.addQuery,
-      removeQuery: queryBuilder.removeQuery,
+      // Multi-query
+      addQuery: state.actions.addQuery,
+      removeQuery: state.actions.removeQuery,
 
       // Funnel (legacy)
-      setFunnelBindingKey,
+      setFunnelBindingKey: state.actions.setFunnelBindingKey,
 
-      // Analysis Type (new)
-      setAnalysisType,
+      // Analysis Type
+      setAnalysisType: state.actions.setAnalysisType,
 
-      // Funnel Mode (new dedicated state)
-      setFunnelCube,
-      addFunnelStep,
-      removeFunnelStep,
-      updateFunnelStep,
-      setActiveFunnelStepIndex,
-      reorderFunnelSteps,
-      setFunnelTimeDimension,
-      setFunnelDisplayConfig,
+      // Funnel Mode (dedicated state)
+      setFunnelCube: state.actions.setFunnelCube,
+      addFunnelStep: state.actions.addFunnelStep,
+      removeFunnelStep: state.actions.removeFunnelStep,
+      updateFunnelStep: state.actions.updateFunnelStep,
+      setActiveFunnelStepIndex: state.actions.setActiveFunnelStepIndex,
+      reorderFunnelSteps: state.actions.reorderFunnelSteps,
+      setFunnelTimeDimension: state.actions.setFunnelTimeDimension,
+      setFunnelDisplayConfig: state.actions.setFunnelDisplayConfig,
 
-      // Flow Mode actions
-      setFlowCube,
-      setFlowBindingKey,
-      setFlowTimeDimension,
-      setEventDimension,
-      setStartingStepName,
-      setStartingStepFilters,
-      setStepsBefore,
-      setStepsAfter,
-      setJoinStrategy,
-      setFlowDisplayConfig,
+      // Flow Mode
+      setFlowCube: state.actions.setFlowCube,
+      setFlowBindingKey: state.actions.setFlowBindingKey,
+      setFlowTimeDimension: state.actions.setFlowTimeDimension,
+      setEventDimension: state.actions.setEventDimension,
+      setStartingStepName: state.actions.setStartingStepName,
+      setStartingStepFilters: state.actions.setStartingStepFilters,
+      setStepsBefore: state.actions.setStepsBefore,
+      setStepsAfter: state.actions.setStepsAfter,
+      setJoinStrategy: state.actions.setJoinStrategy,
+      setFlowDisplayConfig: state.actions.setFlowDisplayConfig,
 
-      // Retention Mode actions (simplified Mixpanel-style)
-      setRetentionCube,
-      setRetentionBindingKey,
-      setRetentionTimeDimension,
-      setRetentionDateRange,
-      setRetentionCohortFilters,
-      setRetentionActivityFilters,
-      setRetentionBreakdowns,
-      addRetentionBreakdown,
-      removeRetentionBreakdown,
-      setRetentionViewGranularity,
-      setRetentionPeriods,
-      setRetentionType,
-      setRetentionDisplayConfig,
+      // Retention Mode (simplified Mixpanel-style)
+      setRetentionCube: state.actions.setRetentionCube,
+      setRetentionBindingKey: state.actions.setRetentionBindingKey,
+      setRetentionTimeDimension: state.actions.setRetentionTimeDimension,
+      setRetentionDateRange: state.actions.setRetentionDateRange,
+      setRetentionCohortFilters: state.actions.setRetentionCohortFilters,
+      setRetentionActivityFilters: state.actions.setRetentionActivityFilters,
+      setRetentionBreakdowns: state.actions.setRetentionBreakdowns,
+      addRetentionBreakdown: state.actions.addRetentionBreakdown,
+      removeRetentionBreakdown: state.actions.removeRetentionBreakdown,
+      setRetentionViewGranularity: state.actions.setRetentionViewGranularity,
+      setRetentionPeriods: state.actions.setRetentionPeriods,
+      setRetentionType: state.actions.setRetentionType,
+      setRetentionDisplayConfig: state.actions.setRetentionDisplayConfig,
 
-      // Chart (from chartDefaults)
-      setChartType: chartDefaults.setChartType,
-      setChartConfig: chartDefaults.setChartConfig,
-      setDisplayConfig: chartDefaults.setDisplayConfig,
-      setLocalPaletteName: chartDefaults.setLocalPaletteName,
+      // Chart (mode-aware)
+      setChartType: state.actions.setChartType,
+      setChartConfig: state.actions.setChartConfig,
+      setDisplayConfig: state.actions.setDisplayConfig,
+      setLocalPaletteName: state.actions.setLocalPaletteName,
 
-      // UI (from uiState)
-      setActiveTab: uiState.setActiveTab,
-      setActiveView: uiState.setActiveView,
-      setDisplayLimit: uiState.setDisplayLimit,
-      closeFieldModal: uiState.closeFieldModal,
-      setActiveTableIndex: uiState.setActiveTableIndex,
+      // UI
+      setActiveTab: state.actions.setActiveTab,
+      setActiveView: state.actions.setActiveView,
+      setDisplayLimit: state.actions.setDisplayLimit,
+      closeFieldModal: state.actions.closeFieldModal,
+      setActiveTableIndex: state.actions.setActiveTableIndex,
 
-      // AI
-      openAI,
-      closeAI,
-      setAIPrompt,
-      generateAI,
-      acceptAI,
-      cancelAI,
+      // AI (from effects)
+      openAI: effects.openAI,
+      closeAI: effects.closeAI,
+      setAIPrompt: effects.setAIPrompt,
+      generateAI: effects.generateAI,
+      acceptAI: effects.acceptAI,
+      cancelAI: effects.cancelAI,
 
-      // Share
-      share,
+      // Share (from effects)
+      share: effects.share,
 
       // Utility
-      clearQuery,
-      clearCurrentMode,
-      refetch: queryExecution.refetch,
-      handleFieldSelected,
+      clearQuery: state.actions.clearQuery,
+      clearCurrentMode: state.actions.clearCurrentMode,
+      refetch: query.refetch,
+      handleFieldSelected: state.actions.handleFieldSelected,
     },
 
-    // Refs
-    getQueryConfig,
-    getChartConfig,
-    getAnalysisType,
+    // Refs (imperative access)
+    getQueryConfig: state.getQueryConfig,
+    getChartConfig: state.getChartConfig,
+    getAnalysisType: state.getAnalysisType,
   }
 }
