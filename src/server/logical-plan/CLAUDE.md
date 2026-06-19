@@ -22,6 +22,7 @@ src/server/logical-plan/
 ├── join-planner.ts             JoinPlanner — join-plan construction
 ├── cte-planner.ts              CTEPlanner — pre-aggregation CTE decisions (fan-out prevention)
 ├── cte-planner-helpers.ts      Pure CTE join-key derivation / join-def resolution for CTEPlanner
+├── schema-builder.ts           Pure (query, cubes) => LogicalSchema derivation (measure/dimension/time refs)
 ├── filter-propagation.ts       FilterPropagation — filter propagation into CTEs
 ├── plan-analysis-reporter.ts   PlanAnalysisReporter — dry-run/EXPLAIN trace + warnings
 ├── planner-utils.ts            ResolverCache + shared cube-usage helpers
@@ -35,6 +36,7 @@ src/server/logical-plan/
 |-----------|----------|---------|
 | `LogicalPlanBuilder` | `logical-plan-builder.ts` | Builds `LogicalNode` tree from semantic query; produces `LogicalPlanWithAnalysis` (plan + trace) |
 | `LogicalPlanner` | `logical-planner.ts` | Facade composing the planning phases: cube usage, primary cube selection, join path resolution, CTE decisions |
+| `buildLogicalSchema` | `schema-builder.ts` | Pure `(query, cubes) => LogicalSchema` derivation; consumed by `LogicalPlanBuilder` (unit-testable without a planner) |
 | `JoinPlanner` | `join-planner.ts` | Builds the join plan (path resolution, belongsToMany expansion) |
 | `CTEPlanner` | `cte-planner.ts` | Decides pre-aggregation CTEs to prevent fan-out; multi-hop absorption |
 | `FilterPropagation` | `filter-propagation.ts` | Propagates related-cube filters into CTEs |
