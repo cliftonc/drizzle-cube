@@ -78,7 +78,10 @@ export function createRestHandlers(semanticLayer: SemanticLayerCompiler): RestHa
     getBaseSecurityContext: BaseSecurityContextThunk
   ): Promise<TRes> {
     try {
-      const query = (await port.getBody()) as SemanticQuery
+      const body = await port.getBody()
+      // Accept both the nested `{ query }` and the bare-query body shapes
+      // (matches load/dry-run/explain; restores the Next.js adapter's original unwrap).
+      const query = ((body as { query?: SemanticQuery })?.query || body) as SemanticQuery
       const securityContext = await resolveSecurityContext(getBaseSecurityContext, (n) => port.getHeader(n))
       return await runSql(query, securityContext, port)
     } catch (error) {
@@ -99,9 +102,14 @@ export function createRestHandlers(semanticLayer: SemanticLayerCompiler): RestHa
       if (!queryParam) {
         return port.send(400, formatErrorResponse('Query parameter is required', 400))
       }
-      // Invalid JSON throws here and falls through to the 500 catch — matches the
-      // original GET /sql behaviour (load GET maps invalid JSON to 400 instead).
-      const query = JSON.parse(queryParam) as SemanticQuery
+      // Invalid JSON is a client error (400), mirroring GET /load — restores the
+      // Next.js adapter's original behaviour rather than letting it 500.
+      let query: SemanticQuery
+      try {
+        query = JSON.parse(queryParam) as SemanticQuery
+      } catch {
+        return port.send(400, formatErrorResponse('Invalid JSON in query parameter', 400))
+      }
       const securityContext = await resolveSecurityContext(getBaseSecurityContext, (n) => port.getHeader(n))
       return await runSql(query, securityContext, port)
     } catch (error) {

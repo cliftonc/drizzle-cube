@@ -1,6 +1,13 @@
 /**
  * Fastify adapter for Drizzle Cube
  * Provides Cube.js-compatible API endpoints as a Fastify plugin with Drizzle ORM
+ *
+ * This adapter holds only framework translation: it maps Fastify request/reply to
+ * an {@link McpHttpPort} and routes to the framework-agnostic core
+ * (`src/adapters/core`). All request-handling logic (validate / execute / format,
+ * MCP dispatch) lives in the core. The exceptions that remain here are inherently
+ * transport-bound: the agent/chat SSE stream and the long-lived GET/DELETE `/mcp`
+ * lifecycle.
  */
 
 import { FastifyPluginCallback, FastifyRequest, FastifyReply, FastifyInstance } from 'fastify'
@@ -12,7 +19,6 @@ import type {
   DrizzleDatabase,
   Cube,
   CacheConfig,
-  ExplainOptions,
   RLSSetupFn
 } from '../../server/index.js'
 import type { AgentConfig } from '../../server/agent/types.js'
@@ -21,69 +27,79 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
-  handleDryRun,
-  formatCubeResponse,
-  formatSqlResponse,
-  formatMetaResponse,
   formatErrorResponse,
-  handleBatchRequest,
   type MCPOptions
 } from '../utils.js'
 import {
-  buildJsonRpcError,
-  buildJsonRpcResult,
-  buildMcpResources,
-  dispatchMcpMethod,
-  isNotification,
-  negotiateProtocol,
-  parseJsonRpc,
   primeEventId,
-  resolveMcpPrompts,
-  resolveMcpInstructions,
   serializeSseEvent,
-  wantsEventStream,
-  validateAcceptHeader,
-  validateOriginHeader,
   extractBearerToken,
-  buildWwwAuthenticateChallenge,
-  MCP_SESSION_ID_HEADER
+  buildWwwAuthenticateChallenge
 } from '../mcp-transport.js'
-import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale.js'
+import { ensureLocaleHeader } from '../locale.js'
+import { createCubeHttpHandler, withLocaleFromHeaders, type McpHttpPort } from '../core/index.js'
+
+/** Read a Fastify request header as a single string (first value when an array). */
+function readFastifyHeader(request: FastifyRequest, name: string): string | undefined {
+  const value = request.headers[name.toLowerCase()]
+  return Array.isArray(value) ? value[0] : value
+}
+
+/**
+ * Construct an {@link McpHttpPort} over a Fastify request/reply pair.
+ * Drives every core handler (REST + MCP); see `src/adapters/core`.
+ */
+function createFastifyPort(request: FastifyRequest, reply: FastifyReply): McpHttpPort<FastifyReply> {
+  return {
+    getHeader: (name) => readFastifyHeader(request, name),
+    getBody: async () => request.body,
+    getQueryParam: (name) => (request.query as Record<string, unknown> | undefined)?.[name] as string | undefined,
+    send: (status, body) => reply.status(status).send(body),
+    setHeader: (name, value) => { reply.header(name, value) },
+    sendEmpty: (status) => reply.status(status).send(),
+    sendSse: (status, body) => {
+      reply.header('Content-Type', 'text/event-stream')
+      reply.header('Cache-Control', 'no-cache')
+      reply.header('Connection', 'keep-alive')
+      return reply.status(status).send(body)
+    }
+  }
+}
 
 export interface FastifyAdapterOptions {
   /**
    * Array of cube definitions to register
    */
   cubes: Cube[]
-  
+
   /**
    * Drizzle database instance (REQUIRED)
    * This is the core of drizzle-cube - Drizzle ORM integration
    * Accepts PostgreSQL, MySQL, or SQLite database instances
    */
   drizzle: PostgresJsDatabase<any> | MySql2Database<any> | BetterSQLite3Database<any> | DrizzleDatabase
-  
+
   /**
    * Database schema for type inference (RECOMMENDED)
    * Provides full type safety for cube definitions
    */
   schema?: any
-  
+
   /**
    * Extract security context from incoming HTTP request.
    * Called for EVERY API request to determine user permissions and multi-tenant isolation.
-   * 
+   *
    * This is your security boundary - ensure proper authentication and authorization here.
-   * 
+   *
    * @param request - Fastify Request object containing the incoming HTTP request
    * @returns Security context with organisationId, userId, roles, etc.
-   * 
+   *
    * @example
    * extractSecurityContext: async (request) => {
    *   // Extract JWT from Authorization header
    *   const token = request.headers.authorization?.replace('Bearer ', '')
    *   const decoded = await verifyJWT(token)
-   *   
+   *
    *   // Return context that will be available in all cube SQL functions
    *   return {
    *     organisationId: decoded.orgId,
@@ -93,17 +109,17 @@ export interface FastifyAdapterOptions {
    * }
    */
   extractSecurityContext: (request: FastifyRequest) => SecurityContext | Promise<SecurityContext>
-  
+
   /**
    * Database engine type (optional - auto-detected if not provided)
    */
   engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'
-  
+
   /**
    * CORS configuration (optional)
    */
   cors?: FastifyCorsOptions
-  
+
   /**
    * API base path (default: '/cubejs-api/v1')
    */
@@ -146,8 +162,8 @@ export interface FastifyAdapterOptions {
  * Fastify plugin for Cube.js-compatible API
  */
 export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function cubePlugin(
-  fastify: FastifyInstance, 
-  options: FastifyAdapterOptions, 
+  fastify: FastifyInstance,
+  options: FastifyAdapterOptions,
   done: (err?: Error) => void
 ) {
   const {
@@ -167,12 +183,6 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   // Validate required options
   if (!cubes || cubes.length === 0) {
     return done(new Error('At least one cube must be provided in the cubes array'))
-  }
-
-  const extractSecurityContextWithLocale = async (request: FastifyRequest): Promise<SecurityContext> => {
-    const securityContext = await extractSecurityContext(request)
-    const requestLocale = resolveRequestLocale((header) => request.headers[header.toLowerCase()] as string | string[] | undefined)
-    return withLocaleInSecurityContext(securityContext, requestLocale)
   }
 
   // Register CORS plugin if configured
@@ -205,414 +215,81 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     semanticLayer.registerCube(cube)
   })
 
-  /**
-   * POST /cubejs-api/v1/load - Execute queries
-   */
-  fastify.post(`${basePath}/load`, {
-    bodyLimit,
-    schema: {
-      body: {
-        type: 'object',
-        additionalProperties: true
-      }
-    }
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      // Handle both direct query and nested query formats
-      const body = request.body as any
-      const query: SemanticQuery = body.query || body
-
-      // Extract security context using user-provided function
-      const securityContext = await extractSecurityContextWithLocale(request)
-
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return reply.status(400).send(formatErrorResponse(
-          `Query validation failed: ${validation.errors.join(', ')}`,
-          400
-        ))
-      }
-
-      // Check for cache bypass header (X-Cache-Control: no-cache)
-      const skipCache = request.headers['x-cache-control'] === 'no-cache'
-
-      // Execute multi-cube query (handles both single and multi-cube automatically)
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
-
-      // Return in official Cube.js format
-      return formatCubeResponse(query, result, semanticLayer)
-
-    } catch (error) {
-
-      // codeql[js/log-injection] error source is internal, not user-controlled
-      request.log.error(error, 'Query execution error')
-      return reply.status(500).send(formatErrorResponse(
-        error instanceof Error ? error.message : 'Query execution failed',
-        500
-      ))
-    }
+  // Framework-agnostic core. The base-context thunk returns the pre-locale
+  // context; the core does the locale merge. Every REST + MCP handler funnels
+  // through here — this adapter only translates request/reply to a port and routes.
+  const httpHandler = createCubeHttpHandler({
+    semanticLayer,
+    // codeql[js/log-injection] error source is internal, not user-controlled
+    onError: (error) => fastify.log.error(error, 'Query execution error'),
+    mcp
   })
 
-  /**
-   * GET /cubejs-api/v1/load - Execute queries via query string
-   */
-  fastify.get(`${basePath}/load`, {
+  // Per-request base-context thunk: the user's extractSecurityContext closed over
+  // the real Fastify request. The core merges the request locale on top.
+  const baseContext = (request: FastifyRequest) => () => extractSecurityContext(request)
+
+  // Fastify route options preserve per-route body limits and schema validation;
+  // the handlers themselves are thin port translations onto the core.
+  const postOptions = { bodyLimit, schema: { body: { type: 'object', additionalProperties: true } } }
+  const queryStringOptions = {
     schema: {
       querystring: {
         type: 'object',
-        properties: {
-          query: { type: 'string' }
-        },
+        properties: { query: { type: 'string' } },
         required: ['query']
       }
     }
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { query: queryParam } = request.query as { query: string }
+  }
 
-      let query: SemanticQuery
-      try {
-        query = JSON.parse(queryParam)
-      } catch {
-        return reply.status(400).send(formatErrorResponse(
-          'Invalid JSON in query parameter',
-          400
-        ))
-      }
+  // ============================================
+  // REST endpoints (all served via the core)
+  // ============================================
 
-      // Extract security context
-      const securityContext = await extractSecurityContextWithLocale(request)
+  fastify.post(`${basePath}/load`, postOptions, (request, reply) =>
+    httpHandler.handleLoadPost(createFastifyPort(request, reply), baseContext(request))
+  )
 
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return reply.status(400).send(formatErrorResponse(
-          `Query validation failed: ${validation.errors.join(', ')}`,
-          400
-        ))
-      }
+  fastify.get(`${basePath}/load`, queryStringOptions, (request, reply) =>
+    httpHandler.handleLoadGet(createFastifyPort(request, reply), baseContext(request))
+  )
 
-      // Check for cache bypass header (X-Cache-Control: no-cache)
-      const skipCache = request.headers['x-cache-control'] === 'no-cache'
-
-      // Execute multi-cube query (handles both single and multi-cube automatically)
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
-
-      // Return in official Cube.js format
-      return formatCubeResponse(query, result, semanticLayer)
-
-    } catch (error) {
-
-      // codeql[js/log-injection] error source is internal, not user-controlled
-      request.log.error(error, 'Query execution error')
-      return reply.status(500).send(formatErrorResponse(
-        error instanceof Error ? error.message : 'Query execution failed',
-        500
-      ))
-    }
-  })
-
-  /**
-   * POST /cubejs-api/v1/batch - Execute multiple queries in a single request
-   * Optimizes network overhead for dashboards with many portlets
-   */
   fastify.post(`${basePath}/batch`, {
     bodyLimit,
     schema: {
       body: {
         type: 'object',
         required: ['queries'],
-        properties: {
-          queries: {
-            type: 'array',
-            items: { type: 'object' }
-          }
-        }
+        properties: { queries: { type: 'array', items: { type: 'object' } } }
       }
     }
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { queries } = request.body as { queries: SemanticQuery[] }
+  }, (request, reply) =>
+    httpHandler.handleBatchPost(createFastifyPort(request, reply), baseContext(request))
+  )
 
-      if (!queries || !Array.isArray(queries)) {
-        return reply.status(400).send(formatErrorResponse(
-          'Request body must contain a "queries" array',
-          400
-        ))
-      }
+  fastify.get(`${basePath}/meta`, (request, reply) =>
+    httpHandler.handleMetaGet(createFastifyPort(request, reply))
+  )
 
-      if (queries.length === 0) {
-        return reply.status(400).send(formatErrorResponse(
-          'Queries array cannot be empty',
-          400
-        ))
-      }
+  fastify.post(`${basePath}/sql`, postOptions, (request, reply) =>
+    httpHandler.handleSqlPost(createFastifyPort(request, reply), baseContext(request))
+  )
 
-      // Extract security context ONCE (shared across all queries)
-      const securityContext = await extractSecurityContextWithLocale(request)
+  fastify.get(`${basePath}/sql`, queryStringOptions, (request, reply) =>
+    httpHandler.handleSqlGet(createFastifyPort(request, reply), baseContext(request))
+  )
 
-      // Check for cache bypass header (X-Cache-Control: no-cache)
-      const skipCache = request.headers['x-cache-control'] === 'no-cache'
+  fastify.post(`${basePath}/dry-run`, postOptions, (request, reply) =>
+    httpHandler.handleDryRunPost(createFastifyPort(request, reply), baseContext(request))
+  )
 
-      // Use shared batch handler (wraps existing single query logic)
-      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer, { skipCache })
+  fastify.get(`${basePath}/dry-run`, queryStringOptions, (request, reply) =>
+    httpHandler.handleDryRunGet(createFastifyPort(request, reply), baseContext(request))
+  )
 
-      return batchResult
-
-    } catch (error) {
-
-      // codeql[js/log-injection] error source is internal, not user-controlled
-      request.log.error(error, 'Batch execution error')
-      return reply.status(500).send(formatErrorResponse(
-        error instanceof Error ? error.message : 'Batch execution failed',
-        500
-      ))
-    }
-  })
-
-  /**
-   * GET /cubejs-api/v1/meta - Get cube metadata
-   * Optimized for fast response times with caching
-   */
-  fastify.get(`${basePath}/meta`, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      // Extract security context (some apps may want to filter cubes by context)
-      // await extractSecurityContext(request) // Available if needed for filtering
-      
-      // Get cached metadata (fast path)
-      const metadata = semanticLayer.getMetadata()
-      
-      return formatMetaResponse(metadata)
-      
-    } catch (error) {
-
-      // codeql[js/log-injection] error source is internal, not user-controlled
-      request.log.error(error, 'Metadata error')
-      return reply.status(500).send(formatErrorResponse(
-        error instanceof Error ? error.message : 'Failed to fetch metadata',
-        500
-      ))
-    }
-  })
-
-  /**
-   * POST /cubejs-api/v1/sql - Generate SQL without execution (dry run)
-   */
-  fastify.post(`${basePath}/sql`, {
-    bodyLimit,
-    schema: {
-      body: {
-        type: 'object',
-        additionalProperties: true
-      }
-    }
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const query: SemanticQuery = request.body as SemanticQuery
-      
-      const securityContext = await extractSecurityContextWithLocale(request)
-      
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return reply.status(400).send(formatErrorResponse(
-          `Query validation failed: ${validation.errors.join(', ')}`,
-          400
-        ))
-      }
-
-      // For SQL generation, we need at least one cube referenced
-      const firstMember = query.measures?.[0] || query.dimensions?.[0]
-      if (!firstMember) {
-        return reply.status(400).send(formatErrorResponse(
-          'No measures or dimensions specified',
-          400
-        ))
-      }
-
-      const cubeName = firstMember.split('.')[0]
-      
-      // Generate SQL using the semantic layer compiler
-      const sqlResult = await semanticLayer.generateSQL(cubeName, query, securityContext)
-      
-      return formatSqlResponse(query, sqlResult)
-      
-    } catch (error) {
-      request.log.error({ err: String(error).replace(/\n|\r/g, '') }, 'SQL generation error')
-      return reply.status(500).send(formatErrorResponse(
-        error instanceof Error ? error.message : 'SQL generation failed',
-        500
-      ))
-    }
-  })
-
-  /**
-   * GET /cubejs-api/v1/sql - Generate SQL via query string
-   */
-  fastify.get(`${basePath}/sql`, {
-    schema: {
-      querystring: {
-        type: 'object',
-        properties: {
-          query: { type: 'string' }
-        },
-        required: ['query']
-      }
-    }
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { query: queryParam } = request.query as { query: string }
-
-      const query: SemanticQuery = JSON.parse(queryParam)
-      const securityContext = await extractSecurityContextWithLocale(request)
-      
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return reply.status(400).send(formatErrorResponse(
-          `Query validation failed: ${validation.errors.join(', ')}`,
-          400
-        ))
-      }
-
-      // For SQL generation, we need at least one cube referenced
-      const firstMember = query.measures?.[0] || query.dimensions?.[0]
-      if (!firstMember) {
-        return reply.status(400).send(formatErrorResponse(
-          'No measures or dimensions specified',
-          400
-        ))
-      }
-
-      const cubeName = firstMember.split('.')[0]
-      
-      // Generate SQL using the semantic layer compiler
-      const sqlResult = await semanticLayer.generateSQL(cubeName, query, securityContext)
-      
-      return formatSqlResponse(query, sqlResult)
-      
-    } catch (error) {
-      request.log.error({ err: String(error).replace(/\n|\r/g, '') }, 'SQL generation error')
-      return reply.status(500).send(formatErrorResponse(
-        error instanceof Error ? error.message : 'SQL generation failed',
-        500
-      ))
-    }
-  })
-
-  /**
-   * POST /cubejs-api/v1/dry-run - Validate queries without execution
-   */
-  fastify.post(`${basePath}/dry-run`, {
-    bodyLimit,
-    schema: {
-      body: {
-        type: 'object',
-        additionalProperties: true
-      }
-    }
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      // Handle both direct query and nested query formats
-      const body = request.body as any
-      const query: SemanticQuery = body.query || body
-      
-      // Extract security context using user-provided function
-      const securityContext = await extractSecurityContextWithLocale(request)
-      
-      // Perform dry-run analysis
-      const result = await handleDryRun(query, securityContext, semanticLayer)
-      
-      return result
-      
-    } catch (error) {
-      request.log.error(error, 'Dry-run error')
-      return reply.status(400).send({
-        error: error instanceof Error ? error.message : 'Dry-run validation failed',
-        valid: false
-      })
-    }
-  })
-
-  /**
-   * GET /cubejs-api/v1/dry-run - Validate queries via query string
-   */
-  fastify.get(`${basePath}/dry-run`, {
-    schema: {
-      querystring: {
-        type: 'object',
-        properties: {
-          query: { type: 'string' }
-        },
-        required: ['query']
-      }
-    }
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { query: queryParam } = request.query as { query: string }
-
-      const query: SemanticQuery = JSON.parse(queryParam)
-
-      // Extract security context
-      const securityContext = await extractSecurityContextWithLocale(request)
-
-      // Perform dry-run analysis
-      const result = await handleDryRun(query, securityContext, semanticLayer)
-
-      return result
-
-    } catch (error) {
-      request.log.error(error, 'Dry-run error')
-      return reply.status(400).send({
-        error: error instanceof Error ? error.message : 'Dry-run validation failed',
-        valid: false
-      })
-    }
-  })
-
-  /**
-   * POST /cubejs-api/v1/explain - Get execution plan for a query
-   * Returns normalized EXPLAIN output across PostgreSQL, MySQL, and SQLite
-   */
-  fastify.post(`${basePath}/explain`, {
-    bodyLimit,
-    schema: {
-      body: {
-        type: 'object',
-        additionalProperties: true
-      }
-    }
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      // Handle both direct query and nested query formats
-      const body = request.body as any
-      const query: SemanticQuery = body.query || body
-      const options: ExplainOptions = body.options || {}
-
-      // Extract security context using user-provided function
-      const securityContext = await extractSecurityContextWithLocale(request)
-
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return reply.status(400).send({
-          error: `Query validation failed: ${validation.errors.join(', ')}`
-        })
-      }
-
-      // Execute EXPLAIN using the semantic layer
-      const explainResult = await semanticLayer.explainQuery(query, securityContext, options)
-
-      return explainResult
-
-    } catch (error) {
-      request.log.error(error, 'Explain error')
-      return reply.status(500).send({
-        error: error instanceof Error ? error.message : 'Explain query failed'
-      })
-    }
-  })
+  fastify.post(`${basePath}/explain`, postOptions, (request, reply) =>
+    httpHandler.handleExplainPost(createFastifyPort(request, reply), baseContext(request))
+  )
 
   // ============================================
   // Agent (Agentic AI Notebook) Endpoint
@@ -622,7 +299,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     /**
      * POST /cubejs-api/v1/agent/chat - Agentic AI notebook chat
      * Streams SSE events as the agent discovers data, executes queries,
-     * and creates visualizations.
+     * and creates visualizations. Inherently transport-bound, so it stays inline.
      */
     fastify.post(`${basePath}/agent/chat`, {
       bodyLimit,
@@ -646,7 +323,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
         // Resolve API key: server config or client header override
         let apiKey = (agentConfig.apiKey || '').trim()
         if (agentConfig.allowClientApiKey) {
-          const clientKey = request.headers['x-agent-api-key'] as string | undefined
+          const clientKey = readFastifyHeader(request, 'x-agent-api-key')
           if (clientKey) {
             apiKey = clientKey.trim()
           }
@@ -659,12 +336,15 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
         }
 
         // Per-request provider overrides from client headers
-        const providerOverride = agentConfig.allowClientApiKey ? request.headers['x-agent-provider'] as string | undefined : undefined
-        const modelOverride = agentConfig.allowClientApiKey ? request.headers['x-agent-model'] as string | undefined : undefined
-        const baseURLOverride = agentConfig.allowClientApiKey ? request.headers['x-agent-provider-endpoint'] as string | undefined : undefined
+        const providerOverride = agentConfig.allowClientApiKey ? readFastifyHeader(request, 'x-agent-provider') : undefined
+        const modelOverride = agentConfig.allowClientApiKey ? readFastifyHeader(request, 'x-agent-model') : undefined
+        const baseURLOverride = agentConfig.allowClientApiKey ? readFastifyHeader(request, 'x-agent-provider-endpoint') : undefined
 
-        // Extract security context (required for all queries)
-        const securityContext = await extractSecurityContextWithLocale(request)
+        // Extract security context (required for all queries), merging request locale
+        const securityContext = withLocaleFromHeaders(
+          await extractSecurityContext(request),
+          (header) => readFastifyHeader(request, header)
+        )
 
         // Build per-request system context from the callback (if configured)
         const systemContext = agentConfig.buildSystemContext?.(securityContext)
@@ -719,14 +399,14 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   // ============================================
 
   if (mcp.enabled !== false) {
-    const mcpResources = buildMcpResources(semanticLayer, mcp.resources)
-    const mcpPrompts = resolveMcpPrompts(mcp.prompts)
-    const mcpInstructions = resolveMcpInstructions(mcp.instructions)
     const mcpBasePath = mcp.basePath ?? '/mcp'
 
     /**
      * MCP Streamable HTTP endpoint (JSON-RPC 2.0 + optional SSE)
      * Implements MCP 2025-11-25 spec
+     * POST /mcp      - JSON-RPC request/notification (dispatched via the core)
+     * GET  /mcp      - Optional receive-only SSE channel (heartbeat only for now)
+     * DELETE /mcp    - Session termination
      */
     fastify.post(`${mcpBasePath}`, {
       bodyLimit,
@@ -736,114 +416,9 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
           additionalProperties: true
         }
       }
-    }, async (request: FastifyRequest, reply: FastifyReply) => {
-      // OAuth 2.1 bearer token check (RFC 9728)
-      if (mcp.resourceMetadataUrl && !extractBearerToken(request.headers.authorization)) {
-        reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
-        return reply.status(401).send({ error: 'Bearer token required' })
-      }
-
-      // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
-      const originValidation = validateOriginHeader(
-        request.headers.origin as string | undefined,
-        mcp.allowedOrigins ? { allowedOrigins: mcp.allowedOrigins } : {}
-      )
-      if (!originValidation.valid) {
-        return reply.status(403).send(buildJsonRpcError(null, -32600, originValidation.reason))
-      }
-
-      // Validate Accept header (MCP 2025-11-25: MUST include both application/json and text/event-stream)
-      const acceptHeader = request.headers.accept as string | undefined
-      if (!validateAcceptHeader(acceptHeader)) {
-        return reply.status(400).send(buildJsonRpcError(null, -32600, 'Accept header must include both application/json and text/event-stream'))
-      }
-
-      const protocol = negotiateProtocol(request.headers as Record<string, string>)
-      if (!protocol.ok) {
-        return reply.status(426).send({
-          error: 'Unsupported MCP protocol version',
-          supported: protocol.supported
-        })
-      }
-
-      const rpcRequest = parseJsonRpc(request.body)
-      if (!rpcRequest) {
-        return reply.status(400).send(buildJsonRpcError(null, -32600, 'Invalid JSON-RPC 2.0 request'))
-      }
-
-      const wantsStream = wantsEventStream(acceptHeader)
-      const isInitialize = rpcRequest.method === 'initialize'
-
-      try {
-        const result = await dispatchMcpMethod(
-          rpcRequest.method,
-          rpcRequest.params,
-          {
-            semanticLayer,
-            extractSecurityContext: (rawReq: any, _rawRes: any) => extractSecurityContextWithLocale(rawReq),
-            rawRequest: request,
-            rawResponse: reply,
-            negotiatedProtocol: protocol.negotiated,
-            resources: mcpResources,
-            prompts: mcpPrompts,
-            instructions: mcpInstructions,
-            appEnabled: !!mcp.app,
-            appConfig: typeof mcp.app === 'object' ? mcp.app : undefined,
-            serverName: mcp.serverName
-          }
-        )
-
-        if (isNotification(rpcRequest)) {
-          return reply.status(202).send()
-        }
-
-        // Extract session ID for header (MCP 2025-11-25: return in MCP-Session-Id header)
-        const sessionId = isInitialize && result && typeof result === 'object' && 'sessionId' in result
-          ? (result as { sessionId?: string }).sessionId
-          : undefined
-
-        if (sessionId) {
-          reply.header(MCP_SESSION_ID_HEADER, sessionId)
-        }
-
-        const response = buildJsonRpcResult(rpcRequest.id ?? null, result)
-        if (wantsStream) {
-          const eventId = primeEventId()
-          reply
-            .header('Content-Type', 'text/event-stream')
-            .header('Cache-Control', 'no-cache')
-            .header('Connection', 'keep-alive')
-            .send(`id: ${eventId}\n\n${serializeSseEvent(response, eventId)}`)
-          return
-        }
-
-        return reply.send(response)
-      } catch (error) {
-        // Log notification errors before returning 202 (P3 fix)
-        if (isNotification(rpcRequest)) {
-          request.log.error({ err: String(error).replace(/\n|\r/g, '') }, 'MCP notification processing error')
-          return reply.status(202).send()
-        }
-
-        request.log.error({ err: String(error).replace(/\n|\r/g, '') }, 'MCP RPC error')
-        const code = (error as any)?.code ?? -32603
-        const data = (error as any)?.data
-        const message = (error as Error).message || 'MCP request failed'
-        const rpcError = buildJsonRpcError(rpcRequest.id ?? null, code, message, data)
-
-        if (wantsStream) {
-          const eventId = primeEventId()
-          reply
-            .header('Content-Type', 'text/event-stream')
-            .header('Cache-Control', 'no-cache')
-            .header('Connection', 'keep-alive')
-            .send(`id: ${eventId}\n\n${serializeSseEvent(rpcError, eventId)}`)
-          return
-        }
-
-        return reply.send(rpcError)
-      }
-    })
+    }, (request, reply) =>
+      httpHandler.handleMcpPost(createFastifyPort(request, reply), baseContext(request))
+    )
 
     fastify.get(`${mcpBasePath}`, async (request: FastifyRequest, reply: FastifyReply) => {
       if (mcp.resourceMetadataUrl && !extractBearerToken(request.headers.authorization)) {
@@ -917,7 +492,7 @@ export async function registerCubeRoutes(
 
 /**
  * Create a complete Fastify instance with Cube.js routes
- * 
+ *
  * @example
  * const app = createCubeApp({
  *   cubes: [salesCube, employeesCube],
@@ -936,14 +511,11 @@ export function createCubeApp(
   const fastify = require('fastify')({
     logger: true
   })
-  
+
   fastify.register(cubePlugin as any, options)
-  
+
   return fastify
 }
 
 // Re-export types for convenience
 export type { SecurityContext, DatabaseExecutor, SemanticQuery, DrizzleDatabase, FastifyCorsOptions }
-
-
-

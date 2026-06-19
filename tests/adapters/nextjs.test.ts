@@ -339,11 +339,41 @@ describe('Next.js Adapter', () => {
       const handler = createSqlHandler(adapterOptions)
       const request = createMockNextRequest('DELETE')
       const response = await handler(request)
-      
+
       expect(response.status).toBe(405)
-      
+
       const data = await response.json() as any
       expect(data).toHaveProperty('error', 'Method not allowed')
+    })
+
+    it('should accept the nested { query } body shape for POST', async () => {
+      const handler = createSqlHandler(adapterOptions)
+      const request = createMockNextRequest('POST', {
+        query: {
+          measures: ['Employees.count'],
+          dimensions: ['Employees.name']
+        }
+      })
+      const response = await handler(request)
+
+      expect(response.status).toBe(200)
+
+      const data = await response.json() as any
+      expect(data).toHaveProperty('sql')
+      expect(typeof data.sql).toBe('string')
+    })
+
+    it('should return 400 for GET requests with invalid query JSON', async () => {
+      const handler = createSqlHandler(adapterOptions)
+      const request = createMockNextRequest('GET', undefined, {
+        query: 'not-valid-json'
+      })
+      const response = await handler(request)
+
+      expect(response.status).toBe(400)
+
+      const data = await response.json() as any
+      expect(data).toHaveProperty('error', 'Invalid JSON in query parameter')
     })
   })
 

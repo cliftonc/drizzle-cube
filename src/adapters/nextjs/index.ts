@@ -1,6 +1,13 @@
 /**
  * Next.js App Router adapter for Drizzle Cube
  * Provides Cube.js-compatible API endpoints as Next.js route handlers
+ *
+ * The Cube.js REST endpoints (`load`/`meta`/`sql`/`dry-run`/`batch`/`explain`) and
+ * MCP POST are served by the framework-agnostic core (`src/adapters/core`); each
+ * handler factory only maps `NextRequest`/`NextResponse` to a port and routes by
+ * HTTP method. The endpoints that stay inline are the AI-discovery helpers
+ * (`discover`/`suggest`/`validate`/`mcp-load`, which are Next.js-only) and the
+ * transport-bound flows (agent/chat SSE, MCP GET stream).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -11,7 +18,6 @@ import type {
   DrizzleDatabase,
   Cube,
   CacheConfig,
-  ExplainOptions,
   RLSSetupFn
 } from '../../server/index.js'
 import type { AgentConfig } from '../../server/agent/types.js'
@@ -20,12 +26,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
-  handleDryRun,
-  formatCubeResponse,
-  formatSqlResponse,
-  formatMetaResponse,
   formatErrorResponse,
-  handleBatchRequest,
   handleDiscover,
   handleSuggest,
   handleValidate,
@@ -37,43 +38,38 @@ import {
   type LoadRequest
 } from '../utils.js'
 import {
-  buildJsonRpcResult,
-  buildMcpResources,
-  dispatchMcpMethod,
-  isNotification,
-  resolveMcpPrompts,
-  resolveMcpInstructions,
-  wantsEventStream,
   extractBearerToken,
-  buildWwwAuthenticateChallenge,
-  MCP_SESSION_ID_HEADER
+  buildWwwAuthenticateChallenge
 } from '../mcp-transport.js'
 import {
   type ApplyCors,
-  buildMcpGetResponse,
-  buildMcpSseResponse,
-  prepareMcpPostRequest,
-  extractMcpSessionHeaders,
-  buildMcpErrorPayload
+  buildMcpGetResponse
 } from './mcp-handler.js'
 import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale.js'
+import {
+  createCubeHttpHandler,
+  withLocaleFromHeaders,
+  type CubeHttpHandler,
+  type McpHttpPort,
+  type BaseSecurityContextThunk
+} from '../core/index.js'
 
 export interface NextCorsOptions {
   /**
    * Allowed origins for CORS
    */
   origin?: string | string[] | ((origin: string) => boolean)
-  
+
   /**
    * Allowed HTTP methods
    */
   methods?: string[]
-  
+
   /**
    * Allowed headers
    */
   allowedHeaders?: string[]
-  
+
   /**
    * Allow credentials
    */
@@ -85,36 +81,36 @@ export interface NextAdapterOptions {
    * Array of cube definitions to register
    */
   cubes: Cube[]
-  
+
   /**
    * Drizzle database instance (REQUIRED)
    * This is the core of drizzle-cube - Drizzle ORM integration
    * Accepts PostgreSQL, MySQL, or SQLite database instances
    */
   drizzle: PostgresJsDatabase<any> | MySql2Database<any> | BetterSQLite3Database<any> | DrizzleDatabase
-  
+
   /**
    * Database schema for type inference (RECOMMENDED)
    * Provides full type safety for cube definitions
    */
   schema?: any
-  
+
   /**
    * Extract security context from incoming HTTP request.
    * Called for EVERY API request to determine user permissions and multi-tenant isolation.
-   * 
+   *
    * This is your security boundary - ensure proper authentication and authorization here.
-   * 
+   *
    * @param request - Next.js Request object containing the incoming HTTP request
    * @param context - Route context with params (optional)
    * @returns Security context with organisationId, userId, roles, etc.
-   * 
+   *
    * @example
    * extractSecurityContext: async (request, context) => {
    *   // Extract JWT from Authorization header
    *   const token = request.headers.get('Authorization')?.replace('Bearer ', '')
    *   const decoded = await verifyJWT(token)
-   *   
+   *
    *   // Return context that will be available in all cube SQL functions
    *   return {
    *     organisationId: decoded.orgId,
@@ -124,17 +120,17 @@ export interface NextAdapterOptions {
    * }
    */
   extractSecurityContext: (request: NextRequest, context?: RouteContext) => SecurityContext | Promise<SecurityContext>
-  
+
   /**
    * Database engine type (optional - auto-detected if not provided)
    */
   engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'
-  
+
   /**
    * CORS configuration (optional)
    */
   cors?: NextCorsOptions
-  
+
   /**
    * Runtime environment (default: 'nodejs')
    * 'edge' for Edge Runtime, 'nodejs' for Node.js Runtime
@@ -286,6 +282,77 @@ function getCorsHeaders(request: NextRequest, corsOptions: NextCorsOptions): Rec
 }
 
 /**
+ * Per-request handle on the framework-agnostic core, plus the CORS-header and
+ * base-context helpers each route handler needs. Built once per handler factory.
+ */
+interface NextCore {
+  httpHandler: CubeHttpHandler
+  corsHeaders: (request: NextRequest) => Record<string, string>
+  baseContext: (request: NextRequest, context?: RouteContext) => BaseSecurityContextThunk
+}
+
+/**
+ * Build the core HTTP handler for a Next.js handler factory. The base-context
+ * thunk returns the pre-locale context; the core merges the request locale.
+ */
+function createNextCore(options: NextAdapterOptions): NextCore {
+  const semanticLayer = createSemanticLayer(options)
+  const httpHandler = createCubeHttpHandler({
+    semanticLayer,
+    onError: (error) => {
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js handler error:', error)
+      }
+    },
+    mcp: options.mcp
+  })
+
+  const corsConfig = options.cors
+    ? { ...options.cors, allowedHeaders: ensureLocaleHeader(options.cors.allowedHeaders) }
+    : undefined
+  const corsHeaders = (request: NextRequest) => (corsConfig ? getCorsHeaders(request, corsConfig) : {})
+  const baseContext = (request: NextRequest, context?: RouteContext) => () =>
+    options.extractSecurityContext(request, context)
+
+  return { httpHandler, corsHeaders, baseContext }
+}
+
+/**
+ * Construct an {@link McpHttpPort} over a `NextRequest`. CORS headers (computed
+ * once per request) and any headers set via `setHeader` (MCP-Session-Id) are
+ * attached to every response. Drives every core handler (REST + MCP POST).
+ */
+function createNextPort(request: NextRequest, corsHeaders: Record<string, string>): McpHttpPort<NextResponse> {
+  const extraHeaders: Record<string, string> = {}
+  return {
+    getHeader: (name) => request.headers.get(name) ?? undefined,
+    getBody: async () => {
+      try {
+        return await request.json()
+      } catch {
+        return null
+      }
+    },
+    getQueryParam: (name) => request.nextUrl.searchParams.get(name) ?? undefined,
+    send: (status, body) =>
+      NextResponse.json(body, { status, headers: { ...corsHeaders, ...extraHeaders } }),
+    setHeader: (name, value) => { extraHeaders[name] = value },
+    sendEmpty: (status) => new NextResponse(null, { status, headers: { ...corsHeaders, ...extraHeaders } }),
+    sendSse: (status, body) =>
+      new NextResponse(body, {
+        status,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          ...corsHeaders,
+          ...extraHeaders
+        }
+      })
+  }
+}
+
+/**
  * Create OPTIONS handler for CORS preflight requests
  */
 export function createOptionsHandler(corsOptions: NextCorsOptions): RouteHandler {
@@ -303,78 +370,22 @@ export function createOptionsHandler(corsOptions: NextCorsOptions): RouteHandler
 }
 
 /**
- * Create load handler - Execute queries
+ * Create load handler - Execute queries (GET + POST via the core)
  */
 export function createLoadHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
-
-  // Create semantic layer with all cubes registered
-  const semanticLayer = createSemanticLayer(options)
+  const { httpHandler, corsHeaders, baseContext } = createNextCore(options)
 
   return async function loadHandler(request: NextRequest, context?: RouteContext) {
-    try {
-      let query: SemanticQuery
-
-      if (request.method === 'POST') {
-        const body = await request.json()
-        query = (body as any).query || body // Handle nested format
-      } else if (request.method === 'GET') {
-        const queryParam = request.nextUrl.searchParams.get('query')
-        if (!queryParam) {
-          return NextResponse.json(
-            formatErrorResponse('Query parameter is required', 400),
-            { status: 400 }
-          )
-        }
-        try {
-          query = JSON.parse(queryParam)
-        } catch {
-          return NextResponse.json(
-            formatErrorResponse('Invalid JSON in query parameter', 400),
-            { status: 400 }
-          )
-        }
-      } else {
-        return NextResponse.json(
-          formatErrorResponse('Method not allowed', 405),
-          { status: 405 }
-        )
-      }
-
-      const securityContext = await extractSecurityContext(request, context)
-
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return NextResponse.json(
-          formatErrorResponse(`Query validation failed: ${validation.errors.join(', ')}`, 400),
-          { status: 400 }
-        )
-      }
-
-      // Check for cache bypass header (X-Cache-Control: no-cache)
-      const skipCache = request.headers.get('x-cache-control') === 'no-cache'
-
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
-      const response = formatCubeResponse(query, result, semanticLayer)
-
-      return NextResponse.json(response, {
-        headers: cors ? getCorsHeaders(request, cors) : {}
-      })
-      
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'test') {
-        console.error('Next.js load handler error:', error)
-      }
-      return NextResponse.json(
-        formatErrorResponse(
-          error instanceof Error ? error.message : 'Query execution failed',
-          500
-        ),
-        { status: 500 }
-      )
+    const port = createNextPort(request, corsHeaders(request))
+    if (request.method === 'POST') {
+      return httpHandler.handleLoadPost(port, baseContext(request, context))
     }
+    if (request.method === 'GET') {
+      return httpHandler.handleLoadGet(port, baseContext(request, context))
+    }
+    return NextResponse.json(formatErrorResponse('Method not allowed', 405), { status: 405 })
   }
 }
 
@@ -384,314 +395,82 @@ export function createLoadHandler(
 export function createMetaHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { cors } = getLocaleAwareRequestOptions(options)
-
-  // Create semantic layer with all cubes registered
-  const semanticLayer = createSemanticLayer(options)
+  const { httpHandler, corsHeaders } = createNextCore(options)
 
   return async function metaHandler(request: NextRequest, _context?: RouteContext) {
-    try {
-      // Extract security context (some apps may want to filter cubes by context)
-      // const securityContext = await extractSecurityContext(request, context) // Available if needed for filtering
-      
-      // Get cached metadata (fast path)
-      const metadata = semanticLayer.getMetadata()
-      const response = formatMetaResponse(metadata)
-      
-      return NextResponse.json(response, {
-        headers: cors ? getCorsHeaders(request, cors) : {}
-      })
-      
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'test') {
-        console.error('Next.js meta handler error:', error)
-      }
-      return NextResponse.json(
-        formatErrorResponse(
-          error instanceof Error ? error.message : 'Failed to fetch metadata',
-          500
-        ),
-        { status: 500 }
-      )
-    }
+    return httpHandler.handleMetaGet(createNextPort(request, corsHeaders(request)))
   }
 }
 
 /**
- * Create SQL handler - Generate SQL without execution
+ * Create SQL handler - Generate SQL without execution (GET + POST via the core)
  */
 export function createSqlHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
-
-  // Create semantic layer with all cubes registered
-  const semanticLayer = createSemanticLayer(options)
+  const { httpHandler, corsHeaders, baseContext } = createNextCore(options)
 
   return async function sqlHandler(request: NextRequest, context?: RouteContext) {
-    try {
-      let query: SemanticQuery
-
-      if (request.method === 'POST') {
-        const body = await request.json()
-        query = (body as any).query || body // Handle nested format
-      } else if (request.method === 'GET') {
-        const queryParam = request.nextUrl.searchParams.get('query')
-        if (!queryParam) {
-          return NextResponse.json(
-            formatErrorResponse('Query parameter is required', 400),
-            { status: 400 }
-          )
-        }
-        try {
-          query = JSON.parse(queryParam)
-        } catch {
-          return NextResponse.json(
-            formatErrorResponse('Invalid JSON in query parameter', 400),
-            { status: 400 }
-          )
-        }
-      } else {
-        return NextResponse.json(
-          formatErrorResponse('Method not allowed', 405),
-          { status: 405 }
-        )
-      }
-      
-      const securityContext = await extractSecurityContext(request, context)
-      
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return NextResponse.json(
-          formatErrorResponse(`Query validation failed: ${validation.errors.join(', ')}`, 400),
-          { status: 400 }
-        )
-      }
-
-      // For SQL generation, we need at least one cube referenced
-      const firstMember = query.measures?.[0] || query.dimensions?.[0]
-      if (!firstMember) {
-        return NextResponse.json(
-          formatErrorResponse('No measures or dimensions specified', 400),
-          { status: 400 }
-        )
-      }
-
-      const cubeName = firstMember.split('.')[0]
-      
-      // Generate SQL using the semantic layer compiler
-      const sqlResult = await semanticLayer.generateSQL(cubeName, query, securityContext)
-      const response = formatSqlResponse(query, sqlResult)
-      
-      return NextResponse.json(response, {
-        headers: cors ? getCorsHeaders(request, cors) : {}
-      })
-      
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'test') {
-        console.error('Next.js SQL handler error:', error)
-      }
-      return NextResponse.json(
-        formatErrorResponse(
-          error instanceof Error ? error.message : 'SQL generation failed',
-          500
-        ),
-        { status: 500 }
-      )
+    const port = createNextPort(request, corsHeaders(request))
+    if (request.method === 'POST') {
+      return httpHandler.handleSqlPost(port, baseContext(request, context))
     }
+    if (request.method === 'GET') {
+      return httpHandler.handleSqlGet(port, baseContext(request, context))
+    }
+    return NextResponse.json(formatErrorResponse('Method not allowed', 405), { status: 405 })
   }
 }
 
 /**
- * Create dry-run handler - Validate queries without execution
+ * Create dry-run handler - Validate queries without execution (GET + POST via the core)
  */
 export function createDryRunHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
-
-  // Create semantic layer with all cubes registered
-  const semanticLayer = createSemanticLayer(options)
+  const { httpHandler, corsHeaders, baseContext } = createNextCore(options)
 
   return async function dryRunHandler(request: NextRequest, context?: RouteContext) {
-    try {
-      let query: SemanticQuery
-
-      if (request.method === 'POST') {
-        const body = await request.json()
-        query = (body as any).query || body // Handle nested format
-      } else if (request.method === 'GET') {
-        const queryParam = request.nextUrl.searchParams.get('query')
-        if (!queryParam) {
-          return NextResponse.json(
-            { error: 'Query parameter is required', valid: false },
-            { status: 400 }
-          )
-        }
-        try {
-          query = JSON.parse(queryParam)
-        } catch {
-          return NextResponse.json(
-            { error: 'Invalid JSON in query parameter', valid: false },
-            { status: 400 }
-          )
-        }
-      } else {
-        return NextResponse.json(
-          { error: 'Method not allowed', valid: false },
-          { status: 405 }
-        )
-      }
-      
-      // Extract security context using user-provided function
-      const securityContext = await extractSecurityContext(request, context)
-      
-      // Perform dry-run analysis
-      const result = await handleDryRun(query, securityContext, semanticLayer)
-      
-      return NextResponse.json(result, {
-        headers: cors ? getCorsHeaders(request, cors) : {}
-      })
-      
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'test') {
-        console.error('Next.js dry-run handler error:', error)
-      }
-      return NextResponse.json(
-        {
-          error: error instanceof Error ? error.message : 'Dry-run validation failed',
-          valid: false
-        },
-        { status: 400 }
-      )
+    const port = createNextPort(request, corsHeaders(request))
+    if (request.method === 'POST') {
+      return httpHandler.handleDryRunPost(port, baseContext(request, context))
     }
+    if (request.method === 'GET') {
+      return httpHandler.handleDryRunGet(port, baseContext(request, context))
+    }
+    return NextResponse.json({ error: 'Method not allowed', valid: false }, { status: 405 })
   }
 }
 
 /**
- * Create batch handler - Execute multiple queries in a single request
- * Optimizes network overhead for dashboards with many portlets
+ * Create batch handler - Execute multiple queries in a single request (POST via the core)
  */
 export function createBatchHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
-
-  // Create semantic layer with all cubes registered
-  const semanticLayer = createSemanticLayer(options)
+  const { httpHandler, corsHeaders, baseContext } = createNextCore(options)
 
   return async function batchHandler(request: NextRequest, context?: RouteContext) {
-    try {
-      if (request.method !== 'POST') {
-        return NextResponse.json(
-          formatErrorResponse('Method not allowed - use POST', 405),
-          { status: 405 }
-        )
-      }
-
-      const body = await request.json()
-      const { queries } = body as { queries: SemanticQuery[] }
-
-      if (!queries || !Array.isArray(queries)) {
-        return NextResponse.json(
-          formatErrorResponse('Request body must contain a "queries" array', 400),
-          { status: 400 }
-        )
-      }
-
-      if (queries.length === 0) {
-        return NextResponse.json(
-          formatErrorResponse('Queries array cannot be empty', 400),
-          { status: 400 }
-        )
-      }
-
-      // Extract security context ONCE (shared across all queries)
-      const securityContext = await extractSecurityContext(request, context)
-
-      // Check for cache bypass header (X-Cache-Control: no-cache)
-      const skipCache = request.headers.get('x-cache-control') === 'no-cache'
-
-      // Use shared batch handler (wraps existing single query logic)
-      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer, { skipCache })
-
-      return NextResponse.json(batchResult, {
-        headers: cors ? getCorsHeaders(request, cors) : {}
-      })
-
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'test') {
-        console.error('Next.js batch handler error:', error)
-      }
-      return NextResponse.json(
-        formatErrorResponse(
-          error instanceof Error ? error.message : 'Batch execution failed',
-          500
-        ),
-        { status: 500 }
-      )
+    if (request.method !== 'POST') {
+      return NextResponse.json(formatErrorResponse('Method not allowed - use POST', 405), { status: 405 })
     }
+    return httpHandler.handleBatchPost(createNextPort(request, corsHeaders(request)), baseContext(request, context))
   }
 }
 
 /**
- * Create explain handler - Get execution plan for a query
- * Returns normalized EXPLAIN output across PostgreSQL, MySQL, and SQLite
+ * Create explain handler - Get execution plan for a query (POST via the core)
  */
 export function createExplainHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
-
-  // Create semantic layer with all cubes registered
-  const semanticLayer = createSemanticLayer(options)
+  const { httpHandler, corsHeaders, baseContext } = createNextCore(options)
 
   return async function explainHandler(request: NextRequest, context?: RouteContext) {
-    try {
-      if (request.method !== 'POST') {
-        return NextResponse.json(
-          { error: 'Method not allowed' },
-          { status: 405 }
-        )
-      }
-
-      const body = await request.json()
-      const query: SemanticQuery = (body as any).query || body
-      const explainOptions: ExplainOptions = (body as any).options || {}
-
-      // Extract security context using user-provided function
-      const securityContext = await extractSecurityContext(request, context)
-
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return NextResponse.json(
-          { error: `Query validation failed: ${validation.errors.join(', ')}` },
-          { status: 400 }
-        )
-      }
-
-      // Execute EXPLAIN using the semantic layer
-      const explainResult = await semanticLayer.explainQuery(
-        query,
-        securityContext,
-        explainOptions
-      )
-
-      return NextResponse.json(explainResult, {
-        headers: cors ? getCorsHeaders(request, cors) : {}
-      })
-
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'test') {
-        console.error('Next.js explain handler error:', error)
-      }
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : 'Explain query failed' },
-        { status: 500 }
-      )
+    if (request.method !== 'POST') {
+      return NextResponse.json({ error: 'Method not allowed' }, { status: 405 })
     }
+    return httpHandler.handleExplainPost(createNextPort(request, corsHeaders(request)), baseContext(request, context))
   }
 }
 
@@ -892,94 +671,21 @@ export function createMcpLoadHandler(
 
 /**
  * Create MCP Streamable HTTP handler (JSON-RPC 2.0 + optional SSE)
- * Implements MCP 2025-11-25 spec
+ * Implements MCP 2025-11-25 spec. POST is dispatched via the core; the GET
+ * streaming connection and DELETE lifecycle stay inline (transport-bound).
  */
 export function createMcpRpcHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
+  const { httpHandler, corsHeaders, baseContext } = createNextCore(options)
   const { mcp = { enabled: true } } = options
 
-  const semanticLayer = createSemanticLayer(options)
-  const mcpResources = buildMcpResources(semanticLayer, mcp.resources)
-  const mcpPrompts = resolveMcpPrompts(mcp.prompts)
-  const mcpInstructions = resolveMcpInstructions(mcp.instructions)
-
-  // Bind the adapter CORS configuration into the framework-agnostic helpers.
+  // Bind the adapter CORS configuration into the GET-stream helper.
   const applyCors: ApplyCors = (request, headers) => {
-    if (!cors) return
-    const corsHeaders = getCorsHeaders(request, cors)
-    Object.entries(corsHeaders).forEach(([key, value]) => headers.set(key, value))
+    Object.entries(corsHeaders(request)).forEach(([key, value]) => headers.set(key, value))
   }
 
-  const dispatchPost = async (request: NextRequest): Promise<NextResponse> => {
-    const prep = await prepareMcpPostRequest(request, mcp)
-    if (prep.response) return prep.response
-
-    const rpcRequest = prep.rpcRequest!
-    const wantsStream = wantsEventStream(prep.acceptHeader)
-    const isInitialize = rpcRequest.method === 'initialize'
-
-    const sendJson = (payload: unknown, status = 200, extraHeaders: Record<string, string> = {}) =>
-      NextResponse.json(payload, {
-        status,
-        headers: { ...(cors ? getCorsHeaders(request, cors) : {}), ...extraHeaders }
-      })
-
-    try {
-      const result = await dispatchMcpMethod(
-        rpcRequest.method,
-        rpcRequest.params,
-        {
-          semanticLayer,
-          extractSecurityContext: (req) => extractSecurityContext(req as any),
-          rawRequest: request,
-          rawResponse: null,
-          resources: mcpResources,
-          prompts: mcpPrompts,
-          instructions: mcpInstructions,
-          appEnabled: !!mcp.app,
-          appConfig: typeof mcp.app === 'object' ? mcp.app : undefined,
-          serverName: mcp.serverName
-        }
-      )
-
-      if (isNotification(rpcRequest)) {
-        return new NextResponse(null, { status: 202 })
-      }
-
-      // Extract session ID for header (MCP 2025-11-25: return in MCP-Session-Id header)
-      const responseHeaders = extractMcpSessionHeaders(isInitialize, result, MCP_SESSION_ID_HEADER)
-      const response = buildJsonRpcResult(rpcRequest.id ?? null, result)
-
-      if (wantsStream) {
-        return buildMcpSseResponse(request, response, applyCors, responseHeaders)
-      }
-
-      return sendJson(response, 200, responseHeaders)
-    } catch (error) {
-      // Log notification errors before returning 202 (P3 fix)
-      if (isNotification(rpcRequest)) {
-        if (process.env.NODE_ENV !== 'test') {
-          console.error('Next.js MCP notification processing error:', error)
-        }
-        return new NextResponse(null, { status: 202 })
-      }
-
-      if (process.env.NODE_ENV !== 'test') {
-        console.error('Next.js MCP RPC handler error:', error)
-      }
-      const rpcError = buildMcpErrorPayload(error, rpcRequest.id)
-
-      if (wantsStream) {
-        return buildMcpSseResponse(request, rpcError, applyCors)
-      }
-
-      return sendJson(rpcError, 200)
-    }
-  }
-
-  return async function mcpRpcHandler(request: NextRequest) {
+  return async function mcpRpcHandler(request: NextRequest, context?: RouteContext) {
     // OAuth 2.1 bearer token check (RFC 9728)
     if (mcp.resourceMetadataUrl && !extractBearerToken(request.headers.get('authorization'))) {
       return NextResponse.json(
@@ -1007,7 +713,7 @@ export function createMcpRpcHandler(
       )
     }
 
-    return dispatchPost(request)
+    return httpHandler.handleMcpPost(createNextPort(request, corsHeaders(request)), baseContext(request, context))
   }
 }
 
@@ -1018,12 +724,12 @@ export function createMcpRpcHandler(
 /**
  * Create agent chat handler - Agentic AI notebook chat
  * Streams SSE events as the agent discovers data, executes queries,
- * and creates visualizations.
+ * and creates visualizations. Inherently transport-bound, so it stays inline.
  */
 export function createAgentChatHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
+  const { cors } = getLocaleAwareRequestOptions(options)
   const { agent: agentConfig } = options
 
   if (!agentConfig) {
@@ -1075,8 +781,11 @@ export function createAgentChatHandler(
       const modelOverride = agentConfig.allowClientApiKey ? request.headers.get('x-agent-model') || undefined : undefined
       const baseURLOverride = agentConfig.allowClientApiKey ? request.headers.get('x-agent-provider-endpoint') || undefined : undefined
 
-      // Extract security context (required for all queries)
-      const securityContext = await extractSecurityContext(request, context)
+      // Extract security context (required for all queries), merging request locale
+      const securityContext = withLocaleFromHeaders(
+        await options.extractSecurityContext(request, context),
+        (header) => request.headers.get(header) ?? undefined
+      )
 
       // Build per-request system context from the callback (if configured)
       const systemContext = agentConfig.buildSystemContext?.(securityContext)
@@ -1187,13 +896,10 @@ export function createCubeHandlers(
 }
 
 // Re-export types for convenience
-export type { 
-  SecurityContext, 
-  DatabaseExecutor, 
-  SemanticQuery, 
+export type {
+  SecurityContext,
+  DatabaseExecutor,
+  SemanticQuery,
   DrizzleDatabase,
   NextCorsOptions as CorsOptions
 }
-
-
-
