@@ -915,6 +915,8 @@
   "dataBrowser.sidebar.cubes": "Kubussen",
   "dataBrowser.sidebar.searchPlaceholder": "Zoeken...",
   "dataBrowser.sidebar.noCubes": "Geen cubes gevonden",
+  "dataBrowser.search.placeholder": "Rijen zoeken...",
+  "dataBrowser.search.clear": "Zoekopdracht wissen",
   "queryAnalysis.summary": "Query Samenvatting",
   "queryAnalysis.summary.type": "Type",
   "queryAnalysis.summary.cubes": "Kubussen",
