@@ -23,7 +23,6 @@ import type { MySql2Database } from 'drizzle-orm/mysql2'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   handleDryRun,
-  formatCubeResponse,
   formatSqlResponse,
   formatMetaResponse,
   formatErrorResponse,
@@ -50,6 +49,20 @@ import {
   MCP_SESSION_ID_HEADER
 } from '../mcp-transport.js'
 import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale.js'
+import { createCubeHttpHandler, type HttpPort } from '../core/index.js'
+
+/**
+ * Construct a framework-agnostic HttpPort over an Express request/response pair.
+ * Drives the REST /load core (see src/adapters/core).
+ */
+function createExpressPort(req: Request, res: Response): HttpPort<Response> {
+  return {
+    getHeader: (name) => req.get(name),
+    getBody: async () => req.body,
+    getQueryParam: (name) => req.query[name] as string | undefined,
+    send: (status, body) => res.status(status).json(body)
+  }
+}
 
 export interface ExpressAdapterOptions {
   /**
@@ -206,99 +219,27 @@ export function createCubeRouter(
     semanticLayer.registerCube(cube)
   })
 
+  // REST /load core (framework-agnostic). The base-context thunk returns the
+  // pre-locale context; the core does the locale merge. Other endpoints below
+  // still use extractSecurityContextWithLocale until they migrate (A2/A3).
+  const httpHandler = createCubeHttpHandler({
+    semanticLayer,
+    // codeql[js/log-injection] error source is internal, not user-controlled
+    onError: (error) => console.error('Query execution error:', error)
+  })
+
   /**
    * POST /cubejs-api/v1/load - Execute queries
    */
   router.post(`${basePath}/load`, async (req: Request, res: Response) => {
-    try {
-      // Handle both direct query and nested query formats
-      const query: SemanticQuery = req.body.query || req.body
-
-      // Extract security context using user-provided function
-      const securityContext = await extractSecurityContextWithLocale(req, res)
-
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return res.status(400).json(formatErrorResponse(
-          `Query validation failed: ${validation.errors.join(', ')}`,
-          400
-        ))
-      }
-
-      // Check for cache bypass header (X-Cache-Control: no-cache)
-      const skipCache = req.headers['x-cache-control'] === 'no-cache'
-
-      // Execute multi-cube query (handles both single and multi-cube automatically)
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
-
-      // Return in official Cube.js format
-      res.json(formatCubeResponse(query, result, semanticLayer))
-
-    } catch (error) {
-
-      // codeql[js/log-injection] error source is internal, not user-controlled
-      console.error('Query execution error:', error)
-      res.status(500).json(formatErrorResponse(
-        error instanceof Error ? error.message : 'Query execution failed',
-        500
-      ))
-    }
+    await httpHandler.handleLoadPost(createExpressPort(req, res), () => extractSecurityContext(req, res))
   })
 
   /**
    * GET /cubejs-api/v1/load - Execute queries via query string
    */
   router.get(`${basePath}/load`, async (req: Request, res: Response) => {
-    try {
-      const queryParam = req.query.query as string
-      if (!queryParam) {
-        return res.status(400).json(formatErrorResponse(
-          'Query parameter is required',
-          400
-        ))
-      }
-
-      let query: SemanticQuery
-      try {
-        query = JSON.parse(queryParam)
-      } catch {
-        return res.status(400).json(formatErrorResponse(
-          'Invalid JSON in query parameter',
-          400
-        ))
-      }
-
-      // Extract security context
-      const securityContext = await extractSecurityContextWithLocale(req, res)
-
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return res.status(400).json(formatErrorResponse(
-          `Query validation failed: ${validation.errors.join(', ')}`,
-          400
-        ))
-      }
-
-      // Check for cache bypass header (X-Cache-Control: no-cache)
-      const skipCache = req.headers['x-cache-control'] === 'no-cache'
-
-      // Execute multi-cube query (handles both single and multi-cube automatically)
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
-
-      // Return in official Cube.js format
-      res.json(formatCubeResponse(query, result, semanticLayer))
-
-    } catch (error) {
-
-      // codeql[js/log-injection] error source is internal, not user-controlled
-      console.error('Query execution error:', error)
-      res.status(500).json(formatErrorResponse(
-        error instanceof Error ? error.message : 'Query execution failed',
-        500
-      ))
-    }
+    await httpHandler.handleLoadGet(createExpressPort(req, res), () => extractSecurityContext(req, res))
   })
 
   /**

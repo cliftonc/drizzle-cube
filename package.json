@@ -106,6 +106,16 @@
         "default": "./dist/adapters/nextjs/index.cjs"
       }
     },
+    "./adapters/core": {
+      "import": {
+        "types": "./dist/adapters/core/index.d.ts",
+        "default": "./dist/adapters/core/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/adapters/core/index.d.ts",
+        "default": "./dist/adapters/core/index.cjs"
+      }
+    },
     "./adapters/utils": {
       "import": {
         "types": "./dist/adapters/utils.d.ts",
