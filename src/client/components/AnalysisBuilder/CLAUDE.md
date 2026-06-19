@@ -105,9 +105,12 @@ src/client/components/AnalysisBuilder/
 
 ## Hooks (external to this directory)
 
-- `useAnalysisBuilder` — master hook: all state, data fetching, and actions
-- `useAnalysisAI` — AI query generation (prompt → query)
-- `useAnalysisShare` — share URL encoding/decoding
+- `useAnalysisBuilder` — public facade: all state, data fetching, AI, share, and actions
+- Internally composed (#914) along a strictly acyclic **State → Query → Effects** flow:
+  - `useAnalysisState` — store reads/derivation, query-spec building, combined fields, chart config + availability, validation, UI state (no execution dependency)
+  - `useAnalysisQuery` — execution only: the 5 TanStack hooks, mode routing, skip flags, results, `hasDebounced`
+  - `useAnalysisEffects` — init/URL parsing, AI generation (direct store access), share, chart-type auto-switch (sole `hasDebounced` consumer), and external `onQueryChange`/`onChartConfigChange` callbacks
+- Pure helpers stay extracted: `analysisQueryExecutionModes` (mode-routing/skip matrix)
 
 ## Guard Rails
 
