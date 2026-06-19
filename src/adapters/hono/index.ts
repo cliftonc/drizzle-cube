@@ -1,9 +1,17 @@
 /**
  * Hono adapter for Drizzle Cube
  * Provides Cube.js-compatible API endpoints for Hono applications with Drizzle ORM
+ *
+ * This adapter holds only framework translation: it maps a Hono `Context` to an
+ * {@link McpHttpPort} and routes to the framework-agnostic core
+ * (`src/adapters/core`). All request-handling logic (validate / execute / format,
+ * MCP dispatch) lives in the core. The exceptions that remain here are inherently
+ * transport-bound: the agent/chat SSE stream and the long-lived GET/DELETE `/mcp`
+ * lifecycle.
  */
 
 import { Hono } from 'hono'
+import type { Context } from 'hono'
 import { cors } from 'hono/cors'
 import type {
   SemanticQuery,
@@ -12,7 +20,6 @@ import type {
   DrizzleDatabase,
   Cube,
   CacheConfig,
-  ExplainOptions,
   RLSSetupFn
 } from '../../server/index.js'
 import type { AgentConfig } from '../../server/agent/types.js'
@@ -21,29 +28,50 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
-  handleDryRun,
-  formatCubeResponse,
-  formatSqlResponse,
-  formatMetaResponse,
-  handleBatchRequest,
   type MCPOptions
 } from '../utils.js'
 import {
-  buildMcpResources,
   primeEventId,
-  resolveMcpPrompts,
-  resolveMcpInstructions,
   serializeSseEvent,
   extractBearerToken,
   buildWwwAuthenticateChallenge
 } from '../mcp-transport.js'
-import {
-  prepareMcpPostRequest,
-  clientWantsStream,
-  dispatchMcpPost
-} from './mcp-handler.js'
 import { handleAgentChatRequest } from './agent-handler.js'
-import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale.js'
+import { ensureLocaleHeader } from '../locale.js'
+import { createCubeHttpHandler, withLocaleFromHeaders, type McpHttpPort } from '../core/index.js'
+
+/**
+ * Construct an {@link McpHttpPort} over a Hono `Context`.
+ * Drives every core handler (REST + MCP); see `src/adapters/core`.
+ *
+ * Headers set via `setHeader` (e.g. MCP-Session-Id, WWW-Authenticate) are applied
+ * through `c.header`, so they are merged into the response produced by
+ * `c.json`/`c.body`.
+ */
+function createHonoPort(c: Context): McpHttpPort<Response> {
+  return {
+    getHeader: (name) => c.req.header(name),
+    getBody: async () => {
+      // Tolerate an absent/invalid JSON body (mirrors the original `.catch(() => null)`);
+      // the core maps a null MCP body to a JSON-RPC parse error.
+      try {
+        return await c.req.json()
+      } catch {
+        return null
+      }
+    },
+    getQueryParam: (name) => c.req.query(name),
+    send: (status, body) => c.json(body as any, status as any),
+    setHeader: (name, value) => { c.header(name, value) },
+    sendEmpty: (status) => c.body(null, status as any),
+    sendSse: (status, body) => {
+      c.header('Content-Type', 'text/event-stream')
+      c.header('Cache-Control', 'no-cache')
+      c.header('Connection', 'keep-alive')
+      return c.body(body, status as any)
+    }
+  }
+}
 
 export interface HonoAdapterOptions {
   /**
@@ -95,12 +123,12 @@ export interface HonoAdapterOptions {
    * }
    */
   extractSecurityContext: (c: any) => SecurityContext | Promise<SecurityContext>
-  
+
   /**
    * Database engine type (optional - auto-detected if not provided)
    */
   engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'
-  
+
   /**
    * CORS configuration (optional)
    */
@@ -110,7 +138,7 @@ export interface HonoAdapterOptions {
     allowHeaders?: string[]
     credentials?: boolean
   }
-  
+
   /**
    * API base path (default: '/cubejs-api/v1')
    */
@@ -170,12 +198,6 @@ export function createCubeRoutes(
 
   const app = new Hono()
 
-  const extractSecurityContextWithLocale = async (c: any): Promise<SecurityContext> => {
-    const securityContext = await extractSecurityContext(c)
-    const requestLocale = resolveRequestLocale((header) => c.req.header(header))
-    return withLocaleInSecurityContext(securityContext, requestLocale)
-  }
-
   // Configure CORS if provided
   if (corsConfig) {
     const localeAwareCorsConfig = {
@@ -201,336 +223,32 @@ export function createCubeRoutes(
     })
   }
 
-  /**
-   * POST /cubejs-api/v1/load - Execute queries
-   */
-  app.post(`${basePath}/load`, async (c) => {
-    try {
-      const requestBody = await c.req.json()
-
-      // Handle both direct query and nested query formats
-      const query: SemanticQuery = requestBody.query || requestBody
-
-      // Extract security context using user-provided function
-      const securityContext = await extractSecurityContextWithLocale(c)
-
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return c.json({
-          error: `Query validation failed: ${validation.errors.join(', ')}`
-        }, 400)
-      }
-
-      // Check for cache bypass header (X-Cache-Control: no-cache)
-      const skipCache = c.req.header('x-cache-control') === 'no-cache'
-
-      // Execute multi-cube query (handles both single and multi-cube automatically)
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
-
-      // Return in official Cube.js format
-      return c.json(formatCubeResponse(query, result, semanticLayer))
-
-    } catch (error) {
-      console.error('Query execution error:', error)
-      return c.json({
-        error: error instanceof Error ? error.message : 'Query execution failed'
-      }, 500)
-    }
+  // Framework-agnostic core. The base-context thunk returns the pre-locale
+  // context; the core does the locale merge. Every REST + MCP handler funnels
+  // through here — this adapter only translates the Hono context to a port.
+  const httpHandler = createCubeHttpHandler({
+    semanticLayer,
+    onError: (error) => console.error('Query execution error:', error),
+    mcp
   })
 
-  /**
-   * GET /cubejs-api/v1/load - Execute queries via query string
-   */
-  app.get(`${basePath}/load`, async (c) => {
-    try {
-      const queryParam = c.req.query('query')
-      if (!queryParam) {
-        return c.json({
-          error: 'Query parameter is required'
-        }, 400)
-      }
+  // Per-request base-context thunk: the user's extractSecurityContext closed over
+  // the real Hono context. The core merges the request locale on top.
+  const baseContext = (c: Context) => () => extractSecurityContext(c)
 
-      let query: SemanticQuery
-      try {
-        query = JSON.parse(queryParam)
-      } catch {
-        return c.json({
-          error: 'Invalid JSON in query parameter'
-        }, 400)
-      }
+  // ============================================
+  // REST endpoints (all served via the core)
+  // ============================================
 
-      // Extract security context
-      const securityContext = await extractSecurityContextWithLocale(c)
-
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return c.json({
-          error: `Query validation failed: ${validation.errors.join(', ')}`
-        }, 400)
-      }
-
-      // Check for cache bypass header (X-Cache-Control: no-cache)
-      const skipCache = c.req.header('x-cache-control') === 'no-cache'
-
-      // Execute multi-cube query (handles both single and multi-cube automatically)
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
-
-      // Return in official Cube.js format
-      return c.json(formatCubeResponse(query, result, semanticLayer))
-
-    } catch (error) {
-      console.error('Query execution error:', error)
-      return c.json({
-        error: error instanceof Error ? error.message : 'Query execution failed'
-      }, 500)
-    }
-  })
-
-  /**
-   * POST /cubejs-api/v1/batch - Execute multiple queries in a single request
-   * Optimizes network overhead for dashboards with many portlets
-   */
-  app.post(`${basePath}/batch`, async (c) => {
-    try {
-      const requestBody = await c.req.json()
-      const { queries } = requestBody as { queries: SemanticQuery[] }
-
-      if (!queries || !Array.isArray(queries)) {
-        return c.json({
-          error: 'Request body must contain a "queries" array'
-        }, 400)
-      }
-
-      if (queries.length === 0) {
-        return c.json({
-          error: 'Queries array cannot be empty'
-        }, 400)
-      }
-
-      // Extract security context ONCE (shared across all queries)
-      const securityContext = await extractSecurityContextWithLocale(c)
-
-      // Check for cache bypass header (X-Cache-Control: no-cache)
-      const skipCache = c.req.header('x-cache-control') === 'no-cache'
-
-      // Use shared batch handler (wraps existing single query logic)
-      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer, { skipCache })
-
-      return c.json(batchResult)
-
-    } catch (error) {
-      console.error('Batch execution error:', error)
-      return c.json({
-        error: error instanceof Error ? error.message : 'Batch execution failed'
-      }, 500)
-    }
-  })
-
-  /**
-   * GET /cubejs-api/v1/meta - Get cube metadata
-   * Optimized for fast response times with caching
-   */
-  app.get(`${basePath}/meta`, (c) => {
-    try {
-      // Extract security context (some apps may want to filter cubes by context)
-      // await extractSecurityContext(c) // Available if needed for filtering
-      
-      // Get cached metadata (fast path)
-      const metadata = semanticLayer.getMetadata()
-      
-      return c.json(formatMetaResponse(metadata))
-      
-    } catch (error) {
-      console.error('Metadata error:', error)
-      return c.json({
-        error: error instanceof Error ? error.message : 'Failed to fetch metadata'
-      }, 500)
-    }
-  })
-
-  /**
-   * POST /cubejs-api/v1/sql - Generate SQL without execution (dry run)
-   */
-  app.post(`${basePath}/sql`, async (c) => {
-    try {
-      const query: SemanticQuery = await c.req.json()
-      
-      const securityContext = await extractSecurityContextWithLocale(c)
-      
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return c.json({
-          error: `Query validation failed: ${validation.errors.join(', ')}`
-        }, 400)
-      }
-
-      // For SQL generation, we need at least one cube referenced
-      const firstMember = query.measures?.[0] || query.dimensions?.[0]
-      if (!firstMember) {
-        return c.json({
-          error: 'No measures or dimensions specified'
-        }, 400)
-      }
-
-      const cubeName = firstMember.split('.')[0]
-      
-      // Generate SQL using the semantic layer compiler
-      const sqlResult = await semanticLayer.generateSQL(cubeName, query, securityContext)
-      
-      return c.json(formatSqlResponse(query, sqlResult))
-      
-    } catch (error) {
-      console.error('SQL generation error:', error)
-      return c.json({
-        error: error instanceof Error ? error.message : 'SQL generation failed'
-      }, 500)
-    }
-  })
-
-  /**
-   * GET /cubejs-api/v1/sql - Generate SQL via query string
-   */
-  app.get(`${basePath}/sql`, async (c) => {
-    try {
-      const queryParam = c.req.query('query')
-      if (!queryParam) {
-        return c.json({
-          error: 'Query parameter is required'
-        }, 400)
-      }
-
-      const query: SemanticQuery = JSON.parse(queryParam)
-      const securityContext = await extractSecurityContextWithLocale(c)
-      
-      // Validate query structure and field existence
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return c.json({
-          error: `Query validation failed: ${validation.errors.join(', ')}`
-        }, 400)
-      }
-
-      // For SQL generation, we need at least one cube referenced
-      const firstMember = query.measures?.[0] || query.dimensions?.[0]
-      if (!firstMember) {
-        return c.json({
-          error: 'No measures or dimensions specified'
-        }, 400)
-      }
-
-      const cubeName = firstMember.split('.')[0]
-      
-      // Generate SQL using the semantic layer compiler
-      const sqlResult = await semanticLayer.generateSQL(cubeName, query, securityContext)
-      
-      return c.json(formatSqlResponse(query, sqlResult))
-      
-    } catch (error) {
-      console.error('SQL generation error:', error)
-      return c.json({
-        error: error instanceof Error ? error.message : 'SQL generation failed'
-      }, 500)
-    }
-  })
-
-
-  /**
-   * POST /cubejs-api/v1/dry-run - Validate queries without execution
-   */
-  app.post(`${basePath}/dry-run`, async (c) => {
-    try {
-      const requestBody = await c.req.json()
-      
-      // Handle both direct query and nested query formats
-      const query: SemanticQuery = requestBody.query || requestBody
-      
-      // Extract security context using user-provided function
-      const securityContext = await extractSecurityContextWithLocale(c)
-      
-      // Perform dry-run analysis
-      const result = await handleDryRun(query, securityContext, semanticLayer)
-      
-      return c.json(result)
-      
-    } catch (error) {
-      console.error('Dry-run error:', error)
-      return c.json({
-        error: error instanceof Error ? error.message : 'Dry-run validation failed',
-        valid: false
-      }, 400)
-    }
-  })
-
-  /**
-   * GET /cubejs-api/v1/dry-run - Validate queries via query string
-   */
-  app.get(`${basePath}/dry-run`, async (c) => {
-    try {
-      const queryParam = c.req.query('query')
-      if (!queryParam) {
-        return c.json({
-          error: 'Query parameter is required',
-          valid: false
-        }, 400)
-      }
-
-      const query: SemanticQuery = JSON.parse(queryParam)
-
-      // Extract security context
-      const securityContext = await extractSecurityContextWithLocale(c)
-
-      // Perform dry-run analysis
-      const result = await handleDryRun(query, securityContext, semanticLayer)
-
-      return c.json(result)
-
-    } catch (error) {
-      console.error('Dry-run error:', error)
-      return c.json({
-        error: error instanceof Error ? error.message : 'Dry-run validation failed',
-        valid: false
-      }, 400)
-    }
-  })
-
-  /**
-   * POST /cubejs-api/v1/explain - Get execution plan for a query
-   * Returns normalized EXPLAIN output across PostgreSQL, MySQL, and SQLite
-   */
-  app.post(`${basePath}/explain`, async (c) => {
-    try {
-      const requestBody = await c.req.json()
-
-      // Handle both direct query and nested query formats
-      const query: SemanticQuery = requestBody.query || requestBody
-      const options: ExplainOptions = requestBody.options || {}
-
-      // Extract security context
-      const securityContext = await extractSecurityContextWithLocale(c)
-
-      // Validate query structure
-      const validation = semanticLayer.validateQuery(query)
-      if (!validation.isValid) {
-        return c.json({
-          error: `Query validation failed: ${validation.errors.join(', ')}`
-        }, 400)
-      }
-
-      // Execute EXPLAIN using the semantic layer
-      const explainResult = await semanticLayer.explainQuery(query, securityContext, options)
-
-      return c.json(explainResult)
-
-    } catch (error) {
-      console.error('Explain error:', error)
-      return c.json({
-        error: error instanceof Error ? error.message : 'Explain query failed'
-      }, 500)
-    }
-  })
+  app.post(`${basePath}/load`, (c) => httpHandler.handleLoadPost(createHonoPort(c), baseContext(c)))
+  app.get(`${basePath}/load`, (c) => httpHandler.handleLoadGet(createHonoPort(c), baseContext(c)))
+  app.post(`${basePath}/batch`, (c) => httpHandler.handleBatchPost(createHonoPort(c), baseContext(c)))
+  app.get(`${basePath}/meta`, (c) => httpHandler.handleMetaGet(createHonoPort(c)))
+  app.post(`${basePath}/sql`, (c) => httpHandler.handleSqlPost(createHonoPort(c), baseContext(c)))
+  app.get(`${basePath}/sql`, (c) => httpHandler.handleSqlGet(createHonoPort(c), baseContext(c)))
+  app.post(`${basePath}/dry-run`, (c) => httpHandler.handleDryRunPost(createHonoPort(c), baseContext(c)))
+  app.get(`${basePath}/dry-run`, (c) => httpHandler.handleDryRunGet(createHonoPort(c), baseContext(c)))
+  app.post(`${basePath}/explain`, (c) => httpHandler.handleExplainPost(createHonoPort(c), baseContext(c)))
 
   // ============================================
   // Agent (Agentic AI Notebook) Endpoint
@@ -540,10 +258,14 @@ export function createCubeRoutes(
     /**
      * POST /cubejs-api/v1/agent/chat - Agentic AI notebook chat
      * Streams SSE events as the agent discovers data, executes queries,
-     * and creates visualizations.
+     * and creates visualizations. Inherently transport-bound, so it stays inline.
      */
     app.post(`${basePath}/agent/chat`, (c) =>
-      handleAgentChatRequest(c, agentConfig, semanticLayer, extractSecurityContextWithLocale)
+      handleAgentChatRequest(c, agentConfig, semanticLayer, (ctx) =>
+        Promise.resolve(extractSecurityContext(ctx)).then((base) =>
+          withLocaleFromHeaders(base, (header) => ctx.req.header(header))
+        )
+      )
     )
   }
 
@@ -552,37 +274,14 @@ export function createCubeRoutes(
   // ============================================
 
   if (mcp.enabled !== false) {
-    const mcpResources = buildMcpResources(semanticLayer, mcp.resources)
-    const mcpPrompts = resolveMcpPrompts(mcp.prompts)
-    const mcpInstructions = resolveMcpInstructions(mcp.instructions)
-
     const mcpBasePath = mcp.basePath ?? '/mcp'
 
     /**
      * MCP Streamable HTTP endpoint (JSON-RPC 2.0 + optional SSE)
-     * Implements MCP 2025-11-25 spec
+     * Implements MCP 2025-11-25 spec. POST is dispatched via the core; the
+     * receive-only GET stream and DELETE lifecycle stay inline (transport-bound).
      */
-    app.post(`${mcpBasePath}`, async (c) => {
-      const prep = await prepareMcpPostRequest(c, mcp)
-      if (prep.response) return prep.response
-
-      const rpcRequest = prep.rpcRequest!
-      const wantsStream = clientWantsStream(prep.acceptHeader)
-
-      return dispatchMcpPost(c, rpcRequest, wantsStream, {
-        semanticLayer,
-        extractSecurityContext: (req: any, _res: any) => extractSecurityContextWithLocale(req),
-        rawRequest: c,
-        rawResponse: null,
-        negotiatedProtocol: prep.negotiatedProtocol,
-        resources: mcpResources,
-        prompts: mcpPrompts,
-        instructions: mcpInstructions,
-        appEnabled: !!mcp.app,
-        appConfig: typeof mcp.app === 'object' ? mcp.app : undefined,
-        serverName: mcp.serverName
-      })
-    })
+    app.post(`${mcpBasePath}`, (c) => httpHandler.handleMcpPost(createHonoPort(c), baseContext(c)))
 
     /**
      * DELETE handler for session termination (MCP 2025-11-25)
@@ -644,7 +343,7 @@ export function createCubeRoutes(
  * Convenience function to create routes and mount them on an existing Hono app
  */
 export function mountCubeRoutes(
-  app: Hono, 
+  app: Hono,
   options: HonoAdapterOptions
 ) {
   const cubeRoutes = createCubeRoutes(options)
@@ -654,7 +353,7 @@ export function mountCubeRoutes(
 
 /**
  * Create a complete Hono app with Cube.js routes
- * 
+ *
  * @example
  * const app = createCubeApp({
  *   cubes: [salesCube, employeesCube],
@@ -676,5 +375,3 @@ export function createCubeApp(
 
 // Re-export types for convenience
 export type { SecurityContext, DatabaseExecutor, SemanticQuery, DrizzleDatabase }
-
-
