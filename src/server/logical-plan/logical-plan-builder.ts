@@ -20,6 +20,14 @@ import type { LogicalPlanner } from './logical-planner.js'
 import { hasPostAggregationWindows } from '../measure-classification.js'
 import { resolveCubeReference } from '../cube-utils.js'
 import { t } from '../../i18n/runtime.js'
+import {
+  buildMeasureRefs,
+  buildDimensionRefs,
+  buildTimeDimensionRefs,
+  buildLogicalSchema,
+  buildCTESchema,
+  toCubeRef
+} from './schema-builder.js'
 import type {
   LogicalNode,
   QueryNode,
@@ -28,10 +36,7 @@ import type {
   KeysDeduplication,
   MultiFactMerge,
   MeasureRef,
-  DimensionRef,
-  TimeDimensionRef,
   OrderByRef,
-  CubeRef,
   JoinRef,
   LogicalSchema,
   ColumnRef
@@ -239,7 +244,7 @@ export class LogicalPlanBuilder {
   ): SourceBuildResult {
     const multiFactSource = this.tryBuildMultiFactMergeSource(query, cubes, ctx)
     if (multiFactSource) {
-      const measures = this.buildMeasureRefs(query, cubes)
+      const measures = buildMeasureRefs(query, cubes)
       const classification: MeasureClassification = {
         regular: measures,
         multiplied: [],
@@ -288,21 +293,17 @@ export class LogicalPlanBuilder {
     cubes: Map<string, Cube>,
     query: SemanticQuery
   ): SimpleSource {
-    const measures = this.buildMeasureRefs(query, cubes)
-    const dimensions = this.buildDimensionRefs(query, cubes)
-    const timeDimensions = this.buildTimeDimensionRefs(query, cubes)
-
-    const primaryCubeRef = this.toCubeRef(primaryCube)
+    const primaryCubeRef = toCubeRef(primaryCube)
 
     // Join cubes are already symbolic JoinRefs (emitted by JoinPlanner).
     const joins: JoinRef[] = joinCubes
 
     // Convert pre-aggregation CTEs
     const ctes: CTEPreAggregate[] = preAggregationCTEs.map(cteInfo => {
-      const cubeRef = this.toCubeRef(cteInfo.cube)
+      const cubeRef = toCubeRef(cteInfo.cube)
       return {
         type: 'ctePreAggregate' as const,
-        schema: this.buildCTESchema(cteInfo, cubes),
+        schema: buildCTESchema(cteInfo, cubes),
         cube: cubeRef,
         alias: cteInfo.alias,
         cteAlias: cteInfo.cteAlias,
@@ -317,7 +318,7 @@ export class LogicalPlanBuilder {
     })
 
     // Build source schema
-    const schema: LogicalSchema = { measures, dimensions, timeDimensions }
+    const schema: LogicalSchema = buildLogicalSchema(query, cubes)
 
     return {
       type: 'simpleSource',
@@ -384,10 +385,10 @@ export class LogicalPlanBuilder {
       return null
     }
 
-    const sharedDimensions = this.buildDimensionRefs(query, cubes)
-    const sharedTimeDimensions = this.buildTimeDimensionRefs(query, cubes)
+    const sharedDimensions = buildDimensionRefs(query, cubes)
+    const sharedTimeDimensions = buildTimeDimensionRefs(query, cubes)
     const schema: LogicalSchema = {
-      measures: this.buildMeasureRefs(query, cubes),
+      measures: buildMeasureRefs(query, cubes),
       dimensions: sharedDimensions,
       timeDimensions: sharedTimeDimensions
     }
@@ -755,17 +756,10 @@ export class LogicalPlanBuilder {
     cubes: Map<string, Cube>,
     warnings: QueryWarning[]
   ): QueryNode {
-    const measures = this.buildMeasureRefs(query, cubes)
-    const dimensions = this.buildDimensionRefs(query, cubes)
-    const timeDimensions = this.buildTimeDimensionRefs(query, cubes)
+    const schema: LogicalSchema = buildLogicalSchema(query, cubes)
+    const { measures, dimensions, timeDimensions } = schema
     const orderBy = this.buildOrderByRefs(query)
     const filters = query.filters ?? []
-
-    const schema: LogicalSchema = {
-      measures,
-      dimensions,
-      timeDimensions
-    }
 
     return {
       type: 'query',
@@ -807,55 +801,6 @@ export class LogicalPlanBuilder {
   // Reference builders
   // ---------------------------------------------------------------------------
 
-  private buildMeasureRefs(query: SemanticQuery, cubes: Map<string, Cube>): MeasureRef[] {
-    if (!query.measures) return []
-
-    return query.measures.map(name => {
-      const [cubeName, localName] = name.split('.')
-      const cube = cubes.get(cubeName)
-      if (!cube) throw new Error(t('server.errors.cubeNotFoundForMeasure', { cubeName, measure: name }))
-      return {
-        name,
-        cube: this.toCubeRef(cube),
-        localName
-      }
-    })
-  }
-
-  private buildDimensionRefs(query: SemanticQuery, cubes: Map<string, Cube>): DimensionRef[] {
-    if (!query.dimensions) return []
-
-    return query.dimensions.map(name => {
-      const [cubeName, localName] = name.split('.')
-      const cube = cubes.get(cubeName)
-      if (!cube) throw new Error(t('server.errors.cubeNotFoundForDimension', { cubeName, dimension: name }))
-      return {
-        name,
-        cube: this.toCubeRef(cube),
-        localName
-      }
-    })
-  }
-
-  private buildTimeDimensionRefs(query: SemanticQuery, cubes: Map<string, Cube>): TimeDimensionRef[] {
-    if (!query.timeDimensions) return []
-
-    return query.timeDimensions.map(td => {
-      const [cubeName, localName] = td.dimension.split('.')
-      const cube = cubes.get(cubeName)
-      if (!cube) throw new Error(t('server.errors.cubeNotFoundForTimeDimension', { cubeName, timeDimension: td.dimension }))
-      return {
-        name: td.dimension,
-        cube: this.toCubeRef(cube),
-        localName,
-        granularity: td.granularity,
-        dateRange: td.dateRange,
-        fillMissingDates: td.fillMissingDates,
-        compareDateRange: td.compareDateRange
-      }
-    })
-  }
-
   private buildOrderByRefs(query: SemanticQuery): OrderByRef[] {
     if (!query.order) return []
 
@@ -865,32 +810,4 @@ export class LogicalPlanBuilder {
     }))
   }
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-
-  private toCubeRef(cube: Cube): CubeRef {
-    return { name: cube.name, cube }
-  }
-
-  private buildCTESchema(
-    cteInfo: NonNullable<PhysicalQueryPlan['preAggregationCTEs']>[number],
-    cubes: Map<string, Cube>
-  ): LogicalSchema {
-    const measures: MeasureRef[] = cteInfo.measures.map(name => {
-      const [cubeName, localName] = name.split('.')
-      const cube = cubes.get(cubeName)
-      return {
-        name,
-        cube: { name: cubeName, cube: cube! },
-        localName
-      }
-    })
-
-    return {
-      measures,
-      dimensions: [],
-      timeDimensions: []
-    }
-  }
 }
