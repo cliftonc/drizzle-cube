@@ -1,38 +1,17 @@
 /**
- * Filter Manipulation Utilities for AnalysisBuilder
+ * Comparison date-range helpers for the AnalysisBuilder.
  *
- * Functions for searching, modifying, and removing filters from filter arrays.
- * These handle both simple filters and nested group filters (AND/OR).
+ * Generic filter-tree operations (find a member's date filter, remove a filter
+ * by member) live in the shared filter module. This file keeps only the
+ * comparison-specific business logic (period-over-period range building).
  */
 
 import type { Filter } from '../../../types.js'
 import { parseDateRange, calculatePriorPeriod, formatDateForCube } from '../../../../shared/date-utils.js'
+import { findDateFilterForField, removeFilterForMember } from '../../../shared/filters/index.js'
 
-/**
- * Find date filter for a specific time dimension field
- * Recursively searches filters (including nested and/or groups)
- * Handles both UI format ({type: 'and'/'or', filters: [...]}) and simple filters
- */
-export function findDateFilterForField(
-  filters: Filter[],
-  field: string
-): { dateRange: string | string[] } | undefined {
-  for (const filter of filters) {
-    // Check for UI GroupFilter format: {type: 'and'/'or', filters: [...]}
-    if ('type' in filter && 'filters' in filter) {
-      const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
-      const nested = findDateFilterForField(groupFilter.filters, field)
-      if (nested) return nested
-    } else if ('member' in filter) {
-      // Simple filter with member, operator, dateRange
-      const simple = filter as { member: string; operator?: string; dateRange?: string | string[] }
-      if (simple.member === field && simple.operator === 'inDateRange' && simple.dateRange) {
-        return { dateRange: simple.dateRange }
-      }
-    }
-  }
-  return undefined
-}
+// Re-exported so existing imports via this module stay stable.
+export { findDateFilterForField }
 
 /**
  * Build compareDateRange for a time dimension based on its date filter
@@ -60,28 +39,9 @@ export function buildCompareDateRangeFromFilter(
 }
 
 /**
- * Remove date filter for a specific field from filters array
- * Returns a new array with the filter removed (immutable)
+ * Remove the inDateRange filter for a specific field from a filters array.
+ * Returns a new array with the filter removed (immutable).
  */
 export function removeComparisonDateFilter(filters: Filter[], field: string): Filter[] {
-  return filters.reduce<Filter[]>((acc, filter) => {
-    // Check for UI GroupFilter format: {type: 'and'/'or', filters: [...]}
-    if ('type' in filter && 'filters' in filter) {
-      const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
-      const cleanedSubFilters = removeComparisonDateFilter(groupFilter.filters, field)
-      // Only keep the group if it still has filters
-      if (cleanedSubFilters.length > 0) {
-        acc.push({ type: groupFilter.type, filters: cleanedSubFilters } as Filter)
-      }
-    } else if ('member' in filter) {
-      // Simple filter - skip if it's the date filter for this field
-      const simple = filter as { member: string; operator?: string; dateRange?: string | string[] }
-      if (!(simple.member === field && simple.operator === 'inDateRange')) {
-        acc.push(filter)
-      }
-    } else {
-      acc.push(filter)
-    }
-    return acc
-  }, [])
+  return removeFilterForMember(filters, field, 'inDateRange')
 }

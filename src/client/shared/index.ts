@@ -25,13 +25,15 @@ export type {
 
 // Constants
 export {
-  FILTER_OPERATORS,
   DATE_RANGE_OPTIONS,
   TIME_GRANULARITIES
 } from './types.js'
 
-// Utility functions
+// Filter module (single home for filter operators + manipulation logic)
 export {
+  // Operator metadata
+  FILTER_OPERATORS,
+  getAvailableOperators,
   // Filter type guards
   isSimpleFilter,
   isGroupFilter,
@@ -45,7 +47,11 @@ export {
   createOrFilter,
   // Filter transformation
   transformFiltersForServer,
-  transformFiltersFromServer,
+  transformFiltersFromServer
+} from './filters/index.js'
+
+// Utility functions
+export {
   // Query utilities
   hasQueryContent,
   cleanQuery,
@@ -55,7 +61,6 @@ export {
   getCubeNameFromField,
   getFieldType,
   getFieldTitle,
-  getAvailableOperators,
   getAllFilterableFields,
   // Date range utilities
   convertDateRangeTypeToValue,

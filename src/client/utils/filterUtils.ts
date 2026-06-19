@@ -16,6 +16,13 @@ import type {
   SimpleFilter
 } from '../types.js'
 import { ensureAnalysisConfig } from './configMigration.js'
+import {
+  transformFiltersForServer,
+  validateFilterForCube,
+  extractFilterMembers
+} from '../shared/filters/index.js'
+
+export { validateFilterForCube }
 
 /**
  * Normalize a portlet filter mapping to entry objects.
@@ -149,28 +156,6 @@ export function getApplicableDashboardFilters(
 }
 
 /**
- * Convert GroupFilter format to server format
- * GroupFilter: { type: 'and', filters: [...] }
- * Server format: { and: [...] } or { or: [...] }
- */
-function convertToServerFormat(filter: Filter): any {
-  // Handle GroupFilter format
-  if ('type' in filter && 'filters' in filter) {
-    const groupFilter = filter as GroupFilter
-    const convertedFilters = groupFilter.filters.map(convertToServerFormat)
-
-    if (groupFilter.type === 'and') {
-      return { and: convertedFilters }
-    } else {
-      return { or: convertedFilters }
-    }
-  }
-
-  // Simple filter - return as-is
-  return filter
-}
-
-/**
  * Filter format for merge operation:
  * - 'server': Returns {and: [...]} or {or: [...]} format (for API queries)
  * - 'client': Returns {type: 'and', filters: [...]} format (for UI components)
@@ -204,7 +189,7 @@ export function mergeDashboardAndPortletFilters(
   // Both exist - need to merge with AND logic
   if (format === 'server') {
     // Server format: convert to {and: [...]} structure
-    const allFilters = [...dashboardFilters, ...portletFilters].map(convertToServerFormat)
+    const allFilters = transformFiltersForServer([...dashboardFilters, ...portletFilters])
     return [{
       and: allFilters
     } as any]
@@ -226,55 +211,6 @@ export function mergeDashboardAndPortletFiltersClientFormat(
   portletFilters: Filter[] | undefined
 ): Filter[] | undefined {
   return mergeDashboardAndPortletFilters(dashboardFilters, portletFilters, 'client')
-}
-
-/**
- * Check if a filter field exists in the cube metadata
- * This helps identify filters that might not apply to a specific portlet's data
- * @param filter - The filter to validate
- * @param cubeMeta - Cube metadata to validate against
- * @returns true if the filter field exists in any cube's measures or dimensions
- */
-export function validateFilterForCube(
-  filter: Filter,
-  cubeMeta: CubeMeta | null
-): boolean {
-  if (!cubeMeta || !cubeMeta.cubes) {
-    // If no metadata available, assume filter is valid (fail open)
-    return true
-  }
-
-  // Extract member names from filter recursively
-  const memberNames = extractMemberNamesFromFilter(filter)
-
-  // Check if any of the member names exist in cube metadata
-  return memberNames.some(memberName => {
-    return cubeMeta.cubes.some(cube => {
-      // Check measures
-      const inMeasures = cube.measures?.some(m => m.name === memberName) ?? false
-      // Check dimensions
-      const inDimensions = cube.dimensions?.some(d => d.name === memberName) ?? false
-
-      return inMeasures || inDimensions
-    })
-  })
-}
-
-/**
- * Extract all member names from a filter (handles nested group filters)
- * @param filter - The filter to extract members from
- * @returns Array of member names
- */
-function extractMemberNamesFromFilter(filter: Filter): string[] {
-  if ('member' in filter) {
-    // SimpleFilter
-    return [filter.member]
-  } else if ('type' in filter && 'filters' in filter) {
-    // GroupFilter - recursively extract from nested filters
-    return filter.filters.flatMap(f => extractMemberNamesFromFilter(f))
-  }
-
-  return []
 }
 
 /**
@@ -369,7 +305,7 @@ export function extractDashboardFields(
           })
         }
         if (cubeQuery.filters) {
-          extractFieldsFromFilters(cubeQuery.filters).forEach(field => {
+          extractFilterMembers(cubeQuery.filters).forEach((field: string) => {
             dimensions.add(field)
           })
         }
@@ -398,27 +334,6 @@ export function extractDashboardFields(
   })
 
   return { measures, dimensions, timeDimensions }
-}
-
-/**
- * Extract field names from filters recursively
- * @param filters - Filter array
- * @returns Array of unique field names
- */
-function extractFieldsFromFilters(filters: Filter[]): string[] {
-  const fields: string[] = []
-
-  filters.forEach(filter => {
-    if ('member' in filter) {
-      // SimpleFilter
-      fields.push(filter.member)
-    } else if ('type' in filter && 'filters' in filter) {
-      // GroupFilter - recurse
-      fields.push(...extractFieldsFromFilters(filter.filters))
-    }
-  })
-
-  return [...new Set(fields)] // Return unique fields
 }
 
 /**

@@ -1,162 +1,18 @@
 /**
  * Shared utility functions used across QueryBuilder and AnalysisBuilder
+ *
+ * Filter type guards, manipulation, operator metadata, and server-format
+ * transforms now live in ./filters (the single filter module). This file keeps
+ * query-level and schema/date helpers.
  */
 
-import type { CubeQuery, Filter, SimpleFilter, GroupFilter } from '../types.js'
+import type { CubeQuery } from '../types.js'
 import type { MetaField, MetaResponse } from './types.js'
-import { FILTER_OPERATORS } from './types.js'
-import { cleanQuery, transformFilterFromServer, transformQueryForUIImpl } from './queryTransforms.js'
+import { cleanQuery, transformQueryForUIImpl } from './queryTransforms.js'
+import { transformFiltersForServer, transformFiltersFromServer } from './filters/index.js'
 
 // Re-exported from queryTransforms (its canonical home) to keep import paths stable.
 export { cleanQuery }
-
-// ============================================================================
-// Filter type guards
-// ============================================================================
-
-/**
- * Check if a filter is a simple filter
- */
-export function isSimpleFilter(filter: Filter): filter is SimpleFilter {
-  return 'member' in filter && 'operator' in filter && 'values' in filter
-}
-
-/**
- * Check if a filter is a group filter
- */
-export function isGroupFilter(filter: Filter): filter is GroupFilter {
-  return 'type' in filter && 'filters' in filter
-}
-
-/**
- * Check if a filter is an AND filter
- */
-export function isAndFilter(filter: Filter): filter is GroupFilter {
-  return isGroupFilter(filter) && filter.type === 'and'
-}
-
-/**
- * Check if a filter is an OR filter
- */
-export function isOrFilter(filter: Filter): filter is GroupFilter {
-  return isGroupFilter(filter) && filter.type === 'or'
-}
-
-// ============================================================================
-// Filter manipulation functions
-// ============================================================================
-
-/**
- * Flatten all simple filters from a hierarchical filter structure
- */
-export function flattenFilters(filters: Filter[]): SimpleFilter[] {
-  const simple: SimpleFilter[] = []
-
-  const flatten = (filter: Filter) => {
-    if (isSimpleFilter(filter)) {
-      simple.push(filter)
-    } else if (isGroupFilter(filter)) {
-      filter.filters.forEach(flatten)
-    }
-  }
-
-  filters.forEach(flatten)
-  return simple
-}
-
-/**
- * Count total filters in hierarchical structure
- */
-export function countFilters(filters: Filter[]): number {
-  let count = 0
-
-  const countFilter = (filter: Filter) => {
-    if (isSimpleFilter(filter)) {
-      count++
-    } else if (isGroupFilter(filter)) {
-      filter.filters.forEach(countFilter)
-    }
-  }
-
-  filters.forEach(countFilter)
-  return count
-}
-
-/**
- * Create a new simple filter
- */
-export function createSimpleFilter(member: string, operator: string = 'equals', values: any[] = []): SimpleFilter {
-  return {
-    member,
-    operator: operator as any,
-    values
-  }
-}
-
-/**
- * Create a new AND filter group
- */
-export function createAndFilter(filters: Filter[] = []): GroupFilter {
-  return {
-    type: 'and',
-    filters
-  }
-}
-
-/**
- * Create a new OR filter group
- */
-export function createOrFilter(filters: Filter[] = []): GroupFilter {
-  return {
-    type: 'or',
-    filters
-  }
-}
-
-/**
- * Clean up filters - backward compatible (returns filters unchanged)
- * @deprecated This function is no longer used as we now support filtering on any schema field
- */
-export function cleanupFilters(filters: Filter[], _query?: CubeQuery): Filter[] {
-  return filters || []
-}
-
-// ============================================================================
-// Filter transformation functions
-// ============================================================================
-
-/**
- * Transform filters from new GroupFilter format to legacy server format
- * Server expects { and: [...] } and { or: [...] } instead of { type: 'and', filters: [...] }
- */
-export function transformFiltersForServer(filters: Filter[]): any[] {
-  const transformFilter = (filter: Filter): any => {
-    if (isSimpleFilter(filter)) {
-      return filter
-    } else if (isGroupFilter(filter)) {
-      const transformedSubFilters = filter.filters.map(transformFilter)
-
-      if (filter.type === 'and') {
-        return { and: transformedSubFilters }
-      } else {
-        return { or: transformedSubFilters }
-      }
-    }
-    return filter
-  }
-
-  return filters.map(transformFilter)
-}
-
-/**
- * Transform filters from server/API format to UI format
- * Converts {and: [...]} and {or: [...]} to {type: 'and', filters: [...]} format
- */
-export function transformFiltersFromServer(filters: any[]): Filter[] {
-  return filters
-    .map(transformFilterFromServer)
-    .filter(Boolean) as Filter[] // Remove any null/undefined values
-}
 
 // ============================================================================
 // Query utility functions
@@ -238,24 +94,6 @@ export function getFieldTitle(fieldName: string, schema: MetaResponse | null): s
   const field = findSchemaField(fieldName, schema)
   // Fallback to field name if not found
   return field ? (field.title || field.shortTitle || fieldName) : fieldName
-}
-
-/**
- * Get available operators for a field type
- */
-export function getAvailableOperators(fieldType: string): Array<{operator: string, label: string}> {
-  const operators: Array<{operator: string, label: string}> = []
-
-  for (const [operator, meta] of Object.entries(FILTER_OPERATORS)) {
-    if (meta.fieldTypes.includes(fieldType)) {
-      operators.push({
-        operator,
-        label: meta.label
-      })
-    }
-  }
-
-  return operators
 }
 
 /**

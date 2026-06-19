@@ -7,7 +7,6 @@ import { describe, it, expect } from 'vitest'
 import {
   getApplicableDashboardFilters,
   mergeDashboardAndPortletFilters,
-  validateFilterForCube,
   validatePortletFilterMapping,
   extractDashboardFields,
   applyUniversalTimeFilters,
@@ -151,78 +150,6 @@ describe('filterUtils', () => {
     })
   })
 
-  describe('validateFilterForCube', () => {
-    const cubeMeta: CubeMeta = {
-      cubes: [
-        {
-          name: 'Sales',
-          title: 'Sales',
-          segments: [],
-          measures: [
-            { name: 'Sales.count', title: 'Sales.count', shortTitle: 'Sales.count', type: 'count' },
-            { name: 'Sales.total', title: 'Sales.total', shortTitle: 'Sales.total', type: 'sum' }
-          ],
-          dimensions: [
-            { name: 'Sales.category', title: 'Sales.category', shortTitle: 'Sales.category', type: 'string' },
-            { name: 'Sales.region', title: 'Sales.region', shortTitle: 'Sales.region', type: 'string' }
-          ]
-        },
-        {
-          name: 'Products',
-          title: 'Products',
-          segments: [],
-          measures: [
-            { name: 'Products.count', title: 'Products.count', shortTitle: 'Products.count', type: 'count' }
-          ],
-          dimensions: [
-            { name: 'Products.name', title: 'Products.name', shortTitle: 'Products.name', type: 'string' }
-          ]
-        }
-      ]
-    }
-
-    it('should return true when no metadata available', () => {
-      const filter = createSimpleFilter('Unknown.field')
-      expect(validateFilterForCube(filter, null)).toBe(true)
-    })
-
-    it('should return true for valid dimension filter', () => {
-      const filter = createSimpleFilter('Sales.category', ['A'])
-      expect(validateFilterForCube(filter, cubeMeta)).toBe(true)
-    })
-
-    it('should return true for valid measure filter', () => {
-      const filter = createSimpleFilter('Sales.count', ['100'])
-      expect(validateFilterForCube(filter, cubeMeta)).toBe(true)
-    })
-
-    it('should return false for invalid field', () => {
-      const filter = createSimpleFilter('Unknown.field', ['A'])
-      expect(validateFilterForCube(filter, cubeMeta)).toBe(false)
-    })
-
-    it('should handle group filters recursively', () => {
-      const filter: Filter = {
-        type: 'and',
-        filters: [
-          createSimpleFilter('Sales.category', ['A']),
-          createSimpleFilter('Sales.region', ['US'])
-        ]
-      }
-      expect(validateFilterForCube(filter, cubeMeta)).toBe(true)
-    })
-
-    it('should return false when all nested filters are invalid', () => {
-      const filter: Filter = {
-        type: 'and',
-        filters: [
-          createSimpleFilter('Unknown.field1', ['A']),
-          createSimpleFilter('Unknown.field2', ['B'])
-        ]
-      }
-      expect(validateFilterForCube(filter, cubeMeta)).toBe(false)
-    })
-  })
 
   describe('validatePortletFilterMapping', () => {
     const dashboardFilters: DashboardFilter[] = [

@@ -50,6 +50,11 @@ export {
   // Filter transformation
   transformFiltersForServer,
   transformFiltersFromServer,
+  // Operator metadata
+  getAvailableOperators,
+} from '../../shared/filters/index.js'
+
+export {
   // Query utilities
   hasQueryContent,
   cleanQuery,
@@ -59,7 +64,6 @@ export {
   getCubeNameFromField,
   getFieldType,
   getFieldTitle,
-  getAvailableOperators,
   getAllFilterableFields,
   // Date utilities
   convertDateRangeTypeToValue,
@@ -71,6 +75,8 @@ export {
 import {
   isSimpleFilter,
   isGroupFilter,
+} from '../../shared/filters/index.js'
+import {
   getCubeNameFromField,
   getAllFilterableFields,
 } from '../../shared/utils.js'

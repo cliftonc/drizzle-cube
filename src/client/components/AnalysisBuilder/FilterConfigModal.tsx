@@ -13,12 +13,9 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, ChangeEvent }
 import { getIcon } from '../../icons/index.js'
 import type { SimpleFilter, FilterOperator } from '../../types.js'
 import type { MetaResponse, DateRangeType } from '../../shared/types.js'
+import { DATE_RANGE_OPTIONS } from '../../shared/types.js'
+import { FILTER_OPERATORS, getAvailableOperators } from '../../shared/filters/index.js'
 import {
-  FILTER_OPERATORS,
-  DATE_RANGE_OPTIONS
-} from '../../shared/types.js'
-import {
-  getAvailableOperators,
   convertDateRangeTypeToValue,
   requiresNumberInput
 } from '../../shared/utils.js'
