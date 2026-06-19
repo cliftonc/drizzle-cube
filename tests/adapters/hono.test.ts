@@ -154,9 +154,26 @@ describe('Hono Adapter', () => {
 
     const res = await app.request(req)
     expect(res.status).toBe(400)
-    
+
     const data = await res.json() as any
     expect(data.error).toContain('Query must reference at least one cube')
+  })
+
+  // Hono now shares the core's error shape with Express/Fastify/Next.js:
+  // REST validation/execution errors carry both `error` and `status`.
+  it('should return the uniform { error, status } error shape', async () => {
+    const req = new Request('http://localhost/cubejs-api/v1/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    })
+
+    const res = await app.request(req)
+    expect(res.status).toBe(400)
+
+    const data = await res.json() as any
+    expect(data.error).toContain('Query must reference at least one cube')
+    expect(data.status).toBe(400)
   })
 
   it('should support custom base path', async () => {
