@@ -952,6 +952,8 @@
   "dataBrowser.toolbar.filters": "Filters",
   "dataBrowser.toolbar.columns": "Columns",
   "dataBrowser.toolbar.rows": "{count} rows",
+  "dataBrowser.search.placeholder": "Search rows...",
+  "dataBrowser.search.clear": "Clear search",
   "dataBrowser.sidebar.cubes": "Cubes",
   "dataBrowser.sidebar.searchPlaceholder": "Search...",
   "dataBrowser.sidebar.noCubes": "No cubes found",
