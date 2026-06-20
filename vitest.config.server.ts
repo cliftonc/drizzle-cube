@@ -37,6 +37,7 @@ export default defineConfig({
       '**/dist/**',
       '**/cypress/**',
       '**/.{idea,git,cache,output,temp}/**',
+      'tests/cli/**',
       'tests/client/**',
       'tests/e2e/**'
     ],

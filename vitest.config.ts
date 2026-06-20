@@ -41,9 +41,21 @@ export default defineConfig({
           exclude: [
             '**/node_modules/**',
             '**/dist/**',
+            'tests/cli/**',
             'tests/client/**',
             'tests/e2e/**'
           ],
+        }
+      },
+      {
+        // CLI unit tests - pure Node, no database containers / globalSetup
+        extends: true,
+        test: {
+          name: 'cli',
+          globals: true,
+          environment: 'node',
+          include: ['tests/cli/**/*.{test,spec}.ts'],
+          exclude: ['**/node_modules/**', '**/dist/**']
         }
       },
       // Only include client tests when not running DB-specific tests

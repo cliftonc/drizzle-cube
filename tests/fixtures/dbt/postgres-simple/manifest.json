@@ -1,0 +1,146 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+    "dbt_version": "1.8.0",
+    "adapter_type": "postgres"
+  },
+  "nodes": {
+    "model.jaffle_shop.customers": {
+      "resource_type": "model",
+      "name": "customers",
+      "alias": "customers",
+      "database": "analytics",
+      "schema": "public",
+      "description": "One row per customer.",
+      "config": { "materialized": "table", "meta": {} },
+      "meta": {},
+      "columns": {
+        "id": {
+          "name": "id",
+          "description": "Surrogate key for the customer.",
+          "meta": {}
+        },
+        "full_name": {
+          "name": "full_name",
+          "description": "Customer's full name.",
+          "meta": {}
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "description": "Owning organisation.",
+          "meta": {}
+        }
+      }
+    },
+    "model.jaffle_shop.orders": {
+      "resource_type": "model",
+      "name": "orders",
+      "alias": "orders",
+      "database": "analytics",
+      "schema": "public",
+      "description": "One row per order.",
+      "config": {
+        "materialized": "table",
+        "meta": {
+          "drizzle_cube": {
+            "measures": [
+              {
+                "name": "totalAmount",
+                "type": "sum",
+                "column": "amount",
+                "title": "Total Amount",
+                "description": "Sum of all order amounts."
+              }
+            ]
+          }
+        }
+      },
+      "meta": {},
+      "columns": {
+        "id": {
+          "name": "id",
+          "description": "Surrogate key for the order.",
+          "meta": {}
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "description": "FK to the customer who placed the order.",
+          "meta": {}
+        },
+        "amount": {
+          "name": "amount",
+          "description": "Order total in dollars.",
+          "meta": {}
+        },
+        "is_paid": {
+          "name": "is_paid",
+          "description": "Whether the order has been paid.",
+          "meta": {}
+        },
+        "ordered_at": {
+          "name": "ordered_at",
+          "description": "When the order was placed.",
+          "meta": {}
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "description": "Owning organisation.",
+          "meta": {}
+        }
+      }
+    },
+    "model.jaffle_shop.stg_orders": {
+      "resource_type": "model",
+      "name": "stg_orders",
+      "alias": "stg_orders",
+      "config": { "materialized": "ephemeral", "meta": {} },
+      "meta": {},
+      "columns": {}
+    },
+    "test.jaffle_shop.unique_customers_id.abc111": {
+      "resource_type": "test",
+      "column_name": "id",
+      "attached_node": "model.jaffle_shop.customers",
+      "depends_on": { "nodes": ["model.jaffle_shop.customers"] },
+      "test_metadata": { "name": "unique", "kwargs": { "column_name": "id" } }
+    },
+    "test.jaffle_shop.not_null_customers_id.abc222": {
+      "resource_type": "test",
+      "column_name": "id",
+      "attached_node": "model.jaffle_shop.customers",
+      "depends_on": { "nodes": ["model.jaffle_shop.customers"] },
+      "test_metadata": { "name": "not_null", "kwargs": { "column_name": "id" } }
+    },
+    "test.jaffle_shop.unique_orders_id.abc333": {
+      "resource_type": "test",
+      "column_name": "id",
+      "attached_node": "model.jaffle_shop.orders",
+      "depends_on": { "nodes": ["model.jaffle_shop.orders"] },
+      "test_metadata": { "name": "unique", "kwargs": { "column_name": "id" } }
+    },
+    "test.jaffle_shop.not_null_orders_id.abc444": {
+      "resource_type": "test",
+      "column_name": "id",
+      "attached_node": "model.jaffle_shop.orders",
+      "depends_on": { "nodes": ["model.jaffle_shop.orders"] },
+      "test_metadata": { "name": "not_null", "kwargs": { "column_name": "id" } }
+    },
+    "test.jaffle_shop.relationships_orders_customer_id.abc555": {
+      "resource_type": "test",
+      "column_name": "customer_id",
+      "attached_node": "model.jaffle_shop.orders",
+      "depends_on": {
+        "nodes": ["model.jaffle_shop.customers", "model.jaffle_shop.orders"]
+      },
+      "test_metadata": {
+        "name": "relationships",
+        "kwargs": {
+          "to": "ref('customers')",
+          "field": "id",
+          "column_name": "customer_id"
+        }
+      }
+    }
+  },
+  "sources": {}
+}

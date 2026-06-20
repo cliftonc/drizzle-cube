@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/catalog/v1.json",
+    "dbt_version": "1.8.0"
+  },
+  "nodes": {
+    "model.jaffle_shop.customers": {
+      "metadata": { "type": "BASE TABLE", "schema": "public", "name": "customers" },
+      "columns": {
+        "id": { "type": "integer", "index": 1, "name": "id" },
+        "full_name": { "type": "character varying(255)", "index": 2, "name": "full_name" },
+        "organisation_id": { "type": "integer", "index": 3, "name": "organisation_id" }
+      },
+      "stats": {}
+    },
+    "model.jaffle_shop.orders": {
+      "metadata": { "type": "BASE TABLE", "schema": "public", "name": "orders" },
+      "columns": {
+        "id": { "type": "integer", "index": 1, "name": "id" },
+        "customer_id": { "type": "integer", "index": 2, "name": "customer_id" },
+        "amount": { "type": "numeric(10,2)", "index": 3, "name": "amount" },
+        "is_paid": { "type": "boolean", "index": 4, "name": "is_paid" },
+        "ordered_at": { "type": "timestamp without time zone", "index": 5, "name": "ordered_at" },
+        "organisation_id": { "type": "integer", "index": 6, "name": "organisation_id" }
+      },
+      "stats": {}
+    }
+  },
+  "sources": {}
+}

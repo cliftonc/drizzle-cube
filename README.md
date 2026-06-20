@@ -241,6 +241,27 @@ Then configure your API endpoint in `.drizzle-cube.json` and ask Claude things l
 ### Theming
 Three built-in themes (light, dark, neon) with semantic CSS variables. Add custom themes without changing components.
 
+## CLI
+
+The `drizzle-cube` binary ships a few scaffolding/generation tools:
+
+```bash
+npx drizzle-cube charts list           # List built-in chart types
+npx drizzle-cube charts init --from bar # Scaffold a custom chart plugin
+
+# Generate a Drizzle (Postgres) schema + cubes from local dbt artifacts:
+npx drizzle-cube dbt generate \
+  --manifest target/manifest.json \
+  --catalog  target/catalog.json \
+  --dialect  postgres \
+  --out      ./src/cubes/generated \
+  --security-column organisation_id
+```
+
+See **[dbt generate](./docs/dbt-generate.md)** for the full dbt → Drizzle Cube
+workflow, mapping rules, `meta.drizzle_cube.*` overrides, and `--dry-run` /
+`--check` modes.
+
 ## Documentation
 
 - **[Getting Started](https://www.drizzle-cube.dev/getting-started/)** - Installation and setup
