@@ -209,6 +209,59 @@ describe('normalizeDbtArtifacts', () => {
     expect(dropped?.message).toContain('customer_id')
   })
 
+  it('emits a baseline count with sql referencing a non-security column when the model has no PK', () => {
+    const a = artifacts([
+      model('m.events', 'events', {
+        columns: {
+          event_name: { name: 'event_name', type: 'text', index: 1 },
+          occurred_at: { name: 'occurred_at', type: 'timestamp', index: 2 },
+        },
+      }),
+    ])
+    const { models } = normalizeDbtArtifacts(a, { security: filterSecurity })
+    const count = models[0].measures.find((m) => m.name === 'count')
+    expect(count).toBeDefined()
+    expect(count?.type).toBe('count')
+    expect(count?.sql).toBeDefined()
+    // sql references one of the generated, non-security column property names
+    expect(models[0].columns.map((c) => c.propertyName)).toContain(count?.sql)
+  })
+
+  it('emits a baseline count with sql avoiding the security column when the model has no PK and filter security is set', () => {
+    const a = artifacts([
+      model('m.events', 'events', {
+        columns: {
+          organisation_id: { name: 'organisation_id', type: 'integer', index: 1 },
+          event_name: { name: 'event_name', type: 'text', index: 2 },
+        },
+      }),
+    ])
+    const { models } = normalizeDbtArtifacts(a, { security: tenantSecurity('organisation_id') })
+    const count = models[0].measures.find((m) => m.name === 'count')
+    expect(count).toBeDefined()
+    expect(count?.type).toBe('count')
+    expect(count?.sql).toBeDefined()
+    expect(count?.sql).not.toBe(models[0].securityPropertyName)
+    const referenced = models[0].columns.find((c) => c.propertyName === count?.sql)
+    expect(referenced).toBeDefined()
+    expect(referenced?.sqlName).toBe('event_name')
+  })
+
+  it('emits a baseline count with no sql when a no-PK model has only the security column', () => {
+    const a = artifacts([
+      model('m.events', 'events', {
+        columns: {
+          organisation_id: { name: 'organisation_id', type: 'integer', index: 1 },
+        },
+      }),
+    ])
+    const { models } = normalizeDbtArtifacts(a, { security: tenantSecurity('organisation_id') })
+    const count = models[0].measures.find((m) => m.name === 'count')
+    expect(count).toBeDefined()
+    expect(count?.type).toBe('count')
+    expect(count?.sql).toBeUndefined()
+  })
+
   it('throws IDENTIFIER_COLLISION when two models map to the same cube name', () => {
     const a = artifacts([
       model('m.orders', 'orders', { columns: { id: { name: 'id', type: 'integer', index: 1, meta: { drizzle_cube: { primary_key: true } } } } }),

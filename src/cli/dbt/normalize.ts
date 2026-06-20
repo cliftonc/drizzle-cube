@@ -244,10 +244,11 @@ function firstNonSecurityColumn(
  */
 function buildBaselineMeasure(
   pkColumns: GeneratedColumn[],
+  columns: GeneratedColumn[],
   securityPropertyName: string | undefined,
 ): GeneratedMeasure {
   if (pkColumns.length === 0) {
-    const fallback = firstNonSecurityColumn([], securityPropertyName)
+    const fallback = firstNonSecurityColumn(columns, securityPropertyName)
     return {
       name: 'count',
       title: 'Count',
@@ -448,8 +449,7 @@ function normalizeOne(
 
   const pkSqlNames = resolvePrimaryKeyColumns(model)
   const columns: GeneratedColumn[] = []
-  const columnBySqlName = new Map<string, { column: GeneratedColumn; dimensionType: string }>()
-  let droppedPkSqlNames = new Set<string>()
+  const droppedPkSqlNames = new Set<string>()
   const skippedColumnSqlNames = new Set<string>()
 
   for (const col of Object.values(model.columns).sort((a, b) => {
@@ -470,7 +470,6 @@ function normalizeOne(
       continue
     }
     columns.push(built.column)
-    columnBySqlName.set(col.name, { column: built.column, dimensionType: built.mapping.dimensionType })
   }
 
   // Security cascade: configured filter column must exist + not be skipped.
@@ -494,7 +493,7 @@ function normalizeOne(
   const pkColumns = columns.filter(
     (c) => pkSqlNames.has(c.sqlName) && !droppedPkSqlNames.has(c.sqlName),
   )
-  const baseline = buildBaselineMeasure(pkColumns, securityPropertyName)
+  const baseline = buildBaselineMeasure(pkColumns, columns, securityPropertyName)
   const explicit = parseExplicitMeasures(model, columns)
   warnings.push(...explicit.warnings)
   const measures = [baseline, ...explicit.measures].sort((a, b) => a.name.localeCompare(b.name))

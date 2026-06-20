@@ -156,3 +156,69 @@ None. All targeted gates (`test:cli`, `lint`, `typecheck`, `build:cli`) pass
 clean. The only un-runnable gate (`npm run test` server project) is blocked by
 the sandbox's lack of live Postgres, a pre-existing environmental limitation
 unrelated to this change.
+
+## Fix Cycle 1
+
+Addressed all three issues from the reviewer verdict.
+
+### Fixes
+
+**Important — no-PK baseline `count` measure emitted without `sql`.**
+`src/cli/dbt/normalize.ts` — `buildBaselineMeasure` was calling
+`firstNonSecurityColumn([], securityPropertyName)` for the no-PK branch, passing
+a literal empty array, so the fallback was always `undefined` and the baseline
+`count` measure was emitted with no `sql` property. At query time
+`src/server/builders/measure-builder.ts:411-414` throws
+`Measure 'count' of type 'count' is missing required 'sql' property` for a
+non-calculated, non-post-agg-window measure without `sql`. Fixed by threading
+the full generated `columns` array into `buildBaselineMeasure` and on to
+`firstNonSecurityColumn`, so a no-PK model now gets a baseline `count` whose
+`sql` references the first non-security column (degrading to no `sql` only when
+the model has no non-security columns). The call site in `normalizeOne` now
+passes `columns`.
+
+**Suggestion — dead local in `normalizeOne`.** `src/cli/dbt/normalize.ts` —
+removed the unused `columnBySqlName` map that was only `.set()`-ed in the column
+loop and never read (the only reader is the identically-named map inside
+`parseExplicitMeasures`).
+
+**Nit — `let` → `const`.** `src/cli/dbt/normalize.ts` — `droppedPkSqlNames` is
+only `.add()`-ed, never reassigned; changed `let` to `const`.
+
+### New test coverage
+
+`tests/cli/dbt/normalize.test.ts` — three new cases for the previously
+unexercised no-PK baseline path:
+- no-PK model with non-security columns → baseline `count` carries a `sql`
+  referencing a generated non-security column property name.
+- no-PK model with filter security → baseline `count` `sql` avoids the security
+  column and references another column.
+- no-PK model whose only column is the security column → baseline `count` has
+  no `sql` (degrade path).
+
+### Test / lint / typecheck results
+
+```
+$ npm run typecheck
+> tsc --noEmit && tsc --noEmit -p tsconfig.tests.json && tsc --noEmit -p tsconfig.client.tests.json
+(no errors)
+
+$ npm run lint
+> eslint 'src/**/*.{ts,tsx}' 'tests/**/*.ts' 'perf/**/*.ts'
+(no output — clean)
+
+$ npm run test:cli
+ RUN  v4.1.9 /home/agent/workspace/drizzle-cube
+ Test Files  8 passed (8)
+      Tests  93 passed (93)        # was 90; +3 no-PK baseline cases
+   Duration  1.36s
+
+$ npm run build:cli
+> vite build --config vite.config.cli.ts
+dist/cli/index.cjs  65.33 kB │ gzip: 17.59 kB
+✓ built in 89ms
+```
+
+Full gate (typecheck, lint, test:cli, build:cli) passes clean. The server
+vitest project remains un-runnable in the sandbox (no live Postgres) — a
+pre-existing environmental limitation unrelated to this DB-free `cli` change.
