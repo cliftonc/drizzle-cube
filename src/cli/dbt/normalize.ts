@@ -1,6 +1,6 @@
 import { DbtGenerateError } from './errors.js'
 import { humanizeName, makeUniqueName, toFileName, toPascalCase, toSafeIdentifier } from './naming.js'
-import { getCatalogNode, getModelNodes, getPrimaryKeyCandidates, getRelationshipTests, isMaterializedModel } from './parse-artifacts.js'
+import { getCatalogNode, getColumnTestNames, getModelNodes, getPrimaryKeyCandidates, getRelationshipTests, isMaterializedModel } from './parse-artifacts.js'
 import { mapPostgresCatalogType } from './postgres-types.js'
 import type { DbtCatalogColumn, DbtManifestColumn, ExplicitMeasureConfig, GeneratedColumn, GeneratedMeasure, GeneratedModel, GeneratorConfig, GeneratorWarning, SecurityConfig } from './types.js'
 
@@ -23,10 +23,11 @@ function stringMeta(meta: Record<string, unknown>, key: string): string | undefi
   return typeof meta[key] === 'string' ? meta[key] : undefined
 }
 
-function notNullFromColumn(column: DbtManifestColumn | undefined, primaryKey: boolean): boolean {
+function notNullFromColumn(column: DbtManifestColumn | undefined, attachedTestNames: string[], primaryKey: boolean): boolean {
   if (primaryKey) return true
   const tests = Array.isArray(column?.tests) ? column.tests : []
   return tests.some((test) => test === 'not_null' || (isRecord(test) && Object.prototype.hasOwnProperty.call(test, 'not_null')))
+    || attachedTestNames.includes('not_null')
 }
 
 function sortedCatalogColumns(columns: Record<string, DbtCatalogColumn>): Array<[string, DbtCatalogColumn]> {
@@ -105,6 +106,7 @@ export function normalizeDbtArtifacts(input: {
       const mapping = mapPostgresCatalogType(String(catalogColumn.type ?? manifestColumn?.data_type ?? ''), input.config.typeOverrides)
       const dimensionType = columnConfig?.dimensionType ?? stringMeta(columnMeta, 'dimensionType') as GeneratedColumn['dimensionType'] ?? mapping.dimensionType
       const primary = primaryKey === dbName
+      const attachedTestNames = getColumnTestNames(manifest, uniqueId, dbName)
       const column: GeneratedColumn = {
         dbName,
         propertyName: makeUniqueName(toSafeIdentifier(columnConfig?.propertyName ?? stringMeta(columnMeta, 'propertyName') ?? dbName, 'column'), usedProperties),
@@ -116,7 +118,7 @@ export function normalizeDbtArtifacts(input: {
         drizzleImport: mapping.drizzleImport,
         dimensionType,
         primaryKey: primary,
-        notNull: notNullFromColumn(manifestColumn, primary),
+        notNull: notNullFromColumn(manifestColumn, attachedTestNames, primary),
       }
       columnsByDbName.set(dbName, column)
       return column

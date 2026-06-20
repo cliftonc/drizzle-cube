@@ -36,6 +36,66 @@ describe('dbt normalization', () => {
     expect(() => normalizeDbtArtifacts({ artifacts, dialect: 'postgres', security: { mode: 'column', column: 'missing_org', context: 'orgId' }, config: {} })).toThrow('missing security column missing_org')
   })
 
+  it('detects primary keys and not-null columns from standard manifest test nodes', async () => {
+    const artifacts = await loadDbtArtifacts(`${fixtureDir}/manifest.json`, `${fixtureDir}/catalog.json`)
+    const manifest = JSON.parse(JSON.stringify(artifacts.manifest)) as typeof artifacts.manifest
+    for (const id of ['model.project.customers', 'model.project.orders']) {
+      delete manifest.nodes[id].constraints
+      for (const column of Object.values(manifest.nodes[id].columns ?? {})) delete column.tests
+    }
+    manifest.nodes['test.project.unique_customers_id'] = {
+      unique_id: 'test.project.unique_customers_id',
+      resource_type: 'test',
+      name: 'unique_customers_id',
+      test_metadata: { name: 'unique', kwargs: { column_name: 'id' } },
+      depends_on: { nodes: ['model.project.customers'] },
+      attached_node: 'model.project.customers',
+      column_name: 'id',
+    }
+    manifest.nodes['test.project.not_null_customers_id'] = {
+      unique_id: 'test.project.not_null_customers_id',
+      resource_type: 'test',
+      name: 'not_null_customers_id',
+      test_metadata: { name: 'not_null', kwargs: { column_name: 'id' } },
+      depends_on: { nodes: ['model.project.customers'] },
+      attached_node: 'model.project.customers',
+      column_name: 'id',
+    }
+    manifest.nodes['test.project.unique_orders_id'] = {
+      unique_id: 'test.project.unique_orders_id',
+      resource_type: 'test',
+      name: 'unique_orders_id',
+      test_metadata: { name: 'unique', kwargs: { column_name: 'id' } },
+      depends_on: { nodes: ['model.project.orders'] },
+      attached_node: 'model.project.orders',
+      column_name: 'id',
+    }
+    manifest.nodes['test.project.not_null_orders_id'] = {
+      unique_id: 'test.project.not_null_orders_id',
+      resource_type: 'test',
+      name: 'not_null_orders_id',
+      test_metadata: { name: 'not_null', kwargs: { column_name: 'id' } },
+      depends_on: { nodes: ['model.project.orders'] },
+      attached_node: 'model.project.orders',
+      column_name: 'id',
+    }
+    manifest.nodes['test.project.not_null_orders_organisation_id'] = {
+      unique_id: 'test.project.not_null_orders_organisation_id',
+      resource_type: 'test',
+      name: 'not_null_orders_organisation_id',
+      test_metadata: { name: 'not_null', kwargs: { column_name: 'organisation_id' } },
+      depends_on: { nodes: ['model.project.orders'] },
+      attached_node: 'model.project.orders',
+      column_name: 'organisation_id',
+    }
+
+    const { models } = normalizeDbtArtifacts({ artifacts: { manifest, catalog: artifacts.catalog }, dialect: 'postgres', security: { mode: 'none' }, config: {} })
+    const orders = models.find((model) => model.dbtName === 'orders')!
+    expect(orders.primaryKeyColumn?.dbName).toBe('id')
+    expect(orders.measures.find((measure) => measure.name === 'count')).toMatchObject({ type: 'countDistinct', columnPropertyName: 'id' })
+    expect(orders.columns.find((column) => column.dbName === 'organisation_id')?.notNull).toBe(true)
+  })
+
   it('supports no-security mode', async () => {
     const artifacts = await loadDbtArtifacts(`${fixtureDir}/manifest.json`, `${fixtureDir}/catalog.json`)
     const { models, warnings } = normalizeDbtArtifacts({ artifacts, dialect: 'postgres', security: { mode: 'none' }, config: {} })

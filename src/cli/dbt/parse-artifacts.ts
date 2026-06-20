@@ -83,6 +83,19 @@ function testName(test: unknown): string | undefined {
   return undefined
 }
 
+function testAppliesToModel(node: DbtManifestNode, modelUniqueId: string): boolean {
+  return node.attached_node === modelUniqueId || (node.depends_on?.nodes ?? []).includes(modelUniqueId)
+}
+
+export function getColumnTestNames(manifest: DbtManifest, modelUniqueId: string, columnName: string): string[] {
+  return Object.values(manifest.nodes).flatMap((node) => {
+    if (node.resource_type !== 'test' || !testAppliesToModel(node, modelUniqueId)) return []
+    const attachedColumn = columnFromTest(node)
+    const name = stringFrom(node.test_metadata?.name) ?? testName(node.name)
+    return attachedColumn === columnName && name ? [name] : []
+  })
+}
+
 export function getPrimaryKeyCandidates(manifest: DbtManifest, modelUniqueId: string): string[] {
   const node = manifest.nodes[modelUniqueId]
   if (!node) return []
@@ -97,10 +110,10 @@ export function getPrimaryKeyCandidates(manifest: DbtManifest, modelUniqueId: st
   if (Array.isArray(metaPk)) return metaPk.filter((column): column is string => typeof column === 'string')
 
   return Object.entries(node.columns ?? {})
-    .filter(([, column]) => {
-      const tests = column.tests ?? []
-      if (!Array.isArray(tests)) return false
-      const names = tests.map(testName)
+    .filter(([name, column]) => {
+      const columnTests = Array.isArray(column.tests) ? column.tests.map(testName) : []
+      const attachedTests = getColumnTestNames(manifest, modelUniqueId, name)
+      const names = [...columnTests, ...attachedTests]
       return names.includes('unique') && names.includes('not_null')
     })
     .map(([name]) => name)
