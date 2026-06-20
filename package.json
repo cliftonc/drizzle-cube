@@ -170,6 +170,8 @@
     "build:cli": "vite build --config vite.config.cli.ts",
     "test": "vitest run",
     "test:watch": "vitest --watch",
+    "test:cli": "vitest run --project cli",
+    "test:cli:watch": "vitest --watch --project cli",
     "test:server": "vitest run --config vitest.config.server.ts",
     "test:server:watch": "vitest --watch --config vitest.config.server.ts",
     "test:coverage": "vitest run --coverage",

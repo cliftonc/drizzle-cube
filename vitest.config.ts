@@ -41,9 +41,26 @@ export default defineConfig({
           exclude: [
             '**/node_modules/**',
             '**/dist/**',
+            'tests/cli/**',
             'tests/client/**',
             'tests/e2e/**'
           ],
+        }
+      },
+      {
+        // CLI / generator tests — DB-free. No Docker, no globalSetup, no SQL.
+        // Pure logic over in-memory fixtures; runs in milliseconds. This is the
+        // home for CLI, parser, and codegen tests that never issue a query.
+        extends: true,
+        test: {
+          name: 'cli',
+          globals: true,
+          environment: 'node',
+          include: ['tests/cli/**/*.{test,spec}.ts'],
+          exclude: ['**/node_modules/**', '**/dist/**'],
+          env: {
+            NODE_ENV: 'test'
+          },
         }
       },
       // Only include client tests when not running DB-specific tests
