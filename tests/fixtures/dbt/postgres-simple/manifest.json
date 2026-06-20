@@ -1,0 +1,106 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+    "dbt_version": "1.8.0"
+  },
+  "nodes": {
+    "model.demo.customers": {
+      "unique_id": "model.demo.customers",
+      "name": "customers",
+      "alias": "customers",
+      "schema": "public",
+      "database": "demo",
+      "resource_type": "model",
+      "config": { "materialized": "table" },
+      "relation_name": "customers",
+      "description": "Customer accounts.",
+      "meta": {},
+      "depends_on": { "nodes": [] },
+      "columns": {
+        "id": { "name": "id", "description": "Customer primary key.", "meta": { "drizzle_cube": { "primary_key": true } } },
+        "organisation_id": { "name": "organisation_id", "description": "Tenant scope.", "meta": {} },
+        "name": { "name": "name", "description": "Customer display name.", "meta": {} },
+        "status": { "name": "status", "description": null, "meta": {} },
+        "created_at": { "name": "created_at", "description": null, "meta": {} },
+        "active": { "name": "active", "description": null, "meta": {} }
+      }
+    },
+    "model.demo.orders": {
+      "unique_id": "model.demo.orders",
+      "name": "orders",
+      "alias": "orders",
+      "schema": "public",
+      "database": "demo",
+      "resource_type": "model",
+      "config": { "materialized": "table" },
+      "relation_name": "orders",
+      "description": "Customer orders.",
+      "meta": {
+        "drizzle_cube": {
+          "measures": [
+            { "name": "totalAmount", "type": "sum", "column": "amount", "format": "currency", "description": "Sum of order amounts." }
+          ]
+        }
+      },
+      "depends_on": { "nodes": ["model.demo.customers"] },
+      "columns": {
+        "id": { "name": "id", "description": "Order primary key.", "meta": { "drizzle_cube": { "primary_key": true } } },
+        "organisation_id": { "name": "organisation_id", "description": "Tenant scope.", "meta": {} },
+        "customer_id": { "name": "customer_id", "description": "References customers.id.", "meta": {} },
+        "amount": { "name": "amount", "description": "Order total.", "meta": {} },
+        "status": { "name": "status", "description": null, "meta": {} },
+        "created_at": { "name": "created_at", "description": null, "meta": {} },
+        "active": { "name": "active", "description": null, "meta": {} }
+      }
+    },
+    "model.demo.order_lines": {
+      "unique_id": "model.demo.order_lines",
+      "name": "order_lines",
+      "alias": "order_lines",
+      "schema": "public",
+      "database": "demo",
+      "resource_type": "model",
+      "config": { "materialized": "table" },
+      "relation_name": "order_lines",
+      "description": "Line items for orders (composite primary key).",
+      "meta": {},
+      "depends_on": { "nodes": ["model.demo.orders"] },
+      "columns": {
+        "order_id": { "name": "order_id", "description": "Composite PK part 1.", "meta": { "drizzle_cube": { "primary_key": true } } },
+        "line_number": { "name": "line_number", "description": "Composite PK part 2.", "meta": { "drizzle_cube": { "primary_key": true } } },
+        "organisation_id": { "name": "organisation_id", "description": "Tenant scope.", "meta": {} },
+        "quantity": { "name": "quantity", "description": null, "meta": {} },
+        "sku": { "name": "sku", "description": null, "meta": {} },
+        "amount": { "name": "amount", "description": null, "meta": {} },
+        "created_at": { "name": "created_at", "description": null, "meta": {} }
+      }
+    },
+    "model.demo.ephemeral_rollup": {
+      "unique_id": "model.demo.ephemeral_rollup",
+      "name": "ephemeral_rollup",
+      "alias": "ephemeral_rollup",
+      "schema": "public",
+      "database": "demo",
+      "resource_type": "model",
+      "config": { "materialized": "ephemeral" },
+      "relation_name": "ephemeral_rollup",
+      "description": "An ephemeral rollup that should be skipped.",
+      "meta": {},
+      "depends_on": { "nodes": ["model.demo.orders"] },
+      "columns": {
+        "id": { "name": "id", "description": null, "meta": { "drizzle_cube": { "primary_key": true } } }
+      }
+    },
+    "test.demo.relationships_orders_customer_id": {
+      "unique_id": "test.demo.relationships_orders_customer_id",
+      "resource_type": "test",
+      "test_metadata": {
+        "name": "relationships",
+        "kwargs": { "field": "id" }
+      },
+      "attached_node": "model.demo.orders",
+      "column_name": "\"orders\".\"customer_id\"",
+      "depends_on": { "nodes": ["model.demo.orders", "model.demo.customers"] }
+    }
+  }
+}
