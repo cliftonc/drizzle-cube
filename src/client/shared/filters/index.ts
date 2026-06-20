@@ -11,7 +11,7 @@ export type { Filter, SimpleFilter, GroupFilter, FilterOperator } from '../../ty
 
 // Operator definitions
 export type { FilterOperatorMeta } from './operators.js'
-export { FILTER_OPERATORS, getAvailableOperators } from './operators.js'
+export { FILTER_OPERATORS, getAvailableOperators, normalizeFilterFieldType } from './operators.js'
 
 // Operations
 export {

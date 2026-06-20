@@ -3,7 +3,7 @@ import { useNotebooks, useDeleteNotebook } from '../hooks/useNotebooks'
 import { useNotebookCreate } from './useNotebookCreate'
 import { CreateNotebookModal, NotebookListBody } from './notebookListParts'
 
-const PlusIcon = getIcon('plus')
+const PlusIcon = getIcon('add')
 
 const NOTEBOOK_LIMIT = 20
 
