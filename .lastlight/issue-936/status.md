@@ -1,1 +1,2 @@
-current_phase: executor
+current_phase: guardrails
+guardrails_status: READY
