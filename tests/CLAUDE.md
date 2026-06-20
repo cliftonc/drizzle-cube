@@ -29,6 +29,8 @@ tests/
 │   ├── msw-server.ts            MSW server instance
 │   └── test-utils.tsx           renderWithProviders, createHookWrapper, createQueryClientWrapper
 │
+├── cli/                         DB-free CLI / parser / codegen tests (no Docker, no SQL)
+│
 ├── server/                      Server-side unit/integration tests
 │   ├── ai/                      AI discovery, suggestion, validation
 │   ├── executors/               Database executor tests
@@ -64,9 +66,26 @@ tests/
 
 | Config | Scope | Key settings |
 |--------|-------|-------------|
-| `vitest.config.ts` | Workspace root | Threads pool for DuckDB/Databend compatibility |
+| `vitest.config.ts` | Workspace root | Defines the `server`, `cli`, and `client` projects; threads pool for DuckDB/Databend compatibility |
 | `vitest.config.server.ts` | Server tests | `globalSetup.ts`, uses `TEST_DB_TYPE` env var |
 | `vitest.config.client.ts` | Client tests | jsdom environment, React plugin, MSW setup, 75% coverage threshold |
+
+### Choosing where a test goes: DB-free `cli` vs DB-backed `server`
+
+`vitest.config.ts` defines two Node projects (the live example — read it before adding a test):
+
+- **`cli`** — DB-free. **No Docker, no `globalSetup`, no SQL.** Pure logic over in-memory
+  fixtures: CLI commands, artifact/manifest parsers, code generators, naming/type mapping.
+  Tests live in `tests/cli/`, run in **milliseconds**, and need nothing booted. Run them on
+  their own with `npm run test:cli`.
+- **`server`** — DB-backed. Boots a real engine via `globalSetup.ts` and exercises code that
+  **issues SQL** (compiler, executors, query planning). Slower; needs `npm run test:setup` first.
+
+> Decide by the **subject under test, not where its source lives.** If the code under test never
+> opens a connection or builds SQL, it belongs in `tests/cli/` — do **not** park it in `tests/`
+> root or `tests/server/`, where `globalSetup` forces a Postgres you may not be able to start.
+> Both `server` configs explicitly `exclude: ['tests/cli/**']` so a DB-free test never drags in
+> a container; keep new DB-free logic under `tests/cli/` so it stays out of that path.
 
 ## Test Helpers
 
@@ -96,7 +115,8 @@ tests/
 
 | Command | What it runs |
 |---------|-------------|
-| `npm test` | Default server tests (postgres) |
+| `npm test` | All projects (server + cli + client) via `vitest.config.ts` |
+| `npm run test:cli` | DB-free CLI / parser / codegen tests only (no Docker) |
 | `npm run test:server` | Server tests via `vitest.config.server.ts` |
 | `npm run test:mysql` | Server tests against MySQL |
 | `npm run test:sqlite` | Server tests against SQLite |

@@ -9,7 +9,7 @@ src/server/      # Core semantic layer — compiler, executors, query planning  
 src/client/      # React analytics dashboard components                       → src/client/CLAUDE.md
 src/adapters/    # Framework adapters (Express, Fastify, Hono, Next.js)       → src/adapters/CLAUDE.md
 src/i18n/        # Internationalization runtime and locale files               → src/i18n/CLAUDE.md
-src/cli/         # CLI tool — `npx drizzle-cube charts init|list`
+src/cli/         # CLI tool — `npx drizzle-cube charts init|list`            → src/cli/CLAUDE.md
 src/shared/      # Shared utilities (date-range parsing)
 tests/           # Multi-database testing infrastructure                      → tests/CLAUDE.md
 dev/             # Development environment: example server, Docker Compose, migrations, seed
@@ -61,7 +61,7 @@ Each engine has a dedicated executor in `src/server/executors/`. Auto-detection 
 ## Core Principles
 
 - **Drizzle-first** — all SQL generation uses Drizzle ORM exclusively
-- **TypeScript-only** — strict type checking throughout
+- **TypeScript-only** — strict type checking throughout. A passing `npm run typecheck` is **necessary, not sufficient**: never use `as any`, and never use a type assertion to bypass a local validator or type guard. If a validator exists for a config/artifact shape, route values through it rather than casting around it to silence the compiler.
 - **Security-first** — multi-tenant isolation is mandatory
 - **Modular** — separate entry points: `drizzle-cube/server`, `drizzle-cube/client`, `drizzle-cube/adapters/*`
 - **Cube.js compatible** — API compatibility for easy migration

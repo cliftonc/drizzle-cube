@@ -189,6 +189,21 @@ Drizzle Cube has integration tests that run against real databases with differen
 
 If you have added additional logic to the core library, make sure that all tests complete without any failures.
 
+> [!IMPORTANT]
+> **Not every test needs a database.** `vitest.config.ts` defines a DB-free `cli` project
+> (alongside `server` and `client`). Logic that never opens a connection or builds SQL — CLI
+> commands, manifest/artifact parsers, code generators, naming and type mapping — goes in
+> `tests/cli/`, runs with in-memory fixtures, needs **no Docker and no `globalSetup`**, and
+> finishes in milliseconds:
+>
+> ```bash
+> npm run test:cli   # DB-free CLI / parser / codegen tests — no containers required
+> ```
+>
+> Reserve the `server` / engine projects for code that actually **issues SQL**. Decide by the
+> subject under test, not by where its source file lives — see `tests/CLAUDE.md` and the live
+> project definitions in `vitest.config.ts`.
+
 > [!NOTE]
 > If you have added data types, query features, or new functionality, you need to create additional test cases using the new API to ensure it works properly.
 
