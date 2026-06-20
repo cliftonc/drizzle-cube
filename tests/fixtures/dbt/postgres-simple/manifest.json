@@ -1,0 +1,203 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+    "dbt_version": "1.9.0",
+    "generated_at": "2025-01-01T00:00:00.000Z"
+  },
+  "nodes": {
+    "model.demo.orders": {
+      "resource_type": "model",
+      "name": "orders",
+      "alias": "orders",
+      "schema": "public",
+      "database": "demo",
+      "relation_name": "\"public\".\"orders\"",
+      "description": "Customer orders fact table.",
+      "config": {
+        "materialized": "table"
+      },
+      "meta": {
+        "drizzle_cube": {
+          "measures": [
+            {
+              "name": "totalAmount",
+              "type": "sum",
+              "column": "amount",
+              "title": "Total Amount",
+              "format": "currency"
+            }
+          ]
+        }
+      },
+      "columns": {
+        "id": {
+          "name": "id",
+          "description": "Order identifier.",
+          "meta": {
+            "drizzle_cube": {
+              "primary_key": true
+            }
+          }
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "description": "Tenant isolation column."
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "description": "FK to customers."
+        },
+        "amount": {
+          "name": "amount",
+          "description": "Order total in cents."
+        },
+        "status": {
+          "name": "status",
+          "description": "Order lifecycle status."
+        },
+        "created_at": {
+          "name": "created_at",
+          "description": "Order creation timestamp."
+        },
+        "active": {
+          "name": "active",
+          "description": "Whether the order is active."
+        }
+      }
+    },
+    "model.demo.customers": {
+      "resource_type": "model",
+      "name": "customers",
+      "alias": "customers",
+      "schema": "public",
+      "database": "demo",
+      "relation_name": "\"public\".\"customers\"",
+      "description": "Customer dimension table.",
+      "config": {
+        "materialized": "table"
+      },
+      "meta": {},
+      "columns": {
+        "id": {
+          "name": "id",
+          "description": "Customer identifier.",
+          "meta": {
+            "drizzle_cube": {
+              "primary_key": true
+            }
+          }
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "description": "Tenant isolation column."
+        },
+        "name": {
+          "name": "name",
+          "description": "Customer display name."
+        },
+        "status": {
+          "name": "status",
+          "description": "Customer status."
+        },
+        "created_at": {
+          "name": "created_at",
+          "description": "Customer creation timestamp."
+        }
+      }
+    },
+    "model.demo.order_lines": {
+      "resource_type": "model",
+      "name": "order_lines",
+      "alias": "order_lines",
+      "schema": "public",
+      "database": "demo",
+      "relation_name": "\"public\".\"order_lines\"",
+      "description": "Order line items with a composite primary key.",
+      "config": {
+        "materialized": "table"
+      },
+      "meta": {},
+      "columns": {
+        "order_id": {
+          "name": "order_id",
+          "description": "FK to orders.",
+          "meta": {
+            "drizzle_cube": {
+              "primary_key": true
+            }
+          }
+        },
+        "line_number": {
+          "name": "line_number",
+          "description": "Line number within an order.",
+          "meta": {
+            "drizzle_cube": {
+              "primary_key": true
+            }
+          }
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "description": "Tenant isolation column."
+        },
+        "quantity": {
+          "name": "quantity",
+          "description": "Line item quantity."
+        },
+        "sku": {
+          "name": "sku",
+          "description": "Product SKU."
+        },
+        "created_at": {
+          "name": "created_at",
+          "description": "Line creation timestamp."
+        }
+      }
+    },
+    "model.demo.ephemeral_rollup": {
+      "resource_type": "model",
+      "name": "ephemeral_rollup",
+      "alias": "ephemeral_rollup",
+      "schema": "public",
+      "database": "demo",
+      "relation_name": "\"public\".\"ephemeral_rollup\"",
+      "description": "An ephemeral rollup model that should be skipped.",
+      "config": {
+        "materialized": "ephemeral"
+      },
+      "meta": {},
+      "columns": {
+        "id": {
+          "name": "id",
+          "description": "Rollup identifier."
+        },
+        "total": {
+          "name": "total",
+          "description": "Rollup total."
+        }
+      }
+    },
+    "test.demo.relationships_orders_customer_id": {
+      "resource_type": "test",
+      "name": "relationships_orders_customer_id",
+      "column_name": "customer_id",
+      "attached_node": "model.demo.orders",
+      "depends_on": {
+        "nodes": ["model.demo.orders", "model.demo.customers"]
+      },
+      "test_metadata": {
+        "name": "relationships",
+        "kwargs": {
+          "to": {
+            "name": "to",
+            "value": "ref('customers')"
+          },
+          "field": {
+            "name": "field",
+            "value": "id"
+          }
+        }
+      }
+    }
+  }
+}

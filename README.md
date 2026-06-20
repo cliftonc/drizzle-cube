@@ -241,6 +241,27 @@ Then configure your API endpoint in `.drizzle-cube.json` and ask Claude things l
 ### Theming
 Three built-in themes (light, dark, neon) with semantic CSS variables. Add custom themes without changing components.
 
+## Generate schema and cubes from dbt artifacts
+
+`drizzle-cube dbt generate` reads local dbt `manifest.json` and `catalog.json`
+artifacts and emits a Drizzle `pg-core` schema plus one Drizzle Cube file per
+materialized model. It is a local, artifact-first command — it never clones a
+repo, never runs dbt, and never connects to a database.
+
+```bash
+npx drizzle-cube dbt generate \
+  --manifest target/manifest.json \
+  --catalog target/catalog.json \
+  --dialect postgres \
+  --out ./src/cubes/generated \
+  --security-column organisation_id \
+  --security-context organisationId
+```
+
+v1 is local artifact-only, Postgres-only, and does not clone GitHub repos or
+run dbt. See [`docs/dbt-generate.md`](./docs/dbt-generate.md) for full
+options, supported types, and limitations.
+
 ## Documentation
 
 - **[Getting Started](https://www.drizzle-cube.dev/getting-started/)** - Installation and setup
