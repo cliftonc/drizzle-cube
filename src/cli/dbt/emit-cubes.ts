@@ -17,9 +17,14 @@ function countMeasure(model: GeneratedModel): string {
     return `    count: {\n      name: 'count',\n      type: 'countDistinct',\n      sql: ${model.tableExportName}.${pks[0].propertyName}\n    }`
   }
   if (pks.length > 1) {
-    return `    count: {\n      name: 'count',\n      type: 'count'\n    }`
+    const compositeExpression = pks.map((column) => `\${${model.tableExportName}.${column.propertyName}}`).join(', ')
+    return `    count: {\n      name: 'count',\n      type: 'countDistinct',\n      sql: sql<string>\`concat_ws('|', ${compositeExpression})\`\n    }`
   }
   return `    count: {\n      name: 'count',\n      type: 'count'\n    }`
+}
+
+function hasCompositePrimaryKey(model: GeneratedModel): boolean {
+  return model.columns.filter((column) => column.primaryKey).length > 1
 }
 
 function explicitMeasureLines(model: GeneratedModel): string[] {
@@ -52,6 +57,7 @@ function securityValueHelper(model: GeneratedModel): string {
 
 function cubeContent(model: GeneratedModel, context: EmitContext): string {
   const needsEq = model.security.kind === 'filter'
+  const needsSql = hasCompositePrimaryKey(model)
   const schemaImports = Array.from(new Set([model.tableExportName, ...model.relationships.map((join) => join.targetTableExportName)])).sort().join(', ')
   let sqlBody = `// No cube-level security filter was requested.\n  sql: (): BaseQueryDefinition => ({ from: ${model.tableExportName} })`
   if (model.security.kind === 'filter') {
@@ -62,7 +68,8 @@ function cubeContent(model: GeneratedModel, context: EmitContext): string {
     }
   }
   const measures = [countMeasure(model), ...explicitMeasureLines(model)].join(',\n')
-  const imports = needsEq ? "import { eq } from 'drizzle-orm'\n" : ''
+  const drizzleImports = [needsEq ? 'eq' : undefined, needsSql ? 'sql' : undefined].filter((name): name is string => typeof name === 'string')
+  const imports = drizzleImports.length > 0 ? `import { ${drizzleImports.join(', ')} } from 'drizzle-orm'\n` : ''
 
   return `${context.header}\n\n${imports}import { defineCube, type BaseQueryDefinition, type Cube, type QueryContext } from 'drizzle-cube/server'\nimport { ${schemaImports} } from '../schema'\n${securityValueHelper(model)}\nexport const ${model.cubeExportName}: Cube = defineCube(${quoteStringLiteral(model.cubeName)}, {\n  title: ${quoteStringLiteral(model.title)},\n${descriptionLine(model.description, '  ')}  ${sqlBody},\n  dimensions: {\n${dimensionLines(model)}\n  },\n  measures: {\n${measures}\n  }${joinsBlock(model)}\n})\n`
 }

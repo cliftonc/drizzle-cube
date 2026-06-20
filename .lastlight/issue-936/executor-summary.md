@@ -86,3 +86,42 @@ $ npm run typecheck
 ## Deviations / known issues
 
 - The full `npm run test` gate could not pass because the DB-backed server project requires PostgreSQL on `127.0.0.1:54333`, and Docker Compose is not installed in the sandbox. The new dbt generator path is covered by DB-free CLI tests using in-memory/fixture artifacts.
+
+## Fix Cycle 1
+
+Fixed the reviewer-reported dbt generator issues only:
+
+- Added model-level collision detection in `normalizeDbtArtifacts` for generated table exports, cube names, cube exports, and cube file names. Collisions such as `orders.total` vs `orders_total` now throw before emission/writing, preventing silent overwritten output.
+- Updated cube emission for composite primary keys to keep all `primaryKey: true` dimensions and emit the baseline `count` measure as `type: 'countDistinct'` using a deterministic Postgres `concat_ws` SQL expression.
+- Added DB-free CLI coverage for sanitized model identifier collisions, composite PK normalization, and composite PK countDistinct emission.
+
+Verification:
+
+```text
+$ npm run test:cli -- tests/cli/dbt/normalize.test.ts tests/cli/dbt/emit.test.ts
+Test Files  2 passed (2)
+Tests  10 passed (10)
+```
+
+```text
+$ npm run test:cli && npm run build:cli
+Test Files  8 passed (8)
+Tests  26 passed (26)
+✓ built in 103ms
+```
+
+```text
+$ npm run lint && npm run typecheck
+# passed
+```
+
+Full test gate status:
+
+```text
+$ npm run test
+Failed to setup test databases: DrizzleQueryError: Failed query: delete from "productivity"
+Caused by: Error: connect ECONNREFUSED 127.0.0.1:54333
+Command exited with code 1
+```
+
+`npm run test:setup` also could not start the DB-backed suite because `docker-compose` is not installed in the sandbox (`sh: 1: docker-compose: not found`).

@@ -135,6 +135,27 @@ function buildModel(model: DbtModel, artifacts: ParsedDbtArtifacts, security: Se
   }
 }
 
+function assertNoModelIdentifierCollisions(models: GeneratedModel[]): void {
+  const identifiers = [
+    { label: 'table export', getValue: (model: GeneratedModel) => model.tableExportName },
+    { label: 'cube name', getValue: (model: GeneratedModel) => model.cubeName },
+    { label: 'cube export', getValue: (model: GeneratedModel) => model.cubeExportName },
+    { label: 'file name', getValue: (model: GeneratedModel) => model.fileName }
+  ]
+
+  for (const identifier of identifiers) {
+    const used = new Map<string, string>()
+    for (const model of models) {
+      const value = identifier.getValue(model)
+      const existing = used.get(value)
+      if (existing) {
+        throw new Error(`Generated ${identifier.label} identifier '${value}' collides for dbt models '${existing}' and '${model.dbtName}'. Rename one model or alias before generating.`)
+      }
+      used.set(value, model.dbtName)
+    }
+  }
+}
+
 function addRelationships(models: GeneratedModel[], artifacts: ParsedDbtArtifacts, warnings: GeneratorWarning[]): void {
   const byId = new Map(models.map((model) => [model.uniqueId, model]))
   for (const relationship of artifacts.relationships) {
@@ -155,7 +176,8 @@ export function normalizeDbtArtifacts(artifacts: ParsedDbtArtifacts, options: { 
   const models = artifacts.models
     .map((model) => buildModel(model, artifacts, options.security, warnings))
     .filter((model): model is GeneratedModel => model !== null)
-    .sort((left, right) => left.fileName.localeCompare(right.fileName))
+  assertNoModelIdentifierCollisions(models)
+  models.sort((left, right) => left.fileName.localeCompare(right.fileName))
   addRelationships(models, artifacts, warnings)
   return { models, warnings }
 }

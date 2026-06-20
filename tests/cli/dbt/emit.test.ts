@@ -38,4 +38,38 @@ describe('dbt emitters', () => {
     expect(orders).toContain('orders.amount')
     expect(orders).not.toContain('@/server')
   })
+
+  it('emits a countDistinct measure for composite primary keys', () => {
+    const compositeManifest = {
+      nodes: {
+        'model.demo.order_lines': {
+          resource_type: 'model',
+          name: 'order_lines',
+          alias: 'order_lines',
+          config: { materialized: 'table' },
+          columns: {
+            order_id: { name: 'order_id', meta: { drizzle_cube: { primary_key: true } } },
+            line_number: { name: 'line_number', meta: { drizzle_cube: { primary_key: true } } }
+          },
+          meta: {}
+        }
+      }
+    }
+    const compositeCatalog = {
+      nodes: {
+        'model.demo.order_lines': {
+          columns: {
+            order_id: { name: 'order_id', type: 'integer', index: 0 },
+            line_number: { name: 'line_number', type: 'integer', index: 1 }
+          }
+        }
+      }
+    }
+    const compositeModels = normalizeDbtArtifacts(parseDbtArtifacts(compositeManifest, compositeCatalog), { security: { kind: 'none' } }).models
+    const orderLines = emitCubes(compositeModels, { header: GENERATED_HEADER }).find((file) => file.path === 'cubes/order-lines.ts')?.content ?? ''
+    expect(orderLines).toContain("import { sql } from 'drizzle-orm'")
+    expect(orderLines).toContain("type: 'countDistinct'")
+    expect(orderLines).toContain("sql: sql<string>`concat_ws('|', ${orderLines.orderId}, ${orderLines.lineNumber})`")
+    expect(orderLines.match(/primaryKey: true/g)).toHaveLength(2)
+  })
 })

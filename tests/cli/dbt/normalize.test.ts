@@ -21,6 +21,68 @@ describe('normalizeDbtArtifacts', () => {
     expect(orders?.measures).toMatchObject([{ name: 'totalAmount', type: 'sum', columnName: 'amount' }])
   })
 
+  it('marks every column in a composite primary key', () => {
+    const compositeManifest = {
+      nodes: {
+        'model.demo.order_lines': {
+          resource_type: 'model',
+          name: 'order_lines',
+          alias: 'order_lines',
+          config: { materialized: 'table' },
+          columns: {
+            order_id: { name: 'order_id', meta: { drizzle_cube: { primary_key: true } } },
+            line_number: { name: 'line_number', meta: { drizzle_cube: { primary_key: true } } }
+          },
+          meta: {}
+        }
+      }
+    }
+    const compositeCatalog = {
+      nodes: {
+        'model.demo.order_lines': {
+          columns: {
+            order_id: { name: 'order_id', type: 'integer', index: 0 },
+            line_number: { name: 'line_number', type: 'integer', index: 1 }
+          }
+        }
+      }
+    }
+    const orderLines = normalizeDbtArtifacts(parseDbtArtifacts(compositeManifest, compositeCatalog), { security: { kind: 'none' } })
+      .models.find((model) => model.dbtName === 'order_lines')
+    const primaryKeys = orderLines?.columns.filter((column) => column.primaryKey).map((column) => column.sqlName)
+    expect(primaryKeys).toEqual(['order_id', 'line_number'])
+  })
+
+  it('throws when model-level identifiers collide after sanitization', () => {
+    const collisionManifest = {
+      nodes: {
+        'model.demo.orders_total': {
+          resource_type: 'model',
+          name: 'orders_total',
+          alias: 'orders_total',
+          config: { materialized: 'table' },
+          columns: { organisation_id: { name: 'organisation_id' } },
+          meta: {}
+        },
+        'model.demo.orders.total': {
+          resource_type: 'model',
+          name: 'orders.total',
+          alias: 'orders.total',
+          config: { materialized: 'table' },
+          columns: { organisation_id: { name: 'organisation_id' } },
+          meta: {}
+        }
+      }
+    }
+    const collisionCatalog = {
+      nodes: {
+        'model.demo.orders_total': { columns: { organisation_id: { name: 'organisation_id', type: 'integer', index: 0 } } },
+        'model.demo.orders.total': { columns: { organisation_id: { name: 'organisation_id', type: 'integer', index: 0 } } }
+      }
+    }
+    expect(() => normalizeDbtArtifacts(parseDbtArtifacts(collisionManifest, collisionCatalog), { security: { kind: 'filter', columnName: 'organisation_id', contextProperty: 'organisationId' } })).toThrow(/collide/i)
+  })
+
   it('skips models missing configured security column', () => {
     const result = normalizeDbtArtifacts(parseDbtArtifacts(manifest, catalog), { security: { kind: 'filter', columnName: 'missing_org', contextProperty: 'organisationId' } })
     expect(result.models).toEqual([])
