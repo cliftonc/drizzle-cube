@@ -34,3 +34,33 @@ npm warn Unknown env config "store-dir". This will stop working in the next majo
    Start at  06:02:51
    Duration  1.16s (transform 175ms, setup 0ms, import 301ms, tests 89ms, environment 1ms)
 ```
+
+## Re-review after Fix Cycle 1
+
+VERDICT: APPROVED
+
+## Summary
+The fix addresses the previous blocker: `getPrimaryKeyCandidates()` now combines embedded column tests with attached dbt test nodes, and normalization uses attached `not_null` test nodes when setting generated column nullability. The added regression tests cover the standard manifest-node representation for `unique` + `not_null` primary-key inference and non-primary-key `.notNull()` generation. I did not find new issues in the fix commit.
+
+## Issues
+### Critical
+
+### Important
+
+### Suggestions
+
+### Nits
+
+## Test Results
+```text
+$ npm run typecheck
+> drizzle-cube@0.6.4 typecheck
+> tsc --noEmit && tsc --noEmit -p tsconfig.tests.json && tsc --noEmit -p tsconfig.client.tests.json
+```
+
+```text
+$ npx vitest run tests/cli/dbt/parse-artifacts.test.ts tests/cli/dbt/normalize.test.ts --config .lastlight/issue-936/vitest-cli-rereview.config.ts
+# using a temporary node-only Vitest config to avoid unrelated database global setup
+Test Files  2 passed (2)
+Tests  8 passed (8)
+```
