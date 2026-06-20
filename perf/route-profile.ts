@@ -211,22 +211,43 @@ async function main(): Promise<void> {
     const headers = { 'Content-Type': 'application/json' }
     let cursor = 0
 
-    // One real round-trip through the route handler. Validates status + payload
-    // so we never profile an error path, and returns the row count.
-    const runOnce: RunOnce = async () => {
+    const requestLoadRoute = async (): Promise<Response> => {
       const body = bodies[cursor++ % bodies.length]
       const res = await app.request(`${BASE_PATH}/load`, { method: 'POST', headers, body })
       if (res.status !== 200) {
         throw new Error(`Route returned ${res.status}: ${await res.text()}`)
       }
-      const payload = await res.json() as { results?: Array<{ data?: unknown[] }> }
-      return payload.results?.[0]?.data?.length ?? 0
+      return res
+    }
+
+    const countRowsFromPayload = (payload: unknown): number => {
+      if (typeof payload !== 'object' || payload === null || !('results' in payload) || !Array.isArray(payload.results)) {
+        return 0
+      }
+      const [firstResult] = payload.results
+      if (typeof firstResult !== 'object' || firstResult === null || !('data' in firstResult) || !Array.isArray(firstResult.data)) {
+        return 0
+      }
+      return firstResult.data.length
+    }
+
+    // Parse once outside the measured loop so profiler output excludes client-side
+    // Response.json()/JSON.parse work. The measured run still consumes the body to
+    // force response serialization, but only validates status and byte payload size.
+    const validateSample = async (): Promise<number> => {
+      const text = await (await requestLoadRoute()).text()
+      return countRowsFromPayload(JSON.parse(text))
+    }
+
+    const runOnce: RunOnce = async () => {
+      const text = await (await requestLoadRoute()).text()
+      return text.length
     }
 
     if (options.vary) console.log(`Varying ${queries.length} distinct query shapes (stresses per-shape caches).`)
 
     // Confirm the route works and report the payload size once.
-    const sampleRows = await runOnce()
+    const sampleRows = await validateSample()
     console.log(`\nRoute POST ${BASE_PATH}/load  "${route.id}" — ${route.name}`)
     console.log(`  returns ${sampleRows} rows · iterations=${options.iterations} warmup=${options.warmup} concurrency=${options.concurrency} mode=${options.mode}\n`)
 
