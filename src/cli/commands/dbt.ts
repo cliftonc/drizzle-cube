@@ -214,18 +214,35 @@ function printWarnings(warnings: GeneratorWarning[]): void {
 /** Print a human-readable file summary to stdout. */
 function printSummary(result: {
   files: { path: string }[]
-  write: { created: string[]; updated: string[]; deleted: string[]; conflicts: string[]; drift: boolean }
+  write: { created: string[]; updated: string[]; deleted: string[]; conflicts: string[]; missing: string[]; orphaned: string[]; drift: boolean }
   dryRun: boolean
   check: boolean
 }): void {
   const { write, dryRun, check } = result
   if (check) {
-    if (write.drift) {
-      const parts: string[] = []
-      if (write.updated.length) parts.push(`${write.updated.length} changed/missing`)
-      console.log(`[drizzle-cube] Drift detected: ${parts.join(', ') || 'output differs'}.`)
-    } else {
+    if (!write.drift) {
       console.log('[drizzle-cube] No drift detected. Generated output is up to date.')
+      return
+    }
+    const categories: Array<[string, string[]]> = [
+      ['changed', write.updated],
+      ['missing', write.missing],
+      ['orphaned', write.orphaned],
+    ]
+    const parts: string[] = []
+    for (const [label, paths] of categories) {
+      if (paths.length === 0) continue
+      parts.push(`${paths.length} ${label}`)
+    }
+    console.log(`[drizzle-cube] Drift detected: ${parts.join(', ') || 'output differs'}.`)
+    for (const [label, paths] of categories) {
+      if (paths.length === 0) continue
+      const shown = paths.slice(0, 20)
+      console.log(`[drizzle-cube] ${label}:`)
+      for (const p of shown) console.log(`[drizzle-cube]   ${p}`)
+      if (paths.length > shown.length) {
+        console.log(`[drizzle-cube]   … and ${paths.length - shown.length} more`)
+      }
     }
     return
   }

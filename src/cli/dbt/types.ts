@@ -171,12 +171,21 @@ export interface GeneratedModel {
   securityPropertyName?: string
 }
 
-/** Result of writing generated output to disk. */
+/**
+ * Result of writing generated output to disk. In `--check` and `--dry-run`
+ * modes, `missing` lists expected files absent from disk and `orphaned`
+ * lists on-disk generated files no longer expected, so callers can surface
+ * the full drift picture rather than just a boolean.
+ */
 export interface WriteResult {
   created: string[]
   updated: string[]
   deleted: string[]
   conflicts: string[]
+  /** `--check`/`--dry-run`: expected files absent from disk. */
+  missing: string[]
+  /** `--check`/`--dry-run`: on-disk generated files no longer expected. */
+  orphaned: string[]
   /** True when `--check` found drift (changed/missing/conflicting/orphaned). */
   drift: boolean
 }

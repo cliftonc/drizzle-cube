@@ -8,7 +8,8 @@
  *    non-generated files unless `--force`; delete stale generated files.
  *  - `--dry-run`: write/delete nothing; report planned operations.
  *  - `--check`: write/delete nothing; report drift (changed/missing/
- *    conflicting/orphaned). Removals count as drift.
+ *    conflicting/orphaned) including the affected file paths. Removals
+ *    count as drift.
  */
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { normalize, resolve, sep } from 'node:path'
@@ -140,9 +141,11 @@ async function checkMode(
   const drift = changed.length > 0 || missing.length > 0 || orphaned.length > 0
   return {
     created: [],
-    updated: changed,
+    updated: changed.sort((a, b) => a.localeCompare(b)),
     deleted: [],
     conflicts: [],
+    missing: missing.sort((a, b) => a.localeCompare(b)),
+    orphaned,
     drift,
   }
 }
@@ -168,7 +171,15 @@ async function dryRunMode(
     .filter((p) => !expected.has(p))
     .sort((a, b) => a.localeCompare(b))
 
-  return { created, updated, deleted, conflicts, drift: false }
+  return {
+    created: created.sort((a, b) => a.localeCompare(b)),
+    updated: updated.sort((a, b) => a.localeCompare(b)),
+    deleted,
+    conflicts: conflicts.sort((a, b) => a.localeCompare(b)),
+    missing: [],
+    orphaned: deleted,
+    drift: false,
+  }
 }
 
 /** Normal mode: write/update files and delete stale generated files. */
@@ -203,14 +214,24 @@ async function normalMode(
     deleted.push(stale)
   }
 
-  return { created, updated, deleted, conflicts, drift: false }
+  return {
+    created: created.sort((a, b) => a.localeCompare(b)),
+    updated: updated.sort((a, b) => a.localeCompare(b)),
+    deleted: deleted.sort((a, b) => a.localeCompare(b)),
+    conflicts: conflicts.sort((a, b) => a.localeCompare(b)),
+    missing: [],
+    orphaned: [],
+    drift: false,
+  }
 }
 
 /**
  * Write generated files to `outDir` according to the selected mode.
  *
  * - `--check`: no writes; returns `drift: true` if the expected set differs
- *   from the existing generated set (changed/missing/orphaned).
+ *   from the existing generated set (changed/missing/orphaned). The
+ *   returned `missing`, `orphaned`, and `updated` arrays list the affected
+ *   file paths so callers can surface what drifted.
  * - `--dry-run`: no writes; reports planned creates/updates/deletes/conflicts.
  * - normal: writes files, refuses non-generated conflicts (unless `--force`),
  *   and deletes stale generated-header files no longer in the expected set.

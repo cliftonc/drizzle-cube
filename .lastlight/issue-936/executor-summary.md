@@ -2,142 +2,122 @@
 
 ## What was done
 
-Implemented the `drizzle-cube dbt generate` command per the architect plan:
-a local, artifact-first generator that reads dbt `manifest.json` /
-`catalog.json`, normalizes materialized Postgres models, and emits Drizzle
-`pg-core` schema + one Drizzle Cube file per model + a root `index.ts`. Both
-v2 review fixes are baked in as first-class behaviour: identifier-collision
-detection (throws before emit) and composite-PK handling (every key column
-marked `primaryKey: true` + `countDistinct` baseline, never downgraded to
-`count`).
+Implemented the two observability hardening fixes from the architect plan,
+plus additive test coverage that locks in the warn-and-skip cascade
+conventions. No source modules outside the plan's manifest were touched;
+no fixtures regenerated; the byte-stable emit output is unchanged.
 
-### Files changed
+### Source changes
 
-**Modified existing files:**
-- `src/cli/index.ts` — replaced synchronous router with async `main()` that
-  awaits command handlers, catches errors → stderr + exit 1. Added
-  `dbt generate` route and `dbt` help route; preserved `charts init|list`.
-- `vite.config.cli.ts` — extended `rollupOptions.external` with the Node
-  builtins used by the dbt command (`node:fs/promises`,
-  `node:readline/promises`, `node:process`, `node:os`, plus non-prefixed
-  equivalents).
-- `tsconfig.json` — added self-reference path
-  `"drizzle-cube/server": ["./src/server/index.ts"]` so generated fixture
-  `.ts` files importing `drizzle-cube/server` typecheck against source.
-- `README.md` — added a "Generate schema and cubes from dbt artifacts"
-  section linking to `docs/dbt-generate.md`.
+- `src/cli/dbt/types.ts` — extended `WriteResult` with `missing: string[]`
+  and `orphaned: string[]` fields plus updated JSDoc describing the
+  check/dry-run drift detail.
+- `src/cli/dbt/write-output.ts`:
+  - `checkMode` now returns `missing` (sorted) and `orphaned` (already
+    sorted) and sorts `updated` with `localeCompare`.
+  - `dryRunMode` returns `missing: []`, `orphaned: deleted`, and sorts
+    `created`/`updated`/`conflicts` for deterministic reporting.
+  - `normalMode` returns `missing: []`, `orphaned: []` and sorts all
+    returned arrays with `localeCompare`.
+  - Module + `writeGeneratedOutput` JSDoc updated to describe the new
+    check-mode path reporting.
+- `src/cli/commands/dbt.ts` — `printSummary` check branch now lists the
+  changed/missing/orphaned paths (capped at 20 per category with an
+  `… and N more` overflow line) instead of collapsing to a boolean
+  count. Non-check branches untouched. The `dbtGenerate` throw on
+  `options.check && result.write.drift` is preserved (drift still exits
+  non-zero).
 
-**New source files:**
-- `src/cli/dbt/types.ts` — shared runtime types (SecurityMode,
-  DbtGenerateOptions, GeneratedModel, etc.); no `as any`.
-- `src/cli/dbt/naming.ts` — deterministic toCamelCase/toPascalCase/
-  toKebabCase/humanizeTitle/sanitizeIdentifier/makeUniqueIdentifier
-  (camelCase/PascalCase boundary splitting, reserved-word suffixing).
-- `src/cli/dbt/postgres-types.ts` — `mapPostgresCatalogType` allowlist;
-  returns `null` for unsupported types (no placeholder).
-- `src/cli/dbt/parse-artifacts.ts` — `loadDbtArtifacts` (file I/O) +
-  pure `parseDbtArtifacts` with local `unknown` type guards; extracts
-  relationship tests from both `{name,value}` and direct-map kwargs shapes.
-- `src/cli/dbt/normalize.ts` — filters materialized models, merges
-  manifest/catalog, applies type mapping + warn-and-skip, detects PKs
-  (composite-aware), builds baseline + explicit measures, applies security
-  skip policy, builds `belongsTo` edges, runs collision detection across
-  four namespaces (throws on collision), deterministic sorting.
-- `src/cli/dbt/emit-schema.ts` — emits `schema.ts` (sorted builder imports,
-  pgTable first, `schema` map + `Schema` type).
-- `src/cli/dbt/emit-cubes.ts` — emits `cubes/<file>.ts` + `index.ts`; uses
-  non-generic public types, string `targetCube` joins with direct Drizzle
-  column refs (imports target tables), composite-PK `countDistinct` via
-  `concat_ws` `sql` template, security `where` via `eq` with honest
-  narrowing of the loose `SecurityContext` value.
-- `src/cli/dbt/write-output.ts` — `writeGeneratedOutput` with generated
-  ownership header, path-traversal guard, normal/dry-run/check modes;
-  `--check` compares full expected-vs-existing sets (removals = drift);
-  normal mode deletes stale generated files.
-- `src/cli/dbt/generate.ts` — orchestrates load → normalize → emit → write.
-- `src/cli/commands/dbt.ts` — `dbtGenerate` + `printDbtHelp`; the only
-  module touching `process`/`readline`/console; flag parsing, security-mode
-  resolution (flags/interactive/non-interactive), warning + summary output,
-  `--check` drift → throw.
+### Test changes (all DB-free, `cli` vitest project)
 
-**New documentation:**
-- `docs/dbt-generate.md` — full usage, options, security modes, output
-  layout, PK/measure/join behaviour, `--dry-run`/`--check`, Postgres type
-  support table, and v1 limitations.
-
-**New tests + fixtures (all DB-free, in the `cli` vitest project):**
-- `tests/cli/dbt/naming.test.ts`
-- `tests/cli/dbt/postgres-types.test.ts`
-- `tests/cli/dbt/parse-artifacts.test.ts`
-- `tests/cli/dbt/normalize.test.ts` (includes collision-throw and
-  composite-PK coverage for both v2 fixes)
-- `tests/cli/dbt/emit.test.ts` (byte-for-byte vs fixtures + composite-PK
-  `countDistinct` + non-generic public-type + no-security assertions)
-- `tests/cli/dbt/write-output.test.ts` (temp dirs: normal/conflict/force/
-  stale-delete/dry-run/check-ok/check-changed/check-missing/check-orphan)
-- `tests/cli/dbt/command.test.ts` (required-arg/dialect/security-flag/
-  no-security/dry-run-summary/`--check`-drift validation; mocks generator)
-- `tests/fixtures/dbt/postgres-simple/{manifest,catalog}.json` (orders,
-  customers, order_lines composite-PK model, ephemeral_rollup skipped,
-  relationships test, explicit measure)
-- `tests/fixtures/dbt/postgres-simple/expected/{schema.ts,index.ts,
-  cubes/{orders,customers,order-lines}.ts}` (expected output that
-  typechecks against `drizzle-cube/server` via the tsconfig self-reference)
+- `tests/cli/dbt/write-output.test.ts`:
+  - check-missing case now asserts `result.missing === ['schema.ts']`
+    and `result.orphaned === []`.
+  - check-orphan case now asserts `result.missing === []` and
+    `result.orphaned === ['cubes/removed-model.ts']` (the on-disk
+    expected file is written so only the orphan registers).
+  - New `check mode reports changed, missing, and orphaned paths
+    together` test staging all three drift categories.
+- `tests/cli/dbt/command.test.ts`:
+  - Existing `--check drift` and dry-run mocks updated with the new
+    `missing`/`orphaned` fields so the new check summary branch has a
+    complete `WriteResult` shape.
+  - New `check summary lists changed, missing, and orphaned paths` test
+    (mocked generator) asserting stdout contains the `changed:`/
+    `missing:`/`orphaned:` category headers and the paths `cubes/a.ts`,
+    `cubes/b.ts`, `cubes/c.ts`, and that `dbtGenerate` throws on drift.
+- `tests/cli/dbt/normalize.test.ts`:
+  - Strengthened the existing "drops a relationship when the target
+    model was skipped" test to assert the `RELATIONSHIP_DROPPED`
+    warning's `modelName` and that its message names the skipped target
+    model id.
+  - New "drops a relationship when the source column was skipped
+    (unsupported type)" test — asserts the join is dropped with a
+    `RELATIONSHIP_DROPPED` warning naming `customer_id`, and that the
+    column itself is skipped with `COLUMN_SKIPPED`.
+  - New "skips a model whose security column was skipped (unsupported
+    type)" test — asserts the model is absent from `models` and a
+    `MODEL_SKIPPED` warning mentions the security column and
+    "unsupported type".
 
 ## Test / lint / typecheck results
 
 ```
 $ npm run test:cli
- RUN  v4.1.9
+> drizzle-cube@0.6.4 test:cli
+> vitest run --project cli
+
+ RUN  v4.1.9 /home/agent/workspace/drizzle-cube
+
  Test Files  8 passed (8)
-      Tests  103 passed (103)
-   Duration  1.35s
-
-$ npm run build:cli
-vite v8.0.16 building client environment for production...
-✓ 12 modules transformed.
-dist/cli/index.cjs  73.23 kB │ gzip: 20.33 kB
-✓ built in 85ms
-
-$ npm run lint
-> eslint 'src/**/*.{ts,tsx}' 'tests/**/*.ts' 'perf/**/*.ts'
-(no output — clean)
-
-$ npm run typecheck
-> tsc --noEmit && tsc --noEmit -p tsconfig.tests.json && tsc --noEmit -p tsconfig.client.tests.json
-(no output — clean)
+      Tests  107 passed (107)
+   Start at  13:51:59
+   Duration  1.50s
 ```
 
-The full `npm run test` gate cannot pass in this sandbox (pre-existing
-limitation): the `server` vitest project's `globalSetup` tries to connect to
-Postgres on `127.0.0.1:54333` and fails with `ECONNREFUSED` because
-`docker-compose` is unavailable. This is not caused by the change — the new
-dbt generator code is entirely DB-free and covered by the `cli` project
-(103 passing). The plan and guardrails report document this exact
-limitation; the achievable verification set
-(`test:cli && build:cli && lint && typecheck`) is complete and green.
+(107 tests, up from 103 — +4 new tests.)
 
-## Deviations from the plan / known issues
+```
+$ npm run build:cli
+> drizzle-cube@0.6.4 build:cli
+> vite build --config vite.config.cli.ts
 
-- **Security `where` narrowing**: the public `SecurityContext` is typed
-  `{ [key: string]: unknown }`, so `eq(col, ctx.securityContext.x)` does not
-  satisfy the drizzle `eq` overloads when typechecked against source. The
-  emitter narrows the operand with `as <tsType>` derived from the column's
-  dimension type (`number`/`string`/`boolean`/`Date | string`). This is
-  honest narrowing of a genuinely-loose public type, not
-  validator-silencing — no `as any` is used anywhere in the pipeline.
-- **Join `on` imports**: the plan specified string `targetCube` to avoid
-  circular imports, but the `on` array still references target Drizzle
-  column objects, so the cube file imports the target table from
-  `../schema.js` in addition to its own. This is required for the generated
-  code to compile and resolves the `Cannot find name 'Customers'` error.
-- **PK detection**: v1 detects PKs only from
-  `meta.drizzle_cube.primary_key: true` (the plan's "confident source").
-  dbt `unique`+`not_null` test-based detection was scaffolded but removed as
-  dead code since the portable v1 signal is the meta flag; the fixture uses
-  meta flags. This is explicitly documented in `docs/dbt-generate.md`.
-- **`--config` flag**: parsed and stored on `DbtGenerateOptions` but not
-  fully wired beyond security/naming, as the plan reserved it for v1.
-- **`bigint({ mode: 'number' })` and `date`** were both verified to compile
-  against the installed `drizzle-orm` (`0.45.0`) before committing to them,
-  per the plan's instruction.
+vite v8.0.16 building client environment for production...
+✓ 12 modules transformed.
+dist/cli/index.cjs  74.43 kB │ gzip: 20.62 kB
+✓ built in 106ms
+```
+
+```
+$ npm run lint
+> drizzle-cube@0.6.4 lint
+> eslint 'src/**/*.{ts,tsx}' 'tests/**/*.ts' 'perf/**/*.ts'
+(clean — no errors)
+```
+
+```
+$ npm run typecheck
+> drizzle-cube@0.6.4 typecheck
+> tsc --noEmit && tsc --noEmit -p tsconfig.tests.json && tsc --noEmit -p tsconfig.client.tests.json
+(clean — no errors)
+```
+
+The full `npm test` / `npm run test` gate is not runnable in this sandbox:
+the `server` vitest project's `globalSetup` connects to Postgres on
+`127.0.0.1:54333` and fails with `ECONNREFUSED` (`docker-compose`
+unavailable). This is a pre-existing limitation unrelated to the dbt
+generator, which is entirely DB-free and covered by the `cli` project.
+
+## Deviations from the plan
+
+- The plan's check-orphan test expectation (`missing: []`) required
+  writing the expected `schema.ts` to disk in the test setup; the
+  original test did not stage it, so without the write the file would
+  also register as missing. Adjusted the test fixture accordingly —
+  this matches the plan's intent (assert only the orphan registers).
+- The plan listed three new normalize cascade tests; one of them
+  (join-to-skipped-model) already existed as a passing test, so it was
+  strengthened with the plan's additional assertions rather than
+  duplicated. The other two were added verbatim.
+
+No known issues.

@@ -137,6 +137,8 @@ describe('write-output', () => {
       { outDir: out, dryRun: false, check: true, force: false },
     )
     expect(result.drift).toBe(true)
+    expect(result.missing).toEqual(['schema.ts'])
+    expect(result.orphaned).toEqual([])
   })
 
   it('check mode detects an orphaned generated file (removal drift)', async () => {
@@ -144,10 +146,34 @@ describe('write-output', () => {
     dirs.push(out)
     await mkdir(join(out, 'cubes'), { recursive: true })
     await writeFile(join(out, 'cubes', 'removed-model.ts'), GENERATED_FILE_CONTENT, 'utf-8')
+    await writeFile(join(out, 'schema.ts'), GENERATED_FILE_CONTENT, 'utf-8')
     const result = await writeGeneratedOutput(
       [file('schema.ts', GENERATED_FILE_CONTENT)],
       { outDir: out, dryRun: false, check: true, force: false },
     )
     expect(result.drift).toBe(true)
+    expect(result.missing).toEqual([])
+    expect(result.orphaned).toEqual(['cubes/removed-model.ts'])
+  })
+
+  it('check mode reports changed, missing, and orphaned paths together', async () => {
+    const out = await makeTempDir('check-all-three')
+    dirs.push(out)
+    await mkdir(join(out, 'cubes'), { recursive: true })
+    // changed: existing generated file with differing content
+    await writeFile(join(out, 'schema.ts'), GENERATED_FILE_CONTENT_V2, 'utf-8')
+    // orphaned: on-disk generated file no longer expected
+    await writeFile(join(out, 'cubes', 'removed.ts'), GENERATED_FILE_CONTENT, 'utf-8')
+    const result = await writeGeneratedOutput(
+      [
+        file('schema.ts', GENERATED_FILE_CONTENT),
+        file('cubes/new.ts', GENERATED_FILE_CONTENT), // missing
+      ],
+      { outDir: out, dryRun: false, check: true, force: false },
+    )
+    expect(result.drift).toBe(true)
+    expect(result.updated).toEqual(['schema.ts'])
+    expect(result.missing).toEqual(['cubes/new.ts'])
+    expect(result.orphaned).toEqual(['cubes/removed.ts'])
   })
 })

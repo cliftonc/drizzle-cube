@@ -250,7 +250,78 @@ describe('normalize', () => {
     const { models, warnings } = normalizeDbtArtifacts(artifacts, { security: FILTER_SECURITY })
     const orders = models.find((m) => m.modelName === 'orders')
     expect(orders?.relationships).toHaveLength(0)
-    expect(warnings.some((w) => w.code === 'RELATIONSHIP_DROPPED')).toBe(true)
+    const dropped = warnings.find((w) => w.code === 'RELATIONSHIP_DROPPED')
+    expect(dropped).toBeDefined()
+    expect(dropped?.modelName).toBe('orders')
+    expect(dropped?.message).toContain('model.demo.customers')
+  })
+
+  it('drops a relationship when the source column was skipped (unsupported type)', () => {
+    const artifacts: ParsedDbtArtifacts = {
+      models: {
+        'model.demo.orders': makeModel({
+          id: 'model.demo.orders',
+          name: 'orders',
+          materialization: 'table',
+          columns: {
+            id: { type: 'integer', index: 1, meta: { drizzle_cube: { primary_key: true } } },
+            organisation_id: { type: 'integer', index: 2 },
+            // customer_id has an unsupported type → column skipped → join dropped.
+            customer_id: { type: 'bytea', index: 3 },
+          },
+        }),
+        'model.demo.customers': makeModel({
+          id: 'model.demo.customers',
+          name: 'customers',
+          materialization: 'table',
+          columns: {
+            id: { type: 'integer', index: 1, meta: { drizzle_cube: { primary_key: true } } },
+            organisation_id: { type: 'integer', index: 2 },
+          },
+        }),
+      },
+      relationships: [
+        {
+          sourceModelId: 'model.demo.orders',
+          targetModelId: 'model.demo.customers',
+          sourceColumn: 'customer_id',
+          targetColumn: 'id',
+        },
+      ],
+    }
+    const { models, warnings } = normalizeDbtArtifacts(artifacts, { security: FILTER_SECURITY })
+    const orders = models.find((m) => m.modelName === 'orders')
+    expect(orders?.relationships).toHaveLength(0)
+    expect(warnings.some((w) => w.code === 'COLUMN_SKIPPED' && w.columnName === 'customer_id')).toBe(true)
+    const dropped = warnings.find((w) => w.code === 'RELATIONSHIP_DROPPED')
+    expect(dropped).toBeDefined()
+    expect(dropped?.columnName).toBe('customer_id')
+  })
+
+  it('skips a model whose security column was skipped (unsupported type)', () => {
+    const artifacts: ParsedDbtArtifacts = {
+      models: {
+        'model.demo.orders': makeModel({
+          id: 'model.demo.orders',
+          name: 'orders',
+          materialization: 'table',
+          columns: {
+            id: { type: 'integer', index: 1, meta: { drizzle_cube: { primary_key: true } } },
+            // organisation_id has an unsupported type → skipped → model skipped.
+            organisation_id: { type: 'bytea', index: 2 },
+          },
+        }),
+      },
+      relationships: [],
+    }
+    const { models, warnings } = normalizeDbtArtifacts(artifacts, { security: FILTER_SECURITY })
+    expect(models.map((m) => m.modelName)).not.toContain('orders')
+    const skipped = warnings.find(
+      (w) => w.code === 'MODEL_SKIPPED' && w.modelName === 'orders',
+    )
+    expect(skipped).toBeDefined()
+    expect(skipped?.message).toContain('organisation_id')
+    expect(skipped?.message).toMatch(/unsupported type/)
   })
 
   it('builds a belongsTo relationship when both endpoints resolve', () => {

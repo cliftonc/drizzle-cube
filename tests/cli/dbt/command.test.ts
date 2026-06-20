@@ -123,7 +123,7 @@ describe('dbt command', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     generateFromDbtMock.mockResolvedValue({
       files: [{ path: 'schema.ts' }],
-      write: { created: [], updated: [], deleted: [], conflicts: [], drift: true },
+      write: { created: [], updated: ['schema.ts'], deleted: [], conflicts: [], missing: [], orphaned: [], drift: true },
       warnings: [],
     })
     await expect(
@@ -138,7 +138,7 @@ describe('dbt command', () => {
     vi.spyOn(console, 'log').mockImplementation((...a: unknown[]) => logged.push(a.join(' ')))
     generateFromDbtMock.mockResolvedValue({
       files: [{ path: 'schema.ts' }, { path: 'cubes/things.ts' }],
-      write: { created: ['schema.ts', 'cubes/things.ts'], updated: [], deleted: ['cubes/old.ts'], conflicts: [], drift: false },
+      write: { created: ['schema.ts', 'cubes/things.ts'], updated: [], deleted: ['cubes/old.ts'], conflicts: [], missing: [], orphaned: [], drift: false },
       warnings: [],
     })
     await dbtGenerate(baseArgv({ 'no-security': true, 'dry-run': true }))
@@ -148,5 +148,35 @@ describe('dbt command', () => {
     expect(out).toContain('deleted (stale): 1')
     const opts = generateFromDbtMock.mock.calls[0][0]
     expect(opts.dryRun).toBe(true)
+  })
+
+  it('check summary lists changed, missing, and orphaned paths', async () => {
+    setNonInteractive()
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const logged: string[] = []
+    vi.spyOn(console, 'log').mockImplementation((...a: unknown[]) => logged.push(a.join(' ')))
+    generateFromDbtMock.mockResolvedValue({
+      files: [{ path: 'cubes/a.ts' }, { path: 'cubes/b.ts' }, { path: 'cubes/c.ts' }],
+      write: {
+        created: [],
+        updated: ['cubes/a.ts'],
+        deleted: [],
+        conflicts: [],
+        missing: ['cubes/b.ts'],
+        orphaned: ['cubes/c.ts'],
+        drift: true,
+      },
+      warnings: [],
+    })
+    await expect(
+      dbtGenerate(baseArgv({ 'no-security': true, check: true })),
+    ).rejects.toThrow(/Drift detected/)
+    const out = logged.join('\n')
+    expect(out).toContain('changed:')
+    expect(out).toContain('missing:')
+    expect(out).toContain('orphaned:')
+    expect(out).toContain('cubes/a.ts')
+    expect(out).toContain('cubes/b.ts')
+    expect(out).toContain('cubes/c.ts')
   })
 })
