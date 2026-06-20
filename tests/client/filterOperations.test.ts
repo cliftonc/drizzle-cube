@@ -11,6 +11,7 @@ import {
   // operators
   FILTER_OPERATORS,
   getAvailableOperators,
+  normalizeFilterFieldType,
   // type guards
   isSimpleFilter,
   isGroupFilter,
@@ -75,8 +76,26 @@ describe('shared/filters', () => {
       expect(ops).not.toContain('contains')
     })
 
-    it('returns nothing for an unknown field type', () => {
-      expect(getAvailableOperators('nonsense')).toEqual([])
+    it('treats measure aggregation types as numeric (regression: countDistinct had no operators)', () => {
+      for (const aggType of ['count', 'countDistinct', 'countDistinctApprox', 'sum', 'avg', 'median', 'stddev', 'calculated', 'movingAvg', 'runningTotal', 'rank']) {
+        const ops = names(aggType)
+        expect(ops, aggType).toEqual(expect.arrayContaining(['equals', 'gt', 'between', 'in', 'set']))
+        expect(ops, aggType).not.toContain('contains')
+      }
+    })
+  })
+
+  describe('normalizeFilterFieldType', () => {
+    it('keeps string, time, and boolean field types', () => {
+      expect(normalizeFilterFieldType('string')).toBe('string')
+      expect(normalizeFilterFieldType('time')).toBe('time')
+      expect(normalizeFilterFieldType('boolean')).toBe('boolean')
+    })
+
+    it('collapses numeric and measure aggregation types to number', () => {
+      for (const t of ['number', 'count', 'countDistinct', 'sum', 'avg', 'median', 'stddev', 'calculated', 'lag', 'rows']) {
+        expect(normalizeFilterFieldType(t), t).toBe('number')
+      }
     })
   })
 

@@ -7,8 +7,8 @@ import { Link } from 'react-router-dom'
 import { getIcon } from '@drizzle-cube/client'
 import type { Notebook } from '../types'
 
-const TrashIcon = getIcon('trash')
-const PlusIcon = getIcon('plus')
+const TrashIcon = getIcon('delete')
+const PlusIcon = getIcon('add')
 const SparklesIcon = getIcon('sparkles')
 
 export function NotebooksLoadingGrid() {

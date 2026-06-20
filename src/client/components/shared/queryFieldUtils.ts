@@ -9,6 +9,7 @@ import type { CubeQuery, SimpleFilter } from '../../types.js'
 import type { MetaResponse } from './types.js'
 import { FILTER_OPERATORS } from './types.js'
 import { getFieldType } from '../../shared/utils.js'
+import { normalizeFilterFieldType } from '../../shared/filters/index.js'
 
 /** Collect the set of field names currently selected by a query. */
 export function getSelectedFieldNames(query: CubeQuery): Set<string> {
@@ -25,7 +26,7 @@ export function getSelectedFieldNames(query: CubeQuery): Set<string> {
  */
 export function validateFilterOperator(filter: SimpleFilter, schema: MetaResponse): string[] {
   const errors: string[] = []
-  const fieldType = getFieldType(filter.member, schema)
+  const fieldType = normalizeFilterFieldType(getFieldType(filter.member, schema))
   const operatorMeta = FILTER_OPERATORS[filter.operator]
 
   if (!operatorMeta) {

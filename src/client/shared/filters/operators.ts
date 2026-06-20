@@ -277,13 +277,31 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
 }
 
 /**
+ * Field types that drive a non-numeric operator set. Every other field type —
+ * including all measure aggregation types (count, countDistinct, sum, avg,
+ * median, stddev, calculated, movingAvg, rank, …) — is treated as numeric for
+ * the purpose of operator availability and validation.
+ */
+const NON_NUMERIC_FILTER_FIELD_TYPES = new Set(['string', 'time', 'boolean'])
+
+/**
+ * Normalize a raw field/measure type to the category used by FILTER_OPERATORS.
+ * Measure aggregation types collapse to 'number' so the numeric operators apply
+ * (without this, e.g. a `countDistinct` measure would expose no operators).
+ */
+export function normalizeFilterFieldType(fieldType: string): string {
+  return NON_NUMERIC_FILTER_FIELD_TYPES.has(fieldType) ? fieldType : 'number'
+}
+
+/**
  * Get available operators for a field type
  */
 export function getAvailableOperators(fieldType: string): Array<{ operator: string; label: string }> {
+  const normalized = normalizeFilterFieldType(fieldType)
   const operators: Array<{ operator: string; label: string }> = []
 
   for (const [operator, meta] of Object.entries(FILTER_OPERATORS)) {
-    if (meta.fieldTypes.includes(fieldType)) {
+    if (meta.fieldTypes.includes(normalized)) {
       operators.push({
         operator,
         label: meta.label
