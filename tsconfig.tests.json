@@ -15,6 +15,7 @@
     "tests/client/**/*.ts",
     "tests/client/**/*.tsx",
     "tests/client-setup/**/*.ts",
-    "tests/client-setup/**/*.tsx"
+    "tests/client-setup/**/*.tsx",
+    "tests/fixtures/dbt/**/expected/**"
   ]
 }
