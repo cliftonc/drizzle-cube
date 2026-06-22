@@ -428,7 +428,7 @@
     "react-resizable": "^4.0.0",
     "recharts": "^3.5.1",
     "rollup-plugin-visualizer": "^7.0.0",
-    "snowflake-sdk": "^2.3.4",
+    "snowflake-sdk": "^3.0.0",
     "sql-formatter": "^15.6.6",
     "supertest": "^7.0.0",
     "tailwindcss": "^4.1.12",
