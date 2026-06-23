@@ -8,6 +8,7 @@ import type { PortletConfig } from '../../types.js'
 import DebugModal from '../DebugModal.js'
 import { getIcon } from '../../icons/registry.js'
 import type { PortletDebugDataEntry } from '../../stores/dashboardStore.js'
+import { formatTimeSince } from '../../../shared/date-utils.js'
 
 const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'currentColor' }
 
@@ -65,7 +66,7 @@ function CacheIndicator({ cachedAt }: { cachedAt: string }) {
   return (
     <span
       className="dc:p-1 text-dc-text-muted dc:opacity-40"
-      title={`Cached ${Math.round((Date.now() - new Date(cachedAt).getTime()) / 1000)}s ago`}
+      title={`Cached ${formatTimeSince(cachedAt)}`}
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <ellipse cx="12" cy="5" rx="9" ry="3" />
