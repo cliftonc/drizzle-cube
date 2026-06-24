@@ -212,6 +212,8 @@
     "quality:graph": "npx madge --image dependency-graph.svg --extensions ts,tsx src",
     "perf": "tsx perf/run.ts",
     "perf:seed": "tsx perf/run.ts --seed-only",
+    "perf:profile": "node --expose-gc --import tsx perf/profile.ts",
+    "perf:route": "node --expose-gc --import tsx perf/route-profile.ts",
     "check:exports": "attw --pack . && publint --level error",
     "prepublishOnly": "npm run lint && npm run typecheck && npm run build && npm run check:exports",
     "dev:db:up": "cd dev && docker-compose up -d",
