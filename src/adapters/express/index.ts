@@ -35,7 +35,9 @@ import {
   primeEventId,
   serializeSseEvent,
   extractBearerToken,
-  buildWwwAuthenticateChallenge
+  buildWwwAuthenticateChallenge,
+  validateOriginHeader,
+  originOptionsFromMcp
 } from '../mcp-transport.js'
 import { ensureLocaleHeader } from '../locale.js'
 import { createCubeHttpHandler, withLocaleFromHeaders, type McpHttpPort } from '../core/index.js'
@@ -378,6 +380,11 @@ export function createCubeRouter(
     })
 
     router.get(`${mcpBasePath}`, async (req: Request, res: Response) => {
+      const originValidation = validateOriginHeader(req.headers.origin, originOptionsFromMcp(mcp))
+      if (!originValidation.valid) {
+        return res.status(403).json({ error: originValidation.reason })
+      }
+
       if (mcp.resourceMetadataUrl && !extractBearerToken(req.headers.authorization)) {
         res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
         return res.status(401).json({ error: 'Bearer token required' })
@@ -408,6 +415,11 @@ export function createCubeRouter(
      * Clients SHOULD send DELETE to terminate sessions
      */
     router.delete(`${mcpBasePath}`, (_req: Request, res: Response) => {
+      const originValidation = validateOriginHeader(_req.headers.origin, originOptionsFromMcp(mcp))
+      if (!originValidation.valid) {
+        return res.status(403).json({ error: originValidation.reason })
+      }
+
       if (mcp.resourceMetadataUrl && !extractBearerToken(_req.headers.authorization)) {
         res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
         return res.status(401).json({ error: 'Bearer token required' })

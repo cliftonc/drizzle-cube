@@ -163,6 +163,44 @@ describe('createCubeHttpHandler — MCP POST core', () => {
     expect((port.sent[0] as SentJson).status).toBe(403)
   })
 
+  // Regression for GHSA-ch89-j64x-45pq: the DEFAULT config (no allowedOrigins) must
+  // reject a foreign browser Origin — the exact DNS-rebinding vector from the advisory.
+  it('rejects a foreign Origin under the DEFAULT config (GHSA-ch89-j64x-45pq)', async () => {
+    const handler = createCubeHttpHandler({ semanticLayer: createStubSemanticLayer(), onError: vi.fn() })
+    const port = createFakeMcpPort({
+      headers: { accept: ACCEPT_BOTH, origin: 'https://evil.example' },
+      body: jsonRpc('tools/list', {})
+    })
+
+    await handler.handleMcpPost(port, getBaseSC)
+
+    expect((port.sent[0] as SentJson).status).toBe(403)
+  })
+
+  it('allows a no-Origin (server-to-server) request under the DEFAULT config', async () => {
+    const handler = createCubeHttpHandler({ semanticLayer: createStubSemanticLayer(), onError: vi.fn() })
+    const port = createFakeMcpPort({
+      headers: { accept: ACCEPT_BOTH },
+      body: jsonRpc('tools/list', {})
+    })
+
+    await handler.handleMcpPost(port, getBaseSC)
+
+    expect((port.sent[0] as SentJson).status).toBe(200)
+  })
+
+  it('allows a loopback browser Origin under the DEFAULT config', async () => {
+    const handler = createCubeHttpHandler({ semanticLayer: createStubSemanticLayer(), onError: vi.fn() })
+    const port = createFakeMcpPort({
+      headers: { accept: ACCEPT_BOTH, origin: 'http://localhost:3000' },
+      body: jsonRpc('tools/list', {})
+    })
+
+    await handler.handleMcpPost(port, getBaseSC)
+
+    expect((port.sent[0] as SentJson).status).toBe(200)
+  })
+
   it('requires a Bearer token (401 + WWW-Authenticate) when resourceMetadataUrl is set', async () => {
     const handler = createCubeHttpHandler({
       semanticLayer: createStubSemanticLayer(),

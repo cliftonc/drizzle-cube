@@ -426,4 +426,43 @@ describe('Express Adapter', () => {
       })
     }).toThrow('At least one cube must be provided')
   })
+
+  // MCP Origin validation (GHSA-ch89-j64x-45pq). Default config (no allowedOrigins)
+  // must reject foreign browser origins on every /mcp method while still admitting
+  // server-to-server (no-Origin) clients.
+  describe('MCP Origin validation', () => {
+    const rpc = { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }
+
+    it('rejects POST /mcp from a foreign origin with 403', async () => {
+      await request(app)
+        .post('/mcp')
+        .set('Accept', 'application/json, text/event-stream')
+        .set('Origin', 'https://evil.example')
+        .send(rpc)
+        .expect(403)
+    })
+
+    it('rejects GET /mcp from a foreign origin with 403', async () => {
+      await request(app)
+        .get('/mcp')
+        .set('Origin', 'https://evil.example')
+        .expect(403)
+    })
+
+    it('rejects DELETE /mcp from a foreign origin with 403', async () => {
+      await request(app)
+        .delete('/mcp')
+        .set('Origin', 'https://evil.example')
+        .expect(403)
+    })
+
+    it('allows POST /mcp from a server-to-server client (no Origin)', async () => {
+      const response = await request(app)
+        .post('/mcp')
+        .set('Accept', 'application/json')
+        .send(rpc)
+        .expect(200)
+      expect(response.body.result.tools).toBeDefined()
+    })
+  })
 })

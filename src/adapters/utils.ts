@@ -737,10 +737,17 @@ export interface MCPOptions {
   /** Base path for MCP endpoints (default: '/mcp') */
   basePath?: string
   /**
-   * Allowed origins for MCP requests (for Origin header validation per MCP 2025-11-25).
-   * If not provided, all origins are allowed (permissive mode).
-   * Set this to restrict access to specific origins for production security.
-   * Example: ['http://localhost:3000', 'https://myapp.com']
+   * Allowed origins for MCP requests (Origin header validation per MCP 2025-11-25,
+   * mitigating DNS rebinding).
+   *
+   * Default (when omitted): admit loopback origins (localhost / 127.x / [::1]) plus
+   * non-browser / server-to-server clients that send no Origin header (e.g. the Claude
+   * MCP connector, curl); every other browser Origin is rejected with 403.
+   *
+   * If a **browser front-end** calls `/mcp`, you MUST list its origin here to allow it,
+   * e.g. ['https://app.example.com']. Include the wildcard '*' to allow ALL origins
+   * (permissive mode — discouraged; prefer exact origins and/or {@link resourceMetadataUrl}
+   * auth as the primary control for public deployments).
    */
   allowedOrigins?: string[]
   /**
@@ -777,6 +784,11 @@ export interface MCPOptions {
    * When set, MCP endpoints require a Bearer token in the Authorization header.
    * Unauthenticated requests receive 401 with WWW-Authenticate pointing to this URL.
    * Token validation is the responsibility of extractSecurityContext.
+   *
+   * Strongly recommended for any public deployment: auth is the primary access control
+   * for `/mcp`, while {@link allowedOrigins} validation is defense-in-depth against
+   * browser-driven (DNS-rebinding) requests. The Claude MCP connector supports the
+   * OAuth 2.1 / PRM flow this enables.
    */
   resourceMetadataUrl?: string
   /**

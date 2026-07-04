@@ -25,6 +25,7 @@ import {
   wantsEventStream,
   validateAcceptHeader,
   validateOriginHeader,
+  originOptionsFromMcp,
   extractBearerToken,
   buildWwwAuthenticateChallenge,
   MCP_SESSION_ID_HEADER,
@@ -94,7 +95,7 @@ export function createMcpPostHandler(
     // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
     const originValidation = validateOriginHeader(
       port.getHeader('origin'),
-      mcp.allowedOrigins ? { allowedOrigins: mcp.allowedOrigins } : {}
+      originOptionsFromMcp(mcp)
     )
     if (!originValidation.valid) {
       return port.send(403, buildJsonRpcError(null, -32600, originValidation.reason))

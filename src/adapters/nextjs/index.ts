@@ -39,7 +39,9 @@ import {
 } from '../utils.js'
 import {
   extractBearerToken,
-  buildWwwAuthenticateChallenge
+  buildWwwAuthenticateChallenge,
+  validateOriginHeader,
+  originOptionsFromMcp
 } from '../mcp-transport.js'
 import {
   type ApplyCors,
@@ -708,6 +710,15 @@ export function createMcpRpcHandler(
         { error: 'Bearer token required' },
         { status: 401, headers: { 'WWW-Authenticate': buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl) } }
       )
+    }
+
+    // Origin validation for the GET stream / DELETE lifecycle (MCP 2025-11-25).
+    // POST is validated inside handleMcpPost, so it is covered separately below.
+    if (request.method === 'DELETE' || request.method === 'GET') {
+      const originValidation = validateOriginHeader(request.headers.get('origin'), originOptionsFromMcp(mcp))
+      if (!originValidation.valid) {
+        return NextResponse.json({ error: originValidation.reason }, { status: 403 })
+      }
     }
 
     // Handle DELETE for session termination (MCP 2025-11-25)
