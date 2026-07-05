@@ -642,6 +642,43 @@ describe('Next.js Adapter', () => {
       const data = await response.json() as any
       expect(data.result.prompts.some((prompt: any) => prompt.name === 'custom-prompt')).toBe(true)
     })
+
+    // Origin validation (GHSA-ch89-j64x-45pq). Default config (no allowedOrigins) must
+    // reject foreign browser origins on every /mcp method. createMockNextRequest defaults
+    // to a loopback Origin (http://localhost:3000), so the un-overridden requests exercise
+    // the allow path.
+    it('rejects POST /mcp from a foreign origin with 403', async () => {
+      const handler = createMcpRpcHandler(adapterOptions)
+      const request = createMockNextRequest(
+        'POST',
+        { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+        undefined,
+        { Origin: 'https://evil.example', Accept: 'application/json, text/event-stream' }
+      )
+      expect((await handler(request)).status).toBe(403)
+    })
+
+    it('rejects GET /mcp from a foreign origin with 403', async () => {
+      const handler = createMcpRpcHandler(adapterOptions)
+      const request = createMockNextRequest('GET', undefined, undefined, { Origin: 'https://evil.example' })
+      expect((await handler(request)).status).toBe(403)
+    })
+
+    it('rejects DELETE /mcp from a foreign origin with 403', async () => {
+      const handler = createMcpRpcHandler(adapterOptions)
+      const request = createMockNextRequest('DELETE', undefined, undefined, { Origin: 'https://evil.example' })
+      expect((await handler(request)).status).toBe(403)
+    })
+
+    // Note: the GET allow path builds an SSE stream via `new NextResponse(stream)`, which
+    // the next/server mock in this suite does not stub — so the loopback allow path is
+    // asserted via DELETE below (405 = passed origin validation). Foreign GET is checked
+    // above and returns 403 before the stream is ever constructed.
+    it('passes origin validation for a loopback DELETE (405, not 403)', async () => {
+      const handler = createMcpRpcHandler(adapterOptions)
+      const request = createMockNextRequest('DELETE')
+      expect((await handler(request)).status).toBe(405)
+    })
   })
 
   // Skip batch handler tests on DuckDB due to parallel query execution
