@@ -497,6 +497,53 @@ describe('Fastify Adapter', () => {
     expect(data.error).toContain('empty')
   })
 
+  // MCP Origin validation (GHSA-ch89-j64x-45pq). Default config (no allowedOrigins)
+  // must reject foreign browser origins on every /mcp method while still admitting
+  // server-to-server (no-Origin) clients.
+  describe('MCP Origin validation', () => {
+    const rpc = { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }
+    const bothAccept = 'application/json, text/event-stream'
+
+    it('rejects POST /mcp from a foreign origin with 403', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/mcp',
+        headers: { Accept: bothAccept, Origin: 'https://evil.example' },
+        payload: rpc
+      })
+      expect(response.statusCode).toBe(403)
+    })
+
+    it('rejects GET /mcp from a foreign origin with 403', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/mcp',
+        headers: { Origin: 'https://evil.example' }
+      })
+      expect(response.statusCode).toBe(403)
+    })
+
+    it('rejects DELETE /mcp from a foreign origin with 403', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: '/mcp',
+        headers: { Origin: 'https://evil.example' }
+      })
+      expect(response.statusCode).toBe(403)
+    })
+
+    it('allows POST /mcp from a server-to-server client (no Origin)', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/mcp',
+        headers: { Accept: 'application/json' },
+        payload: rpc
+      })
+      expect(response.statusCode).toBe(200)
+      expect(JSON.parse(response.payload).result.tools).toBeDefined()
+    })
+  })
+
   // Empty cubes validation
   it('should throw error when creating plugin with empty cubes array', async () => {
     const testApp = require('fastify')({ logger: false })

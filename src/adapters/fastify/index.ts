@@ -34,7 +34,9 @@ import {
   primeEventId,
   serializeSseEvent,
   extractBearerToken,
-  buildWwwAuthenticateChallenge
+  buildWwwAuthenticateChallenge,
+  validateOriginHeader,
+  originOptionsFromMcp
 } from '../mcp-transport.js'
 import { ensureLocaleHeader } from '../locale.js'
 import { createCubeHttpHandler, withLocaleFromHeaders, type McpHttpPort } from '../core/index.js'
@@ -421,6 +423,11 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     )
 
     fastify.get(`${mcpBasePath}`, async (request: FastifyRequest, reply: FastifyReply) => {
+      const originValidation = validateOriginHeader(request.headers.origin, originOptionsFromMcp(mcp))
+      if (!originValidation.valid) {
+        return reply.status(403).send({ error: originValidation.reason })
+      }
+
       if (mcp.resourceMetadataUrl && !extractBearerToken(request.headers.authorization)) {
         reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
         return reply.status(401).send({ error: 'Bearer token required' })
@@ -453,6 +460,11 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
      * Clients SHOULD send DELETE to terminate sessions
      */
     fastify.delete(`${mcpBasePath}`, async (_request: FastifyRequest, reply: FastifyReply) => {
+      const originValidation = validateOriginHeader(_request.headers.origin, originOptionsFromMcp(mcp))
+      if (!originValidation.valid) {
+        return reply.status(403).send({ error: originValidation.reason })
+      }
+
       if (mcp.resourceMetadataUrl && !extractBearerToken(_request.headers.authorization)) {
         reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
         return reply.status(401).send({ error: 'Bearer token required' })

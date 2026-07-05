@@ -150,21 +150,47 @@ export function validateAcceptHeader(accept: string | null | undefined): boolean
 
 export interface OriginValidationOptions {
   /**
-   * List of allowed origins (e.g., ['http://localhost:3000', 'https://myapp.com'])
-   * If not provided, defaults to localhost origins only
+   * List of allowed origins (e.g., ['http://localhost:3000', 'https://myapp.com']).
+   * If not provided, the default policy admits loopback origins (localhost / 127.x /
+   * [::1]) plus non-browser clients that send no Origin header; any other browser
+   * Origin is rejected. Include the wildcard `'*'` to allow ALL origins (permissive
+   * mode — discouraged; prefer listing exact origins or enabling auth).
    */
   allowedOrigins?: string[]
   /**
-   * If true, allows requests without an Origin header (non-browser clients)
+   * If true, allows requests without an Origin header (non-browser / server-to-server
+   * clients such as the Claude MCP connector, curl, Postman).
    * @default true
    */
   allowMissingOrigin?: boolean
 }
 
 /**
+ * True when an already-parsed Origin points at the local loopback interface
+ * (localhost, the 127.0.0.0/8 range, or IPv6 ::1), on any scheme/port.
+ * Loopback origins can only be reached by a page genuinely served from the same
+ * machine, so they are not a DNS-rebinding vector.
+ */
+function isLoopbackOrigin(parsedOrigin: URL): boolean {
+  // URL.hostname keeps the brackets on IPv6 literals (e.g. `[::1]`); accept both forms.
+  const host = parsedOrigin.hostname
+  return (
+    host === 'localhost' ||
+    host === '::1' ||
+    host === '[::1]' ||
+    /^127(?:\.\d{1,3}){3}$/.test(host)
+  )
+}
+
+/**
  * Validate the Origin header per MCP 2025-11-25 spec.
  * Servers MUST validate Origin to prevent DNS rebinding attacks.
  * If Origin is present and invalid, MUST respond with 403 Forbidden.
+ *
+ * Default policy (no `allowedOrigins`): admit loopback origins and requests with no
+ * Origin header (non-browser / server-to-server clients); reject every other browser
+ * Origin. Configure `allowedOrigins` to expose a browser front-end, or include `'*'`
+ * to restore fully-permissive behavior.
  *
  * @returns { valid: true } if allowed, or { valid: false, reason: string } if blocked
  */
@@ -174,7 +200,8 @@ export function validateOriginHeader(
 ): { valid: true } | { valid: false; reason: string } {
   const { allowMissingOrigin = true, allowedOrigins } = options
 
-  // No Origin header - typically non-browser clients (curl, Postman, etc.)
+  // No Origin header - typically non-browser / server-to-server clients
+  // (Claude MCP connector, curl, Postman, etc.)
   if (!origin) {
     if (allowMissingOrigin) {
       return { valid: true }
@@ -182,12 +209,7 @@ export function validateOriginHeader(
     return { valid: false, reason: 'Origin header is required' }
   }
 
-  // If no allowedOrigins configured, allow all origins (permissive mode)
-  if (!allowedOrigins || allowedOrigins.length === 0) {
-    return { valid: true }
-  }
-
-  // Parse the origin
+  // Parse the origin once; both the default and configured policies need it.
   let parsedOrigin: URL
   try {
     parsedOrigin = new URL(origin)
@@ -195,8 +217,28 @@ export function validateOriginHeader(
     return { valid: false, reason: 'Invalid Origin header format' }
   }
 
-  // Check against explicit allowed origins
-  const normalized = allowedOrigins.map(o => {
+  const hasAllowlist = allowedOrigins && allowedOrigins.length > 0
+
+  // Explicit wildcard opt-in: allow ALL origins (permissive mode).
+  if (hasAllowlist && allowedOrigins!.includes('*')) {
+    return { valid: true }
+  }
+
+  // Default policy (no allowlist configured): admit loopback origins only.
+  // This blocks DNS rebinding, where the request arrives with a foreign Origin
+  // (e.g. https://evil.example) after being rebound to a loopback/intranet address.
+  if (!hasAllowlist) {
+    if (isLoopbackOrigin(parsedOrigin)) {
+      return { valid: true }
+    }
+    return {
+      valid: false,
+      reason: 'Origin not allowed (default policy permits loopback origins only; configure mcp.allowedOrigins to allow this origin)'
+    }
+  }
+
+  // Check against explicit allowed origins.
+  const normalized = allowedOrigins!.map(o => {
     try {
       return new URL(o).origin
     } catch {
@@ -208,6 +250,18 @@ export function validateOriginHeader(
   }
 
   return { valid: false, reason: 'Origin not in allowed list' }
+}
+
+/**
+ * Build {@link OriginValidationOptions} from an MCP config, forwarding the
+ * configured allowlist (if any) so `validateOriginHeader` applies the same policy
+ * for POST, GET, and DELETE `/mcp` across every adapter. When `allowedOrigins` is
+ * absent, the loopback-only default policy applies.
+ */
+export function originOptionsFromMcp(
+  mcp: { allowedOrigins?: string[] }
+): OriginValidationOptions {
+  return mcp.allowedOrigins ? { allowedOrigins: mcp.allowedOrigins } : {}
 }
 
 /**

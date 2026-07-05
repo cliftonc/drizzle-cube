@@ -188,8 +188,23 @@ describe('MCP Transport Layer', () => {
       }
     })
 
-    it('should allow all origins when no allowedOrigins configured', () => {
-      const result = validateOriginHeader('http://example.com')
+    it('should allow loopback origins by default (no allowedOrigins configured)', () => {
+      for (const origin of ['http://localhost:3000', 'http://127.0.0.1:8787', 'http://[::1]:8787', 'https://localhost']) {
+        const result = validateOriginHeader(origin)
+        expect(result.valid, origin).toBe(true)
+      }
+    })
+
+    it('should reject a foreign browser origin by default (DNS-rebinding vector)', () => {
+      const result = validateOriginHeader('https://evil.example')
+      expect(result.valid).toBe(false)
+      if (!result.valid) {
+        expect(result.reason).toContain('loopback origins only')
+      }
+    })
+
+    it('should allow all origins when the wildcard is configured', () => {
+      const result = validateOriginHeader('https://evil.example', { allowedOrigins: ['*'] })
       expect(result.valid).toBe(true)
     })
 
@@ -227,9 +242,9 @@ describe('MCP Transport Layer', () => {
       expect(result.valid).toBe(true)
     })
 
-    it('should handle empty allowedOrigins array', () => {
-      const result = validateOriginHeader('http://example.com', { allowedOrigins: [] })
-      expect(result.valid).toBe(true)
+    it('should apply the loopback-only default for an empty allowedOrigins array', () => {
+      expect(validateOriginHeader('http://example.com', { allowedOrigins: [] }).valid).toBe(false)
+      expect(validateOriginHeader('http://localhost:3000', { allowedOrigins: [] }).valid).toBe(true)
     })
   })
 
