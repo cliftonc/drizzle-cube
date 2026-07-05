@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782324094172,
+  "lastUpdate": 1783233056660,
   "repoUrl": "https://github.com/cliftonc/drizzle-cube",
   "entries": {
     "drizzle-cube": [
@@ -17483,6 +17483,275 @@ window.BENCHMARK_DATA = {
             "name": "cache.hit",
             "value": 0.51,
             "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, warm cache · p95 0.6ms · 700 rows"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "clifton.cunningham@gmail.com",
+            "name": "Clifton Cunningham",
+            "username": "cliftonc"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e2abbf2467ba29b8fa4c49706531abf3f7cbaa07",
+          "message": "fix(mcp): reject foreign origins by default (GHSA-ch89-j64x-45pq) (#964)\n\n* fix(mcp): reject foreign origins by default (GHSA-ch89-j64x-45pq)\n\nvalidateOriginHeader accepted any Origin when mcp.allowedOrigins was unset\n(the default), letting a DNS-rebinding page invoke MCP tools against a\nvictim's server. Change the default policy to admit only loopback origins\n(localhost / 127.x / [::1]) plus non-browser / server-to-server clients that\nsend no Origin header; every other browser Origin now returns 403.\n\n- '*' in allowedOrigins restores fully-permissive mode (explicit opt-in)\n- add isLoopbackOrigin helper and originOptionsFromMcp; single URL parse\n- apply origin validation to the inline GET/DELETE /mcp handlers in all four\n  adapters (previously only POST was checked)\n- correct MCPOptions JSDoc and CLAUDE.md; strengthen resourceMetadataUrl\n  (Bearer auth) guidance as the primary control for public deployments\n- update permissive-mode tests; add loopback/foreign/'*' and a PoC\n  regression test mirroring the advisory\n\nServer-to-server clients (Claude connector, curl) and the mcp.app\nvisualisation are unaffected. Browser front-ends on a non-loopback origin\nmust now set mcp.allowedOrigins.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\n\n* test(mcp): cover GET/DELETE origin hardening on Fastify, Hono, Next.js\n\nThe GET/DELETE /mcp origin check is inline per-adapter (POST goes through the\nshared core), and only Express had HTTP-level coverage. Add foreign-origin\n→ 403 tests for POST/GET/DELETE on the other three adapters, plus an allow-path\nassertion each (no-Origin server-to-server → 200 for Fastify/Hono; loopback\nDELETE → 405 for Next.js, whose mock can't build the GET SSE response).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-07-05T08:28:21+02:00",
+          "tree_id": "3994c9205a8ae132bfd6dd2ad8820afdf2415ba1",
+          "url": "https://github.com/cliftonc/drizzle-cube/commit/e2abbf2467ba29b8fa4c49706531abf3f7cbaa07"
+        },
+        "date": 1783233055661,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "baseline.count-time-entries",
+            "value": 53.75,
+            "range": "± 1.0ms p95",
+            "unit": "ms",
+            "extra": "Count over ~730k time entries · p95 54.8ms · 1 rows"
+          },
+          {
+            "name": "baseline.sum-avg-productivity",
+            "value": 21.35,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Sum + avg over ~335k productivity rows · p95 21.7ms · 1 rows"
+          },
+          {
+            "name": "baseline.count-distinct",
+            "value": 154.05,
+            "range": "± 7.8ms p95",
+            "unit": "ms",
+            "extra": "Count distinct employees over time entries · p95 161.9ms · 1 rows"
+          },
+          {
+            "name": "baseline.min-max",
+            "value": 20.9,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Min + max lines of code · p95 21.1ms · 1 rows"
+          },
+          {
+            "name": "baseline.calculated-measure",
+            "value": 22.46,
+            "range": "± 2.1ms p95",
+            "unit": "ms",
+            "extra": "Calculated measure (productivity score) · p95 24.5ms · 1 rows"
+          },
+          {
+            "name": "multi.six-measures",
+            "value": 69.31,
+            "range": "± 1.3ms p95",
+            "unit": "ms",
+            "extra": "Six measures on time entries · p95 70.6ms · 1 rows"
+          },
+          {
+            "name": "multi.mixed-types",
+            "value": 89.27,
+            "range": "± 2.8ms p95",
+            "unit": "ms",
+            "extra": "Mixed aggregation types on productivity · p95 92.0ms · 1 rows"
+          },
+          {
+            "name": "groupby.low-cardinality",
+            "value": 163.37,
+            "range": "± 10.9ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type (6 groups) · p95 174.3ms · 6 rows"
+          },
+          {
+            "name": "groupby.mid-cardinality",
+            "value": 134.34,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "Group by department (~25 groups) · p95 135.4ms · 25 rows"
+          },
+          {
+            "name": "groupby.high-cardinality",
+            "value": 54.16,
+            "range": "± 2.1ms p95",
+            "unit": "ms",
+            "extra": "Group by employee (~700 groups) · p95 56.3ms · 700 rows"
+          },
+          {
+            "name": "groupby.two-dimensions",
+            "value": 376.57,
+            "range": "± 0.8ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type + department · p95 377.3ms · 150 rows"
+          },
+          {
+            "name": "filter.equals",
+            "value": 53.7,
+            "range": "± 0.9ms p95",
+            "unit": "ms",
+            "extra": "Equals filter (development entries) · p95 54.6ms · 1 rows"
+          },
+          {
+            "name": "filter.numeric-range",
+            "value": 23.75,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Numeric range filter (linesOfCode > 100) · p95 24.2ms · 1 rows"
+          },
+          {
+            "name": "filter.string-contains",
+            "value": 1.36,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "String contains filter on employee name · p95 1.4ms · 1 rows"
+          },
+          {
+            "name": "filter.nested-and-or",
+            "value": 60.78,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Nested AND/OR filter on time entries · p95 61.0ms · 1 rows"
+          },
+          {
+            "name": "filter.in-list-100",
+            "value": 51.6,
+            "range": "± 7.6ms p95",
+            "unit": "ms",
+            "extra": "IN-list filter with 100 employee ids · p95 59.2ms · 1 rows"
+          },
+          {
+            "name": "time.day-granularity-year",
+            "value": 117.04,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Daily time series over 2024 (~366 buckets) · p95 117.4ms · 262 rows"
+          },
+          {
+            "name": "time.month-granularity",
+            "value": 117.43,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "Monthly time series over 2024 · p95 118.6ms · 12 rows"
+          },
+          {
+            "name": "time.week-with-dimension",
+            "value": 35.14,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Weekly series split by allocation type (H1 2024) · p95 35.7ms · 104 rows"
+          },
+          {
+            "name": "time.gap-fill",
+            "value": 50.87,
+            "range": "± 23.4ms p95",
+            "unit": "ms",
+            "extra": "Daily series with fillMissingDates over 16 months · p95 74.3ms · 488 rows"
+          },
+          {
+            "name": "time.compare-date-range",
+            "value": 112.91,
+            "range": "± 6.2ms p95",
+            "unit": "ms",
+            "extra": "Period comparison Q1 vs Q2 2024 by month · p95 119.1ms · 6 rows"
+          },
+          {
+            "name": "join.belongs-to",
+            "value": 2.24,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Employees joined to departments · p95 2.3ms · 25 rows"
+          },
+          {
+            "name": "join.has-many-fanout",
+            "value": 291.96,
+            "range": "± 9.1ms p95",
+            "unit": "ms",
+            "extra": "Employee count with time-entry fan-out (~730k child rows) · p95 301.1ms · 25 rows"
+          },
+          {
+            "name": "join.many-to-many",
+            "value": 3.05,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Employees by team via junction table · p95 3.5ms · 40 rows"
+          },
+          {
+            "name": "join.three-cubes",
+            "value": 266.79,
+            "range": "± 5.6ms p95",
+            "unit": "ms",
+            "extra": "Departments + employees + time entries · p95 272.4ms · 25 rows"
+          },
+          {
+            "name": "rows.ordered-700",
+            "value": 72.57,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "~700 ordered group rows · p95 73.1ms · 700 rows"
+          },
+          {
+            "name": "rows.deep-offset",
+            "value": 18.54,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped page at offset 100k (limit 1000) · p95 19.1ms · 1,000 rows"
+          },
+          {
+            "name": "rows.ungrouped-10k",
+            "value": 39.95,
+            "range": "± 2.2ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped raw rows (limit 10,000) · p95 42.1ms · 10,000 rows"
+          },
+          {
+            "name": "analysis.funnel",
+            "value": 128.64,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Three-step funnel over ~335k events · p95 128.7ms · 3 rows"
+          },
+          {
+            "name": "analysis.flow",
+            "value": 42.98,
+            "range": "± 0.7ms p95",
+            "unit": "ms",
+            "extra": "Flow with 2 steps before/after · p95 43.7ms · 1 rows"
+          },
+          {
+            "name": "analysis.retention",
+            "value": 404.08,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Monthly retention over 2024 (6 periods) · p95 404.7ms · 7 rows"
+          },
+          {
+            "name": "compile.simple",
+            "value": 0.12,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Compile simple aggregation query · p95 0.1ms · 0 rows"
+          },
+          {
+            "name": "compile.complex",
+            "value": 0.6,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Compile multi-cube query with filters + time dimension · p95 0.8ms · 0 rows"
+          },
+          {
+            "name": "cache.miss",
+            "value": 31.02,
+            "range": "± 0.7ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, cache bypassed · p95 31.8ms · 700 rows"
+          },
+          {
+            "name": "cache.hit",
+            "value": 0.52,
+            "range": "± 0.0ms p95",
             "unit": "ms",
             "extra": "Cache-enabled executor, warm cache · p95 0.6ms · 700 rows"
           }
