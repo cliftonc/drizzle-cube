@@ -409,7 +409,7 @@
     "eslint-plugin-unused-imports": "^4.4.1",
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
-    "fallow": "2.101.0",
+    "fallow": "2.104.0",
     "fastify": "^5.6.2",
     "globals": "^17.0.0",
     "hono": "^4.0.0",
