@@ -1,0 +1,82 @@
+{
+  "nodes": {
+    "model.demo.customers": {
+      "resource_type": "model",
+      "name": "customers",
+      "alias": "customers",
+      "schema": "analytics",
+      "database": "warehouse",
+      "description": "Customer records.",
+      "config": { "materialized": "table" },
+      "columns": {
+        "id": { "name": "id", "description": "Customer id." },
+        "organisation_id": { "name": "organisation_id", "description": "Tenant id." },
+        "name": { "name": "name", "description": "Customer name." },
+        "active": { "name": "active", "description": "Whether the customer is active." }
+      },
+      "meta": {}
+    },
+    "model.demo.orders": {
+      "resource_type": "model",
+      "name": "orders",
+      "alias": "orders",
+      "schema": "analytics",
+      "database": "warehouse",
+      "description": "Order facts.",
+      "config": { "materialized": "incremental" },
+      "columns": {
+        "id": { "name": "id", "description": "Order id." },
+        "organisation_id": { "name": "organisation_id", "description": "Tenant id." },
+        "customer_id": { "name": "customer_id", "description": "Customer id." },
+        "status": { "name": "status", "description": "Order status." },
+        "amount": { "name": "amount", "description": "Order amount." },
+        "created_at": { "name": "created_at", "description": "Creation timestamp." }
+      },
+      "meta": { "drizzle_cube": { "measures": [{ "name": "totalAmount", "type": "sum", "column": "amount", "title": "Total Amount" }] } }
+    },
+    "model.demo.ephemeral_rollup": {
+      "resource_type": "model",
+      "name": "ephemeral_rollup",
+      "alias": "ephemeral_rollup",
+      "config": { "materialized": "ephemeral" },
+      "columns": { "id": { "name": "id" } },
+      "meta": {}
+    },
+    "test.demo.customers_id_unique": {
+      "resource_type": "test",
+      "name": "unique_customers_id",
+      "column_name": "id",
+      "test_metadata": { "name": "unique" },
+      "depends_on": { "nodes": ["model.demo.customers"] }
+    },
+    "test.demo.customers_id_not_null": {
+      "resource_type": "test",
+      "name": "not_null_customers_id",
+      "column_name": "id",
+      "test_metadata": { "name": "not_null" },
+      "depends_on": { "nodes": ["model.demo.customers"] }
+    },
+    "test.demo.orders_id_unique": {
+      "resource_type": "test",
+      "name": "unique_orders_id",
+      "column_name": "id",
+      "test_metadata": { "name": "unique" },
+      "depends_on": { "nodes": ["model.demo.orders"] }
+    },
+    "test.demo.orders_id_not_null": {
+      "resource_type": "test",
+      "name": "not_null_orders_id",
+      "column_name": "id",
+      "test_metadata": { "name": "not_null" },
+      "depends_on": { "nodes": ["model.demo.orders"] }
+    },
+    "test.demo.orders_customer_relationship": {
+      "resource_type": "test",
+      "name": "relationships_orders_customer_id",
+      "column_name": "customer_id",
+      "test_metadata": { "name": "relationships" },
+      "kwargs": { "field": "id" },
+      "depends_on": { "nodes": ["model.demo.orders", "model.demo.customers"] }
+    }
+  }
+}
