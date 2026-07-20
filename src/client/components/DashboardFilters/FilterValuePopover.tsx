@@ -16,7 +16,7 @@ interface FilterValuePopoverProps {
   schema: CubeMeta | null
   onValuesChange: (values: any[]) => void
   onClose: () => void
-  anchorRef: React.RefObject<HTMLElement>
+  anchorRef: React.RefObject<HTMLElement | null>
 }
 
 // Convert CubeMeta to MetaResponse format
