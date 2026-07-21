@@ -26,10 +26,15 @@ import BoxPlotChart from '../client/components/charts/BoxPlotChart.js'
 import CandlestickChart from '../client/components/charts/CandlestickChart.js'
 import ActivityGridChart from '../client/components/charts/ActivityGridChart.js'
 import MeasureProfileChart from '../client/components/charts/MeasureProfileChart.js'
+import SankeyChart from '../client/components/charts/SankeyChart.js'
+import SunburstChart from '../client/components/charts/SunburstChart.js'
+import HeatMapChart from '../client/components/charts/HeatMapChart.js'
+import MarkdownChart from '../client/components/charts/MarkdownChart.js'
 
 // Context & types
 import { CubeMetaContext, type CubeMetaContextValue } from '../client/providers/CubeMetaContext.js'
 import type { ChartAxisConfig, ChartDisplayConfig, FieldLabelMap, ChartProps } from '../client/types.js'
+import { isSankeyData } from '../client/types/flow.js'
 
 // Chart type selector (MCP-specific: only shows types with real components)
 import McpChartSwitcher from './McpChartSwitcher.js'
@@ -61,6 +66,10 @@ const chartComponentMap: Record<string, React.ComponentType<ChartProps>> = {
   candlestick: CandlestickChart,
   activityGrid: ActivityGridChart,
   measureProfile: MeasureProfileChart,
+  sankey: SankeyChart,
+  sunburst: SunburstChart,
+  heatmap: HeatMapChart,
+  markdown: MarkdownChart,
 }
 
 function buildLabelMapFromAnnotation(annotation: any): FieldLabelMap {
@@ -198,6 +207,7 @@ export function McpApp() {
         xAxis: derivedSelection.xAxis,
         yAxis: derivedSelection.yAxis,
         series: derivedSelection.series,
+        valueField: derivedSelection.valueField,
       }
 
       chartHintRef.current = nextHint
@@ -262,6 +272,7 @@ export function McpApp() {
       xAxis: derivedSelection.xAxis,
       yAxis: derivedSelection.yAxis,
       series: derivedSelection.series,
+      valueField: derivedSelection.valueField,
     })
     setDisplayConfig({})
     setChartConfigSource('manual')
@@ -314,6 +325,7 @@ export function McpApp() {
   }
 
   const query = result.query || {}
+  const hasFlowData = isSankeyData(result.data[0])
   const ChartComponent = chartComponentMap[chartType] || DataTable
   const chartTitle = chartHint?.title && chartConfigSource !== 'auto'
     ? chartHint.title
@@ -332,6 +344,7 @@ export function McpApp() {
             selected={chartType}
             query={query}
             rowCount={result.data.length}
+            hasFlowData={hasFlowData}
             onSelect={handleChartTypeChange}
           />
         </div>

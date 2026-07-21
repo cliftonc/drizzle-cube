@@ -5,6 +5,7 @@
  */
 
 import type { ChartType } from '../client/types.js'
+import { isSankeyData } from '../client/types/flow.js'
 import { isChartAvailableForShape } from './chartAvailability.js'
 
 /** Chart types available in the MCP App (subset of full ChartType) */
@@ -15,6 +16,8 @@ export interface ChartSelection {
   xAxis: string[]
   yAxis: string[]
   series: string[]
+  /** Measure field for charts that separate the value from the axes (e.g. heatmap). */
+  valueField?: string[]
 }
 
 interface LoadQuery {
@@ -35,7 +38,7 @@ export const SUPPORTED_CHARTS: McpChartType[] = [
   'bar', 'line', 'area', 'pie', 'scatter', 'kpiNumber', 'table', 'treemap',
   'radar', 'radialBar', 'bubble', 'funnel', 'waterfall', 'gauge',
   'heatmap', 'sankey', 'sunburst', 'boxPlot', 'activityGrid',
-  'kpiDelta', 'kpiText', 'candlestick', 'measureProfile',
+  'kpiDelta', 'kpiText', 'candlestick', 'measureProfile', 'markdown',
 ]
 
 function getMeasures(query: LoadQuery): string[] {
@@ -117,7 +120,12 @@ function getDefaultChartAxes(query: LoadQuery): Omit<ChartSelection, 'chartType'
 /**
  * Check if a chart type is available for the given query shape
  */
-export function isChartAvailable(chartType: McpChartType, query: LoadQuery, rowCount: number): boolean {
+export function isChartAvailable(
+  chartType: McpChartType,
+  query: LoadQuery,
+  rowCount: number,
+  hasFlowData = false,
+): boolean {
   const dimensions = getDimensions(query)
 
   return isChartAvailableForShape(chartType, {
@@ -126,6 +134,7 @@ export function isChartAvailable(chartType: McpChartType, query: LoadQuery, rowC
     hasTimeDim: getChartTimeDimensions(query).length > 0,
     dimensionCount: dimensions.length,
     rowCount,
+    hasFlowData,
   })
 }
 
@@ -133,6 +142,11 @@ export function isChartAvailable(chartType: McpChartType, query: LoadQuery, rowC
  * Select the best chart type based on query + data shape
  */
 export function autoSelectChartType(query: LoadQuery, data: any[]): McpChartType {
+  // Flow queries return a single-row payload of { nodes, links } — visualize as Sankey.
+  if (isSankeyData(data[0])) {
+    return 'sankey'
+  }
+
   const measures = getMeasures(query)
   const dimensions = getDimensions(query)
   const timeDims = getChartTimeDimensions(query)
@@ -173,6 +187,19 @@ export function deriveChartConfig(query: LoadQuery, data: any[], chartType: McpC
       xAxis: getTableColumns(query, data),
       yAxis: [],
       series: [],
+    }
+  }
+
+  if (chartType === 'heatmap') {
+    // Heatmap maps two dimensions onto the axes and a measure onto cell intensity.
+    const dimensions = getDimensions(query)
+    const measures = getMeasures(query)
+    return {
+      chartType,
+      xAxis: dimensions.slice(0, 1),
+      yAxis: dimensions.slice(1, 2),
+      series: [],
+      valueField: measures.slice(0, 1),
     }
   }
 

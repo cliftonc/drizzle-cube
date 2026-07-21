@@ -71,6 +71,10 @@ vi.mock('../../../src/client/components/charts/BoxPlotChart', () => ({ default: 
 vi.mock('../../../src/client/components/charts/CandlestickChart', () => ({ default: createChartMock('candlestick-chart') }))
 vi.mock('../../../src/client/components/charts/ActivityGridChart', () => ({ default: createChartMock('activity-grid-chart') }))
 vi.mock('../../../src/client/components/charts/MeasureProfileChart', () => ({ default: createChartMock('measure-profile-chart') }))
+vi.mock('../../../src/client/components/charts/SankeyChart', () => ({ default: createChartMock('sankey-chart') }))
+vi.mock('../../../src/client/components/charts/SunburstChart', () => ({ default: createChartMock('sunburst-chart') }))
+vi.mock('../../../src/client/components/charts/HeatMapChart', () => ({ default: createChartMock('heatmap-chart') }))
+vi.mock('../../../src/client/components/charts/MarkdownChart', () => ({ default: createChartMock('markdown-chart') }))
 
 import { McpApp } from '../../../src/mcp-app/mcp-app'
 
@@ -247,6 +251,35 @@ describe('McpApp chart switching', () => {
       xAxis: ['Orders.status', 'Orders.region', 'Orders.count', 'Orders.revenue', 'Orders.channel'],
       yAxis: [],
       series: [],
+    })
+  })
+
+  it('auto-renders a Sankey chart for flow data with no explicit hint', async () => {
+    render(<McpApp />)
+
+    await waitFor(() => {
+      expect(mockApp.ontoolinput).toBeTypeOf('function')
+    })
+
+    await act(async () => {
+      mockApp.ontoolinput?.({
+        structuredContent: {
+          data: [
+            {
+              nodes: [
+                { id: 'a', name: 'Opened', layer: 0 },
+                { id: 'b', name: 'Merged', layer: 1 },
+              ],
+              links: [{ source: 'a', target: 'b', value: 42 }],
+            },
+          ],
+          query: {},
+        },
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sankey-chart')).toBeInTheDocument()
     })
   })
 })
