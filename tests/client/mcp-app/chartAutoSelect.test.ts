@@ -29,6 +29,29 @@ describe('chartAutoSelect', () => {
     expect(isChartAvailable('bar', {}, flowData.length, true)).toBe(false)
   })
 
+  it('does not offer flow charts for tabular results', () => {
+    const tabular = { measures: ['Orders.count'], dimensions: ['Orders.status', 'Orders.region'] }
+    // Only flow ({ nodes, links }) payloads can drive Sankey/Sunburst — never tabular rows
+    expect(isChartAvailable('sankey', tabular, 12, false)).toBe(false)
+    expect(isChartAvailable('sunburst', tabular, 12, false)).toBe(false)
+  })
+
+  it('requires two dimensions for heatmap and derives x/y/value fields', () => {
+    const twoDims = { measures: ['Orders.count'], dimensions: ['Orders.status', 'Orders.region'] }
+    const oneDim = { measures: ['Orders.count'], dimensions: ['Orders.status'] }
+
+    expect(isChartAvailable('heatmap', twoDims, 12, false)).toBe(true)
+    expect(isChartAvailable('heatmap', oneDim, 12, false)).toBe(false)
+
+    expect(deriveChartConfig(twoDims, [], 'heatmap')).toEqual({
+      chartType: 'heatmap',
+      xAxis: ['Orders.status'],
+      yAxis: ['Orders.region'],
+      series: [],
+      valueField: ['Orders.count'],
+    })
+  })
+
   it('auto-selects a table with a complete ordered column list for wide categorical results', () => {
     const query = {
       dimensions: ['Orders.status', 'Orders.region'],

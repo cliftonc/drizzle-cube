@@ -16,6 +16,8 @@ export interface ChartSelection {
   xAxis: string[]
   yAxis: string[]
   series: string[]
+  /** Measure field for charts that separate the value from the axes (e.g. heatmap). */
+  valueField?: string[]
 }
 
 interface LoadQuery {
@@ -185,6 +187,19 @@ export function deriveChartConfig(query: LoadQuery, data: any[], chartType: McpC
       xAxis: getTableColumns(query, data),
       yAxis: [],
       series: [],
+    }
+  }
+
+  if (chartType === 'heatmap') {
+    // Heatmap maps two dimensions onto the axes and a measure onto cell intensity.
+    const dimensions = getDimensions(query)
+    const measures = getMeasures(query)
+    return {
+      chartType,
+      xAxis: dimensions.slice(0, 1),
+      yAxis: dimensions.slice(1, 2),
+      series: [],
+      valueField: measures.slice(0, 1),
     }
   }
 

@@ -207,6 +207,7 @@ export function McpApp() {
         xAxis: derivedSelection.xAxis,
         yAxis: derivedSelection.yAxis,
         series: derivedSelection.series,
+        valueField: derivedSelection.valueField,
       }
 
       chartHintRef.current = nextHint
@@ -271,6 +272,7 @@ export function McpApp() {
       xAxis: derivedSelection.xAxis,
       yAxis: derivedSelection.yAxis,
       series: derivedSelection.series,
+      valueField: derivedSelection.valueField,
     })
     setDisplayConfig({})
     setChartConfigSource('manual')

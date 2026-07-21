@@ -50,12 +50,14 @@ const CHART_RULES: Partial<Record<McpChartType, ChartRule>> = {
   bubble: measureWithDimensionOrTime,
   pie: smallShare,
   radialBar: smallShare,
-  sunburst: (shape) => shape.hasFlowData || smallShare(shape),
   treemap: measureWithDimension,
   funnel: measureWithDimension,
   radar: measureWithDimension,
-  heatmap: measureWithDimension,
-  sankey: (shape) => shape.hasFlowData || (shape.hasMeasure && shape.dimensionCount >= 2),
+  // Heatmap needs two categorical dimensions (x, y) plus a measure for cell intensity.
+  heatmap: ({ hasMeasure, dimensionCount }) => hasMeasure && dimensionCount >= 2,
+  // Sankey/Sunburst only render flow ({ nodes, links }) payloads, never tabular rows.
+  sankey: (shape) => shape.hasFlowData,
+  sunburst: (shape) => shape.hasFlowData,
   activityGrid: ({ hasMeasure, hasTimeDim }) => hasMeasure && hasTimeDim,
 }
 
