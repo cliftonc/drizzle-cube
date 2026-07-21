@@ -14,6 +14,8 @@ export interface ChartShape {
   hasTimeDim: boolean
   dimensionCount: number
   rowCount: number
+  /** True when the payload is flow data ({ nodes, links }) rather than tabular rows. */
+  hasFlowData: boolean
 }
 
 type ChartRule = (shape: ChartShape) => boolean
@@ -48,12 +50,12 @@ const CHART_RULES: Partial<Record<McpChartType, ChartRule>> = {
   bubble: measureWithDimensionOrTime,
   pie: smallShare,
   radialBar: smallShare,
-  sunburst: smallShare,
+  sunburst: (shape) => shape.hasFlowData || smallShare(shape),
   treemap: measureWithDimension,
   funnel: measureWithDimension,
   radar: measureWithDimension,
   heatmap: measureWithDimension,
-  sankey: ({ hasMeasure, dimensionCount }) => hasMeasure && dimensionCount >= 2,
+  sankey: (shape) => shape.hasFlowData || (shape.hasMeasure && shape.dimensionCount >= 2),
   activityGrid: ({ hasMeasure, hasTimeDim }) => hasMeasure && hasTimeDim,
 }
 

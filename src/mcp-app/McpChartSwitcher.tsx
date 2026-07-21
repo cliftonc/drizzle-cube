@@ -11,16 +11,18 @@ const MCP_CHART_TYPES: McpChartType[] = [
   'radar', 'radialBar', 'bubble', 'funnel',
   'waterfall', 'gauge', 'boxPlot', 'candlestick',
   'activityGrid', 'measureProfile',
+  'sankey', 'sunburst', 'heatmap', 'markdown',
 ]
 
 interface McpChartSwitcherProps {
   selected: McpChartType
   query: any
   rowCount: number
+  hasFlowData: boolean
   onSelect: (chartType: McpChartType) => void
 }
 
-export default function McpChartSwitcher({ selected, query, rowCount, onSelect }: McpChartSwitcherProps) {
+export default function McpChartSwitcher({ selected, query, rowCount, hasFlowData, onSelect }: McpChartSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false)
   const { t } = useTranslation()
 
@@ -83,7 +85,7 @@ export default function McpChartSwitcher({ selected, query, rowCount, onSelect }
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
             {MCP_CHART_TYPES.map(ct => {
-              const available = isChartAvailable(ct, query, rowCount)
+              const available = isChartAvailable(ct, query, rowCount, hasFlowData)
               const isSelected = ct === selected
               const Icon = getChartTypeIcon(ct)
               const label = getLabel(ct)

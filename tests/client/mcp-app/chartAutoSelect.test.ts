@@ -2,10 +2,33 @@ import { describe, it, expect } from 'vitest'
 
 import {
   autoSelectChart,
+  autoSelectChartType,
   deriveChartConfig,
+  isChartAvailable,
 } from '../../../src/mcp-app/chartAutoSelect'
 
+const flowData = [
+  {
+    nodes: [
+      { id: 'a', name: 'Opened', layer: 0 },
+      { id: 'b', name: 'Merged', layer: 1 },
+    ],
+    links: [{ source: 'a', target: 'b', value: 42 }],
+  },
+]
+
 describe('chartAutoSelect', () => {
+  it('auto-selects a Sankey chart for flow (nodes/links) payloads', () => {
+    expect(autoSelectChartType({}, flowData)).toBe('sankey')
+  })
+
+  it('marks sankey and sunburst available when flow data is present', () => {
+    expect(isChartAvailable('sankey', {}, flowData.length, true)).toBe(true)
+    expect(isChartAvailable('sunburst', {}, flowData.length, true)).toBe(true)
+    // Standard tabular charts require measures/dimensions, so stay unavailable for flow data
+    expect(isChartAvailable('bar', {}, flowData.length, true)).toBe(false)
+  })
+
   it('auto-selects a table with a complete ordered column list for wide categorical results', () => {
     const query = {
       dimensions: ['Orders.status', 'Orders.region'],
