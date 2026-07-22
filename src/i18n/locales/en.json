@@ -955,6 +955,8 @@
   "dataBrowser.sidebar.cubes": "Cubes",
   "dataBrowser.sidebar.searchPlaceholder": "Search...",
   "dataBrowser.sidebar.noCubes": "No cubes found",
+  "dataBrowser.search.placeholder": "Search rows...",
+  "dataBrowser.search.clear": "Clear search",
 
   "queryAnalysis.summary": "Query Summary",
   "queryAnalysis.summary.type": "Type",
