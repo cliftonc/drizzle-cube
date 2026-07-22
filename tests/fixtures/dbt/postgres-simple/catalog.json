@@ -1,0 +1,26 @@
+{
+  "nodes": {
+    "model.project.customers": {
+      "unique_id": "model.project.customers",
+      "metadata": { "name": "customers", "schema": "public", "database": "analytics", "type": "BASE TABLE" },
+      "columns": {
+        "id": { "name": "id", "type": "integer", "index": 1 },
+        "name": { "name": "name", "type": "text", "index": 2 },
+        "organisation_id": { "name": "organisation_id", "type": "integer", "index": 3 },
+        "created_at": { "name": "created_at", "type": "timestamp without time zone", "index": 4 }
+      }
+    },
+    "model.project.orders": {
+      "unique_id": "model.project.orders",
+      "metadata": { "name": "orders", "schema": "public", "database": "analytics", "type": "BASE TABLE" },
+      "columns": {
+        "id": { "name": "id", "type": "integer", "index": 1 },
+        "customer_id": { "name": "customer_id", "type": "integer", "index": 2 },
+        "organisation_id": { "name": "organisation_id", "type": "integer", "index": 3 },
+        "amount": { "name": "amount", "type": "numeric(10,2)", "index": 4 },
+        "status": { "name": "status", "type": "text", "index": 5 },
+        "ordered_at": { "name": "ordered_at", "type": "timestamp without time zone", "index": 6 }
+      }
+    }
+  }
+}

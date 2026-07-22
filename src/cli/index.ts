@@ -12,21 +12,10 @@
 
 import { parseArgs } from 'node:util'
 import { chartsInit, chartsList } from './commands/charts.js'
+import { dbtGenerate, printDbtHelp } from './commands/dbt.js'
 
-const { positionals } = parseArgs({
-  allowPositionals: true,
-  strict: false
-})
-
-const [command, subcommand] = positionals
-
-if (command === 'charts') {
-  if (subcommand === 'init') {
-    chartsInit()
-  } else if (subcommand === 'list') {
-    chartsList()
-  } else {
-    console.log(`
+function printChartsHelp(): void {
+  console.log(`
 drizzle-cube charts
 
 Commands:
@@ -35,14 +24,52 @@ Commands:
   drizzle-cube charts init -o <dir>    Set output directory (default: ./src/charts)
   drizzle-cube charts list             List available built-in chart types
 `)
-  }
-} else {
+}
+
+function printRootHelp(): void {
   console.log(`
 drizzle-cube CLI
 
 Commands:
   drizzle-cube charts   Chart plugin scaffolding tools
+  drizzle-cube dbt      dbt artifact generator tools
 
-Run 'drizzle-cube charts' for more info.
+Run 'drizzle-cube charts' or 'drizzle-cube dbt' for more info.
 `)
 }
+
+async function main(): Promise<void> {
+  const { positionals } = parseArgs({
+    allowPositionals: true,
+    strict: false
+  })
+
+  const [command, subcommand] = positionals
+
+  if (command === 'charts') {
+    if (subcommand === 'init') {
+      chartsInit()
+    } else if (subcommand === 'list') {
+      chartsList()
+    } else {
+      printChartsHelp()
+    }
+    return
+  }
+
+  if (command === 'dbt') {
+    if (subcommand === 'generate') {
+      await dbtGenerate(process.argv.slice(4))
+    } else {
+      printDbtHelp()
+    }
+    return
+  }
+
+  printRootHelp()
+}
+
+main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : String(error))
+  process.exit(1)
+})
