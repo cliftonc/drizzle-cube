@@ -184,7 +184,7 @@ describe('ChartContainer', () => {
       )
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveStyle({ height: '50vh' })
+      expect(wrapper.style.height).toBe('50vh')
     })
 
     it('should set minHeight for 100% mode', () => {
