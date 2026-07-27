@@ -99,7 +99,7 @@ describe('BarChart', () => {
       )
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveStyle({ height: '50vh' })
+      expect(wrapper.style.height).toBe('50vh')
     })
   })
 
