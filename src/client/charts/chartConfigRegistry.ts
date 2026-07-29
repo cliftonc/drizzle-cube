@@ -72,12 +72,26 @@ const baseConfigs: Record<BuiltInChartType, ChartTypeConfig> = {
  * source of truth) laid over its full config shape. Drop zones / display options
  * stay here in full because the server agent reads them synchronously.
  */
-export const chartConfigRegistry: ChartConfigRegistry = Object.fromEntries(
+const builtInConfigs: ChartConfigRegistry = Object.fromEntries(
   (Object.keys(chartRegistry) as BuiltInChartType[]).map((type) => [
     type,
     composeChartConfig(chartRegistry[type], baseConfigs[type]),
   ])
 )
+
+export const chartConfigRegistry: ChartConfigRegistry = { ...builtInConfigs }
+
+/**
+ * The composed config of a built-in chart — the starting point for a custom
+ * chart that extends or wraps a built-in (see `drizzle-cube charts init --from`).
+ *
+ * Reads the built-in snapshot rather than the live registry, so a plugin that
+ * overrides the same type cannot change what this returns; the shallow copy
+ * keeps callers from mutating it by editing the object they get back.
+ */
+export function getBuiltInChartConfig(type: BuiltInChartType): ChartTypeConfig {
+  return { ...builtInConfigs[type] }
+}
 
 /**
  * Register a custom chart config into the registry.

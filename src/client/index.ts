@@ -330,6 +330,7 @@ export type {
 // Chart plugin system
 export type { ChartDefinition } from './charts/chartPlugin.js'
 export { chartPluginRegistry } from './charts/chartPlugin.js'
+export { getBuiltInChartConfig } from './charts/chartConfigRegistry.js'
 
 // Utilities
 export { createDashboardLayout, formatChartData, highlightCodeBlocks } from './utils/index.js'

@@ -12,7 +12,12 @@ import { screen } from '@testing-library/react'
 import { createElement } from 'react'
 import { renderWithProviders } from '../../client-setup/test-utils'
 import { chartRegistry, composeChartConfig, getChartEntry } from '../../../src/client/charts/chartRegistry'
-import { chartConfigRegistry } from '../../../src/client/charts/chartConfigRegistry'
+import {
+  chartConfigRegistry,
+  getBuiltInChartConfig,
+  registerChartConfig,
+  unregisterChartConfig,
+} from '../../../src/client/charts/chartConfigRegistry'
 import { barChartConfig } from '../../../src/client/components/charts/BarChart.config'
 import {
   getChartConfigAsync,
@@ -406,5 +411,36 @@ describe('chartRegistry — icon resolution is import-order independent', () => 
     expect(icons.getChartTypeIcon('line')).toBe(icons.getIcon('chartLine'))
     expect(icons.getChartTypeIcon('line')).not.toBe(icons.getIcon('chartBar'))
     expect(icons.getChartTypeIcon('gauge')).toBe(icons.getIcon('chartGauge'))
+  })
+})
+
+describe('getBuiltInChartConfig — the base a scaffolded chart plugin spreads', () => {
+  afterEach(() => {
+    unregisterChartConfig('table')
+    chartConfigRegistry.table = getBuiltInChartConfig('table')
+  })
+
+  it('returns the built-in composed config, not an empty shell', () => {
+    // `drizzle-cube charts init --from table` emits a config that spreads this;
+    // an empty object there would silently ship a chart with no drop zones.
+    const config = getBuiltInChartConfig('table')
+
+    expect(config.label).toBe('chart.table.label')
+    expect(config.dropZones?.length).toBeGreaterThan(0)
+    expect(config.dropZones).toEqual(chartConfigRegistry.table.dropZones)
+  })
+
+  it('reads the built-in snapshot, so a plugin overriding the type cannot change it', () => {
+    registerChartConfig('table', { label: 'hijacked', dropZones: [] })
+
+    expect(chartConfigRegistry.table.label).toBe('hijacked')
+    expect(getBuiltInChartConfig('table').label).toBe('chart.table.label')
+  })
+
+  it('hands back a copy callers cannot mutate the registry through', () => {
+    const config = getBuiltInChartConfig('table')
+    config.label = 'mutated'
+
+    expect(getBuiltInChartConfig('table').label).toBe('chart.table.label')
   })
 })

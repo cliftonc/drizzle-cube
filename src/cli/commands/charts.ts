@@ -7,9 +7,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
+import type { BuiltInChartType } from '../../client/types.js'
 
-// Built-in chart types with descriptions
-const BUILT_IN_CHARTS: Record<string, string> = {
+// Built-in chart types with descriptions.
+// Typed against BuiltInChartType so adding a chart fails typecheck until it is
+// listed here — this catalogue drifted out of date once already.
+const BUILT_IN_CHARTS: Record<BuiltInChartType, string> = {
   bar: 'Bar chart — compare values across categories',
   line: 'Line chart — show trends over time',
   area: 'Area chart — line chart with filled areas',
@@ -24,10 +27,13 @@ const BUILT_IN_CHARTS: Record<string, string> = {
   kpiNumber: 'KPI number — single metric display',
   kpiDelta: 'KPI delta — metric with change indicator',
   kpiText: 'KPI text — text-based metric',
+  markdown: 'Markdown — rich text block',
   funnel: 'Funnel chart — conversion funnel visualization',
   sankey: 'Sankey diagram — flow visualization',
   sunburst: 'Sunburst chart — hierarchical pie chart',
   heatmap: 'Heatmap — color-coded matrix',
+  retentionHeatmap: 'Retention heatmap — cohort retention matrix',
+  retentionCombined: 'Retention combined — retention curve plus cohort matrix',
   boxPlot: 'Box plot — statistical distribution',
   waterfall: 'Waterfall chart — cumulative values',
   candlestick: 'Candlestick chart — financial OHLC data',
@@ -44,7 +50,7 @@ export function chartsList(): void {
   for (const [type, desc] of Object.entries(BUILT_IN_CHARTS)) {
     console.log(`  ${type.padEnd(maxLen + 2)} ${desc}`)
   }
-  console.log(`\nUse --from <type> with 'charts init' to copy a built-in as starting point.`)
+  console.log(`\nUse --from <type> with 'charts init' to start from a built-in.`)
   console.log(`Example: npx drizzle-cube charts init --from bar\n`)
 }
 
@@ -66,7 +72,7 @@ export function chartsInit(): void {
   const customName = values.name as string | undefined
 
   if (fromBuiltIn) {
-    if (!BUILT_IN_CHARTS[fromBuiltIn]) {
+    if (!Object.hasOwn(BUILT_IN_CHARTS, fromBuiltIn)) {
       console.error(`\nUnknown chart type: "${fromBuiltIn}"`)
       console.error(`Run 'npx drizzle-cube charts list' to see available types.\n`)
       process.exit(1)
@@ -116,80 +122,47 @@ Next steps:
 `)
 }
 
+/**
+ * Scaffold a custom chart that starts out as a built-in.
+ *
+ * The scaffold *wraps* the built-in through the public API rather than copying
+ * its source: built-in charts import internals (`useTranslation`, `pivotUtils`,
+ * per-chart sibling helpers) that `drizzle-cube/client` does not export, and the
+ * published package ships `dist/` only — so a copy would neither be available
+ * nor compile. Wrapping renders the real chart from day one and leaves the user
+ * a component body to replace at their own pace.
+ */
 function scaffoldFromBuiltIn(chartType: string, outputDir: string, customName?: string): void {
   const pascalType = chartType.charAt(0).toUpperCase() + chartType.slice(1)
   const name = customName || `Custom${pascalType}Chart`
   const customType = camelCase(name)
 
-  // Find the source files
-  const sourceDir = findPackageChartsDir()
-  if (!sourceDir) {
-    console.log(`
-Could not find drizzle-cube chart source files.
-Generating a template based on the ${chartType} chart instead.
-`)
-    scaffoldExample(outputDir, name)
-    return
-  }
-
-  // Map chart type to file names
-  const fileMap: Record<string, string> = {
-    bar: 'BarChart', line: 'LineChart', area: 'AreaChart', pie: 'PieChart',
-    scatter: 'ScatterChart', bubble: 'BubbleChart', radar: 'RadarChart',
-    radialBar: 'RadialBarChart', treemap: 'TreeMapChart', table: 'DataTable',
-    activityGrid: 'ActivityGridChart', kpiNumber: 'KpiNumber', kpiDelta: 'KpiDelta',
-    kpiText: 'KpiText', funnel: 'FunnelChart', sankey: 'SankeyChart',
-    sunburst: 'SunburstChart', heatmap: 'HeatMapChart', boxPlot: 'BoxPlotChart',
-    waterfall: 'WaterfallChart', candlestick: 'CandlestickChart',
-    gauge: 'GaugeChart', measureProfile: 'MeasureProfileChart',
-  }
-
-  const fileName = fileMap[chartType]
-  if (!fileName) {
-    console.error(`No file mapping for chart type: ${chartType}`)
-    scaffoldExample(outputDir, name)
-    return
-  }
-
-  const componentSource = path.join(sourceDir, `${fileName}.tsx`)
-  const configSource = path.join(sourceDir, `${fileName}.config.ts`)
-
   ensureDir(outputDir)
 
-  // Copy and rewrite component
-  if (fs.existsSync(componentSource)) {
-    const content = fs.readFileSync(componentSource, 'utf-8')
-    const rewritten = rewriteImports(content)
-    const componentPath = path.join(outputDir, `${name}.tsx`)
-    writeIfNotExists(componentPath, rewritten)
-  }
+  const componentPath = path.join(outputDir, `${name}.tsx`)
+  writeIfNotExists(componentPath, generateBuiltInWrapper(name, chartType))
 
-  // Copy and rewrite config
-  if (fs.existsSync(configSource)) {
-    const content = fs.readFileSync(configSource, 'utf-8')
-    const rewritten = rewriteImports(content)
-    const configPath = path.join(outputDir, `${name}.config.ts`)
-    writeIfNotExists(configPath, rewritten)
-  }
+  const configPath = path.join(outputDir, `${name}.config.ts`)
+  writeIfNotExists(configPath, generateBuiltInConfig(name, customType, chartType))
 
-  // Write registration example
   const indexPath = path.join(outputDir, 'index.ts')
-  writeIfNotExists(indexPath, generateRegistrationFromBuiltIn(name, customType, chartType, fileName))
+  writeIfNotExists(indexPath, generateRegistrationExample(name, customType))
 
   console.log(`
-Chart copied from built-in '${chartType}' to ${outputDir}/
+Chart plugin based on built-in '${chartType}' scaffolded in ${outputDir}/
 
 Files created:
-  ${path.join(outputDir, `${name}.tsx`)}        — Chart component (copied from ${fileName})
-  ${path.join(outputDir, `${name}.config.ts`)}   — Chart configuration
-  ${path.join(outputDir, 'index.ts')}            — Registration example
+  ${componentPath}        — Chart component (renders the built-in '${chartType}')
+  ${configPath}   — Chart configuration (starts from the built-in's)
+  ${indexPath}            — Registration example
 
 The chart is registered as type '${customType}' (not '${chartType}'), so
 the built-in is preserved. Change the type to '${chartType}' to override it.
 
 Next steps:
-  1. Customize the component and config
-  2. Register in your app:
+  1. Replace the <LazyChart> body in ${name}.tsx with your own rendering
+  2. Adjust drop zones / display options in ${name}.config.ts
+  3. Register in your app:
 
      import { customCharts } from '${outputDir}'
 
@@ -340,32 +313,45 @@ export const customCharts: ChartDefinition[] = [
 `
 }
 
-function generateRegistrationFromBuiltIn(name: string, customType: string, _builtInType: string, fileName: string): string {
-  // Try to guess the config export name from the file name
-  const configExportName = fileName.charAt(0).toLowerCase() + fileName.slice(1) + 'Config'
-
-  return `import type { ChartDefinition } from 'drizzle-cube/client'
-import ${name} from './${name}'
-import { ${configExportName} } from './${name}.config'
+function generateBuiltInWrapper(name: string, builtInType: string): string {
+  return `import React from 'react'
+import { LazyChart } from 'drizzle-cube/client'
+import type { ChartProps } from 'drizzle-cube/client'
 
 /**
- * Custom chart definitions to pass to CubeProvider.
+ * ${name} — starts out rendering the built-in '${builtInType}' chart.
  *
- * Usage:
- *   import { customCharts } from './charts.js'
- *
- *   <CubeProvider customCharts={customCharts} ...>
- *     <App />
- *   </CubeProvider>
+ * Built-in charts are not copied into your project: they depend on internals
+ * that are not part of the public API. Instead this delegates to the real
+ * '${builtInType}' chart, so it works as-is. Customize by wrapping it (extra
+ * chrome, transformed \`data\`/\`chartConfig\`) or by replacing the body entirely
+ * with your own rendering — the ChartProps contract stays the same either way.
  */
-export const customCharts: ChartDefinition[] = [
-  {
-    type: '${customType}',
-    label: ${configExportName}.label || '${name.replace(/([A-Z])/g, ' $1').trim()}',
-    config: ${configExportName},
-    component: ${name},
-  },
-]
+const ${name} = React.memo(function ${name}(props: ChartProps) {
+  return <LazyChart chartType="${builtInType}" {...props} />
+})
+
+export default ${name}
+`
+}
+
+function generateBuiltInConfig(name: string, chartType: string, builtInType: string): string {
+  return `import { getBuiltInChartConfig } from 'drizzle-cube/client'
+import type { ChartTypeConfig } from 'drizzle-cube/client'
+
+/**
+ * Configuration for ${name}.
+ *
+ * Starts from the built-in '${builtInType}' config so the drop zones and display
+ * options match the chart being rendered. Override any field below, or drop the
+ * spread and declare your own \`dropZones\` / \`displayOptionsConfig\` once this
+ * chart diverges from the built-in.
+ */
+export const ${chartType}Config: ChartTypeConfig = {
+  ...getBuiltInChartConfig('${builtInType}'),
+  label: '${name.replace(/([A-Z])/g, ' $1').trim()}',
+  description: 'A custom chart based on the built-in ${builtInType} chart',
+}
 `
 }
 
@@ -391,60 +377,3 @@ function writeIfNotExists(filePath: string, content: string): void {
   fs.writeFileSync(filePath, content, 'utf-8')
 }
 
-/**
- * Try to find the chart component source directory from the installed package.
- */
-function findPackageChartsDir(): string | null {
-  // Try to find the source files relative to this CLI script
-  const candidates = [
-    // When running from the package's dist/cli directory
-    path.resolve(__dirname, '..', '..', 'src', 'client', 'components', 'charts'),
-    // When running from node_modules
-    path.resolve(__dirname, '..', 'client', 'components', 'charts'),
-  ]
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return candidate
-    }
-  }
-
-  // Try to resolve from node_modules
-  try {
-    const pkgPath = require.resolve('drizzle-cube/package.json')
-    const pkgDir = path.dirname(pkgPath)
-    const chartsDir = path.join(pkgDir, 'src', 'client', 'components', 'charts')
-    if (fs.existsSync(chartsDir)) {
-      return chartsDir
-    }
-  } catch {
-    // Not installed as dependency
-  }
-
-  return null
-}
-
-/**
- * Rewrite internal drizzle-cube imports to use the public package imports.
- */
-function rewriteImports(content: string): string {
-  return content
-    // Chart utility imports
-    .replace(/from\s+['"]\.\.\/\.\.\/charts\/chartConfigs['"]/g, "from 'drizzle-cube/client'")
-    .replace(/from\s+['"]\.\.\/\.\.\/charts\/[^'"]+['"]/g, "from 'drizzle-cube/client'")
-    // Type imports
-    .replace(/from\s+['"]\.\.\/\.\.\/types['"]/g, "from 'drizzle-cube/client'")
-    // Hooks
-    .replace(/from\s+['"]\.\.\/\.\.\/hooks\/[^'"]+['"]/g, "from 'drizzle-cube/client'")
-    // Icons
-    .replace(/from\s+['"]\.\.\/\.\.\/icons['"]/g, "from 'drizzle-cube/client'")
-    .replace(/from\s+['"]\.\.\/\.\.\/icons\/[^'"]+['"]/g, "from 'drizzle-cube/client'")
-    // Utils
-    .replace(/from\s+['"]\.\.\/\.\.\/utils\/[^'"]+['"]/g, "from 'drizzle-cube/client'")
-    // Shared
-    .replace(/from\s+['"]\.\.\/\.\.\/shared\/[^'"]+['"]/g, "from 'drizzle-cube/client'")
-    // Providers
-    .replace(/from\s+['"]\.\.\/\.\.\/providers\/[^'"]+['"]/g, "from 'drizzle-cube/client'")
-    // Relative chart component imports (e.g., from './ChartTooltip')
-    .replace(/from\s+['"]\.\/([^'"]+)['"]/g, "from 'drizzle-cube/client'")
-}

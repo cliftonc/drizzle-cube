@@ -5,7 +5,7 @@
  *
  * Usage:
  *   npx drizzle-cube charts init               # Scaffold an example custom chart
- *   npx drizzle-cube charts init --from bar     # Copy a built-in chart as starting point
+ *   npx drizzle-cube charts init --from bar     # Start from a built-in chart
  *   npx drizzle-cube charts init -o ./my-charts # Custom output directory
  *   npx drizzle-cube charts list                # List available built-in chart types
  */
@@ -31,7 +31,7 @@ drizzle-cube charts
 
 Commands:
   drizzle-cube charts init             Scaffold a custom chart
-  drizzle-cube charts init --from bar  Copy a built-in chart as starting point
+  drizzle-cube charts init --from bar  Start from a built-in chart
   drizzle-cube charts init -o <dir>    Set output directory (default: ./src/charts)
   drizzle-cube charts list             List available built-in chart types
 `)
