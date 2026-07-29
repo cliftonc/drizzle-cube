@@ -60,7 +60,9 @@ export {
 export type {
   ChartType,
   ChartAxisConfig,
-  ChartDisplayConfig
+  ChartDisplayConfig,
+  ChartProps,
+  ColorPalette
 } from './types.js'
 
 // Chart configuration types
