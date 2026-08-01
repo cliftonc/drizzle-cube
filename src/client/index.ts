@@ -256,6 +256,8 @@ export type {
   BuiltInChartType,
   ChartAxisConfig,
   ChartDisplayConfig,
+  ChartProps,
+  ColorPalette,
   CubeQuery,
   CubeQueryOptions,
   CubeApiOptions,
