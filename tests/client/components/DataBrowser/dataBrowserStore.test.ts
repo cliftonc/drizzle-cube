@@ -55,6 +55,58 @@ describe('DataBrowserStore', () => {
       )
       expect(result.current).toEqual([])
     })
+
+    it('should have empty searchText', () => {
+      const { result } = renderHook(
+        () => useDataBrowserStore((s) => s.searchText),
+        { wrapper: createWrapper() }
+      )
+      expect(result.current).toBe('')
+    })
+  })
+
+  describe('setSearchText', () => {
+    it('should update searchText and reset page to 0', () => {
+      const { result } = renderHook(
+        () => ({
+          searchText: useDataBrowserStore((s) => s.searchText),
+          page: useDataBrowserStore((s) => s.page),
+          setPage: useDataBrowserStore((s) => s.setPage),
+          setSearchText: useDataBrowserStore((s) => s.setSearchText),
+        }),
+        { wrapper: createWrapper() }
+      )
+
+      act(() => result.current.setPage(4))
+      expect(result.current.page).toBe(4)
+
+      act(() => result.current.setSearchText('acme'))
+
+      expect(result.current.searchText).toBe('acme')
+      expect(result.current.page).toBe(0)
+    })
+
+    it('should clear searchText on cube switch', () => {
+      const { result } = renderHook(
+        () => ({
+          searchText: useDataBrowserStore((s) => s.searchText),
+          selectCube: useDataBrowserStore((s) => s.selectCube),
+          setSearchText: useDataBrowserStore((s) => s.setSearchText),
+        }),
+        { wrapper: createWrapper() }
+      )
+
+      act(() => {
+        result.current.selectCube('Employees', ['Employees.id'])
+        result.current.setSearchText('acme')
+      })
+      expect(result.current.searchText).toBe('acme')
+
+      act(() => {
+        result.current.selectCube('Departments', ['Departments.id'])
+      })
+      expect(result.current.searchText).toBe('')
+    })
   })
 
   describe('selectCube', () => {

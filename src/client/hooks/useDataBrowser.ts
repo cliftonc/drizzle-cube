@@ -11,7 +11,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useDataBrowserStore } from '../stores/dataBrowserStore.js'
 import { useCubeMeta } from '../providers/CubeProvider.js'
 import { useCubeLoadQuery } from './queries/useCubeLoadQuery.js'
-import type { CubeQuery } from '../types.js'
+import type { CubeQuery, Filter } from '../types.js'
 
 /**
  * Determine whether a field is a dimension on a given cube from metadata
@@ -71,6 +71,7 @@ export function useDataBrowser() {
   const page = useDataBrowserStore((s) => s.page)
   const pageSize = useDataBrowserStore((s) => s.pageSize)
   const filters = useDataBrowserStore((s) => s.filters)
+  const searchText = useDataBrowserStore((s) => s.searchText)
   const showFilterBar = useDataBrowserStore((s) => s.showFilterBar)
   const showColumnPicker = useDataBrowserStore((s) => s.showColumnPicker)
 
@@ -85,6 +86,7 @@ export function useDataBrowser() {
       setPage: s.setPage,
       setPageSize: s.setPageSize,
       setFilters: s.setFilters,
+      setSearchText: s.setSearchText,
       toggleFilterBar: s.toggleFilterBar,
       setShowColumnPicker: s.setShowColumnPicker,
     }))
@@ -126,11 +128,23 @@ export function useDataBrowser() {
     }
 
     if (measures.length > 0) q.measures = measures
-    if (filters.length > 0) q.filters = filters
+
+    // Quick text search: OR a case-insensitive 'contains' across every text
+    // (string-type) dimension of the cube, AND-combined with structured filters.
+    const term = searchText.trim()
+    const cube = meta?.cubes.find((c) => c.name === selectedCube)
+    const textDimensions = cube?.dimensions.filter((d) => d.type === 'string').map((d) => d.name) ?? []
+    const searchGroup: Filter | null =
+      term && textDimensions.length > 0
+        ? { type: 'or', filters: textDimensions.map((member) => ({ member, operator: 'contains', values: [term] })) }
+        : null
+    const combinedFilters = searchGroup ? [...filters, searchGroup] : filters
+    if (combinedFilters.length > 0) q.filters = combinedFilters
+
     if (effectiveSortColumn) q.order = { [effectiveSortColumn]: effectiveSortDirection }
 
     return q
-  }, [selectedCube, visibleColumns, filters, effectiveSortColumn, effectiveSortDirection, page, pageSize, meta])
+  }, [selectedCube, visibleColumns, filters, searchText, effectiveSortColumn, effectiveSortDirection, page, pageSize, meta])
 
   // Fetch data — keepPreviousData ON so pagination/sort keeps showing
   // stale data while new page loads. We detect cube switches by checking
@@ -177,6 +191,7 @@ export function useDataBrowser() {
     page,
     pageSize,
     filters,
+    searchText,
     showFilterBar,
     showColumnPicker,
 
