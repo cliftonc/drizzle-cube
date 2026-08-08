@@ -27,6 +27,16 @@ All five are self-contained: no Docker, no external service, no network.
 `.github/workflows/ci.yml` runs each of them with no `services:` block,
 which is what proves it.
 
+**Run them ONE AT A TIME, not in parallel.** Each of these is a Node
+process that peaks near a gigabyte — `tsc` uses ~1 GB per pass (and
+`typecheck` is three sequential passes), and `test:client` runs ~5,900
+jsdom tests. Launching them concurrently inside a memory-capped sandbox
+gets one of them SIGKILLed by the kernel, which surfaces as **exit code
+137** and looks like a broken command rather than what it is. If you see
+exit 137 from any of these, that is out-of-memory from too much
+concurrency — re-run that command on its own before drawing any
+conclusion from it.
+
 `test:sqlite` is not a token subset — it executes the **same** server test
 suite as the PostgreSQL run (~2,300 tests), just against a different
 engine. Treat green `test:sqlite` + `test:client` + `lint` + `typecheck`
