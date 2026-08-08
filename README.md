@@ -212,7 +212,12 @@ import 'drizzle-cube/client/styles.css'
 
 export function AnalyticsPage() {
   return (
-    <CubeProvider apiOptions={{ apiUrl: '/cubejs-api/v1' }}>
+    <CubeProvider
+      apiOptions={{
+        apiUrl: '/cubejs-api/v1',
+        headers: { 'x-organisation-id': 'demo-org' }
+      }}
+    >
       <AnalysisBuilder />
     </CubeProvider>
   )
@@ -287,10 +292,10 @@ Drizzle Cube adapters include a default-enabled MCP endpoint at `/mcp`, allowing
 
 | Tool | Availability | Purpose |
 |------|--------------|---------|
-| `drizzle_cube_discover` | Always available | Find relevant cubes and members by topic. |
-| `drizzle_cube_validate` | Always available | Validate queries and return corrections before execution. |
-| `drizzle_cube_load` | Always available | Execute validated queries and return data. |
-| `drizzle_cube_chart` | Conditional | Available only when MCP App support is enabled with `mcp.app`; returns interactive chart visualizations. |
+| `discover` | Always available | Find relevant cubes and members by topic. |
+| `validate` | Always available | Validate queries and return corrections before execution. |
+| `load` | Always available | Execute validated queries and return data. |
+| `chart` | Conditional | Available only when MCP App support is enabled with `mcp.app`; returns interactive chart visualizations. |
 
 For public deployments, configure verified bearer-token handling, resource metadata, and explicit browser origins as appropriate for your MCP clients. `extractSecurityContext` remains the application authentication boundary.
 
