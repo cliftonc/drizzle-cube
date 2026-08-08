@@ -16,8 +16,8 @@ interface KpiDimensionOptions {
 }
 
 interface KpiDimensions {
-  containerRef: RefObject<HTMLDivElement>
-  valueRef: RefObject<HTMLDivElement>
+  containerRef: RefObject<HTMLDivElement | null>
+  valueRef: RefObject<HTMLDivElement | null>
   fontSize: number
   textWidth: number
 }

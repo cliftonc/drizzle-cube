@@ -52,7 +52,7 @@ interface FilterFieldDropdownProps {
   fieldSearchTerm: string
   filteredQueryFields: MetaField[]
   filteredAllFields: MetaField[]
-  searchInputRef: React.RefObject<HTMLInputElement>
+  searchInputRef: React.RefObject<HTMLInputElement | null>
   onToggle: () => void
   onSearchTermChange: (term: string) => void
   onFieldChange: (fieldName: string) => void

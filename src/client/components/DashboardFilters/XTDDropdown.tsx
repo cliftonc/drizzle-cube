@@ -15,7 +15,7 @@ interface XTDDropdownProps {
   onClose: () => void
   onSelect: (xtdValue: string) => void
   currentXTD?: string | null
-  anchorRef: React.RefObject<HTMLElement>
+  anchorRef: React.RefObject<HTMLElement | null>
 }
 
 const XTDDropdown: React.FC<XTDDropdownProps> = ({
