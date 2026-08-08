@@ -1,0 +1,59 @@
+{
+  "nodes": {
+    "model.project.customers": {
+      "unique_id": "model.project.customers",
+      "resource_type": "model",
+      "name": "customers",
+      "alias": "customers",
+      "schema": "public",
+      "database": "analytics",
+      "description": "Customer dimension model.",
+      "config": { "materialized": "table" },
+      "columns": {
+        "id": { "name": "id", "description": "Customer identifier.", "tests": ["unique", "not_null"] },
+        "name": { "name": "name", "description": "Customer name." },
+        "organisation_id": { "name": "organisation_id", "description": "Tenant organisation identifier.", "tests": ["not_null"] },
+        "created_at": { "name": "created_at", "description": "Customer creation timestamp." }
+      },
+      "constraints": [{ "type": "primary_key", "columns": ["id"] }]
+    },
+    "model.project.orders": {
+      "unique_id": "model.project.orders",
+      "resource_type": "model",
+      "name": "orders",
+      "alias": "orders",
+      "schema": "public",
+      "database": "analytics",
+      "description": "Order fact model.",
+      "config": { "materialized": "incremental" },
+      "columns": {
+        "id": { "name": "id", "description": "Order identifier.", "tests": ["unique", "not_null"] },
+        "customer_id": { "name": "customer_id", "description": "Customer foreign key." },
+        "organisation_id": { "name": "organisation_id", "description": "Tenant organisation identifier.", "tests": ["not_null"] },
+        "amount": { "name": "amount", "description": "Order amount.", "meta": { "drizzle_cube": { "measures": [{ "name": "totalAmount", "type": "sum", "title": "Total Amount", "format": "currency" }] } } },
+        "status": { "name": "status", "description": "Order status." },
+        "ordered_at": { "name": "ordered_at", "description": "Order timestamp." }
+      },
+      "constraints": [{ "type": "primary_key", "columns": ["id"] }]
+    },
+    "model.project.order_rollup_ephemeral": {
+      "unique_id": "model.project.order_rollup_ephemeral",
+      "resource_type": "model",
+      "name": "order_rollup_ephemeral",
+      "config": { "materialized": "ephemeral" },
+      "columns": {}
+    },
+    "test.project.relationships_orders_customer_id_customers_id": {
+      "unique_id": "test.project.relationships_orders_customer_id_customers_id",
+      "resource_type": "test",
+      "name": "relationships_orders_customer_id_customers_id",
+      "test_metadata": {
+        "name": "relationships",
+        "kwargs": { "field": "customer_id", "column_name": "customer_id", "to": "ref('customers')", "target_field": "id" }
+      },
+      "depends_on": { "nodes": ["model.project.orders", "model.project.customers"] },
+      "attached_node": "model.project.orders",
+      "column_name": "customer_id"
+    }
+  }
+}

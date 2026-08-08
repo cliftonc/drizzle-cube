@@ -1,0 +1,10 @@
+{
+  "security": { "mode": "column", "column": "organisation_id", "context": "organisationId" },
+  "models": {
+    "orders": {
+      "measures": [
+        { "name": "averageAmount", "type": "avg", "column": "amount", "title": "Average Amount" }
+      ]
+    }
+  }
+}

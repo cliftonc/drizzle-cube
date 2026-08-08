@@ -102,6 +102,19 @@ const app = createCubeApp({
 export default app
 ```
 
+### Generate Cubes from dbt Artifacts
+
+```bash
+npx drizzle-cube dbt generate \
+  --manifest target/manifest.json \
+  --catalog target/catalog.json \
+  --dialect postgres \
+  --out ./src/cubes/generated \
+  --no-security
+```
+
+`--no-security` is an explicit opt-out for public or single-tenant data. Production multi-tenant deployments should configure `--security-column` and `--security-context` so every generated cube filters by `securityContext`.
+
 ### 4. Query from Anywhere
 
 ```typescript
@@ -248,6 +261,7 @@ Three built-in themes (light, dark, neon) with semantic CSS variables. Add custo
 - **[Client Components](https://www.drizzle-cube.dev/client/)** - React components and hooks
 - **[AI Integration](https://www.drizzle-cube.dev/ai/)** - MCP server and Claude plugin
 - **[API Reference](https://www.drizzle-cube.dev/api-reference/)** - Complete API documentation
+- **[dbt artifact generator](./docs/dbt-generate.md)** - Generate Postgres Drizzle schema and cubes from local dbt manifest/catalog artifacts
 
 ## Examples
 
