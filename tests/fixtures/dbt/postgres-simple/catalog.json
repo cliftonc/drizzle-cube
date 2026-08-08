@@ -1,0 +1,27 @@
+{
+  "nodes": {
+    "model.demo.customers": {
+      "columns": {
+        "id": { "name": "id", "type": "integer", "index": 0, "comment": "Customer id." },
+        "organisation_id": { "name": "organisation_id", "type": "integer", "index": 1, "comment": "Tenant id." },
+        "name": { "name": "name", "type": "text", "index": 2, "comment": "Customer name." },
+        "active": { "name": "active", "type": "boolean", "index": 3, "comment": "Whether active." }
+      }
+    },
+    "model.demo.orders": {
+      "columns": {
+        "id": { "name": "id", "type": "integer", "index": 0, "comment": "Order id." },
+        "organisation_id": { "name": "organisation_id", "type": "integer", "index": 1, "comment": "Tenant id." },
+        "customer_id": { "name": "customer_id", "type": "integer", "index": 2, "comment": "Customer id." },
+        "status": { "name": "status", "type": "varchar", "index": 3, "comment": "Order status." },
+        "amount": { "name": "amount", "type": "numeric", "index": 4, "comment": "Order amount." },
+        "created_at": { "name": "created_at", "type": "timestamp without time zone", "index": 5, "comment": "Creation timestamp." }
+      }
+    },
+    "model.demo.ephemeral_rollup": {
+      "columns": {
+        "id": { "name": "id", "type": "integer", "index": 0 }
+      }
+    }
+  }
+}

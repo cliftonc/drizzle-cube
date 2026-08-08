@@ -23,6 +23,7 @@
     /* Module Resolution */
     "baseUrl": ".",
     "paths": {
+      "drizzle-cube/server": ["./src/server/index.ts"],
       "@/server/*": ["./src/server/*"],
       "@/client/*": ["./src/client/*"],
       "@/adapters/*": ["./src/adapters/*"]
