@@ -39,18 +39,37 @@ Each engine has a dedicated executor in `src/server/executors/`. Auto-detection 
 | Build | `npm run build:client` | Build client only |
 | Build | `npm run build:adapters` | Build adapters only |
 | Build | `npm run build:cli` | Build CLI only |
-| Test | `npm test` | Run all tests (Vitest) |
+| Test | `npm test` | Run all tests (Vitest) — **needs Docker**, see below |
 | Test | `npm run test:watch` | Tests in watch mode |
-| Test | `npm run test:postgres` | Run server tests (PostgreSQL, default engine) |
-| Test | `npm run test:mysql` | Run server tests against MySQL |
-| Test | `npm run test:sqlite` | Run server tests against SQLite |
-| Test | `npm run test:client` | Run client component tests |
+| Test | `npm run test:postgres` | Run server tests (PostgreSQL, default engine) — **needs Docker** |
+| Test | `npm run test:mysql` | Run server tests against MySQL — **needs Docker** |
+| Test | `npm run test:sqlite` | Run server tests against SQLite — no Docker |
+| Test | `npm run test:cli` | Run CLI / generator tests — no Docker |
+| Test | `npm run test:client` | Run client component tests — no Docker |
 | Test | `npm run test:e2e` | Run Playwright end-to-end tests |
 | Test | `npm run test:setup` | Start test containers (docker-compose up) |
 | Test | `npm run test:teardown` | Stop test containers (docker-compose down) |
 | Quality | `npm run typecheck` | TypeScript type checking |
 | Quality | `npm run lint` | ESLint |
 | Quality | `npm run lint:fix` | ESLint with auto-fix |
+
+### Testing in a constrained environment (CI sandboxes, agents, containers)
+
+**`npm test` is NOT the command to run when Docker is unavailable.** The default engine is PostgreSQL, so the root Vitest config's `globalSetup` tries to connect to the `docker-compose.yml` Postgres and the whole run fails before a single test executes. The same applies to `npm run test:postgres` and `npm run test:mysql`. A failure from these commands means "no database", not "the code is broken" — do not report it as a test failure, and do not try to fix the code in response to it.
+
+If you are running inside a container, a sandbox, or any environment where you cannot start Docker (`docker-compose up` unavailable or nested-Docker denied), **use the DB-free suites instead** — they are the full verification signal available to you:
+
+```bash
+npm run test:sqlite    # server tests against in-process SQLite — the widest DB-free coverage
+npm run test:client    # client/React component tests
+npm run test:cli       # CLI / generator tests
+npm run lint
+npm run typecheck
+```
+
+`test:sqlite` uses an in-process SQLite database with no external service, and it exercises the same server test suite as the Postgres run — so it is the primary correctness signal here, not a token subset. CI proves all three are self-contained: `.github/workflows/ci.yml` runs `test-sqlite`, `test-client` and the lint/typecheck job with **no** `services:` block.
+
+Treat green `test:sqlite` + `test:client` + `lint` + `typecheck` as a passing verification for any change that isn't engine-specific. Only reach for Postgres/MySQL/DuckDB/Databend/Snowflake when your change touches that engine's executor in `src/server/executors/` — and if you can't run them, say so explicitly and leave the engine-specific verification to CI, which covers every engine on the PR.
 
 ## Security Model
 
