@@ -123,6 +123,27 @@ const result = await fetch('/cubejs-api/v1/load', {
 })
 ```
 
+## Generate schema and cubes from dbt artifacts
+
+`drizzle-cube dbt generate` reads local dbt `manifest.json` and `catalog.json`
+and emits a Drizzle `pg-core` schema plus one cube file per materialized model
+plus a root `index.ts` exporting `allCubes`. It is local and deterministic — no
+network, no dbt runtime, no YAML/Jinja parsing.
+
+```bash
+npx drizzle-cube dbt generate \
+  --manifest target/manifest.json \
+  --catalog target/catalog.json \
+  --dialect postgres \
+  --out ./src/cubes/generated \
+  --security-column organisation_id \
+  --security-context organisationId
+```
+
+v1 is local artifact-only, Postgres-only, and does not clone GitHub repos or
+run dbt. See [`docs/dbt-generate.md`](docs/dbt-generate.md) for the full option
+reference, security modes, and v1 limitations.
+
 ## Analysis Modes
 
 Drizzle Cube supports multiple analysis modes out of the box:

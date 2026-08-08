@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/catalog/v1.json",
+    "dbt_version": "1.8.0"
+  },
+  "nodes": {
+    "model.demo.customers": {
+      "unique_id": "model.demo.customers",
+      "name": "customers",
+      "columns": {
+        "id": { "name": "id", "type": "integer", "index": 1, "comment": null },
+        "organisation_id": { "name": "organisation_id", "type": "integer", "index": 2, "comment": null },
+        "name": { "name": "name", "type": "text", "index": 3, "comment": null },
+        "status": { "name": "status", "type": "text", "index": 4, "comment": null },
+        "created_at": { "name": "created_at", "type": "timestamp", "index": 5, "comment": null },
+        "active": { "name": "active", "type": "boolean", "index": 6, "comment": null }
+      }
+    },
+    "model.demo.orders": {
+      "unique_id": "model.demo.orders",
+      "name": "orders",
+      "columns": {
+        "id": { "name": "id", "type": "integer", "index": 1, "comment": null },
+        "organisation_id": { "name": "organisation_id", "type": "integer", "index": 2, "comment": null },
+        "customer_id": { "name": "customer_id", "type": "integer", "index": 3, "comment": null },
+        "amount": { "name": "amount", "type": "numeric", "index": 4, "comment": null },
+        "status": { "name": "status", "type": "text", "index": 5, "comment": null },
+        "created_at": { "name": "created_at", "type": "timestamp", "index": 6, "comment": null },
+        "active": { "name": "active", "type": "boolean", "index": 7, "comment": null }
+      }
+    },
+    "model.demo.order_lines": {
+      "unique_id": "model.demo.order_lines",
+      "name": "order_lines",
+      "columns": {
+        "order_id": { "name": "order_id", "type": "integer", "index": 1, "comment": null },
+        "line_number": { "name": "line_number", "type": "integer", "index": 2, "comment": null },
+        "organisation_id": { "name": "organisation_id", "type": "integer", "index": 3, "comment": null },
+        "quantity": { "name": "quantity", "type": "integer", "index": 4, "comment": null },
+        "sku": { "name": "sku", "type": "text", "index": 5, "comment": null },
+        "amount": { "name": "amount", "type": "numeric", "index": 6, "comment": null },
+        "created_at": { "name": "created_at", "type": "timestamp", "index": 7, "comment": null }
+      }
+    }
+  }
+}
