@@ -4,7 +4,7 @@
 
 ![Drizzle Cube Dashboard](https://try.drizzle-cube.dev/dashboard_light.png)
 
-Build a semantic layer on top of your Drizzle schema. Define cubes with measures, dimensions, and joins—then query them from dashboards, AI agents, or your own code. All with full TypeScript inference and SQL injection protection.
+Build a semantic layer on top of your existing Drizzle ORM schema. Define cubes with measures, dimensions, joins, and security filters in TypeScript, then query them through Cube.js-compatible HTTP APIs, React analytics components, framework adapters, or MCP-enabled AI tools. SQL is generated through Drizzle ORM and parameterized query primitives; your application remains responsible for authentication, authorization, and tenant scoping.
 
 - **[Documentation](https://www.drizzle-cube.dev/)**
 - **[Try the Sandbox](https://try.drizzle-cube.dev/)**
@@ -13,54 +13,87 @@ Build a semantic layer on top of your Drizzle schema. Define cubes with measures
 
 [![NPM Version](https://img.shields.io/npm/v/drizzle-cube)](https://www.npmjs.com/package/drizzle-cube)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
-[![Drizzle ORM](https://img.shields.io/badge/Drizzle%20ORM-0.44.4+-green)](https://orm.drizzle.team/)
+[![Drizzle ORM](https://img.shields.io/badge/Drizzle%20ORM-0.45+-green)](https://orm.drizzle.team/)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
 
 ## What is a Semantic Layer?
 
 A semantic layer sits between your database and your applications. It provides:
 
-- **Business-friendly abstractions** - Define "Revenue" once, use it everywhere
-- **Consistent metrics** - Everyone uses the same calculation for "Active Users"
-- **Security isolation** - Multi-tenant filtering built into every query
-- **Self-service analytics** - Users explore data without writing SQL
-- **Decoupling** - Reports and AI agents continue to work when you change your underlying data model
+- **Business-friendly abstractions** - define "Revenue" once and use it everywhere.
+- **Consistent metrics** - every dashboard, API caller, and AI agent uses the same calculation for "Active Users".
+- **Security hooks** - route verified identity into `securityContext` and apply tenant filters or database RLS consistently.
+- **Self-service analytics** - users explore data without writing SQL.
+- **Decoupling** - reports and AI agents continue to work when you change the underlying data model.
 
-Drizzle Cube brings this to the Drizzle ORM ecosystem with full type safety.
+Drizzle Cube brings this to the Drizzle ORM ecosystem with full TypeScript inference, Cube.js-compatible APIs, React components, framework adapters, and MCP integration.
 
 ## Why Drizzle Cube?
 
 | Feature | Drizzle Cube | Raw SQL | Other BI Tools |
-|---------|-------------|---------|----------------|
-| Type Safety | Full TypeScript inference | Manual types | None |
-| SQL Injection | Impossible (parameterized) | Risk | Varies |
-| Multi-tenant | Built-in security context | Manual | Complex |
-| AI Integration | MCP server included | Build yourself | Limited |
-| Setup | Minutes | Hours | Days |
+|---------|--------------|---------|----------------|
+| Type safety | TypeScript cube definitions and inferred schema types | Manual types | Varies |
+| SQL generation | Drizzle ORM query builder and parameterized SQL | Manual, error-prone | Tool-specific |
+| Multi-tenant isolation | Application-provided `securityContext`, cube filters, and RLS hooks | Manual | Tool-specific |
+| AI integration | MCP endpoint included in adapters | Build yourself | Varies |
+| Setup | Add cubes to your existing Drizzle app | Build API and UI yourself | Often separate infrastructure |
 
 ## Quick Start
+
+This example uses Hono, PostgreSQL, and `postgres` as one concrete path. Substitute your Drizzle driver and preferred adapter as needed.
 
 ### 1. Install
 
 ```bash
-npm install drizzle-cube drizzle-orm
+npm install drizzle-cube drizzle-orm hono postgres
 ```
 
+React client usage also requires the optional React/client peers used by your app and the shipped stylesheet import shown below.
+
 ### 2. Define Cubes on Your Schema
+
+Drizzle Cube does not infer or generate cube models from your database schema today. Define cubes in TypeScript, using your existing Drizzle tables. The CLI commands `npx drizzle-cube charts list` and `npx drizzle-cube charts init` scaffold custom chart plugins, not cube definitions.
 
 ```typescript
 import { defineCube } from 'drizzle-cube/server'
 import { eq } from 'drizzle-orm'
-import { employees, departments } from './schema'
+import { departments, employees } from './schema'
+
+export const departmentsCube = defineCube('Departments', {
+  sql: (ctx) => ({
+    from: departments,
+    where: eq(departments.organisationId, ctx.securityContext.organisationId)
+  }),
+
+  measures: {
+    count: {
+      name: 'count',
+      type: 'count',
+      sql: departments.id
+    }
+  },
+
+  dimensions: {
+    id: {
+      name: 'id',
+      type: 'number',
+      sql: departments.id,
+      primaryKey: true
+    },
+    name: {
+      name: 'name',
+      type: 'string',
+      sql: departments.name
+    }
+  }
+})
 
 export const employeesCube = defineCube('Employees', {
-  // Security: filter by organisation automatically
   sql: (ctx) => ({
     from: employees,
     where: eq(employees.organisationId, ctx.securityContext.organisationId)
   }),
 
-  // Define relationships for cross-cube queries
   joins: {
     Departments: {
       targetCube: () => departmentsCube,
@@ -70,50 +103,92 @@ export const employeesCube = defineCube('Employees', {
   },
 
   measures: {
-    count: { type: 'count', sql: employees.id },
-    avgSalary: { type: 'avg', sql: employees.salary },
-    totalSalary: { type: 'sum', sql: employees.salary }
+    count: {
+      name: 'count',
+      type: 'count',
+      sql: employees.id
+    },
+    avgSalary: {
+      name: 'avgSalary',
+      type: 'avg',
+      sql: employees.salary
+    },
+    totalSalary: {
+      name: 'totalSalary',
+      type: 'sum',
+      sql: employees.salary
+    }
   },
 
   dimensions: {
-    name: { type: 'string', sql: employees.name },
-    email: { type: 'string', sql: employees.email },
-    hiredAt: { type: 'time', sql: employees.hiredAt }
+    id: {
+      name: 'id',
+      type: 'number',
+      sql: employees.id,
+      primaryKey: true
+    },
+    name: {
+      name: 'name',
+      type: 'string',
+      sql: employees.name
+    },
+    email: {
+      name: 'email',
+      type: 'string',
+      sql: employees.email
+    },
+    hiredAt: {
+      name: 'hiredAt',
+      type: 'time',
+      sql: employees.hiredAt
+    }
   }
 })
 ```
 
-### 3. Create API Server
+### 3. Create an API Server
 
 ```typescript
-import { Hono } from 'hono'
 import { createCubeApp } from 'drizzle-cube/adapters/hono'
-import { employeesCube, departmentsCube } from './cubes'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
+import { departmentsCube, employeesCube } from './cubes'
+import * as schema from './schema'
+
+const client = postgres(process.env.DATABASE_URL!)
+const db = drizzle(client, { schema })
 
 const app = createCubeApp({
-  cubes: [employeesCube, departmentsCube],
+  cubes: [departmentsCube, employeesCube],
   drizzle: db,
   schema,
-  extractSecurityContext: async (req) => ({
-    organisationId: req.user.orgId  // Multi-tenant isolation
-  })
+  extractSecurityContext: async (c) => {
+    const organisationId = c.req.header('x-organisation-id')
+
+    if (!organisationId) {
+      throw new Error('Missing organisation context')
+    }
+
+    return { organisationId }
+  }
 })
 
 export default app
 ```
 
-### 4. Query from Anywhere
+> **Security note:** `x-organisation-id` is a local demonstration shortcut. In production, derive tenant and user identity from verified authentication, then return it from `extractSecurityContext`. Treat this function as your authentication and authorization boundary.
+
+Adapter defaults expose Cube.js-compatible REST routes at `/cubejs-api/v1` and the MCP endpoint at `/mcp` with MCP enabled by default. See the adapter documentation for [Express](https://www.drizzle-cube.dev/frameworks/express/), [Fastify](https://www.drizzle-cube.dev/frameworks/fastify/), [Hono](https://www.drizzle-cube.dev/frameworks/hono/), and [Next.js](https://www.drizzle-cube.dev/frameworks/nextjs/) variants.
+
+### 4. Query from Your App
 
 ```typescript
-// From React components
-import { AnalysisBuilder, AnalyticsDashboard } from 'drizzle-cube/client'
-
-// From AI agents via MCP
-// Connect Claude, ChatGPT, or n8n to /mcp
-
-// From your own code
-const result = await fetch('/cubejs-api/v1/load', {
+const response = await fetch('/cubejs-api/v1/load', {
   method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-organisation-id': 'demo-org'
+  },
   body: JSON.stringify({
     query: {
       measures: ['Employees.count', 'Employees.avgSalary'],
@@ -121,65 +196,113 @@ const result = await fetch('/cubejs-api/v1/load', {
     }
   })
 })
+
+if (!response.ok) {
+  throw new Error(`Cube query failed: ${response.status}`)
+}
+
+const result = await response.json()
 ```
+
+### 5. Add React Analytics Components
+
+```tsx
+import { AnalysisBuilder, CubeProvider } from 'drizzle-cube/client'
+import 'drizzle-cube/client/styles.css'
+
+export function AnalyticsPage() {
+  return (
+    <CubeProvider
+      apiOptions={{
+        apiUrl: '/cubejs-api/v1',
+        headers: { 'x-organisation-id': 'demo-org' }
+      }}
+    >
+      <AnalysisBuilder />
+    </CubeProvider>
+  )
+}
+```
+
+Use `AnalyticsDashboard` when you want to compose and persist dashboard layouts in your own application storage. AI agents can connect to `/mcp`; those requests use the same adapter security context as the REST API.
 
 ## Analysis Modes
 
-Drizzle Cube supports multiple analysis modes out of the box:
+Drizzle Cube supports multiple analysis modes at the semantic-layer level:
 
 ### Query Builder (Analysis Builder)
-Build ad-hoc queries with measures, dimensions, filters, and time ranges. Search-first field picker, drag-and-drop chart configuration, and multiple visualization options.
+
+Build ad-hoc queries with measures, dimensions, filters, and time ranges. The React Analysis Builder includes a search-first field picker, chart configuration, and multiple visualization options.
 
 ![Analysis Builder](https://try.drizzle-cube.dev/dashboard_light.png)
 
 **[Try the Analysis Builder →](https://try.drizzle-cube.dev/analysis-builder)**
 
 ### Funnel Analysis
-Track conversion through multi-step processes. Define funnel steps, measure drop-off rates, and analyze time-to-convert metrics (average, median, p90).
+
+Track conversion through ordered steps, drop-off rates, and time-to-convert metrics. Funnels require a binding key, an event time dimension, and ordered step filters. A canonical request nests the funnel configuration under `funnel`:
 
 ```typescript
-// Funnel query example
 {
-  analysisType: 'funnel',
-  steps: [
-    { name: 'Signed Up', filter: { member: 'Users.status', operator: 'equals', values: ['registered'] } },
-    { name: 'Activated', filter: { member: 'Users.activated', operator: 'equals', values: [true] } },
-    { name: 'Subscribed', filter: { member: 'Users.plan', operator: 'notEquals', values: ['free'] } }
-  ],
-  timeDimension: 'Users.createdAt',
-  dateRange: ['2024-01-01', '2024-12-31']
+  funnel: {
+    bindingKey: 'Users.id',
+    timeDimension: 'Events.timestamp',
+    includeTimeMetrics: true,
+    steps: [
+      {
+        name: 'Signed Up',
+        filter: { member: 'Events.type', operator: 'equals', values: ['signed_up'] }
+      },
+      {
+        name: 'Activated',
+        filter: { member: 'Events.type', operator: 'equals', values: ['activated'] }
+      },
+      {
+        name: 'Subscribed',
+        filter: { member: 'Events.type', operator: 'equals', values: ['subscribed'] }
+      }
+    ]
+  }
 }
 ```
 
 ### Flow Analysis
-Visualize user journeys and navigation paths through your application. Understand how users move between states or pages.
+
+Visualize user journeys and navigation paths through states, pages, or events. Flow analysis needs event-style dimensions that identify the actor, timestamp, and step value.
 
 ### Retention Analysis
-Measure user retention over time with cohort analysis. Track how many users return after their first interaction across days, weeks, or months.
+
+Measure cohort retention over days, weeks, or months. Retention analysis requires suitable cohort, return-event, and time dimensions.
 
 ### Dashboards
-Compose multiple charts into persistent dashboards with grid layouts, filters, and real-time updates. Save and share dashboard configurations.
+
+Compose multiple charts into dashboards with grid layouts, filters, themes, and custom chart plugins. Applications own dashboard persistence and sharing workflows.
 
 **[Try the Dashboard Builder →](https://try.drizzle-cube.dev/)**
 
+Validation surfaces missing mode prerequisites and engine capability differences before execution. See the [analysis documentation](https://www.drizzle-cube.dev/client/analysis-builder/) for detailed mode configuration.
+
 ## AI & MCP Integration
 
-Drizzle Cube includes a built-in **MCP server** that lets AI agents query your semantic layer:
+Drizzle Cube adapters include a default-enabled MCP endpoint at `/mcp`, allowing AI agents to discover metadata, validate queries, and load results through the same security boundary as other API calls.
 
 ![Claude using Drizzle Cube MCP](https://try.drizzle-cube.dev/claude_mcp.png)
 
 ### Available MCP Tools
 
-| Tool | Purpose |
-|------|---------|
-| `drizzle_cube_discover` | Find relevant cubes by topic |
-| `drizzle_cube_validate` | Validate queries with auto-corrections |
-| `drizzle_cube_load` | Execute queries and return data |
-| `drizzle_cube_chart` | Execute queries with interactive chart visualization |
+| Tool | Availability | Purpose |
+|------|--------------|---------|
+| `discover` | Always available | Find relevant cubes and members by topic. |
+| `validate` | Always available | Validate queries and return corrections before execution. |
+| `load` | Always available | Execute validated queries and return data. |
+| `chart` | Conditional | Available only when MCP App support is enabled with `mcp.app`; returns interactive chart visualizations. |
+
+For public deployments, configure verified bearer-token handling, resource metadata, and explicit browser origins as appropriate for your MCP clients. `extractSecurityContext` remains the application authentication boundary.
 
 ### Connect AI Tools
 
-**Claude Desktop** - Add to `claude_desktop_config.json`:
+Connector setup varies by client and transport. For example, Claude Desktop can use `mcp-remote`:
+
 ```json
 {
   "mcpServers": {
@@ -191,74 +314,76 @@ Drizzle Cube includes a built-in **MCP server** that lets AI agents query your s
 }
 ```
 
-**Claude.ai** - Settings → Connectors → Add your MCP URL
-
-**ChatGPT** - Settings → Connectors → Developer Mode → Add MCP URL
-
-**n8n** - Use the MCP Client node in your workflows
-
-**[Learn more about AI integration →](https://www.drizzle-cube.dev/ai/mcp-endpoints/)**
+See the [MCP endpoint documentation](https://www.drizzle-cube.dev/ai/mcp-endpoints/) for transport, authentication, and client-specific guidance.
 
 ## Claude Code Plugin
 
-Query your semantic layer with natural language directly from Claude Code:
+Query your semantic layer with natural language directly from Claude Code. In Claude Code, run the interactive command:
 
-```bash
-claude /install-plugin github:cliftonc/drizzle-cube-plugin
+```text
+/plugin install cliftonc/drizzle-cube-plugin
 ```
 
-Then configure your API endpoint in `.drizzle-cube.json` and ask Claude things like:
-- "Show me revenue by region for the last quarter"
-- "Which departments have the highest average salary?"
-- "Create a dashboard showing key HR metrics"
-
-**[Plugin documentation →](https://www.drizzle-cube.dev/ai/claude-code-plugin/)**
+The plugin repository is the source of truth for installation and configuration: **[cliftonc/drizzle-cube-plugin](https://github.com/cliftonc/drizzle-cube-plugin)**. For custom servers, configure Claude's `.mcp.json` plus the plugin's `.drizzle-cube.json` endpoint settings.
 
 ## Features
 
 ### Semantic Layer
-- **Cubes** - Define measures, dimensions, and calculated fields
-- **Joins** - belongsTo, hasOne, hasMany, belongsToMany relationships
-- **Security** - Multi-tenant isolation via security context
-- **Cross-cube queries** - Automatic join resolution
 
-### Modeling Note: Multi-Fact Queries
-- For `FactA -> Dimension <- FactB` (star/snowflake patterns), define reverse `hasMany` joins on the center dimension back to each fact.
+- **Cubes** - define measures, dimensions, hierarchies, calculated measures, and member metadata.
+- **Joins** - model `belongsTo`, `hasOne`, `hasMany`, and `belongsToMany` relationships.
+- **Query planning** - resolve cross-cube paths, validate queries, dry-run generated SQL, and explain plans.
+- **Security hooks** - pass application-authenticated context into cube SQL and optional database RLS patterns.
+- **Performance hooks** - configure query caching and execution options where appropriate.
+
+### Modeling Limitation: Multi-Fact Queries
+
+- For `FactA -> Dimension <- FactB` star or snowflake patterns, define reverse `hasMany` joins on the center dimension back to each fact.
 - Example: if `Sales` and `Inventory` both `belongsTo Products`, `Products` should define `hasMany Sales` and `hasMany Inventory`.
-- Why: join-path traversal is directional. Without reverse joins, the planner may not be able to pick the center dimension as the primary cube, which can lead to fan-out-prone execution plans.
-- If you cannot add reverse joins immediately, include the center join key dimension (for example `Products.id`) in the query grain to reduce aggregation ambiguity.
+- Join-path traversal is directional. Without reverse joins, the planner may not be able to pick the center dimension as the primary cube, which can lead to fan-out-prone execution plans.
+- If you cannot add reverse joins immediately, include the center join key dimension, such as `Products.id`, in the query grain to reduce aggregation ambiguity.
 
 ### Client Components
-- **AnalysisBuilder** - Interactive query builder with chart visualization
-- **AnalyticsDashboard** - Configurable dashboards with grid layouts
-- **Chart components** - Bar, line, area, pie, funnel, heatmap, and more
 
-### Framework Support
-- Express, Fastify, Hono, Next.js adapters
-- PostgreSQL, MySQL, SQLite, DuckDB databases
-- React components with TanStack Query
+- **AnalysisBuilder** - interactive query builder for ad-hoc exploration.
+- **AnalyticsDashboard** - dashboard composition with application-owned persistence.
+- **Data browser** - metadata-driven field exploration.
+- **Analysis modes** - query, funnel, flow, and retention.
+- **Charts** - 26 built-in chart types, including Cartesian, pie, KPI, funnel, Sankey, sunburst, heatmap, retention, statistical, financial, profile, and gauge visualizations.
+- **Customization** - theming, i18n, and custom chart plugins.
 
-### Theming
-Three built-in themes (light, dark, neon) with semantic CSS variables. Add custom themes without changing components.
+### Framework and Database Support
+
+- **Framework adapters** - Express, Fastify, Hono, and Next.js.
+- **Database engines** - PostgreSQL, MySQL, SQLite, DuckDB, Snowflake, Databend, and SingleStore.
+- **Client runtime** - React components with TanStack Query integration and optional feature-specific peer dependencies.
+
+### Responsibilities and Limitations
+
+- Provide a connected Drizzle instance and schema for the selected driver.
+- Install optional peer dependencies for selected adapters, chart types, and client features.
+- Authenticate every request before returning `securityContext`.
+- Apply tenant filters in cube SQL or configure database RLS for the same isolation goal.
+- Persist dashboard configurations, sharing permissions, and user preferences in your application.
 
 ## Documentation
 
-- **[Getting Started](https://www.drizzle-cube.dev/getting-started/)** - Installation and setup
-- **[Semantic Layer](https://www.drizzle-cube.dev/semantic-layer/)** - Cubes, measures, dimensions, joins
-- **[Client Components](https://www.drizzle-cube.dev/client/)** - React components and hooks
-- **[AI Integration](https://www.drizzle-cube.dev/ai/)** - MCP server and Claude plugin
-- **[API Reference](https://www.drizzle-cube.dev/api-reference/)** - Complete API documentation
+- **[Getting Started](https://www.drizzle-cube.dev/getting-started/)** - installation and setup.
+- **[Semantic Layer](https://www.drizzle-cube.dev/semantic-layer/)** - cubes, measures, dimensions, joins, and security context.
+- **[Client Components](https://www.drizzle-cube.dev/client/)** - React components, dashboards, charts, and analysis modes.
+- **[AI Integration](https://www.drizzle-cube.dev/ai/)** - MCP endpoints and Claude Code plugin.
+- **[API Reference](https://www.drizzle-cube.dev/api-reference/)** - detailed API documentation.
 
 ## Examples
 
-- **[Hono Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/hono)** - Cloudflare Workers compatible
-- **[Express Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/express)** - Traditional Node.js server
-- **[Fastify Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/fastify)** - High-performance server
-- **[Next.js Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/nextjs)** - Full-stack React
+- **[Hono Example](https://github.com/cliftonc/drizzle-cube-hono)** - Hono server integration.
+- **[Express Example](https://github.com/cliftonc/drizzle-cube-express)** - Express server integration.
+- **[Fastify Example](https://github.com/cliftonc/drizzle-cube-fastify)** - Fastify server integration.
+- **[Next.js Example](https://github.com/cliftonc/drizzle-cube-nextjs)** - full-stack Next.js integration.
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md).
+We welcome contributions. Please see our [Contributing Guide](./CONTRIBUTING.md).
 
 Query performance is benchmarked on every push to `main` — browse the historical trends at the **[Performance Dashboard](https://cliftonc.github.io/drizzle-cube/dev/bench/)**.
 
@@ -272,7 +397,7 @@ MIT © [Clifton Cunningham](https://github.com/cliftonc)
 
 ---
 
-**Built with ❤️ for the Drizzle ORM community**
+Built for the Drizzle ORM community.
 
 ---
 
