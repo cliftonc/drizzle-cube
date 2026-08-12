@@ -455,7 +455,7 @@
     "highlight.js": "^11.9.0",
     "lz-string": "^1.5.0",
     "markdown-to-jsx": "^9.7.6",
-    "react-intersection-observer": "^10.0.0",
+    "react-intersection-observer": "^11.0.0",
     "react-router-dom": "^7.10.1",
     "zustand": "^5.0.9"
   }
