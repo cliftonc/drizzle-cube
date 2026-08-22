@@ -42,7 +42,7 @@ export function useElementVisibility(
 ): boolean {
   // Start with visible=true to prevent flash on initial render
   const [isVisible, setIsVisible] = useState(true)
-  const timeoutRef = useRef<number>()
+  const timeoutRef = useRef<number | undefined>(undefined)
   // Track if we've ever seen the element visible (prevents animation on load)
   const hasBeenVisibleRef = useRef(false)
 

@@ -35,8 +35,8 @@ export interface CompactFilterBarViewProps {
   setShowCustomDropdown: (next: boolean) => void
   showXTDDropdown: boolean
   setShowXTDDropdown: (next: boolean) => void
-  customButtonRef: RefObject<HTMLButtonElement>
-  xtdButtonRef: RefObject<HTMLButtonElement>
+  customButtonRef: RefObject<HTMLButtonElement | null>
+  xtdButtonRef: RefObject<HTMLButtonElement | null>
   handlePresetSelect: (presetValue: string) => void
   handleXTDSelect: (xtdValue: string) => void
   handleCustomDateSelect: (dateRange: string | string[]) => void

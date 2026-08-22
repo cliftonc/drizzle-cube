@@ -3,12 +3,12 @@ import { Tooltip } from 'recharts'
 import { formatNumericValue } from '../../utils/chartUtils.js'
 
 interface ChartTooltipProps {
-  formatter?: (value: any, name: any, props: any) => [React.ReactText, React.ReactText]
-  labelFormatter?: (label: any, payload?: readonly any[]) => React.ReactText
+  formatter?: (value: any, name: any, props: any) => [React.ReactNode, React.ReactNode]
+  labelFormatter?: (label: any, payload?: readonly any[]) => React.ReactNode
 }
 
 // Default formatter that rounds numeric values to at most 2 decimal places
-const defaultFormatter = (value: any, name: any): [React.ReactText, React.ReactText] => {
+const defaultFormatter = (value: any, name: any): [React.ReactNode, React.ReactNode] => {
   if (value === null || value === undefined) {
     return ['No data', name]
   }

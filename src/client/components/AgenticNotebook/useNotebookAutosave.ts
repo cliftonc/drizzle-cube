@@ -23,7 +23,7 @@ export function useNotebookAutosave({
   save,
   onSave,
 }: UseNotebookAutosaveParams) {
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const pendingSaveRef = useRef(false)
   const onSaveRef = useRef(onSave)
   onSaveRef.current = onSave
