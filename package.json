@@ -367,7 +367,7 @@
     "@google/generative-ai": "^0.24.1",
     "@hono/node-server": "^2.0.0",
     "@iconify-icons/heroicons-outline": "^1.2.5",
-    "@iconify-icons/heroicons-solid": "^1.2.6",
+    "@iconify-icons/heroicons-solid": "^2.0.0",
     "@iconify-icons/tabler": "^1.2.95",
     "@iconify/react": "^6.0.0",
     "@neondatabase/serverless": "^1.0.1",
