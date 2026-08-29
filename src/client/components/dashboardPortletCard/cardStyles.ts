@@ -62,8 +62,8 @@ export function buildContainerClassName(params: {
 
 export function buildHeaderClassName(isEditMode: boolean, extraClassName?: string): string {
   return [
-    'flex items-center justify-between px-3 py-1.5 md:px-4 md:py-1 border-b border-dc-border shrink-0 bg-dc-surface-secondary rounded-t-lg portlet-drag-handle',
-    isEditMode ? 'cursor-move' : 'cursor-default',
+    'dc:flex dc:items-center dc:justify-between dc:px-3 dc:py-1.5 dc:md:px-4 dc:md:py-1 dc:border-b border-dc-border dc:shrink-0 bg-dc-surface-secondary dc:rounded-t-lg portlet-drag-handle',
+    isEditMode ? 'dc:cursor-move' : 'dc:cursor-default',
     extraClassName
   ]
     .filter(Boolean)
