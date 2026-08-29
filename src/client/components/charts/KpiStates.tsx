@@ -16,11 +16,19 @@ const VARIANT_STYLE: Record<KpiStateVariant, React.CSSProperties> = {
   }
 }
 
-/** Resolve the shared `height`/`minHeight` style used by every KPI card state. */
-export function kpiHeightStyle(height: string | number): React.CSSProperties {
+/**
+ * Resolve the shared `height`/`minHeight` style used by every KPI card state.
+ *
+ * `minHeight` only applies when the card is sized at `100%`; the compact layout
+ * passes a smaller floor since it is meant to sit in a short metric strip.
+ */
+export function kpiHeightStyle(
+  height: string | number,
+  minHeight: string | number = '200px'
+): React.CSSProperties {
   return {
     height: height === '100%' ? '100%' : height,
-    minHeight: height === '100%' ? '200px' : undefined
+    minHeight: height === '100%' ? minHeight : undefined
   }
 }
 

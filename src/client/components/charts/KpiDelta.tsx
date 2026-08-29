@@ -7,6 +7,7 @@ import { filterIncompletePeriod } from "../../utils/periodUtils.js";
 import { formatKpiNumber, resolveDisplayLabel } from "./KpiNumber.helpers.js";
 import { useKpiDimensions } from "./useKpiDimensions.js";
 import { KpiCenteredState, kpiHeightStyle } from "./KpiStates.js";
+import KpiCompactLayout from "./KpiCompactLayout.js";
 import {
   toFieldList,
   sortByDimension,
@@ -108,7 +109,7 @@ function VarianceHistogram({
           return (
             <div
               key={index}
-              className="dc:absolute rounded-xs"
+              className="dc:absolute dc:rounded-sm"
               style={{
                 left: `${xPosition}px`,
                 width: `${barWidth}px`,
@@ -177,7 +178,7 @@ const KpiDelta = React.memo(function KpiDelta({
       <KpiCenteredState
         height={height}
         title={t('chart.runtime.noData')}
-        hint="No data points to display"
+        hint={t('chart.runtime.noDataHint.kpi')}
       />
     );
   }
@@ -239,7 +240,7 @@ const KpiDelta = React.memo(function KpiDelta({
   }
 
   // Calculate delta between last and second-last values
-  const { lastValue, absoluteChange, percentageChange, isPositiveChange } =
+  const { lastValue, previousValue, absoluteChange, percentageChange, isPositiveChange } =
     computeDelta(values);
 
   // Format number with appropriate units and decimals
@@ -259,6 +260,48 @@ const KpiDelta = React.memo(function KpiDelta({
   );
   const currentColor = isPositiveChange ? positiveColor : negativeColor;
 
+  const periodAdornment = (excludedIncompletePeriod || skippedLastPeriod) ? (
+    <span
+      title={
+        skippedLastPeriod
+          ? t('chart.runtime.kpiExcludesLastPeriod', { period: granularity || t('chart.runtime.kpiPeriodFallback') })
+          : t('chart.runtime.kpiExcludesIncompletePeriod', { period: granularity || t('chart.runtime.kpiPeriodFallback') })
+      }
+      className="dc:cursor-help"
+    >
+      <Icon
+        icon={infoCircleIcon}
+        className="dc:w-4 dc:h-4 text-dc-text-muted dc:opacity-70"
+      />
+    </span>
+  ) : null;
+
+  // Compact layout: fixed type scale, delta beside the value rather than below
+  // it, and no histogram — so several KPIs line up as a metric strip.
+  if (displayConfig.layout === 'compact') {
+    return (
+      <KpiCompactLayout
+        containerRef={containerRef}
+        label={resolveDisplayLabel(getFieldLabel(valueField), valueField)}
+        labelAdornment={periodAdornment}
+        value={formatNumber(lastValue)}
+        suffix={displayConfig.suffix && !displayConfig.formatValue ? displayConfig.suffix : undefined}
+        valueAdornment={
+          <span
+            className="dc:font-semibold dc:whitespace-nowrap"
+            style={{ color: currentColor, fontSize: '15px' }}
+          >
+            {isPositiveChange ? "\u25B2" : "\u25BC"} {isPositiveChange ? "+" : ""}
+            {percentageChange.toFixed(1)}%
+          </span>
+        }
+        detail={displayConfig.showBaseline
+          ? `${formatNumber(previousValue)} \u2192 ${formatNumber(lastValue)}`
+          : undefined}
+      />
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -276,21 +319,7 @@ const KpiDelta = React.memo(function KpiDelta({
         <span>
           {resolveDisplayLabel(getFieldLabel(valueField), valueField)}
         </span>
-        {(excludedIncompletePeriod || skippedLastPeriod) && (
-          <span
-            title={
-              skippedLastPeriod
-                ? `Excludes last ${granularity || "period"}`
-                : `Excludes current incomplete ${granularity}`
-            }
-            className="dc:cursor-help"
-          >
-            <Icon
-              icon={infoCircleIcon}
-              className="dc:w-4 dc:h-4 text-dc-text-muted dc:opacity-70"
-            />
-          </span>
-        )}
+        {periodAdornment}
       </div>
 
       {/* Main KPI Value and Delta */}

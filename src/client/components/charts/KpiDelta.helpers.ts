@@ -41,6 +41,8 @@ export function extractNumericValues(
 
 export interface DeltaStats {
   lastValue: number
+  /** The value the delta is measured against — the baseline in `prev → current`. */
+  previousValue: number
   absoluteChange: number
   percentageChange: number
   isPositiveChange: boolean
@@ -55,6 +57,7 @@ export function computeDelta(values: number[]): DeltaStats {
     secondLastValue !== 0 ? (absoluteChange / Math.abs(secondLastValue)) * 100 : 0
   return {
     lastValue,
+    previousValue: secondLastValue,
     absoluteChange,
     percentageChange,
     isPositiveChange: absoluteChange >= 0

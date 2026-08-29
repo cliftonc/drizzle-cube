@@ -18,6 +18,7 @@ import {
 } from './KpiNumber.helpers.js'
 import { useKpiDimensions } from './useKpiDimensions.js'
 import { KpiCenteredState, kpiHeightStyle } from './KpiStates.js'
+import KpiCompactLayout from './KpiCompactLayout.js'
 import type { ChartProps } from '../../types.js'
 
 const KpiNumber = React.memo(function KpiNumber({
@@ -109,6 +110,8 @@ const KpiNumber = React.memo(function KpiNumber({
     [variance, displayConfig.positiveColorIndex, displayConfig.negativeColorIndex, colorPalette?.colors]
   )
 
+  const isCompact = displayConfig.layout === 'compact'
+
   // Calculate font size and text width based on container dimensions
   const { containerRef, valueRef, fontSize, textWidth } = useKpiDimensions({
     widthDivisor: 5,
@@ -143,6 +146,45 @@ const KpiNumber = React.memo(function KpiNumber({
     )
   }
 
+  const periodAdornment = (excludedIncompletePeriod || skippedLastPeriod)
+    ? (
+      <span
+        title={skippedLastPeriod
+          ? t('chart.runtime.kpiExcludesLastPeriod', { period: granularity || t('chart.runtime.kpiPeriodFallback') })
+          : t('chart.runtime.kpiExcludesIncompletePeriod', { period: granularity || t('chart.runtime.kpiPeriodFallback') })}
+        className="dc:cursor-help"
+      >
+        <Icon icon={infoCircleIcon} className="dc:w-4 dc:h-4 text-dc-text-muted dc:opacity-70" />
+      </span>
+    )
+    : null
+
+  // Compact layout: fixed type scale, no container-derived sizing and no
+  // histogram, so a row of KPIs reads as a tidy metric strip.
+  if (isCompact) {
+    return (
+      <KpiCompactLayout
+        containerRef={containerRef}
+        label={resolveDisplayLabel(getFieldLabel(valueField), valueField)}
+        labelAdornment={periodAdornment}
+        value={values.length === 0 ? '—' : formatNumber(mainValue)}
+        valueColor={values.length === 0 ? undefined : valueColor}
+        suffix={displayConfig.suffix && !displayConfig.formatValue ? displayConfig.suffix : undefined}
+        detail={targetValue !== null && variance !== null
+          ? (
+            <>
+              <span className="dc:font-semibold" style={{ color: varianceColor }}>
+                {formatVariance(variance, 1)}
+              </span>
+              {' '}
+              {t('chart.runtime.kpiVsTarget', { target: formatNumber(targetValue) })}
+            </>
+          )
+          : undefined}
+      />
+    )
+  }
+
   // Null handling: If all values are null, show placeholder instead of error
   if (values.length === 0) {
     return (
@@ -172,7 +214,7 @@ const KpiNumber = React.memo(function KpiNumber({
           —
         </div>
 
-        <div className="dc:text-xs text-dc-text-muted dc:mt-2">No data</div>
+        <div className="dc:text-xs text-dc-text-muted dc:mt-2">{t('chart.runtime.noDataShort')}</div>
       </div>
     )
   }
@@ -194,16 +236,7 @@ const KpiNumber = React.memo(function KpiNumber({
           <span>
             {resolveDisplayLabel(getFieldLabel(valueField), valueField)}
           </span>
-          {(excludedIncompletePeriod || skippedLastPeriod) && (
-            <span
-              title={skippedLastPeriod
-                ? `Excludes last ${granularity || 'period'}`
-                : `Excludes current incomplete ${granularity}`}
-              className="dc:cursor-help"
-            >
-              <Icon icon={infoCircleIcon} className="dc:w-4 dc:h-4 text-dc-text-muted dc:opacity-70" />
-            </span>
-          )}
+          {periodAdornment}
         </div>
 
         {/* Main KPI Value and Variance - Horizontal layout */}
@@ -239,7 +272,7 @@ const KpiNumber = React.memo(function KpiNumber({
                   fontSize: `${Math.max(10, fontSize * 0.2)}px`
                 }}
               >
-                vs {formatNumber(targetValue)}
+                {t('chart.runtime.kpiVsTarget', { target: formatNumber(targetValue) })}
               </div>
             </div>
           )}
