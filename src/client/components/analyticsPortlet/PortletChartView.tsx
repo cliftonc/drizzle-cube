@@ -70,6 +70,14 @@ export function PortletChartView(props: PortletChartViewProps) {
     onNavigateToLevel
   } = props
 
+  // Charts that are intrinsically short must not be forced to 200px: the floor
+  // overflows a shorter card, and centred content then renders near the bottom
+  // and clips. Markdown was already exempt for the same reason.
+  const hasIntrinsicHeight =
+    chartType === 'markdown' ||
+    chartType === 'proportionBar' ||
+    displayConfig?.layout === 'compact'
+
   return (
     <>
       <ChartErrorBoundary
@@ -77,7 +85,7 @@ export function PortletChartView(props: PortletChartViewProps) {
         portletConfig={{ chartType, chartConfig, displayConfig, height }}
         cubeQuery={query}
       >
-        <div className="dc:w-full dc:h-full dc:flex dc:flex-col dc:flex-1" style={{ minHeight: chartType === 'markdown' ? undefined : '200px' }}>
+        <div className="dc:w-full dc:h-full dc:flex dc:flex-col dc:flex-1" style={{ minHeight: hasIntrinsicHeight ? undefined : '200px' }}>
           {/* Drill breadcrumb - shows when drilling into data */}
           {isDrillEnabled && drill.drillPath.length > 0 && (
             <div className="dc:mb-2 dc:flex-shrink-0">
