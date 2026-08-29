@@ -275,18 +275,29 @@ interface AreaSeriesOptions {
   shouldStack: boolean
   drillEnabled?: boolean
   onDataPointClick?: (payload: DataPointClickPayload) => void
+  /**
+   * Unique-per-chart-instance prefix for the `<defs>` gradient ids. When
+   * omitted (or when stacking) the series fall back to a flat fill.
+   */
+  gradientIdPrefix?: string
 }
 
 /** Render the `<Area>` element for one series (Area chart). */
 function renderOneAreaSeries(seriesKey: string, index: number, opts: AreaSeriesOptions): React.ReactElement {
   const {
     colorPalette, seriesKeyToField, yAxisAssignment, hoveredLegend, connectNulls,
-    shouldStack, drillEnabled, onDataPointClick
+    shouldStack, drillEnabled, onDataPointClick, gradientIdPrefix
   } = opts
 
   const originalField = seriesKeyToField[seriesKey]
   const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
   const areaColor = getSeriesColor(colorPalette, index)
+
+  // Stacked areas read better solid — bands are bounded by their neighbours, so
+  // a fade just muddies the boundaries.
+  const fill = gradientIdPrefix && !shouldStack
+    ? `url(#${gradientIdPrefix}-${index})`
+    : areaColor
 
   let fillOpacity = 0.3
   let strokeOpacity = 1
@@ -304,7 +315,7 @@ function renderOneAreaSeries(seriesKey: string, index: number, opts: AreaSeriesO
       yAxisId={axisId}
       stackId={shouldStack ? 'stack' : undefined}
       stroke={areaColor}
-      fill={areaColor}
+      fill={fill}
       fillOpacity={fillOpacity}
       strokeWidth={2}
       strokeOpacity={strokeOpacity}
@@ -317,9 +328,115 @@ function renderOneAreaSeries(seriesKey: string, index: number, opts: AreaSeriesO
   )
 }
 
+/**
+ * Vertical fade gradients for the Area chart — one `<linearGradient>` per series.
+ *
+ * Recharts has no gradient primitive; the fade is plain SVG in `<defs>` that each
+ * `<Area>` references by id. Both stops use the *same* hue (fading to white would
+ * break the dark and neon themes) and the `<Area>`'s own `fillOpacity` stays the
+ * master control, so the existing hover dim/highlight still works unchanged.
+ */
+export function renderAreaGradientDefs(
+  seriesKeys: string[],
+  colorPalette: ColorPalette | undefined,
+  idPrefix: string
+): React.ReactElement {
+  return (
+    <defs>
+      {seriesKeys.map((seriesKey, index) => {
+        const color = getSeriesColor(colorPalette, index)
+        return (
+          <linearGradient
+            key={seriesKey}
+            id={`${idPrefix}-${index}`}
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="1"
+          >
+            <stop offset="0%" stopColor={color} stopOpacity={1} />
+            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        )
+      })}
+    </defs>
+  )
+}
+
 /** Render all area series for the Area chart. */
 export function renderAreaSeries(opts: AreaSeriesOptions): React.ReactElement[] {
   return opts.seriesKeys.map((seriesKey, index) => renderOneAreaSeries(seriesKey, index, opts))
+}
+
+/**
+ * Is the x-axis an ordered time series?
+ *
+ * The summary header's "change since the start of the window" only means
+ * something when the x-axis is ordered. For a categorical axis (region,
+ * product, status) the first and last categories are arbitrary, so the delta
+ * would be noise.
+ */
+export function isTimeOrderedXAxis(queryObject: any, xAxisField: string | undefined): boolean {
+  if (!xAxisField) return false
+  const timeDimensions = queryObject?.timeDimensions
+  if (!Array.isArray(timeDimensions)) return false
+  return timeDimensions.some((td: any) => td?.dimension === xAxisField)
+}
+
+export interface SeriesSummary {
+  seriesKey: string
+  color: string
+  /** Latest non-null value in the window. */
+  current: number | null
+  /** First non-null value in the window — the baseline the delta is measured from. */
+  baseline: number | null
+  absoluteChange: number | null
+  percentageChange: number | null
+}
+
+/**
+ * Per-series first/last/delta over the plotted window, for the summary header.
+ *
+ * Pure and DOM-free so it can be unit-tested directly. Nulls are skipped rather
+ * than treated as zero — a gap in a series should not read as a crash to zero.
+ * When a series has fewer than two non-null points there is nothing to compare,
+ * so the deltas stay null and the header renders the value alone.
+ */
+export function computeSeriesSummaries(
+  chartData: any[],
+  seriesKeys: string[],
+  colorPalette?: ColorPalette
+): SeriesSummary[] {
+  return seriesKeys.map((seriesKey, index) => {
+    const numbers: number[] = []
+    for (const row of chartData || []) {
+      const raw = row?.[seriesKey]
+      if (raw === null || raw === undefined) continue
+      const num = typeof raw === 'number' ? raw : parseFloat(String(raw))
+      if (!isNaN(num) && isFinite(num)) numbers.push(num)
+    }
+
+    const color = getSeriesColor(colorPalette, index)
+    if (numbers.length === 0) {
+      return { seriesKey, color, current: null, baseline: null, absoluteChange: null, percentageChange: null }
+    }
+
+    const current = numbers[numbers.length - 1]
+    const baseline = numbers[0]
+    if (numbers.length < 2) {
+      return { seriesKey, color, current, baseline: null, absoluteChange: null, percentageChange: null }
+    }
+
+    const absoluteChange = current - baseline
+    return {
+      seriesKey,
+      color,
+      current,
+      baseline,
+      absoluteChange,
+      percentageChange: baseline !== 0 ? (absoluteChange / Math.abs(baseline)) * 100 : null
+    }
+  })
 }
 
 export interface TimeSeriesShape {

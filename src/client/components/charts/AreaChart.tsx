@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useId } from 'react'
 import { useTranslation } from '../../hooks/useTranslation.js'
 import { ComposedChart, XAxis, CartesianGrid } from 'recharts'
 import ChartContainer from './ChartContainer.js'
@@ -9,13 +9,22 @@ import { resolveChartAxisFields } from './chartAxisResolution.js'
 import {
   getDualAxisInfo,
   getYAxisChartMargins,
+  getPlotLeftOffset,
   withTargetData,
   renderDualYAxes,
   renderChartTargetLines,
   makeCartesianTooltipFormatter,
   renderHoverLegend
 } from './chartScaffolding.js'
-import { buildSeriesKeyToFieldMap, renderAreaSeries, resolveAreaStacking } from './cartesianChartHelpers.js'
+import {
+  buildSeriesKeyToFieldMap,
+  computeSeriesSummaries,
+  isTimeOrderedXAxis,
+  renderAreaGradientDefs,
+  renderAreaSeries,
+  resolveAreaStacking
+} from './cartesianChartHelpers.js'
+import ChartSummaryHeader, { CHART_SUMMARY_HEADER_HEIGHT } from './ChartSummaryHeader.js'
 import { transformChartDataWithSeries } from '../../utils/chartUtils.js'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
 import type { ChartProps } from '../../types.js'
@@ -32,6 +41,10 @@ const AreaChart = React.memo(function AreaChart({
 }: ChartProps) {
   const { t } = useTranslation()
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
+  // Gradient ids must be unique per chart instance or two area portlets on one
+  // dashboard steal each other's fills. useId() emits colons, which are not
+  // reliable inside SVG url(#...) references — strip them.
+  const gradientIdPrefix = `dc-area-${useId().replace(/:/g, '')}`
   // Use specialized hook to avoid re-renders from unrelated context changes
   const getFieldLabel = useCubeFieldLabel()
 
@@ -96,8 +109,15 @@ const AreaChart = React.memo(function AreaChart({
     const { effectiveShouldStack, effectiveIsPercentStack, stackOffset } =
       resolveAreaStacking(displayConfig, hasRightAxis)
 
-    // Determine if legend will be shown
-    const showLegend = safeDisplayConfig.showLegend
+    // Summary header: per-series current value + change since the start of the
+    // window, derived from the data already fetched for the plot.
+    const showSummary = displayConfig?.showSummary === true && seriesKeys.length > 0
+    const summaries = showSummary
+      ? computeSeriesSummaries(chartData, seriesKeys, colorPalette)
+      : []
+
+    // The summary carries the colour dots, so the bottom legend becomes redundant.
+    const showLegend = safeDisplayConfig.showLegend && !showSummary
 
     // Use custom chart margins with extra space for Y-axis labels
     const chartMargins = getYAxisChartMargins(hasRightAxis)
@@ -117,7 +137,17 @@ const AreaChart = React.memo(function AreaChart({
     }
 
     return (
-      <ChartContainer height={height}>
+      <div className="dc:relative dc:w-full dc:flex dc:flex-col" style={{ height }}>
+        {showSummary && (
+          <ChartSummaryHeader
+            summaries={summaries}
+            getSeriesLabel={(seriesKey) => seriesKey}
+            valueFormat={leftYAxisFormat}
+            showChange={isTimeOrderedXAxis(queryObject, xAxisField)}
+            leftOffset={getPlotLeftOffset(hasRightAxis)}
+          />
+        )}
+        <ChartContainer height={showSummary ? `calc(100% - ${CHART_SUMMARY_HEADER_HEIGHT}px)` : height}>
         <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />}
           <XAxis dataKey="name" type="category" tick={<AngledXAxisTick />} height={60} interval={showAllXLabels ? 0 : undefined} />
@@ -140,6 +170,7 @@ const AreaChart = React.memo(function AreaChart({
             onHover: setHoveredLegend,
             onLeave: () => setHoveredLegend(null)
           })}
+          {!effectiveShouldStack && renderAreaGradientDefs(seriesKeys, colorPalette, gradientIdPrefix)}
           {renderAreaSeries({
             seriesKeys,
             colorPalette,
@@ -149,11 +180,13 @@ const AreaChart = React.memo(function AreaChart({
             connectNulls: safeDisplayConfig.connectNulls,
             shouldStack: effectiveShouldStack,
             drillEnabled,
-            onDataPointClick
+            onDataPointClick,
+            gradientIdPrefix
           })}
           {renderChartTargetLines(spreadTargets)}
         </ComposedChart>
-      </ChartContainer>
+        </ChartContainer>
+      </div>
     )
   } catch (error) {
     return <ChartRenderError height={height} chartType="Area Chart" error={error} />

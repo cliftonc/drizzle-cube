@@ -202,6 +202,58 @@ describe('AreaChart', () => {
     })
   })
 
+  describe('gradient fills', () => {
+    it('renders one vertical fade gradient per series', () => {
+      const { container } = render(
+        <AreaChart data={mockMultiMeasureData} chartConfig={multiMeasureChartConfig} />
+      )
+
+      const gradients = container.querySelectorAll('linearGradient')
+      expect(gradients).toHaveLength(2)
+      // Vertical: top-to-bottom, not the SVG default left-to-right
+      expect(gradients[0].getAttribute('x1')).toBe('0')
+      expect(gradients[0].getAttribute('y1')).toBe('0')
+      expect(gradients[0].getAttribute('x2')).toBe('0')
+      expect(gradients[0].getAttribute('y2')).toBe('1')
+    })
+
+    it('fades to transparent using the same hue at both stops', () => {
+      const { container } = render(
+        <AreaChart data={mockAreaData} chartConfig={basicChartConfig} />
+      )
+
+      const gradient = container.querySelector('linearGradient')
+      const stops = Array.from(gradient?.children ?? [])
+      expect(stops).toHaveLength(2)
+      expect(stops[0].getAttribute('stop-color')).toBe(stops[1].getAttribute('stop-color'))
+      expect(stops[0].getAttribute('stop-opacity')).toBe('1')
+      expect(stops[1].getAttribute('stop-opacity')).toBe('0')
+    })
+
+    it('points the area fill at its gradient', () => {
+      const { container } = render(
+        <AreaChart data={mockAreaData} chartConfig={basicChartConfig} />
+      )
+
+      const gradientId = container.querySelector('linearGradient')?.getAttribute('id')
+      expect(gradientId).toBeTruthy()
+      const filled = container.querySelector(`[fill="url(#${gradientId})"]`)
+      expect(filled).toBeInTheDocument()
+    })
+
+    it('keeps stacked areas solid so segment boundaries stay legible', () => {
+      const { container } = render(
+        <AreaChart
+          data={mockMultiMeasureData}
+          chartConfig={multiMeasureChartConfig}
+          displayConfig={{ stackType: 'normal' }}
+        />
+      )
+
+      expect(container.querySelectorAll('linearGradient')).toHaveLength(0)
+    })
+  })
+
   describe('empty data handling', () => {
     it('should show "No data available" when data is null', () => {
       render(
