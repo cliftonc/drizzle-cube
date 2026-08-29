@@ -9,6 +9,7 @@ import { resolveChartAxisFields } from './chartAxisResolution.js'
 import {
   getDualAxisInfo,
   getYAxisChartMargins,
+  getPlotLeftOffset,
   withTargetData,
   renderDualYAxes,
   renderChartTargetLines,
@@ -21,8 +22,11 @@ import {
   buildSeriesKeyToFieldMap,
   makeSeriesKeyResolver,
   buildTimeSeriesData,
+  computeSeriesSummaries,
+  isTimeOrderedXAxis,
   renderLineSeries
 } from './cartesianChartHelpers.js'
+import ChartSummaryHeader, { CHART_SUMMARY_HEADER_HEIGHT } from './ChartSummaryHeader.js'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
 import type { ChartProps } from '../../types.js'
 
@@ -104,8 +108,15 @@ const LineChart = React.memo(function LineChart({
     const axisInfo = getDualAxisInfo(yAxisFields, yAxisAssignment)
     const { hasRightAxis } = axisInfo
 
-    // Determine if legend will be shown
-    const showLegend = safeDisplayConfig.showLegend
+    // Summary header: per-series current value + change since the start of the
+    // window, derived from the data already fetched for the plot.
+    const showSummary = displayConfig?.showSummary === true && seriesKeys.length > 0
+    const summaries = showSummary
+      ? computeSeriesSummaries(chartData, seriesKeys, colorPalette)
+      : []
+
+    // The summary carries the colour dots, so the bottom legend becomes redundant.
+    const showLegend = safeDisplayConfig.showLegend && !showSummary
 
     // Use custom chart margins with extra space for Y-axis labels
     const chartMargins = getYAxisChartMargins(hasRightAxis)
@@ -125,7 +136,17 @@ const LineChart = React.memo(function LineChart({
     }
 
     return (
-      <ChartContainer height={height}>
+      <div className="dc:relative dc:w-full dc:flex dc:flex-col" style={{ height }}>
+        {showSummary && (
+          <ChartSummaryHeader
+            summaries={summaries}
+            getSeriesLabel={(seriesKey) => seriesKey}
+            valueFormat={leftYAxisFormat}
+            showChange={isTimeOrderedXAxis(queryObject, xAxisField)}
+            leftOffset={getPlotLeftOffset(hasRightAxis)}
+          />
+        )}
+        <ChartContainer height={showSummary ? `calc(100% - ${CHART_SUMMARY_HEADER_HEIGHT}px)` : height}>
         <RechartsLineChart data={enhancedChartData} margin={chartMargins} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />
@@ -176,7 +197,8 @@ const LineChart = React.memo(function LineChart({
           })}
           {renderChartTargetLines(spreadTargets)}
         </RechartsLineChart>
-      </ChartContainer>
+        </ChartContainer>
+      </div>
     )
   } catch (error) {
     return <ChartRenderError height={height} chartType="Line Chart" error={error} />

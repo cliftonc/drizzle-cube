@@ -46,6 +46,23 @@ export function getYAxisChartMargins(hasRightAxis: boolean) {
 }
 
 /**
+ * Width reserved for the left `<YAxis>`. This is recharts' own default, stated
+ * explicitly so anything needing to line up with the plot area can rely on it
+ * rather than assume it.
+ */
+export const Y_AXIS_WIDTH = 60
+
+/**
+ * Distance from the chart container's left edge to the left edge of the plot
+ * area — the chart margin plus the Y-axis gutter. Used to indent content
+ * rendered outside the chart (the summary header) so it lines up with the first
+ * data point instead of floating against the card edge.
+ */
+export function getPlotLeftOffset(hasRightAxis: boolean): number {
+  return getYAxisChartMargins(hasRightAxis).left + Y_AXIS_WIDTH
+}
+
+/**
  * Apply target values (single or comma-separated spread) onto chart data,
  * returning the spread targets plus data enhanced with a `__target` key.
  */
@@ -80,6 +97,7 @@ export function renderDualYAxes(
       <YAxis
         yAxisId="left"
         orientation="left"
+        width={Y_AXIS_WIDTH}
         tick={{ fontSize: 12 }}
         tickFormatter={
           isPercentStack
