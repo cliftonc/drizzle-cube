@@ -17,6 +17,7 @@ import { useDataBrowser, getCubeColumns } from '../../hooks/useDataBrowser.js'
 import DataBrowserSidebar from './DataBrowserSidebar.js'
 import DataBrowserToolbar from './DataBrowserToolbar.js'
 import DataBrowserTable from './DataBrowserTable.js'
+import DataBrowserSearch from './DataBrowserSearch.js'
 import AnalysisFilterSection from '../AnalysisBuilder/AnalysisFilterSection.js'
 import FieldSearchModal from '../AnalysisBuilder/FieldSearchModal.js'
 import type { MetaResponse, MetaField } from '../../shared/types.js'
@@ -46,6 +47,7 @@ function DataBrowserInner({ className = '', maxHeight = '100vh', loadingComponen
     page,
     pageSize,
     filters,
+    searchText,
     showFilterBar,
     showColumnPicker,
     rawData,
@@ -61,6 +63,7 @@ function DataBrowserInner({ className = '', maxHeight = '100vh', loadingComponen
     setPage,
     setPageSize,
     setFilters,
+    setSearchText,
     toggleFilterBar,
     setShowColumnPicker,
     toggleColumn,
@@ -145,6 +148,13 @@ function DataBrowserInner({ className = '', maxHeight = '100vh', loadingComponen
             isFetching={isFetching}
             onRefresh={() => refetch()}
           />
+        )}
+
+        {/* Quick search (always visible) */}
+        {selectedCube && (
+          <div className="dc:px-3 dc:py-2 dc:border-b border-dc-border bg-dc-surface">
+            <DataBrowserSearch value={searchText} onChange={setSearchText} />
+          </div>
         )}
 
         {/* Filter bar (collapsible) */}
