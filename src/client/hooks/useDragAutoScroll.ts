@@ -40,7 +40,7 @@ export function useDragAutoScroll(
   // Animation frame loop for smooth scrolling
   const scrollLoop = useCallback(() => {
     const container = scrollContainerRef.current
-    if (!container || !scrollDirectionRef.current) {
+    if (!scrollDirectionRef.current) {
       animationFrameRef.current = null
       return
     }
@@ -48,7 +48,13 @@ export function useDragAutoScroll(
     const speed = scrollIntensityRef.current
     if (speed > 0) {
       const scrollAmount = scrollDirectionRef.current === 'up' ? -speed : speed
-      container.scrollTop += scrollAmount
+      // A null container means the page itself scrolls; scrolling the window is
+      // the equivalent action, not a no-op.
+      if (container) {
+        container.scrollTop += scrollAmount
+      } else {
+        window.scrollBy(0, scrollAmount)
+      }
     }
 
     // Continue the loop while dragging
@@ -79,10 +85,16 @@ export function useDragAutoScroll(
   // Handle dragover events
   const handleDragOver = useCallback((event: DragEvent) => {
     const container = scrollContainerRef.current
-    if (!container) return
 
-    // Get container bounds
-    const containerRect = container.getBoundingClientRect()
+    // Fall back to the viewport when the host page is the scroller.
+    const containerRect = container
+      ? container.getBoundingClientRect()
+      : new DOMRect(0, 0, window.innerWidth, window.innerHeight)
+    const scrollTop = container ? container.scrollTop : window.scrollY
+    const maxScroll = container
+      ? container.scrollHeight - container.clientHeight
+      : document.documentElement.scrollHeight - window.innerHeight
+
     const mouseY = event.clientY
 
     // Check if mouse is within the container's horizontal bounds
@@ -96,11 +108,11 @@ export function useDragAutoScroll(
     const distanceFromBottom = containerRect.bottom - mouseY
 
     // Check if we should scroll
-    if (distanceFromTop < edgeThreshold && container.scrollTop > 0) {
+    if (distanceFromTop < edgeThreshold && scrollTop > 0) {
       // Near top edge - scroll up
       const speed = calculateScrollSpeed(distanceFromTop)
       startScrolling('up', speed)
-    } else if (distanceFromBottom < edgeThreshold && container.scrollTop < container.scrollHeight - container.clientHeight) {
+    } else if (distanceFromBottom < edgeThreshold && scrollTop < maxScroll) {
       // Near bottom edge - scroll down
       const speed = calculateScrollSpeed(distanceFromBottom)
       startScrolling('down', speed)
