@@ -46,7 +46,7 @@ export default function DashboardFilterItem({
     return (
       <div className="dc:flex dc:items-start dc:gap-2 dc:px-2 dc:py-1.5 bg-dc-surface-secondary dc:rounded-lg dc:group hover:bg-dc-surface-tertiary dc:transition-all dc:duration-150">
         {/* Time icon for universal filter */}
-        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-time-dimension text-dc-time-dimension-text dc:flex-shrink-0 dc:mt-0.5">
+        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm bg-dc-time-dimension text-dc-time-dimension-text dc:flex-shrink-0 dc:mt-0.5">
           {TimeDimensionIcon && <TimeDimensionIcon className="dc:w-4 dc:h-4" />}
         </span>
 
@@ -108,7 +108,7 @@ export default function DashboardFilterItem({
   return (
     <div className="dc:flex dc:items-start dc:gap-2 dc:px-2 dc:py-1.5 bg-dc-surface-secondary dc:rounded-lg dc:group hover:bg-dc-surface-tertiary dc:transition-all dc:duration-150">
       {/* Field type icon with appropriate background color */}
-      <span className={`dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded ${iconBgClass} ${iconTextClass} dc:flex-shrink-0 dc:mt-0.5`}>
+      <span className={`dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm ${iconBgClass} ${iconTextClass} dc:flex-shrink-0 dc:mt-0.5`}>
         {FieldIcon && <FieldIcon className="dc:w-4 dc:h-4" />}
       </span>
 

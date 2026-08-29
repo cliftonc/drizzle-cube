@@ -127,7 +127,7 @@ export function CubeNode({ data }: CubeNodeProps) {
           </div>
           {onCubeClick && (
             <button
-              className={`dc:ml-2 dc:p-1 dc:rounded dc:transition-colors nodrag nopan ${
+              className={`dc:ml-2 dc:p-1 dc:rounded-sm dc:transition-colors nodrag nopan ${
                 isCubeSelected
                   ? 'bg-dc-accent-bg text-dc-accent'
                   : 'text-dc-text-muted dc:hover:text-dc-text dc:hover:bg-dc-surface-hover'

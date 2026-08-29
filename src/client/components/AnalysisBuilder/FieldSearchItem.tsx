@@ -91,7 +91,7 @@ function FieldSearchItem({
 
       {/* Type badge */}
       <span
-        className={`dc:shrink-0 dc:px-2 dc:py-0.5 dc:rounded dc:text-xs dc:font-medium ${getBadgeStyle()}`}
+        className={`dc:shrink-0 dc:px-2 dc:py-0.5 dc:rounded-sm dc:text-xs dc:font-medium ${getBadgeStyle()}`}
       >
         {getTypeLabel()}
       </span>

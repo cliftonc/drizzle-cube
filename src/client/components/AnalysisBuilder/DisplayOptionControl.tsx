@@ -38,7 +38,7 @@ function BooleanOption({ option, displayConfig, setValue, t }: OptionRenderProps
         type="checkbox"
         checked={(displayConfig[key] as boolean) ?? option.defaultValue ?? false}
         onChange={(e) => setValue(e.target.checked)}
-        className="dc:rounded border-dc-border focus:ring-dc-accent"
+        className="dc:rounded-sm border-dc-border focus:ring-dc-accent"
         style={{ color: 'var(--dc-primary)' }}
       />
       <span className="dc:text-sm text-dc-text">{t(option.label)}</span>
@@ -93,7 +93,7 @@ function PaletteColorOption({ option, displayConfig, colorPalette, setValue, t }
             key={index}
             type="button"
             onClick={() => setValue(index)}
-            className={`dc:w-8 dc:h-8 dc:rounded dc:border-2 dc:transition-all dc:duration-200 dc:hover:scale-110 focus:outline-hidden dc:focus:ring-2 focus:ring-dc-accent dc:focus:ring-offset-1 ${
+            className={`dc:w-8 dc:h-8 dc:rounded-sm dc:border-2 dc:transition-all dc:duration-200 dc:hover:scale-110 focus:outline-hidden dc:focus:ring-2 focus:ring-dc-accent dc:focus:ring-offset-1 ${
               selectedIndex === index
                 ? 'dc:ring-2 dc:ring-offset-1 dc:scale-110'
                 : 'hover:border-dc-text-muted'

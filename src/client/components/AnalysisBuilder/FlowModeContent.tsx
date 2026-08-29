@@ -212,7 +212,7 @@ const FlowModeContent = memo(function FlowModeContent({
                 {t('flow.joinStrategy.description')}
               </p>
               <select
-                className="dc:w-full dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 dc:text-sm bg-dc-surface text-dc-text"
+                className="dc:w-full dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-2 dc:text-sm bg-dc-surface text-dc-text"
                 value={joinStrategy}
                 onChange={(e) =>
                   onJoinStrategyChange?.(e.target.value as 'auto' | 'lateral' | 'window')

@@ -356,7 +356,7 @@ export default function AnalysisChartConfigPanel({
                     className={`dc:flex dc:items-center dc:gap-2 dc:p-2 bg-dc-surface dc:rounded-lg hover:bg-dc-surface-tertiary dc:transition-colors dc:cursor-move ${isBeingDragged ? 'dc:opacity-50 dc:cursor-grabbing' : ''}`}
                     title={field}
                   >
-                    <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-measure text-dc-measure-text dc:flex-shrink-0">
+                    <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm bg-dc-measure text-dc-measure-text dc:flex-shrink-0">
                       <IconComponent className="dc:w-4 dc:h-4" />
                     </span>
                     <div className="dc:flex-1 dc:min-w-0">
@@ -381,7 +381,7 @@ export default function AnalysisChartConfigPanel({
                     className={`dc:flex dc:items-center dc:gap-2 dc:p-2 bg-dc-surface dc:rounded-lg hover:bg-dc-surface-tertiary dc:transition-colors dc:cursor-move ${isBeingDragged ? 'dc:opacity-50 dc:cursor-grabbing' : ''}`}
                     title={field}
                   >
-                    <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-dimension text-dc-dimension-text dc:flex-shrink-0">
+                    <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm bg-dc-dimension text-dc-dimension-text dc:flex-shrink-0">
                       <DimensionIcon className="dc:w-4 dc:h-4" />
                     </span>
                     <div className="dc:flex-1 dc:min-w-0">
@@ -406,7 +406,7 @@ export default function AnalysisChartConfigPanel({
                     className={`dc:flex dc:items-center dc:gap-2 dc:p-2 bg-dc-surface dc:rounded-lg hover:bg-dc-surface-tertiary dc:transition-colors dc:cursor-move ${isBeingDragged ? 'dc:opacity-50 dc:cursor-grabbing' : ''}`}
                     title={field}
                   >
-                    <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-time-dimension text-dc-time-dimension-text dc:flex-shrink-0">
+                    <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm bg-dc-time-dimension text-dc-time-dimension-text dc:flex-shrink-0">
                       <TimeDimensionIcon className="dc:w-4 dc:h-4" />
                     </span>
                     <div className="dc:flex-1 dc:min-w-0">

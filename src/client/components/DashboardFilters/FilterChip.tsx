@@ -73,7 +73,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
     <div ref={chipRef} className="dc:relative dc:inline-flex">
       <div
         className={`
-          dc:inline-flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded dc:text-xs
+          dc:inline-flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded-sm dc:text-xs
           dc:border dc:transition-colors dc:cursor-pointer
           ${isEditMode ? 'dc:pr-1' : ''}
         `}
@@ -107,7 +107,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
                 e.stopPropagation()
                 onEdit?.()
               }}
-              className="dc:p-0.5 dc:rounded dc:transition-colors"
+              className="dc:p-0.5 dc:rounded-sm dc:transition-colors"
               style={{ color: 'var(--dc-text-secondary)' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = 'var(--dc-text)'
@@ -124,7 +124,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
                 e.stopPropagation()
                 onRemove?.()
               }}
-              className="dc:p-0.5 dc:rounded dc:transition-colors"
+              className="dc:p-0.5 dc:rounded-sm dc:transition-colors"
               style={{ color: 'var(--dc-text-secondary)' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = 'var(--dc-error)'

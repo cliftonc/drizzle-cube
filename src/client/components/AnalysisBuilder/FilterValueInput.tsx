@@ -112,7 +112,7 @@ function DateRangeInput({ filter, dateRange }: { filter: SimpleFilter; dateRange
             onOpen()
             onToggle(!isOpen)
           }}
-          className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
+          className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
         >
           <span className="dc:truncate">{label}</span>
           <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
@@ -121,7 +121,7 @@ function DateRangeInput({ filter, dateRange }: { filter: SimpleFilter; dateRange
         </button>
 
         {isOpen && (
-          <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
+          <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-sm dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
             {DATE_RANGE_OPTIONS.map((option) => (
               <button
                 key={option.value}
@@ -146,7 +146,7 @@ function DateRangeInput({ filter, dateRange }: { filter: SimpleFilter; dateRange
             max="1000"
             value={numberValue}
             onChange={(e) => onNumberValueChange(Math.max(1, parseInt(e.target.value) || 1))}
-            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text dc:w-20"
+            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text dc:w-20"
           />
           <span className="dc:text-sm text-dc-text-muted">
             {rangeType.replace('last_n_', '')}
@@ -161,14 +161,14 @@ function DateRangeInput({ filter, dateRange }: { filter: SimpleFilter; dateRange
             type="date"
             value={Array.isArray(filter.dateRange) ? filter.dateRange[0] : ''}
             onChange={onCustomStartDate}
-            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
+            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
           />
           <span className="dc:text-sm text-dc-text-muted">{t('filter.modal.dateTo')}</span>
           <input
             type="date"
             value={Array.isArray(filter.dateRange) ? filter.dateRange[1] : ''}
             onChange={onCustomEndDate}
-            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
+            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
           />
         </div>
       )}
@@ -243,7 +243,7 @@ function ComboBoxInput({
           {filter.values.map((value: unknown, index: number) => (
             <span
               key={index}
-              className="dc:inline-flex dc:items-center dc:gap-1 bg-dc-primary/10 text-dc-primary dc:text-sm dc:px-2 dc:py-1 dc:rounded"
+              className="dc:inline-flex dc:items-center dc:gap-1 bg-dc-primary/10 text-dc-primary dc:text-sm dc:px-2 dc:py-1 dc:rounded-sm"
             >
               <span className="dc:max-w-[150px] dc:truncate">{String(value)}</span>
               <button
@@ -263,7 +263,7 @@ function ComboBoxInput({
           onClick={() => {
             onOpen()
           }}
-          className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
+          className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
         >
           <span className="text-dc-text-muted dc:truncate">
             {loading ? t('filter.modal.loading') : t('filter.modal.selectValue')}
@@ -274,7 +274,7 @@ function ComboBoxInput({
         </button>
 
         {isOpen && (
-          <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-56 dc:overflow-hidden">
+          <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-sm dc:shadow-lg dc:max-h-56 dc:overflow-hidden">
             {/* Search input with keyboard navigation */}
             <div className="dc:p-2 dc:border-b border-dc-border">
               <input
@@ -286,7 +286,7 @@ function ComboBoxInput({
                 }}
                 onKeyDown={onKeyDown}
                 placeholder={t('filter.modal.search')}
-                className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
+                className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
                 autoFocus
               />
             </div>
@@ -335,7 +335,7 @@ export default function FilterValueInput({ field, dateRange, combo, inputs }: Fi
           value={filter.values?.[0] ?? ''}
           onChange={onBetweenStart}
           placeholder={t('filter.modal.min')}
-          className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
+          className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
         />
         <span className="dc:text-sm text-dc-text-muted">{t('filter.modal.to')}</span>
         <input
@@ -343,7 +343,7 @@ export default function FilterValueInput({ field, dateRange, combo, inputs }: Fi
           value={filter.values?.[1] ?? ''}
           onChange={onBetweenEnd}
           placeholder={t('filter.modal.max')}
-          className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
+          className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
         />
       </div>
     )
@@ -356,7 +356,7 @@ export default function FilterValueInput({ field, dateRange, combo, inputs }: Fi
         type="date"
         value={filter.values?.[0] || ''}
         onChange={onDate}
-        className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
+        className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
       />
     )
   }
@@ -369,7 +369,7 @@ export default function FilterValueInput({ field, dateRange, combo, inputs }: Fi
         value={filter.values?.[0] ?? ''}
         onChange={onDirect}
         placeholder={t('filter.modal.enterNumber')}
-        className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
+        className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
       />
     )
   }
@@ -386,7 +386,7 @@ export default function FilterValueInput({ field, dateRange, combo, inputs }: Fi
       value={filter.values?.[0] ?? ''}
       onChange={onDirect}
       placeholder={t('filter.modal.enterValue')}
-      className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text placeholder-dc-text-muted"
+      className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text placeholder-dc-text-muted"
     />
   )
 }

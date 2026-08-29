@@ -45,7 +45,7 @@ const markdownOptions = {
     p: { props: { className: 'dc:text-sm dc:leading-relaxed text-dc-text dc:mb-2' } },
     strong: { props: { className: 'dc:font-semibold' } },
     a: { props: { className: 'text-dc-accent dc:hover:underline', target: '_blank', rel: 'noopener noreferrer' } },
-    code: { props: { className: 'dc:px-1 dc:py-0.5 dc:rounded dc:text-xs bg-dc-surface-secondary text-dc-accent dc:font-mono' } },
+    code: { props: { className: 'dc:px-1 dc:py-0.5 dc:rounded-sm dc:text-xs bg-dc-surface-secondary text-dc-accent dc:font-mono' } },
     pre: { props: { className: 'dc:rounded-lg dc:p-3 dc:my-2 dc:overflow-x-auto dc:text-xs bg-dc-surface-secondary text-dc-text dc:font-mono' } },
     ul: { props: { className: 'dc:list-disc dc:ml-5 dc:mb-2 dc:text-sm text-dc-text dc:space-y-1' } },
     ol: { props: { className: 'dc:list-decimal dc:ml-5 dc:mb-2 dc:text-sm text-dc-text dc:space-y-1' } },

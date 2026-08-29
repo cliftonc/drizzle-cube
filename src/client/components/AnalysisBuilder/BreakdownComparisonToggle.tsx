@@ -36,7 +36,7 @@ const BreakdownComparisonToggle = memo(function BreakdownComparisonToggle({
         onComparisonToggle()
       }}
       disabled={isDisabled}
-      className={`dc:text-xs dc:px-2 dc:py-1 dc:rounded dc:flex-shrink-0 dc:transition-colors ${
+      className={`dc:text-xs dc:px-2 dc:py-1 dc:rounded-sm dc:flex-shrink-0 dc:transition-colors ${
         enableComparison
           ? 'bg-dc-accent text-white'
           : 'bg-dc-surface dc:border border-dc-border text-dc-text-muted hover:text-dc-text hover:bg-dc-surface-hover'

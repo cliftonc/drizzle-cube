@@ -100,7 +100,7 @@ export default function LimitSection({ limit, onLimitChange }: LimitSectionProps
           <button
             key={preset}
             onClick={() => handlePresetClick(preset)}
-            className={`dc:px-2 dc:py-0.5 dc:text-xs dc:rounded dc:border dc:transition-colors ${
+            className={`dc:px-2 dc:py-0.5 dc:text-xs dc:rounded-sm dc:border dc:transition-colors ${
               limit === preset && !showCustomInput
                 ? 'bg-dc-primary/10 border-dc-primary text-dc-primary dc:font-medium'
                 : 'border-dc-border text-dc-text-secondary dc:hover:border-dc-primary/50 dc:hover:text-dc-primary'
@@ -125,12 +125,12 @@ export default function LimitSection({ limit, onLimitChange }: LimitSectionProps
               }
             }}
             placeholder="#"
-            className="dc:w-16 dc:px-2 dc:py-0.5 dc:text-xs dc:rounded dc:border border-dc-primary bg-dc-surface text-dc-text dc:text-center dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
+            className="dc:w-16 dc:px-2 dc:py-0.5 dc:text-xs dc:rounded-sm dc:border border-dc-primary bg-dc-surface text-dc-text dc:text-center dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
           />
         ) : (
           <button
             onClick={handleCustomClick}
-            className={`dc:px-2 dc:py-0.5 dc:text-xs dc:rounded dc:border dc:transition-colors ${
+            className={`dc:px-2 dc:py-0.5 dc:text-xs dc:rounded-sm dc:border dc:transition-colors ${
               isCustom
                 ? 'bg-dc-primary/10 border-dc-primary text-dc-primary dc:font-medium'
                 : 'border-dc-border text-dc-text-secondary dc:hover:border-dc-primary/50 dc:hover:text-dc-primary'

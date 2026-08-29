@@ -60,7 +60,7 @@ function ErrorBoundaryFallback({
         <summary className="dc:cursor-pointer dc:text-xs text-dc-text-muted hover:text-dc-text">
           {t('errorBoundary.showDetails')}
         </summary>
-        <div className="dc:mt-2 dc:p-2 bg-dc-surface-secondary dc:rounded dc:text-xs dc:font-mono text-dc-text-secondary dc:overflow-auto dc:max-h-32">
+        <div className="dc:mt-2 dc:p-2 bg-dc-surface-secondary dc:rounded-sm dc:text-xs dc:font-mono text-dc-text-secondary dc:overflow-auto dc:max-h-32">
           {error?.message || t('errorBoundary.unknownError')}
         </div>
       </details>
@@ -68,7 +68,7 @@ function ErrorBoundaryFallback({
       <div className="dc:flex dc:gap-2">
         <button
           onClick={onReset}
-          className="dc:px-3 dc:py-1.5 dc:border border-dc-border dc:rounded dc:text-sm text-dc-text hover:bg-dc-surface-hover dc:transition-colors dc:flex dc:items-center dc:gap-1"
+          className="dc:px-3 dc:py-1.5 dc:border border-dc-border dc:rounded-sm dc:text-sm text-dc-text hover:bg-dc-surface-hover dc:transition-colors dc:flex dc:items-center dc:gap-1"
         >
           {RefreshIcon && <RefreshIcon className="dc:w-4 dc:h-4" />}
           {t('errorBoundary.tryAgain')}
@@ -76,7 +76,7 @@ function ErrorBoundaryFallback({
         {onSwitchToSafeMode && (
           <button
             onClick={onSwitchToSafeMode}
-            className="dc:px-3 dc:py-1.5 bg-dc-primary text-white dc:rounded dc:text-sm dc:hover:opacity-90 dc:transition-opacity"
+            className="dc:px-3 dc:py-1.5 bg-dc-primary text-white dc:rounded-sm dc:text-sm dc:hover:opacity-90 dc:transition-opacity"
           >
             {t('errorBoundary.switchToQuery')}
           </button>

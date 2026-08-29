@@ -45,7 +45,7 @@ const DatePresetChips: React.FC<DatePresetChipsProps> = ({
             disabled={disabled}
             title={tooltip}
             className={`
-              dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:transition-colors
+              dc:px-2.5 dc:py-1 dc:rounded-sm dc:text-xs dc:font-medium dc:transition-colors
               dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-1
               dc:disabled:opacity-50 dc:disabled:cursor-not-allowed
               ${isActive ? 'dc:shadow-sm' : 'dc:border'}

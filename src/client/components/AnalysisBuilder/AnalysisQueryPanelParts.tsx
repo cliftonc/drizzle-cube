@@ -291,7 +291,7 @@ function QueryTabs({
                 tabIndex={0}
                 onClick={(e) => handleRemoveQuery(e, index)}
                 onKeyDown={(e) => e.key === 'Enter' && handleRemoveQuery(e as unknown as React.MouseEvent, index)}
-                className="dc:p-0.5 dc:rounded hover:bg-dc-danger-bg hover:text-dc-error dc:transition-colors dc:ml-0.5"
+                className="dc:p-0.5 dc:rounded-sm hover:bg-dc-danger-bg hover:text-dc-error dc:transition-colors dc:ml-0.5"
                 title={t('analysis.multiQuery.removeQuery')}
                 aria-label={`Remove ${getQueryTabLabel(index)}`}
               >
@@ -338,7 +338,7 @@ function QueryTabs({
               onAddQuery()
             }
           }}
-          className="dc:ml-2 dc:p-0.5 dc:rounded hover:bg-dc-surface-hover dc:transition-colors dc:inline-flex dc:items-center"
+          className="dc:ml-2 dc:p-0.5 dc:rounded-sm hover:bg-dc-surface-hover dc:transition-colors dc:inline-flex dc:items-center"
           title={t('analysis.multiQuery.addAnother')}
           aria-label={t('analysis.multiQuery.addAnother')}
         >
@@ -407,7 +407,7 @@ export function MergeStrategyControls({
       <select
         value={mergeStrategy}
         onChange={(e) => onMergeStrategyChange?.(e.target.value as QueryMergeStrategy)}
-        className="dc:px-2 dc:py-1 dc:text-xs bg-dc-surface dc:border border-dc-border dc:rounded text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
+        className="dc:px-2 dc:py-1 dc:text-xs bg-dc-surface dc:border border-dc-border dc:rounded-sm text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
       >
         <option value="concat">{t('analysis.mergeStrategy.concat')}</option>
         <option value="merge">{t('analysis.mergeStrategy.merge')}</option>
@@ -639,7 +639,7 @@ export function LockedBreakdownList({
         <h4 className="dc:text-sm dc:font-medium text-dc-text">{t('analysis.sections.dimensions')}</h4>
       </div>
       {/* Explanation with link to switch mode */}
-      <div className="dc:flex dc:items-start dc:gap-2 dc:px-3 dc:py-2 dc:mb-3 bg-dc-surface-secondary dc:rounded dc:border border-dc-border dc:text-xs">
+      <div className="dc:flex dc:items-start dc:gap-2 dc:px-3 dc:py-2 dc:mb-3 bg-dc-surface-secondary dc:rounded-sm dc:border border-dc-border dc:text-xs">
         {InfoIcon && <InfoIcon className="dc:w-4 dc:h-4 text-dc-text-muted dc:flex-shrink-0 dc:mt-0.5" />}
         <span className="text-dc-text-muted">
           {t('analysis.multiQuery.mergeExplanation')}

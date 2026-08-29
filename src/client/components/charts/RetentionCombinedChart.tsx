@@ -405,7 +405,7 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
   const renderHeatmapTooltip = () =>
     heatmapTooltip && (
       <div
-        className="dc:fixed dc:z-50 dc:px-3 dc:py-2 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:text-sm dc:pointer-events-none"
+        className="dc:fixed dc:z-50 dc:px-3 dc:py-2 bg-dc-surface dc:border border-dc-border dc:rounded-sm dc:shadow-lg dc:text-sm dc:pointer-events-none"
         style={{
           left: heatmapTooltip.x,
           top: heatmapTooltip.y - 10,

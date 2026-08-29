@@ -52,7 +52,7 @@ export default function DataBrowserSidebar({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('dataBrowser.sidebar.searchPlaceholder')}
-            className="dc:w-full dc:pl-7 dc:pr-2 dc:py-1.5 dc:text-xs dc:rounded border-dc-border dc:border bg-dc-surface text-dc-text dc:outline-none dc:focus:ring-1 focus:ring-dc-accent"
+            className="dc:w-full dc:pl-7 dc:pr-2 dc:py-1.5 dc:text-xs dc:rounded-sm border-dc-border dc:border bg-dc-surface text-dc-text dc:outline-none dc:focus:ring-1 focus:ring-dc-accent"
           />
         </div>
       </div>

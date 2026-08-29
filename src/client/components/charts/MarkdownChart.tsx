@@ -79,7 +79,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
           style: { color: accentColor }
         }
       },
-      code: { props: { className: 'dc:px-1 dc:py-0.5 dc:rounded dc:text-xs bg-dc-surface-secondary text-dc-accent dc:font-mono' } },
+      code: { props: { className: 'dc:px-1 dc:py-0.5 dc:rounded-sm dc:text-xs bg-dc-surface-secondary text-dc-accent dc:font-mono' } },
       pre: { props: { className: 'dc:rounded-lg dc:p-3 dc:my-2 dc:overflow-x-auto dc:text-xs bg-dc-surface-secondary text-dc-text dc:font-mono' } },
       ul: { props: { className: 'dc:list-disc dc:ml-6 dc:mb-3 text-dc-text dc:space-y-1' } },
       ol: { props: { className: 'dc:list-decimal dc:ml-6 dc:mb-3 text-dc-text dc:space-y-1' } },

@@ -85,7 +85,7 @@ function DateRangeInput(props: DashboardFilterValueInputProps) {
             setIsValueDropdownOpen(false)
             setIsDateRangeDropdownOpen(!isDateRangeDropdownOpen)
           }}
-          className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
+          className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
         >
           <span className="dc:truncate">{dateRangeLabel}</span>
           <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
@@ -94,7 +94,7 @@ function DateRangeInput(props: DashboardFilterValueInputProps) {
         </button>
 
         {isDateRangeDropdownOpen && (
-          <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
+          <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-sm dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
             {DATE_RANGE_OPTIONS.map((option) => (
               <button
                 key={option.value}
@@ -119,7 +119,7 @@ function DateRangeInput(props: DashboardFilterValueInputProps) {
             max="1000"
             value={numberValue}
             onChange={(e) => handleNumberValueChange(Math.max(1, parseInt(e.target.value) || 1))}
-            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text dc:w-20"
+            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text dc:w-20"
           />
           <span className="dc:text-sm text-dc-text-muted">
             {rangeType.replace('last_n_', '')}
@@ -134,14 +134,14 @@ function DateRangeInput(props: DashboardFilterValueInputProps) {
             type="date"
             value={Array.isArray(filter.dateRange) ? filter.dateRange[0] : ''}
             onChange={handleCustomStartDate}
-            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
+            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
           />
           <span className="dc:text-sm text-dc-text-muted">to</span>
           <input
             type="date"
             value={Array.isArray(filter.dateRange) ? filter.dateRange[1] : ''}
             onChange={handleCustomEndDate}
-            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
+            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
           />
         </div>
       )}
@@ -212,7 +212,7 @@ function ComboBoxInput(props: DashboardFilterValueInputProps) {
           {filter.values.map((value: unknown, index: number) => (
             <span
               key={index}
-              className="dc:inline-flex dc:items-center dc:gap-1 bg-dc-primary/10 text-dc-primary dc:text-sm dc:px-2 dc:py-1 dc:rounded"
+              className="dc:inline-flex dc:items-center dc:gap-1 bg-dc-primary/10 text-dc-primary dc:text-sm dc:px-2 dc:py-1 dc:rounded-sm"
             >
               <span className="dc:max-w-[150px] dc:truncate">{String(value)}</span>
               <button
@@ -234,7 +234,7 @@ function ComboBoxInput(props: DashboardFilterValueInputProps) {
             setIsDateRangeDropdownOpen(false)
             setIsValueDropdownOpen(!isValueDropdownOpen)
           }}
-          className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
+          className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
         >
           <span className="text-dc-text-muted dc:truncate">
             {valuesLoading ? 'Loading...' : 'Select value...'}
@@ -245,7 +245,7 @@ function ComboBoxInput(props: DashboardFilterValueInputProps) {
         </button>
 
         {isValueDropdownOpen && (
-          <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-56 dc:overflow-hidden">
+          <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-sm dc:shadow-lg dc:max-h-56 dc:overflow-hidden">
             {/* Search input */}
             <div className="dc:p-2 dc:border-b border-dc-border">
               <input
@@ -253,7 +253,7 @@ function ComboBoxInput(props: DashboardFilterValueInputProps) {
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 placeholder={t('dashboardFilter.search')}
-                className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
+                className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
                 autoFocus
               />
             </div>
@@ -303,7 +303,7 @@ export default function DashboardFilterValueInput(props: DashboardFilterValueInp
           value={filter.values?.[0] ?? ''}
           onChange={handleBetweenStartInput}
           placeholder="Min"
-          className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
+          className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
         />
         <span className="dc:text-sm text-dc-text-muted">to</span>
         <input
@@ -311,7 +311,7 @@ export default function DashboardFilterValueInput(props: DashboardFilterValueInp
           value={filter.values?.[1] ?? ''}
           onChange={handleBetweenEndInput}
           placeholder="Max"
-          className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
+          className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
         />
       </div>
     )
@@ -324,7 +324,7 @@ export default function DashboardFilterValueInput(props: DashboardFilterValueInp
         type="date"
         value={filter.values?.[0] || ''}
         onChange={handleDateInput}
-        className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
+        className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
       />
     )
   }
@@ -337,7 +337,7 @@ export default function DashboardFilterValueInput(props: DashboardFilterValueInp
         value={filter.values?.[0] ?? ''}
         onChange={handleDirectInput}
         placeholder="Enter number"
-        className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
+        className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
       />
     )
   }
@@ -354,7 +354,7 @@ export default function DashboardFilterValueInput(props: DashboardFilterValueInp
       value={filter.values?.[0] ?? ''}
       onChange={handleDirectInput}
       placeholder="Enter value..."
-      className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text placeholder-dc-text-muted"
+      className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text placeholder-dc-text-muted"
     />
   )
 }

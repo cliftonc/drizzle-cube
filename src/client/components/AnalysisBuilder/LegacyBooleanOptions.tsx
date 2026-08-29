@@ -52,7 +52,7 @@ const LegacyBooleanOptions = memo(function LegacyBooleanOptions({
             onChange={(e) =>
               onDisplayConfigChange({ ...displayConfig, [spec.key]: e.target.checked })
             }
-            className="dc:rounded border-dc-border focus:ring-dc-accent"
+            className="dc:rounded-sm border-dc-border focus:ring-dc-accent"
             style={{ color: 'var(--dc-primary)' }}
           />
           <span className="dc:text-sm text-dc-text">{t(spec.labelKey)}</span>
