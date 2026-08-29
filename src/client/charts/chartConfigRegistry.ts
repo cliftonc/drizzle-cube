@@ -23,6 +23,7 @@ import { boxPlotChartConfig } from '../components/charts/BoxPlotChart.config.js'
 import { waterfallChartConfig } from '../components/charts/WaterfallChart.config.js'
 import { candlestickChartConfig } from '../components/charts/CandlestickChart.config.js'
 import { measureProfileChartConfig } from '../components/charts/MeasureProfileChart.config.js'
+import { proportionBarChartConfig } from '../components/charts/ProportionBarChart.config.js'
 import { gaugeChartConfig } from '../components/charts/GaugeChart.config.js'
 import type { BuiltInChartType } from '../types.js'
 import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs.js'
@@ -62,6 +63,7 @@ const baseConfigs: Record<BuiltInChartType, ChartTypeConfig> = {
   waterfall: waterfallChartConfig,
   candlestick: candlestickChartConfig,
   measureProfile: measureProfileChartConfig,
+  proportionBar: proportionBarChartConfig,
   gauge: gaugeChartConfig,
 }
 

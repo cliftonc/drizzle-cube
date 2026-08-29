@@ -60,6 +60,7 @@ const chartImportMap: Record<BuiltInChartType, () => Promise<{ default: LazyChar
   waterfall: () => import('../components/charts/WaterfallChart.js'),
   candlestick: () => import('../components/charts/CandlestickChart.js'),
   measureProfile: () => import('../components/charts/MeasureProfileChart.js'),
+  proportionBar: () => import('../components/charts/ProportionBarChart.js'),
   gauge: () => import('../components/charts/GaugeChart.js'),
 }
 
@@ -114,7 +115,7 @@ function DefaultChartFallback({ height }: { height?: string | number }) {
       className="dc:flex dc:items-center dc:justify-center dc:w-full"
       style={{ height: typeof height === 'number' ? `${height}px` : height || '200px' }}
     >
-      <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded dc:w-full dc:h-full dc:min-h-[100px]" />
+      <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded-sm dc:w-full dc:h-full dc:min-h-[100px]" />
     </div>
   )
 }

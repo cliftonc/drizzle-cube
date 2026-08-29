@@ -116,6 +116,7 @@ export type BuiltInChartType =
   | 'boxPlot'
   | 'waterfall'
   | 'candlestick'
+  | 'proportionBar'
   | 'measureProfile'
   | 'gauge'
 
@@ -171,6 +172,7 @@ export interface ChartDisplayConfig {
   stacked?: boolean // Deprecated: use stackType instead
   stackType?: 'none' | 'normal' | 'percent' // Stacking mode: none, normal (sum), or percent (100%)
   connectNulls?: boolean // For Area/Line charts: draw continuous lines through missing data
+  showSummary?: boolean // For Area/Line charts: show a per-series summary band above the plot
   showAllXLabels?: boolean // Force all X-axis category labels to display (interval=0)
   hideHeader?: boolean // Hide portlet header in non-edit mode
   
@@ -184,6 +186,10 @@ export interface ChartDisplayConfig {
   
   // Activity grid specific display options
   showLabels?: boolean
+
+  // Proportion bar
+  showPercentages?: boolean // Show each segment's share beneath the bar
+  sortSegments?: boolean // Order segments largest-first rather than by query order
   fitToWidth?: boolean
 
   // DataTable specific display options
@@ -200,11 +206,13 @@ export interface ChartDisplayConfig {
   formatValue?: (value: number | null | undefined) => string // Custom value formatter function (takes precedence over prefix/suffix/decimals)
   valueColor?: string // Color for the KPI value (legacy)
   valueColorIndex?: number // Index of color from dashboard palette for KPI value
+  layout?: 'auto' | 'compact' // 'auto' scales the value to the portlet box; 'compact' uses a fixed type scale
   
   // KPI Delta specific display options
   positiveColorIndex?: number // Index of color from dashboard palette for positive changes
   negativeColorIndex?: number // Index of color from dashboard palette for negative changes
   showHistogram?: boolean // Whether to show variance histogram
+  showBaseline?: boolean // Show the `previous -> current` sub-line (compact layout)
 
   // KPI time period handling
   useLastCompletePeriod?: boolean // Exclude incomplete current period (e.g., partial week/month)

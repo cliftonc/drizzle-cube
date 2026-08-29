@@ -110,6 +110,7 @@ export interface IconRegistry {
   chartWaterfall: IconDefinition
   chartCandlestick: IconDefinition
   chartMeasureProfile: IconDefinition
+  chartProportionBar: IconDefinition
   chartGauge: IconDefinition
 
   // Measure type icons

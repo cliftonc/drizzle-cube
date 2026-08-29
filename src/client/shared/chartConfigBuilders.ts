@@ -192,6 +192,7 @@ const axisBuilders: Partial<Record<ChartType, AxisBuilder>> = {
   radar: buildCategoryValueConfig,
   radialBar: buildCategoryValueConfig,
   treemap: buildCategoryValueConfig,
+  proportionBar: buildPieConfig,
   activityGrid: buildActivityGridConfig,
   kpiNumber: buildKpiConfig,
   kpiDelta: buildKpiConfig,
