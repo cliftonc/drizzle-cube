@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788052102433,
+  "lastUpdate": 1788058981284,
   "repoUrl": "https://github.com/cliftonc/drizzle-cube",
   "entries": {
     "drizzle-cube": [
@@ -74513,6 +74513,275 @@ window.BENCHMARK_DATA = {
             "range": "± 0.0ms p95",
             "unit": "ms",
             "extra": "Cache-enabled executor, warm cache · p95 0.6ms · 700 rows"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "clifton.cunningham@gmail.com",
+            "name": "Clifton Cunningham",
+            "username": "cliftonc"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "06b33bface8fafa1bf162f057021cba23229cc30",
+          "message": "Chart visual refresh: gradient fills, compact KPIs, summary headers, proportion bar, themeable radius (#1180)\n\n* chore(client): route bare dc:rounded through the radius token\n\n`dc:rounded` compiles to a hardcoded .25rem rather than\nvar(--dc-radius-*), so it was the one radius class the theme could not\nreach - and at 213 uses, the most common one in the client.\n\nRewrite it to `dc:rounded-sm`. Because --dc-radius-sm is itself .25rem\ntoday, this renders identically; it exists purely to bring the\nstragglers under the token so the following commit can retune radius\nfrom one place. `dc:rounded-full` is left alone - pills and avatars\nshould stay fully round regardless of the theme.\n\nNo visual change.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* feat(theme): make corner radius themeable and flatten the default\n\nTailwind is imported with prefix(dc), so its radius scale is already\nemitted as --dc-radius-*, and every dc:rounded-sm/md/lg in the library\nresolves through it. Declaring those variables in :root (unlayered, so\nthey beat Tailwind's layer(theme) defaults) makes the product's\nroundness a three-line change rather than a sweep of 95 files.\n\nFlatten the default to .125/.1875/.25rem, and let neon go fully square\nfor a harder edge. Documented in the theming rules as a supported\nconsumer override, including the note that an @theme block would\nself-reference under the dc prefix.\n\nAlso fix three class strings that were unprefixed and so silently\ndepended on the *host* app's Tailwind rather than the library's:\nbuildHeaderClassName (the entire portlet header), FilterConfigModal's\nmodal, and KpiDelta's histogram bars.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* feat(charts): fade area fills with a vertical gradient\n\nArea series rendered as a flat translucent slab (fillOpacity 0.3),\nwhich reads as heavier and less refined than the same chart drawn with\na gradient. Recharts has no gradient primitive - the fade is a plain\nSVG <linearGradient> in <defs> that each <Area> references by fill.\n\nEmit one vertical gradient per series, using the same hue at both\nstops and fading to stopOpacity 0, so it works on the dark and neon\nthemes (fading to white would not). fillOpacity stays the master\ncontrol, so the existing hover dim/highlight is unchanged. Stacked\nareas keep the flat fill - bands are bounded by their neighbours and a\nfade only muddies the boundaries.\n\nGradient ids are derived from useId() with colons stripped, since\nthose are unreliable inside SVG url(#...) references and two area\nportlets on one dashboard would otherwise share a fill.\n\nAlso soften the top corners of unstacked bars, which had no radius.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* feat(charts): add a compact layout for the KPI charts\n\nKpiNumber and KpiDelta size their value from the container via\nuseKpiDimensions (up to 120/140px), so a wide portlet renders an\nenormous number and a row of KPIs reads as a wall of mismatched type.\n\nAdd a `layout` option rather than a new chart type, so the chart\npicker stays uncluttered and all the existing delta, formatting and\npalette logic is reused. `compact` uses a fixed type scale - small\nuppercase label, ~30px value, quiet sub-line - and suppresses the\nhistogram. KpiDelta gains `showBaseline` for the \"160 -> 140\"\nbefore/after pair, which computeDelta already had the numbers for.\n\nkpiHeightStyle takes an overridable minHeight so a compact card can\nsit in a short strip, and the layout fills its parent rather than the\n`height` prop: that prop defaults to 300px and can exceed the visible\npanel, which would centre the content below the fold.\n\nReplaces four bare user-facing strings with translation keys along the\nway.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* feat(charts): add an optional summary header to line and area charts\n\nA time series is hard to read without hovering: the current value and\nhow far it has moved over the window are the two things a reader wants\nfirst. Add a `showSummary` option that renders a band above the plot\nwith a colour dot, series label, current value and the change since\nthe start of the window.\n\nEverything is derived client-side from the result set already fetched\nfor the plot, so this issues no extra queries. The computation is a\npure helper (computeSeriesSummaries) that skips nulls rather than\ntreating them as zero, and leaves the delta null when there are fewer\nthan two points or the baseline is zero.\n\nScoped to line and area. \"Change since the start\" only means something\non an ordered axis; on a categorical one the first and last categories\nare arbitrary, so the delta is suppressed unless the x-axis is a\nqueried time dimension. The bottom legend is hidden when the summary\nis on, since the summary already carries the colour dots.\n\nThe band is indented to the plot's left edge via getPlotLeftOffset, so\nit lines up with the first data point instead of floating against the\ncard edge. The left <YAxis> now states width={Y_AXIS_WIDTH} explicitly\nso that alignment reads from the same constant the chart uses rather\nthan assuming recharts' default.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* feat(charts): add the proportionBar chart type\n\nA part-to-whole breakdown drawn as one 100%-wide stacked horizontal\nbar with a labelled percentage legend beneath. Shares are much easier\nto compare along a single axis than as pie angles, and it costs a\nfraction of the vertical space.\n\nDeliberately plain HTML rather than recharts - there is no axis, scale\nor interaction here to justify an SVG chart, so it also carries no\ncharting dependency. Non-positive rows are excluded, since they cannot\nbe drawn in a part-to-whole bar.\n\nRegistered through the usual path: type literal, registry entry, eager\nbase config (the server agent reads dropZones synchronously), lazy\ncomponent import, icon and axis builder.\n\nAlso adds the display-option and i18n plumbing shared by this and the\npreceding two commits: the layout/summary option factories, the new\nChartDisplayConfig fields, and the en/nl-NL keys. Locale parity is\nenforced by tests/i18n/locales.test.ts, which also walks the registry\nand would fail on any missing chart key.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* fix(dashboard): detect the scroll container independently of content height\n\nfindScrollableAncestor required an ancestor to both declare\noverflow-y:auto and already satisfy scrollHeight > clientHeight. It\nruns once from a ref callback at mount, before the dashboard has\nrendered enough content to overflow, so for hosts that scroll inside a\ndiv it returned null - \"use viewport\" - and never re-ran.\n\nThat single null broke two things. useElementVisibility fell back to\nwindow, but a host whose root is `h-screen overflow-hidden` never\nscrolls the window, so the listener never fired and the floating edit\ntoolbar stayed hidden no matter how far you scrolled. useDragAutoScroll\nopens with `if (!container) return`, so dragging near an edge silently\ndid nothing.\n\nVerified against the dev site: before, scrolling the container left the\ntoolbar at opacity 0 while a window resize revealed it - proving the\nvisibility maths was right and only the listener binding was wrong.\nAfter, scrolling reveals it, and drag auto-scroll moves the container\n(scrollTop 0 -> 480 while hovering the bottom edge).\n\nUse two passes: keep the original stricter rule so an ancestor that is\nactually scrolling still wins, then fall back to the nearest ancestor\nthat merely declares vertical scrolling. Intent-based, so it no longer\ndepends on when detection happens to run.\n\nAlso give useDragAutoScroll a viewport fallback: a null container now\nmeans the page scrolls, so it scrolls the window instead of doing\nnothing. That path was dead for genuinely viewport-scrolled hosts too.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* fix(dashboard): stop forcing a 200px floor on intrinsically short charts\n\nPortletChartView pins the chart wrapper to minHeight 200px. In a short\nrow the visible area can be smaller than that - measured at 126px - so\nthe wrapper overflows its own card. Content centred inside the 200px\nbox then renders near the bottom of the visible area and clips.\n\nMarkdown was already exempt for exactly this reason; extend that to the\nproportion bar and to KPIs in compact layout, which are short by design.\nMeasured after the change: the whole chain is 126px and space above and\nbelow the content is equal.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* fix(charts): address review feedback on the summary header\n\nFour issues from review:\n\nReserve the real header height. The header wraps, so subtracting a fixed\n56px was wrong as soon as it did. Measuring it would not have been\nenough either: the actual driver of the overflow is ChartContainer's own\nminimum height, which stops the plot shrinking. Give the plot the\nremaining flex space and let it below that floor when a summary is\npresent. Measured against the compiled CSS at 1/4/6 series, this is the\nonly arrangement that never overflows - the old constant clipped by\n25px at four series and 88px at six.\n\nFormat each series with its own axis. renderDualYAxes and the tooltip\nalready route right-axis series through rightYAxisFormat; the summary\nused leftYAxisFormat for everything, so revenue-left / rate-right showed\nthe right-axis value in the wrong unit. Summaries now carry the axis\nthey belong to, resolved by the same rule the series elements use.\n\nStop the option copy promising a change value the chart may hide: the\ndelta is suppressed on a categorical x-axis, so the description now\nscopes it to time-based charts.\n\nShare scroll-container detection with the mobile layout, which had its\nown copy of findScrollableAncestor still carrying the old rule - so\nmobile dashboards kept the bug the previous commit fixed.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* style(charts): match the compact KPI label to the default layout\n\nThe compact layout borrowed the reference site's small uppercase\ncaption, but the default KPI layout uses a bold 14px secondary label.\nTwo KPIs sitting side by side on one dashboard therefore read as\nbelonging to different systems.\n\nUse the default layout's label styling; only the alignment still\ndiffers, which is the point of the compact variant. Verified in the\nbrowser: both labels now compute to 14px / 700 / no transform / the\nsame colour.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* feat(charts): point marker toggle, and name the summary's baseline period\n\nTwo changes to the time-series charts. They touch the same files, so\nthey land together rather than as an artificial split.\n\n**Data point markers.** A dense series - hundreds of points - renders as\na mass of markers with the line barely visible underneath, so add a\n`showPoints` option to turn them off.\n\nThe markers double as the drill-down click target, so switching them off\nwould silently remove drill; render one on hover via activeDot instead,\nkeeping both the clean line and the interaction.\n\nThe area series passed `renderPlain: false`, meaning it only ever drew\n*drill* dots - so the option did nothing anywhere drill is off, the\nanalysis-builder preview being the obvious case. It now honours the\noption. Because area charts have consequently never shown plain markers,\nthe option defaults off there and on for line: each keeps the look it\nhas today, and in both cases the checkbox now matches what is drawn.\n\n**Summary baseline.** The change qualifier moves onto its own line, and\nnames the period it is measured from - \"since 2025-09\" rather than a\ngeneric \"since start of period\" - taken from the x label of the first\nrow that actually has a value. Comparison mode keeps the generic wording,\nsince its x key is a day index that would read as \"since 0\".\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* fix(charts): default X-axis labels to width-aware thinning\n\nshowAllXLabels defaulted to true, which forces recharts `interval={0}`\nand renders a label for every point. That is right for a dozen\ncategories and unusable beyond it: measured on a dashboard chart, 139\nticks across a 571px axis - roughly 4px apart, an unreadable smear.\n\nDefault it to false so recharts thins the labels itself, which it does\nfrom the available width. The same chart then renders 7 evenly spaced,\nlegible dates. Anyone who wants a label per point can still tick the\noption; the checkbox default moves with it so the UI matches what is\ndrawn.\n\nApplies to line, area and bar, which shared the pattern.\n\nNote on tests: the thinning is not assertable in jsdom, which reports\nzero-width text, so recharts concludes every label fits. The opt-in\npath is width-independent and is covered; the default was verified in\na browser.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* fix(charts): size the angled X-axis to its longest label\n\nThe axis height was hardcoded at 60px. AngledXAxisTick rotates its text\n-45deg from an anchor offset dy=16, so the space needed below the axis\nis the label's width projected onto the vertical plus that offset: a\ndate like \"2026-08-24\" is ~66px wide at 12px, projects to ~47px, and\nneeds ~63px. Three pixels over, so the bottom of every long label was\nshaved off.\n\nPreviously masked - with a label per point they were an unreadable\nsmear anyway - and it showed up once the labels were thinned.\n\nSize the axis from the longest label instead, floored at the old 60px\nso short labels are unaffected and capped at 96px so one pathological\nvalue cannot squeeze the plot. Past the cap the tick truncates, and the\ntwo constants are tied together by a test so they cannot drift apart\nand start clipping again.\n\nApplies to line, area and bar.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* fix(charts): make axis text theme-aware\n\nThree separate hardcoded colours on the cartesian axes, all invisible or\nwashed out on a dark background:\n\n- our AngledXAxisTick used `fill=\"currentColor\"`, inheriting whatever\n  the host page sets - near-black on the dark theme\n- recharts hardcodes #666 on its own tick labels\n- the Y-axis title rendered at #808080\n\nPoint all three at --dc-text-muted, which is #6b7280 on light (matching\nrecharts' own #666, so nothing changes there) and #cbd5e1 on dark. The\ntick labels go through a CSS rule, which wins over recharts' SVG\npresentation attribute; the axis title is set inline, since it carries\nno class distinguishing it from data labels.\n\nPre-existing rather than a regression - `currentColor` predates this\nbranch. It only became obvious once the labels were thinned enough to\nread.\n\nMeasured across both themes: ticks and title now render #6b7280 on\nlight and #cbd5e1 on dark, x and y agreeing.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* fix(dashboard): scope the compact height exemption to the KPI charts\n\n`layout` is only meaningful on kpiNumber and kpiDelta, but the wrapper\nread it without checking the chart type. setChartType spreads the whole\ndisplayConfig and replaces only chartType, so a portlet that was a\ncompact KPI keeps `layout: 'compact'` after being changed to a bar or\nline chart - and that stale option stripped the 200px floor from a\nchart that needs it, collapsing it in exactly the short rows the\nexemption exists to fix.\n\nPair the option with the chart types that own it. Extracted as\nhasIntrinsicChartHeight so the rule is testable on its own, since\nPortletChartView needs a query, drill state and an error boundary to\nrender; the stale-config case is now pinned by a test.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* fix(charts): key proportion-bar segments by their source row\n\nBoth the bar and its legend keyed children by `segment.label`. Category\nlabels are not reliably unique - a query can return duplicates, and\nevery null collapses to the same empty string - so React was handed\nduplicate keys and can reconcile a segment against the wrong sibling,\nmis-associating a width or colour with a category. Sorting makes it\nlikelier, since it reorders the list under those keys.\n\nKey by the source row index instead, captured before sorting so the key\nstays with the same underlying datum when the order changes.\n\nThe obvious DOM assertions do not pin this: duplicate keys still render\ncorrectly on first mount, and I confirmed such a test passes against the\nunfixed component. The test asserts on React's \"same key\" warning, which\nis the actual signal, and was checked to fail without the fix.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-08-30T04:00:31+01:00",
+          "tree_id": "2f732f7eb0ad7feaaac73306a8167b2fb6eede59",
+          "url": "https://github.com/cliftonc/drizzle-cube/commit/06b33bface8fafa1bf162f057021cba23229cc30"
+        },
+        "date": 1788058979010,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "baseline.count-time-entries",
+            "value": 38.25,
+            "range": "± 2.9ms p95",
+            "unit": "ms",
+            "extra": "Count over ~730k time entries · p95 41.2ms · 1 rows"
+          },
+          {
+            "name": "baseline.sum-avg-productivity",
+            "value": 15.47,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Sum + avg over ~335k productivity rows · p95 15.8ms · 1 rows"
+          },
+          {
+            "name": "baseline.count-distinct",
+            "value": 129.01,
+            "range": "± 1.3ms p95",
+            "unit": "ms",
+            "extra": "Count distinct employees over time entries · p95 130.3ms · 1 rows"
+          },
+          {
+            "name": "baseline.min-max",
+            "value": 24.07,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Min + max lines of code · p95 24.5ms · 1 rows"
+          },
+          {
+            "name": "baseline.calculated-measure",
+            "value": 25.38,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Calculated measure (productivity score) · p95 25.6ms · 1 rows"
+          },
+          {
+            "name": "multi.six-measures",
+            "value": 60.21,
+            "range": "± 1.8ms p95",
+            "unit": "ms",
+            "extra": "Six measures on time entries · p95 62.0ms · 1 rows"
+          },
+          {
+            "name": "multi.mixed-types",
+            "value": 46.41,
+            "range": "± 1.8ms p95",
+            "unit": "ms",
+            "extra": "Mixed aggregation types on productivity · p95 48.2ms · 1 rows"
+          },
+          {
+            "name": "groupby.low-cardinality",
+            "value": 78.56,
+            "range": "± 1.3ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type (6 groups) · p95 79.9ms · 6 rows"
+          },
+          {
+            "name": "groupby.mid-cardinality",
+            "value": 65.67,
+            "range": "± 2.8ms p95",
+            "unit": "ms",
+            "extra": "Group by department (~25 groups) · p95 68.5ms · 25 rows"
+          },
+          {
+            "name": "groupby.high-cardinality",
+            "value": 33.1,
+            "range": "± 0.9ms p95",
+            "unit": "ms",
+            "extra": "Group by employee (~700 groups) · p95 34.0ms · 700 rows"
+          },
+          {
+            "name": "groupby.two-dimensions",
+            "value": 85.56,
+            "range": "± 6.1ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type + department · p95 91.6ms · 150 rows"
+          },
+          {
+            "name": "filter.equals",
+            "value": 50.15,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Equals filter (development entries) · p95 50.8ms · 1 rows"
+          },
+          {
+            "name": "filter.numeric-range",
+            "value": 23.93,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Numeric range filter (linesOfCode > 100) · p95 24.3ms · 1 rows"
+          },
+          {
+            "name": "filter.string-contains",
+            "value": 1.34,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "String contains filter on employee name · p95 1.4ms · 1 rows"
+          },
+          {
+            "name": "filter.nested-and-or",
+            "value": 58.38,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Nested AND/OR filter on time entries · p95 58.8ms · 1 rows"
+          },
+          {
+            "name": "filter.in-list-100",
+            "value": 48.3,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "IN-list filter with 100 employee ids · p95 48.8ms · 1 rows"
+          },
+          {
+            "name": "time.day-granularity-year",
+            "value": 100.11,
+            "range": "± 1.0ms p95",
+            "unit": "ms",
+            "extra": "Daily time series over 2024 (~366 buckets) · p95 101.1ms · 262 rows"
+          },
+          {
+            "name": "time.month-granularity",
+            "value": 98.96,
+            "range": "± 1.0ms p95",
+            "unit": "ms",
+            "extra": "Monthly time series over 2024 · p95 99.9ms · 12 rows"
+          },
+          {
+            "name": "time.week-with-dimension",
+            "value": 37.32,
+            "range": "± 1.0ms p95",
+            "unit": "ms",
+            "extra": "Weekly series split by allocation type (H1 2024) · p95 38.3ms · 104 rows"
+          },
+          {
+            "name": "time.gap-fill",
+            "value": 49.88,
+            "range": "± 22.3ms p95",
+            "unit": "ms",
+            "extra": "Daily series with fillMissingDates over 16 months · p95 72.2ms · 488 rows"
+          },
+          {
+            "name": "time.compare-date-range",
+            "value": 95.88,
+            "range": "± 4.5ms p95",
+            "unit": "ms",
+            "extra": "Period comparison Q1 vs Q2 2024 by month · p95 100.4ms · 6 rows"
+          },
+          {
+            "name": "join.belongs-to",
+            "value": 2.25,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Employees joined to departments · p95 2.4ms · 25 rows"
+          },
+          {
+            "name": "join.has-many-fanout",
+            "value": 260.5,
+            "range": "± 11.0ms p95",
+            "unit": "ms",
+            "extra": "Employee count with time-entry fan-out (~730k child rows) · p95 271.5ms · 25 rows"
+          },
+          {
+            "name": "join.many-to-many",
+            "value": 2.8,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Employees by team via junction table · p95 2.9ms · 40 rows"
+          },
+          {
+            "name": "join.three-cubes",
+            "value": 230.31,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Departments + employees + time entries · p95 230.5ms · 25 rows"
+          },
+          {
+            "name": "rows.ordered-700",
+            "value": 58.05,
+            "range": "± 8.9ms p95",
+            "unit": "ms",
+            "extra": "~700 ordered group rows · p95 66.9ms · 700 rows"
+          },
+          {
+            "name": "rows.deep-offset",
+            "value": 15.4,
+            "range": "± 2.8ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped page at offset 100k (limit 1000) · p95 18.2ms · 1,000 rows"
+          },
+          {
+            "name": "rows.ungrouped-10k",
+            "value": 31.51,
+            "range": "± 2.0ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped raw rows (limit 10,000) · p95 33.5ms · 10,000 rows"
+          },
+          {
+            "name": "analysis.funnel",
+            "value": 106.99,
+            "range": "± 1.5ms p95",
+            "unit": "ms",
+            "extra": "Three-step funnel over ~335k events · p95 108.5ms · 3 rows"
+          },
+          {
+            "name": "analysis.flow",
+            "value": 37.86,
+            "range": "± 8.3ms p95",
+            "unit": "ms",
+            "extra": "Flow with 2 steps before/after · p95 46.1ms · 1 rows"
+          },
+          {
+            "name": "analysis.retention",
+            "value": 352.29,
+            "range": "± 2.6ms p95",
+            "unit": "ms",
+            "extra": "Monthly retention over 2024 (6 periods) · p95 354.9ms · 7 rows"
+          },
+          {
+            "name": "compile.simple",
+            "value": 0.07,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Compile simple aggregation query · p95 0.1ms · 0 rows"
+          },
+          {
+            "name": "compile.complex",
+            "value": 0.58,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Compile multi-cube query with filters + time dimension · p95 0.7ms · 0 rows"
+          },
+          {
+            "name": "cache.miss",
+            "value": 24,
+            "range": "± 9.4ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, cache bypassed · p95 33.4ms · 700 rows"
+          },
+          {
+            "name": "cache.hit",
+            "value": 0.4,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, warm cache · p95 0.5ms · 700 rows"
           }
         ]
       }
