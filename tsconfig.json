@@ -9,6 +9,7 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    "allowArbitraryExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
@@ -21,8 +22,8 @@
     "noFallthroughCasesInSwitch": true,
     
     /* Module Resolution */
-    "baseUrl": ".",
     "paths": {
+      "@xyflow/react/dist/style.css": ["./src/types/xyflow-react-style.d.css.ts"],
       "@/server/*": ["./src/server/*"],
       "@/client/*": ["./src/client/*"],
       "@/adapters/*": ["./src/adapters/*"]
