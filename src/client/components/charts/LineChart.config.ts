@@ -4,7 +4,8 @@ import {
   targetDisplayOption,
   leftYAxisFormatDisplayOption,
   rightYAxisFormatDisplayOption,
-  showSummaryDisplayOption
+  showSummaryDisplayOption,
+  showPointsDisplayOption
 } from '../../charts/chartConfigHelpers.js'
 
 /**
@@ -47,6 +48,7 @@ export const lineChartConfig: ChartTypeConfig = {
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'showAllXLabels', 'hideHeader'],
   displayOptionsConfig: [
     showSummaryDisplayOption,
+    showPointsDisplayOption(),
     connectNullsDisplayOption,
     targetDisplayOption,
     {

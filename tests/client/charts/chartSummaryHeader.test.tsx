@@ -198,3 +198,50 @@ describe('dual Y-axis summaries', () => {
     expect(screen.getByText(/50\.0%/)).toBeInTheDocument()
   })
 })
+
+describe('baseline period labelling', () => {
+  const rows = [
+    { name: '2025-09', Revenue: 100 },
+    { name: '2025-10', Revenue: 150 },
+    { name: '2025-11', Revenue: 250 },
+  ]
+
+  it('captures the x label of the point the delta is measured from', () => {
+    const [s] = computeSeriesSummaries(rows, ['Revenue'], undefined, undefined, 'name')
+    expect(s.baselineLabel).toBe('2025-09')
+  })
+
+  it('uses the first row with data, not simply the first row', () => {
+    const [s] = computeSeriesSummaries(
+      [{ name: 'Jan', v: null }, { name: 'Feb', v: 10 }, { name: 'Mar', v: 20 }],
+      ['v'], undefined, undefined, 'name'
+    )
+    expect(s.baselineLabel).toBe('Feb')
+  })
+
+  it('leaves the label undefined when no x key is supplied', () => {
+    const [s] = computeSeriesSummaries(rows, ['Revenue'])
+    expect(s.baselineLabel).toBeUndefined()
+  })
+
+  it('names the period in the header when known', () => {
+    const summaries = computeSeriesSummaries(rows, ['Revenue'], undefined, undefined, 'name')
+    render(<ChartSummaryHeader summaries={summaries} getSeriesLabel={(k) => k} showChange />)
+    expect(screen.getByText('since 2025-09')).toBeInTheDocument()
+  })
+
+  it('falls back to generic wording when the period is unknown', () => {
+    const summaries = computeSeriesSummaries(rows, ['Revenue'])
+    render(<ChartSummaryHeader summaries={summaries} getSeriesLabel={(k) => k} showChange />)
+    expect(screen.getByText('since start of period')).toBeInTheDocument()
+  })
+
+  it('puts the qualifier on its own line, below the delta', () => {
+    const summaries = computeSeriesSummaries(rows, ['Revenue'], undefined, undefined, 'name')
+    render(<ChartSummaryHeader summaries={summaries} getSeriesLabel={(k) => k} showChange />)
+    const qualifier = screen.getByText('since 2025-09')
+    const delta = screen.getByText(/\+150/)
+    expect(qualifier).not.toBe(delta)
+    expect(delta.contains(qualifier)).toBe(false)
+  })
+})

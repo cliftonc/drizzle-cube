@@ -173,6 +173,7 @@ export interface ChartDisplayConfig {
   stackType?: 'none' | 'normal' | 'percent' // Stacking mode: none, normal (sum), or percent (100%)
   connectNulls?: boolean // For Area/Line charts: draw continuous lines through missing data
   showSummary?: boolean // For Area/Line charts: show a per-series summary band above the plot
+  showPoints?: boolean // For Area/Line charts: draw a marker at every data point (off is clearer on dense series)
   showAllXLabels?: boolean // Force all X-axis category labels to display (interval=0)
   hideHeader?: boolean // Hide portlet header in non-edit mode
   

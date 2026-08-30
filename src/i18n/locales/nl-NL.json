@@ -1550,5 +1550,8 @@
   "chart.runtime.noDataHint.proportionBar": "Geen gegevenspunten om te verdelen",
   "chart.runtime.configErrorHint.proportionBar": "Voeg één dimensie en één metriek toe om een verdeling te tonen",
   "chart.runtime.noValidDataHint.proportionBar": "Alle waarden zijn nul, negatief of ongeldig",
-  "chart.option.proportionBarLabels.label": "Labels tonen"
+  "chart.option.proportionBarLabels.label": "Labels tonen",
+  "chart.runtime.summarySince": "sinds {period}",
+  "chart.option.showPoints.label": "Datapunten tonen",
+  "chart.option.showPoints.description": "Teken een markering bij elk datapunt. Schakel dit uit bij dichte reeksen, waar de markeringen de lijn verbergen"
 }

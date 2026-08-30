@@ -132,3 +132,17 @@ export const showSummaryDisplayOption: DisplayOptionConfig = {
   defaultValue: false,
   description: 'chart.option.showSummary.description'
 }
+
+/**
+ * Data-point marker toggle for the time-series charts. Dense series (hundreds
+ * of points) read far better without a marker on every one.
+ */
+export function showPointsDisplayOption(defaultValue = true): DisplayOptionConfig {
+  return {
+    key: 'showPoints',
+    label: 'chart.option.showPoints.label',
+    type: 'boolean',
+    defaultValue,
+    description: 'chart.option.showPoints.description'
+  }
+}

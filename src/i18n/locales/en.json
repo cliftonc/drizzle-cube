@@ -1654,5 +1654,8 @@
   "chart.runtime.noDataHint.proportionBar": "No data points to break down",
   "chart.runtime.configErrorHint.proportionBar": "Add one dimension and one measure to show a breakdown",
   "chart.runtime.noValidDataHint.proportionBar": "All values are zero, negative or invalid",
-  "chart.option.proportionBarLabels.label": "Show labels"
+  "chart.option.proportionBarLabels.label": "Show labels",
+  "chart.runtime.summarySince": "since {period}",
+  "chart.option.showPoints.label": "Show data points",
+  "chart.option.showPoints.description": "Draw a marker at every data point. Turn off for dense series, where the markers obscure the line"
 }

@@ -74,21 +74,26 @@ const ChartSummaryHeader = React.memo(function ChartSummaryHeader({
             </div>
 
             {hasChange && (
-              <div style={{ fontSize: '11px' }} className="dc:truncate">
-                <span
-                  className="dc:font-semibold"
-                  style={{ color: isPositive ? POSITIVE_COLOR : NEGATIVE_COLOR }}
+              <>
+                <div
+                  className="dc:font-semibold dc:truncate"
+                  style={{ fontSize: '12px', color: isPositive ? POSITIVE_COLOR : NEGATIVE_COLOR }}
                 >
                   {isPositive ? '+' : ''}
                   {formatAxisValue(summary.absoluteChange, format)}
                   {summary.percentageChange !== null && (
                     <> ({isPositive ? '+' : ''}{summary.percentageChange.toFixed(1)}%)</>
                   )}
-                </span>{' '}
-                <span className="text-dc-text-muted">
-                  {t('chart.runtime.summarySincePeriodStart')}
-                </span>
-              </div>
+                </div>
+                {/* On its own line, and naming the actual period start where we
+                    know it - "since Sep 2025" says more than "since start of
+                    period" and keeps the delta line short. */}
+                <div className="text-dc-text-muted dc:truncate" style={{ fontSize: '11px' }}>
+                  {summary.baselineLabel
+                    ? t('chart.runtime.summarySince', { period: summary.baselineLabel })
+                    : t('chart.runtime.summarySincePeriodStart')}
+                </div>
+              </>
             )}
           </div>
         )

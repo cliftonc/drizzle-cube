@@ -206,6 +206,45 @@ describe('AreaChart', () => {
     })
   })
 
+  describe('data point markers', () => {
+    const countDots = (container: HTMLElement) =>
+      container.querySelectorAll('.recharts-layer circle, circle').length
+
+    it('draws no markers by default, as area charts always have', () => {
+      const { container } = render(
+        <AreaChart data={mockAreaData} chartConfig={basicChartConfig} />
+      )
+      expect(countDots(container)).toBe(0)
+    })
+
+    it('draws them when showPoints is on, even without drill', () => {
+      // Regression: the area series passed renderPlain: false, so it only ever
+      // drew *drill* dots. The option therefore did nothing anywhere drill is
+      // off - the analysis-builder preview being the obvious case.
+      const { container } = render(
+        <AreaChart
+          data={mockAreaData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showPoints: true }}
+        />
+      )
+      expect(countDots(container)).toBeGreaterThan(0)
+    })
+
+    it('omits them when showPoints is off even with drill enabled', () => {
+      const { container } = render(
+        <AreaChart
+          data={mockAreaData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showPoints: false }}
+          drillEnabled
+          onDataPointClick={vi.fn()}
+        />
+      )
+      expect(countDots(container)).toBe(0)
+    })
+  })
+
   describe('summary header sizing', () => {
     it('lets the plot shrink when the summary is shown, so a wrapped header cannot clip it', () => {
       // The header wraps, so its height is not knowable up front. The plot takes

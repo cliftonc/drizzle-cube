@@ -117,7 +117,10 @@ const LineChart = React.memo(function LineChart({
           chartData,
           seriesKeys,
           colorPalette,
-          makeAxisResolver(findFieldFromSeriesKey, yAxisAssignment)
+          makeAxisResolver(findFieldFromSeriesKey, yAxisAssignment),
+          // In comparison mode the x key is a day index, which would read as
+          // "since 0"; fall back to the generic wording there.
+          hasComparisonData ? undefined : effectiveXAxisKey
         )
       : []
 
@@ -199,6 +202,7 @@ const LineChart = React.memo(function LineChart({
             yAxisAssignment,
             hoveredLegend,
             connectNulls: safeDisplayConfig.connectNulls,
+            showPoints: displayConfig?.showPoints ?? true,
             drillEnabled,
             onDataPointClick,
             hasComparisonData,

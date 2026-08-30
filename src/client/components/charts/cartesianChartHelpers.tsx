@@ -213,6 +213,8 @@ interface LineSeriesOptions {
   yAxisAssignment: Record<string, 'left' | 'right'>
   hoveredLegend: string | null
   connectNulls: boolean
+  /** Render a marker at every data point. Off is clearer on dense series. */
+  showPoints?: boolean
   drillEnabled?: boolean
   onDataPointClick?: (payload: DataPointClickPayload) => void
   /** Comparison styling (omit/false → standard series). */
@@ -227,7 +229,7 @@ function renderOneLineSeries(seriesKey: string, index: number, opts: LineSeriesO
   const {
     colorPalette, resolveField, yAxisAssignment, hoveredLegend, connectNulls,
     drillEnabled, onDataPointClick, hasComparisonData, periodLabels = [],
-    priorPeriodStyle = 'dashed', priorPeriodOpacity = 0.5
+    priorPeriodStyle = 'dashed', priorPeriodOpacity = 0.5, showPoints = true
   } = opts
 
   const originalField = resolveField(seriesKey)
@@ -250,10 +252,14 @@ function renderOneLineSeries(seriesKey: string, index: number, opts: LineSeriesO
       stroke={lineColor}
       strokeWidth={isPriorPeriod ? 1.5 : 2}
       strokeDasharray={strokeDashArray}
-      dot={isPriorPeriod ? false : (props: any) => renderDrillDot({
+      dot={isPriorPeriod || !showPoints ? false : (props: any) => renderDrillDot({
         props, color: lineColor, drillEnabled, originalField, seriesKey, onDataPointClick, renderPlain: true
       })}
-      activeDot={false}
+      // With points hidden, surface one on hover instead — otherwise hiding
+      // them would also remove the click target that drill-down relies on.
+      activeDot={showPoints ? false : (props: any) => renderDrillDot({
+        props, color: lineColor, drillEnabled, originalField, seriesKey, onDataPointClick, renderPlain: true
+      })}
       strokeOpacity={strokeOpacity}
       connectNulls={connectNulls}
     />
@@ -273,6 +279,8 @@ interface AreaSeriesOptions {
   hoveredLegend: string | null
   connectNulls: boolean
   shouldStack: boolean
+  /** Render a marker at every data point. Off is clearer on dense series. */
+  showPoints?: boolean
   drillEnabled?: boolean
   onDataPointClick?: (payload: DataPointClickPayload) => void
   /**
@@ -286,7 +294,7 @@ interface AreaSeriesOptions {
 function renderOneAreaSeries(seriesKey: string, index: number, opts: AreaSeriesOptions): React.ReactElement {
   const {
     colorPalette, seriesKeyToField, yAxisAssignment, hoveredLegend, connectNulls,
-    shouldStack, drillEnabled, onDataPointClick, gradientIdPrefix
+    shouldStack, drillEnabled, onDataPointClick, gradientIdPrefix, showPoints = true
   } = opts
 
   const originalField = seriesKeyToField[seriesKey]
@@ -320,10 +328,16 @@ function renderOneAreaSeries(seriesKey: string, index: number, opts: AreaSeriesO
       strokeWidth={2}
       strokeOpacity={strokeOpacity}
       connectNulls={connectNulls}
-      dot={(props: any) => renderDrillDot({
-        props, color: areaColor, drillEnabled, originalField, seriesKey, onDataPointClick, renderPlain: false
+      // renderPlain follows the option: without it an area chart only ever drew
+      // *drill* dots, so "show data points" did nothing wherever drill is off
+      // (the analysis-builder preview, for one).
+      dot={showPoints ? (props: any) => renderDrillDot({
+        props, color: areaColor, drillEnabled, originalField, seriesKey, onDataPointClick, renderPlain: true
+      }) : false}
+      // See the line series: keep a hover target when points are hidden.
+      activeDot={showPoints ? false : (props: any) => renderDrillDot({
+        props, color: areaColor, drillEnabled, originalField, seriesKey, onDataPointClick, renderPlain: true
       })}
-      activeDot={false}
     />
   )
 }
@@ -411,6 +425,12 @@ export interface SeriesSummary {
   baseline: number | null
   absoluteChange: number | null
   percentageChange: number | null
+  /**
+   * X-axis label of the point the delta is measured from, so the header can say
+   * "since Sep 2025" rather than a generic "since start of period". Undefined
+   * when the axis key is unknown or the baseline row carries no label.
+   */
+  baselineLabel?: string
 }
 
 /**
@@ -425,17 +445,26 @@ export function computeSeriesSummaries(
   chartData: any[],
   seriesKeys: string[],
   colorPalette?: ColorPalette,
-  resolveAxis?: (seriesKey: string) => 'left' | 'right'
+  resolveAxis?: (seriesKey: string) => 'left' | 'right',
+  xAxisKey?: string
 ): SeriesSummary[] {
   return seriesKeys.map((seriesKey, index) => {
     const axis = resolveAxis ? resolveAxis(seriesKey) : 'left'
     const numbers: number[] = []
+    let baselineRow: any = undefined
     for (const row of chartData || []) {
       const raw = row?.[seriesKey]
       if (raw === null || raw === undefined) continue
       const num = typeof raw === 'number' ? raw : parseFloat(String(raw))
-      if (!isNaN(num) && isFinite(num)) numbers.push(num)
+      if (!isNaN(num) && isFinite(num)) {
+        if (numbers.length === 0) baselineRow = row
+        numbers.push(num)
+      }
     }
+
+    const rawLabel = xAxisKey ? baselineRow?.[xAxisKey] : undefined
+    const baselineLabel =
+      rawLabel === null || rawLabel === undefined || rawLabel === '' ? undefined : String(rawLabel)
 
     const color = getSeriesColor(colorPalette, index)
     if (numbers.length === 0) {
@@ -456,7 +485,8 @@ export function computeSeriesSummaries(
       current,
       baseline,
       absoluteChange,
-      percentageChange: baseline !== 0 ? (absoluteChange / Math.abs(baseline)) * 100 : null
+      percentageChange: baseline !== 0 ? (absoluteChange / Math.abs(baseline)) * 100 : null,
+      baselineLabel
     }
   })
 }

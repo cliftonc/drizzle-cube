@@ -118,7 +118,8 @@ const AreaChart = React.memo(function AreaChart({
           chartData,
           seriesKeys,
           colorPalette,
-          makeAxisResolver((key: string) => seriesKeyToField[key], yAxisAssignment)
+          makeAxisResolver((key: string) => seriesKeyToField[key], yAxisAssignment),
+          'name'
         )
       : []
 
@@ -190,6 +191,8 @@ const AreaChart = React.memo(function AreaChart({
             hoveredLegend,
             connectNulls: safeDisplayConfig.connectNulls,
             shouldStack: effectiveShouldStack,
+            // Default off: area charts have never drawn plain markers.
+            showPoints: displayConfig?.showPoints ?? false,
             drillEnabled,
             onDataPointClick,
             gradientIdPrefix
