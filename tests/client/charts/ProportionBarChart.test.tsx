@@ -100,6 +100,76 @@ describe('ProportionBarChart', () => {
       expect(screen.getAllByTestId('proportion-bar-segment')[0].style.width).toBe('90%')
     })
 
+    it('gives React unique keys when categories repeat', () => {
+      // Labels are not reliably unique: a query can return duplicates, and
+      // every null collapses to the same empty string. Keying on the label
+      // alone handed React duplicate keys, which can reconcile a segment
+      // against the wrong sibling and mis-associate width with colour.
+      //
+      // Asserting on the rendered DOM does not catch this - duplicate keys
+      // still render correctly on first mount - so assert on the warning React
+      // raises, which is the actual signal.
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      try {
+        render(
+          <ProportionBarChart
+            data={[
+              { 'Work.category': 'Features', 'Work.count': 30 },
+              { 'Work.category': 'Features', 'Work.count': 20 },
+              { 'Work.category': null, 'Work.count': 10 },
+              { 'Work.category': null, 'Work.count': 40 },
+            ]}
+            chartConfig={config}
+          />
+        )
+        const warnings = spy.mock.calls.map(args => args.join(' ')).join('\n')
+        expect(warnings).not.toMatch(/same key/i)
+      } finally {
+        spy.mockRestore()
+      }
+    })
+
+    it('renders every segment when categories repeat', () => {
+      const duplicated = [
+        { 'Work.category': 'Features', 'Work.count': 30 },
+        { 'Work.category': 'Features', 'Work.count': 20 },
+        { 'Work.category': 'Fixes', 'Work.count': 50 },
+      ]
+      render(<ProportionBarChart data={duplicated} chartConfig={config} />)
+      const segments = screen.getAllByTestId('proportion-bar-segment')
+      expect(segments).toHaveLength(3)
+      expect(segments.map(s => s.style.width)).toEqual(['30%', '20%', '50%'])
+    })
+
+    it('renders segments whose category is null or blank', () => {
+      const withBlanks = [
+        { 'Work.category': null, 'Work.count': 40 },
+        { 'Work.category': null, 'Work.count': 60 },
+      ]
+      render(<ProportionBarChart data={withBlanks} chartConfig={config} />)
+      expect(screen.getAllByTestId('proportion-bar-segment')).toHaveLength(2)
+    })
+
+    it('keeps width and colour together when duplicates are sorted', () => {
+      const duplicated = [
+        { 'Work.category': 'Dup', 'Work.count': 10 },
+        { 'Work.category': 'Dup', 'Work.count': 70 },
+        { 'Work.category': 'Dup', 'Work.count': 20 },
+      ]
+      render(
+        <ProportionBarChart
+          data={duplicated}
+          chartConfig={config}
+          displayConfig={{ sortSegments: true }}
+        />
+      )
+      const segments = screen.getAllByTestId('proportion-bar-segment')
+      expect(segments.map(s => s.style.width)).toEqual(['70%', '20%', '10%'])
+      // distinct colours, i.e. no two segments collapsed onto one identity
+      const colours = new Set(segments.map(s => s.style.backgroundColor))
+      expect(colours.size).toBe(3)
+    })
+
     it('excludes non-positive rows from the breakdown', () => {
       render(
         <ProportionBarChart

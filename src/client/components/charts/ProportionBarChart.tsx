@@ -7,6 +7,13 @@ import { formatAxisValue } from '../../utils/chartUtils.js'
 import type { ChartProps } from '../../types.js'
 
 interface Segment {
+  /**
+   * React key. Category labels are not reliably unique - a query can return
+   * duplicates, and every null collapses to the same empty string - so the key
+   * is tied to the source row instead. Stable across sorting, which reorders
+   * the segments under the same identity.
+   */
+  id: string
   label: string
   value: number
   share: number
@@ -47,11 +54,13 @@ const ProportionBarChart = React.memo(function ProportionBarChart({
     if (!data || !categoryField || !valueField) return { segments: [] as Segment[], total: 0 }
 
     const rows = data
-      .map((row: any) => {
+      .map((row: any, sourceIndex: number) => {
         const raw = row?.[valueField]
         const num = typeof raw === 'number' ? raw : parseFloat(String(raw))
+        const label = String(row?.[categoryField] ?? '')
         return {
-          label: String(row?.[categoryField] ?? ''),
+          id: `${sourceIndex}:${label}`,
+          label,
           // Negative shares cannot be drawn in a part-to-whole bar.
           value: !isNaN(num) && isFinite(num) && num > 0 ? num : 0
         }
@@ -105,7 +114,7 @@ const ProportionBarChart = React.memo(function ProportionBarChart({
         <div className="dc:flex dc:w-full dc:overflow-hidden dc:rounded-sm" style={{ height: 10 }}>
           {segments.map((segment) => (
             <div
-              key={segment.label}
+              key={segment.id}
               data-testid="proportion-bar-segment"
               title={`${segment.label}: ${formatAxisValue(segment.value, displayConfig.leftYAxisFormat)}`}
               style={{ width: `${segment.share}%`, backgroundColor: segment.color }}
@@ -116,7 +125,7 @@ const ProportionBarChart = React.memo(function ProportionBarChart({
         {(showLabels || showPercentages) && (
           <div className="dc:flex dc:flex-wrap dc:gap-x-6 dc:gap-y-2">
             {segments.map((segment) => (
-              <div key={segment.label} className="dc:flex dc:flex-col dc:gap-0.5 dc:min-w-0">
+              <div key={segment.id} className="dc:flex dc:flex-col dc:gap-0.5 dc:min-w-0">
                 {showLabels && (
                   <span
                     className="text-dc-text-muted dc:uppercase dc:truncate dc:font-semibold"
