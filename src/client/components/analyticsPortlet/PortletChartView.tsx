@@ -8,6 +8,7 @@ import ChartErrorBoundary from '../ChartErrorBoundary.js'
 import { DrillMenu } from '../DrillMenu.js'
 import { DrillBreadcrumb } from '../DrillBreadcrumb.js'
 import { PortletChart } from './PortletChart.js'
+import { hasIntrinsicChartHeight } from './intrinsicChartHeight.js'
 import type { ChartAxisConfig, ChartDisplayConfig, ChartType, CubeQuery } from '../../types.js'
 import type { FlowChartData } from '../../types/flow.js'
 import type { RetentionChartData } from '../../types/retention.js'
@@ -70,13 +71,7 @@ export function PortletChartView(props: PortletChartViewProps) {
     onNavigateToLevel
   } = props
 
-  // Charts that are intrinsically short must not be forced to 200px: the floor
-  // overflows a shorter card, and centred content then renders near the bottom
-  // and clips. Markdown was already exempt for the same reason.
-  const hasIntrinsicHeight =
-    chartType === 'markdown' ||
-    chartType === 'proportionBar' ||
-    displayConfig?.layout === 'compact'
+  const hasIntrinsicHeight = hasIntrinsicChartHeight(chartType, displayConfig)
 
   return (
     <>
