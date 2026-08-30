@@ -65,7 +65,10 @@
       "types": "./dist/client/schema.d.ts",
       "import": "./dist/client/schema.js"
     },
-    "./client/styles.css": "./dist/client/styles.css",
+    "./client/styles.css": {
+      "types": "./dist/client/styles.d.css.ts",
+      "default": "./dist/client/styles.css"
+    },
     "./adapters/hono": {
       "import": {
         "types": "./dist/adapters/hono/index.d.ts",
