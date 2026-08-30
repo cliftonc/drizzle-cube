@@ -46,6 +46,38 @@ export function getYAxisChartMargins(hasRightAxis: boolean) {
 }
 
 /**
+ * Vertical space an angled X-axis label needs.
+ *
+ * `AngledXAxisTick` rotates its text -45deg from an anchor offset dy=16, so the
+ * space required below the axis is the label's own width projected onto the
+ * vertical, plus that offset. A fixed height clipped longer labels: "2026-08-24"
+ * is roughly 66px wide at 12px, which projects to ~47px and needs ~63px in
+ * total against the 60px that used to be hardcoded.
+ *
+ * Capped, because a pathological label should cost the plot a bounded amount of
+ * height rather than squeeze it away - past the cap the label is truncated
+ * instead (see AngledXAxisTick).
+ */
+export const MIN_ANGLED_AXIS_HEIGHT = 60
+export const MAX_ANGLED_AXIS_HEIGHT = 96
+/** Rough advance width of the tick font (12px sans) per character. */
+const TICK_CHAR_WIDTH = 6.6
+
+export function resolveAngledAxisHeight(values: Array<string | number | undefined>): number {
+  let longest = 0
+  for (const value of values) {
+    if (value === null || value === undefined) continue
+    const len = String(value).length
+    if (len > longest) longest = len
+  }
+  if (longest === 0) return MIN_ANGLED_AXIS_HEIGHT
+
+  const projected = longest * TICK_CHAR_WIDTH * Math.SQRT1_2
+  const needed = Math.ceil(projected) + 20 // the tick's dy offset plus a little air
+  return Math.max(MIN_ANGLED_AXIS_HEIGHT, Math.min(needed, MAX_ANGLED_AXIS_HEIGHT))
+}
+
+/**
  * Width reserved for the left `<YAxis>`. This is recharts' own default, stated
  * explicitly so anything needing to line up with the plot area can rely on it
  * rather than assume it.

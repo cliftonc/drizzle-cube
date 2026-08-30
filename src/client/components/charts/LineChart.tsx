@@ -9,6 +9,7 @@ import { resolveChartAxisFields } from './chartAxisResolution.js'
 import {
   getDualAxisInfo,
   getYAxisChartMargins,
+  resolveAngledAxisHeight,
   getPlotLeftOffset,
   withTargetData,
   renderDualYAxes,
@@ -171,7 +172,7 @@ const LineChart = React.memo(function LineChart({
             tick={<AngledXAxisTick tickFormatter={
               makeComparisonTickFormatter(hasComparisonData, chartData, queryObject, xAxisField)
             } />}
-            height={60}
+            height={resolveAngledAxisHeight(enhancedChartData.map((row: any) => row?.[effectiveXAxisKey]))}
             interval={showAllXLabels ? 0 : undefined}
           />
           {renderDualYAxes(axisInfo, getFieldLabel, leftYAxisFormat, rightYAxisFormat)}

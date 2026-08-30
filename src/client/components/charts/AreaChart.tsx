@@ -9,6 +9,7 @@ import { resolveChartAxisFields } from './chartAxisResolution.js'
 import {
   getDualAxisInfo,
   getYAxisChartMargins,
+  resolveAngledAxisHeight,
   getPlotLeftOffset,
   withTargetData,
   renderDualYAxes,
@@ -162,7 +163,13 @@ const AreaChart = React.memo(function AreaChart({
         <ChartContainer height={showSummary ? '100%' : height} minHeight={showSummary ? 0 : undefined}>
         <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />}
-          <XAxis dataKey="name" type="category" tick={<AngledXAxisTick />} height={60} interval={showAllXLabels ? 0 : undefined} />
+          <XAxis
+            dataKey="name"
+            type="category"
+            tick={<AngledXAxisTick />}
+            height={resolveAngledAxisHeight(enhancedChartData.map((row: any) => row?.name))}
+            interval={showAllXLabels ? 0 : undefined}
+          />
           {renderDualYAxes(axisInfo, getFieldLabel, leftYAxisFormat, rightYAxisFormat, effectiveIsPercentStack)}
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip
