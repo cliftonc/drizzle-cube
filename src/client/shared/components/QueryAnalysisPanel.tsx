@@ -64,7 +64,7 @@ const QuerySummarySection: React.FC<{ analysis: QueryAnalysis }> = ({ analysis }
         style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}
       >
         {summaryCards.map(card => (
-          <div key={card.label} className="bg-dc-surface dc:p-2 dc:rounded">
+          <div key={card.label} className="bg-dc-surface dc:p-2 dc:rounded-sm">
             <span className="text-dc-text-muted">{card.label}:</span>
             <span className="dc:ml-1 dc:font-medium text-dc-text">{card.value}</span>
           </div>

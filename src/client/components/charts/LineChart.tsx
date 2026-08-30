@@ -9,6 +9,8 @@ import { resolveChartAxisFields } from './chartAxisResolution.js'
 import {
   getDualAxisInfo,
   getYAxisChartMargins,
+  resolveAngledAxisHeight,
+  getPlotLeftOffset,
   withTargetData,
   renderDualYAxes,
   renderChartTargetLines,
@@ -21,8 +23,12 @@ import {
   buildSeriesKeyToFieldMap,
   makeSeriesKeyResolver,
   buildTimeSeriesData,
+  computeSeriesSummaries,
+  makeAxisResolver,
+  isTimeOrderedXAxis,
   renderLineSeries
 } from './cartesianChartHelpers.js'
+import ChartSummaryHeader from './ChartSummaryHeader.js'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
 import type { ChartProps } from '../../types.js'
 
@@ -72,7 +78,7 @@ const LineChart = React.memo(function LineChart({
       connectNulls: displayConfig?.connectNulls ?? false
     }
 
-    const showAllXLabels = displayConfig?.showAllXLabels ?? true
+    const showAllXLabels = displayConfig?.showAllXLabels ?? false
 
     // Extract axis format configs
     const leftYAxisFormat = displayConfig?.leftYAxisFormat
@@ -104,8 +110,23 @@ const LineChart = React.memo(function LineChart({
     const axisInfo = getDualAxisInfo(yAxisFields, yAxisAssignment)
     const { hasRightAxis } = axisInfo
 
-    // Determine if legend will be shown
-    const showLegend = safeDisplayConfig.showLegend
+    // Summary header: per-series current value + change since the start of the
+    // window, derived from the data already fetched for the plot.
+    const showSummary = displayConfig?.showSummary === true && seriesKeys.length > 0
+    const summaries = showSummary
+      ? computeSeriesSummaries(
+          chartData,
+          seriesKeys,
+          colorPalette,
+          makeAxisResolver(findFieldFromSeriesKey, yAxisAssignment),
+          // In comparison mode the x key is a day index, which would read as
+          // "since 0"; fall back to the generic wording there.
+          hasComparisonData ? undefined : effectiveXAxisKey
+        )
+      : []
+
+    // The summary carries the colour dots, so the bottom legend becomes redundant.
+    const showLegend = safeDisplayConfig.showLegend && !showSummary
 
     // Use custom chart margins with extra space for Y-axis labels
     const chartMargins = getYAxisChartMargins(hasRightAxis)
@@ -125,7 +146,22 @@ const LineChart = React.memo(function LineChart({
     }
 
     return (
-      <ChartContainer height={height}>
+      <div className="dc:relative dc:w-full dc:flex dc:flex-col" style={{ height }}>
+        {showSummary && (
+          <ChartSummaryHeader
+            summaries={summaries}
+            getSeriesLabel={(seriesKey) => seriesKey}
+            valueFormat={leftYAxisFormat}
+            rightValueFormat={rightYAxisFormat}
+            showChange={isTimeOrderedXAxis(queryObject, xAxisField)}
+            leftOffset={getPlotLeftOffset(hasRightAxis)}
+          />
+        )}
+        {/* The header wraps, so its height is not knowable up front. Give the
+            plot the remaining flex space rather than subtracting a constant
+            that silently drifts out of sync once the header wraps. */}
+        <div className={showSummary ? 'dc:flex-1 dc:min-h-0' : 'dc:contents'}>
+        <ChartContainer height={showSummary ? '100%' : height} minHeight={showSummary ? 0 : undefined}>
         <RechartsLineChart data={enhancedChartData} margin={chartMargins} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />
@@ -136,7 +172,7 @@ const LineChart = React.memo(function LineChart({
             tick={<AngledXAxisTick tickFormatter={
               makeComparisonTickFormatter(hasComparisonData, chartData, queryObject, xAxisField)
             } />}
-            height={60}
+            height={resolveAngledAxisHeight(enhancedChartData.map((row: any) => row?.[effectiveXAxisKey]))}
             interval={showAllXLabels ? 0 : undefined}
           />
           {renderDualYAxes(axisInfo, getFieldLabel, leftYAxisFormat, rightYAxisFormat)}
@@ -167,6 +203,7 @@ const LineChart = React.memo(function LineChart({
             yAxisAssignment,
             hoveredLegend,
             connectNulls: safeDisplayConfig.connectNulls,
+            showPoints: displayConfig?.showPoints ?? true,
             drillEnabled,
             onDataPointClick,
             hasComparisonData,
@@ -176,7 +213,9 @@ const LineChart = React.memo(function LineChart({
           })}
           {renderChartTargetLines(spreadTargets)}
         </RechartsLineChart>
-      </ChartContainer>
+        </ChartContainer>
+        </div>
+      </div>
     )
   } catch (error) {
     return <ChartRenderError height={height} chartType="Line Chart" error={error} />

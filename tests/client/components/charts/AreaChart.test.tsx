@@ -18,10 +18,14 @@ import AreaChart from '../../../../src/client/components/charts/AreaChart'
 
 // Mock ChartContainer to bypass the dimension check and render children immediately
 vi.mock('../../../../src/client/components/charts/ChartContainer', () => ({
-  default: ({ children, height }: { children: React.ReactElement; height?: string | number }) => {
+  default: ({ children, height, minHeight }: { children: React.ReactElement; height?: string | number; minHeight?: string | number }) => {
     const heightStyle = typeof height === 'number' ? `${height}px` : (height || '100%')
     return (
-      <div style={{ height: heightStyle, width: '100%' }} data-testid="chart-container">
+      <div
+        style={{ height: heightStyle, width: '100%' }}
+        data-testid="chart-container"
+        data-min-height={minHeight === undefined ? 'default' : String(minHeight)}
+      >
         {React.cloneElement(children, { width: 800, height: 400 })}
       </div>
     )
@@ -199,6 +203,150 @@ describe('AreaChart', () => {
 
       const svg = container.querySelector('svg')
       expect(svg).toBeInTheDocument()
+    })
+  })
+
+  describe('x-axis label density', () => {
+    // Forcing a label per point produced hundreds of overlapping ticks on a
+    // dense series - measured at 139 ticks across a 571px axis. The default now
+    // hands thinning back to recharts, which is width-aware; opting in still
+    // forces one label per point.
+    const denseData = Array.from({ length: 60 }, (_, i) => ({
+      'Orders.createdAt': `2024-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
+      'Sales.revenue': 1000 + i,
+    }))
+    const countTicks = (c: HTMLElement) =>
+      c.querySelectorAll('.recharts-xAxis .recharts-cartesian-axis-tick').length
+
+    // The default path hands thinning to recharts, which decides from measured
+    // text width. jsdom reports zero-width text, so recharts concludes
+    // everything fits and the thinning cannot be observed here - it was
+    // verified in a real browser instead (139 ticks -> 7 on a 571px axis).
+    // Only the opt-in path, which is width-independent, is assertable.
+
+    it('renders every label when explicitly opted in', () => {
+      const { container } = render(
+        <AreaChart
+          data={denseData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showAllXLabels: true }}
+        />
+      )
+      expect(countTicks(container)).toBe(denseData.length)
+    })
+  })
+
+  describe('data point markers', () => {
+    const countDots = (container: HTMLElement) =>
+      container.querySelectorAll('.recharts-layer circle, circle').length
+
+    it('draws no markers by default, as area charts always have', () => {
+      const { container } = render(
+        <AreaChart data={mockAreaData} chartConfig={basicChartConfig} />
+      )
+      expect(countDots(container)).toBe(0)
+    })
+
+    it('draws them when showPoints is on, even without drill', () => {
+      // Regression: the area series passed renderPlain: false, so it only ever
+      // drew *drill* dots. The option therefore did nothing anywhere drill is
+      // off - the analysis-builder preview being the obvious case.
+      const { container } = render(
+        <AreaChart
+          data={mockAreaData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showPoints: true }}
+        />
+      )
+      expect(countDots(container)).toBeGreaterThan(0)
+    })
+
+    it('omits them when showPoints is off even with drill enabled', () => {
+      const { container } = render(
+        <AreaChart
+          data={mockAreaData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showPoints: false }}
+          drillEnabled
+          onDataPointClick={vi.fn()}
+        />
+      )
+      expect(countDots(container)).toBe(0)
+    })
+  })
+
+  describe('summary header sizing', () => {
+    it('lets the plot shrink when the summary is shown, so a wrapped header cannot clip it', () => {
+      // The header wraps, so its height is not knowable up front. The plot takes
+      // the remaining flex space and must be allowed below the usual floor,
+      // otherwise header + plot exceeds the portlet.
+      render(
+        <AreaChart
+          data={mockAreaData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showSummary: true }}
+        />
+      )
+      const container = screen.getByTestId('chart-container')
+      expect(container.getAttribute('data-min-height')).toBe('0')
+      expect(container.style.height).toBe('100%')
+    })
+
+    it('keeps the default floor when there is no summary', () => {
+      render(<AreaChart data={mockAreaData} chartConfig={basicChartConfig} />)
+      expect(screen.getByTestId('chart-container').getAttribute('data-min-height')).toBe('default')
+    })
+  })
+
+  describe('gradient fills', () => {
+    it('renders one vertical fade gradient per series', () => {
+      const { container } = render(
+        <AreaChart data={mockMultiMeasureData} chartConfig={multiMeasureChartConfig} />
+      )
+
+      const gradients = container.querySelectorAll('linearGradient')
+      expect(gradients).toHaveLength(2)
+      // Vertical: top-to-bottom, not the SVG default left-to-right
+      expect(gradients[0].getAttribute('x1')).toBe('0')
+      expect(gradients[0].getAttribute('y1')).toBe('0')
+      expect(gradients[0].getAttribute('x2')).toBe('0')
+      expect(gradients[0].getAttribute('y2')).toBe('1')
+    })
+
+    it('fades to transparent using the same hue at both stops', () => {
+      const { container } = render(
+        <AreaChart data={mockAreaData} chartConfig={basicChartConfig} />
+      )
+
+      const gradient = container.querySelector('linearGradient')
+      const stops = Array.from(gradient?.children ?? [])
+      expect(stops).toHaveLength(2)
+      expect(stops[0].getAttribute('stop-color')).toBe(stops[1].getAttribute('stop-color'))
+      expect(stops[0].getAttribute('stop-opacity')).toBe('1')
+      expect(stops[1].getAttribute('stop-opacity')).toBe('0')
+    })
+
+    it('points the area fill at its gradient', () => {
+      const { container } = render(
+        <AreaChart data={mockAreaData} chartConfig={basicChartConfig} />
+      )
+
+      const gradientId = container.querySelector('linearGradient')?.getAttribute('id')
+      expect(gradientId).toBeTruthy()
+      const filled = container.querySelector(`[fill="url(#${gradientId})"]`)
+      expect(filled).toBeInTheDocument()
+    })
+
+    it('keeps stacked areas solid so segment boundaries stay legible', () => {
+      const { container } = render(
+        <AreaChart
+          data={mockMultiMeasureData}
+          chartConfig={multiMeasureChartConfig}
+          displayConfig={{ stackType: 'normal' }}
+        />
+      )
+
+      expect(container.querySelectorAll('linearGradient')).toHaveLength(0)
     })
   })
 

@@ -21,7 +21,7 @@ export function renderInlineMarkdown(text: string): React.ReactNode[] {
       const [, before, code, after] = codeMatch
       if (before) nodes.push(<span key={key++}>{before}</span>)
       nodes.push(
-        <code key={key++} className="dc:px-1 dc:py-0.5 dc:rounded dc:text-xs bg-dc-surface dc:font-mono">
+        <code key={key++} className="dc:px-1 dc:py-0.5 dc:rounded-sm dc:text-xs bg-dc-surface dc:font-mono">
           {code}
         </code>
       )
@@ -97,7 +97,7 @@ function formatToolResult(result: unknown): string {
 function ToolCallResult({ result }: { result: unknown }) {
   if (result == null) return null
   return (
-    <pre className="dc:mt-1 dc:p-2 dc:rounded dc:text-[11px] dc:overflow-x-auto dc:max-h-32 dc:overflow-y-auto bg-dc-surface-secondary text-dc-text-secondary">
+    <pre className="dc:mt-1 dc:p-2 dc:rounded-sm dc:text-[11px] dc:overflow-x-auto dc:max-h-32 dc:overflow-y-auto bg-dc-surface-secondary text-dc-text-secondary">
       {formatToolResult(result)}
     </pre>
   )

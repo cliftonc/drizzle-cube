@@ -191,7 +191,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 type="date"
                 value={fixedStartDate}
                 onChange={(e) => setFixedStartDate(e.target.value)}
-                className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded dc:focus:outline-none dc:focus:ring-2"
+                className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded-sm dc:focus:outline-none dc:focus:ring-2"
                 style={{
                   borderColor: 'var(--dc-border)',
                   backgroundColor: 'var(--dc-bg)',
@@ -210,7 +210,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 type="date"
                 value={fixedEndDate}
                 onChange={(e) => setFixedEndDate(e.target.value)}
-                className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded dc:focus:outline-none dc:focus:ring-2"
+                className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded-sm dc:focus:outline-none dc:focus:ring-2"
                 style={{
                   borderColor: 'var(--dc-border)',
                   backgroundColor: 'var(--dc-bg)',
@@ -222,7 +222,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
               type="button"
               onClick={handleApplyFixed}
               disabled={!fixedStartDate}
-              className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
+              className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded-sm dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
               style={{
                 backgroundColor: 'var(--dc-primary)',
                 color: 'white'
@@ -247,7 +247,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 type="date"
                 value={sinceDate}
                 onChange={(e) => setSinceDate(e.target.value)}
-                className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded dc:focus:outline-none dc:focus:ring-2"
+                className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded-sm dc:focus:outline-none dc:focus:ring-2"
                 style={{
                   borderColor: 'var(--dc-border)',
                   backgroundColor: 'var(--dc-bg)',
@@ -265,7 +265,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
               type="button"
               onClick={handleApplySince}
               disabled={!sinceDate}
-              className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
+              className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded-sm dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
               style={{
                 backgroundColor: 'var(--dc-primary)',
                 color: 'white'
@@ -293,7 +293,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                   max="999"
                   value={lastNumber}
                   onChange={(e) => setLastNumber(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded dc:focus:outline-none dc:focus:ring-2"
+                  className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded-sm dc:focus:outline-none dc:focus:ring-2"
                   style={{
                     borderColor: 'var(--dc-border)',
                     backgroundColor: 'var(--dc-bg)',
@@ -311,7 +311,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 <select
                   value={lastUnit}
                   onChange={(e) => setLastUnit(e.target.value as LastUnit)}
-                  className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded dc:focus:outline-none dc:focus:ring-2"
+                  className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded-sm dc:focus:outline-none dc:focus:ring-2"
                   style={{
                     borderColor: 'var(--dc-border)',
                     backgroundColor: 'var(--dc-bg)',
@@ -336,7 +336,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
               type="button"
               onClick={handleApplyLast}
               disabled={lastNumber < 1}
-              className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
+              className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded-sm dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
               style={{
                 backgroundColor: 'var(--dc-primary)',
                 color: 'white'
@@ -355,7 +355,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded dc:border dc:transition-colors"
+          className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded-sm dc:border dc:transition-colors"
           style={{
             borderColor: 'var(--dc-border)',
             color: 'var(--dc-text-secondary)',

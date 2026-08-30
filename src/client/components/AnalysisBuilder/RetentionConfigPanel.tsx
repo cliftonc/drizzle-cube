@@ -227,7 +227,7 @@ const DropdownSelector = memo(function DropdownSelector({
           onClick={() => setIsOpen(!isOpen)}
           className={`
             dc:flex dc:items-center dc:justify-between dc:w-full dc:px-2.5 dc:py-1.5 dc:text-sm
-            bg-dc-surface dc:border border-dc-border dc:rounded
+            bg-dc-surface dc:border border-dc-border dc:rounded-sm
             dc:transition-colors hover:border-dc-primary dc:cursor-pointer
             ${isOpen ? 'border-dc-primary dc:ring-1 ring-dc-primary' : ''}
           `}
@@ -242,7 +242,7 @@ const DropdownSelector = memo(function DropdownSelector({
                 tabIndex={0}
                 onClick={handleClear}
                 onKeyDown={(e) => e.key === 'Enter' && handleClear(e as unknown as React.MouseEvent)}
-                className="dc:p-0.5 dc:rounded hover:bg-dc-surface-hover text-dc-text-muted hover:text-dc-text"
+                className="dc:p-0.5 dc:rounded-sm hover:bg-dc-surface-hover text-dc-text-muted hover:text-dc-text"
                 title="Clear"
               >
                 ×
@@ -271,7 +271,7 @@ const DropdownSelector = memo(function DropdownSelector({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search..."
-                  className="dc:w-full dc:pl-8 dc:pr-3 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded text-dc-text placeholder:text-dc-text-muted dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
+                  className="dc:w-full dc:pl-8 dc:pr-3 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm text-dc-text placeholder:text-dc-text-muted dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
                 />
               </div>
             </div>
@@ -294,7 +294,7 @@ const DropdownSelector = memo(function DropdownSelector({
                         onClick={() => handleSelect(dim.dimension)}
                         className={`
                           dc:flex dc:items-center dc:justify-between dc:w-full dc:px-3 dc:py-1.5 dc:text-sm
-                          dc:rounded dc:transition-colors
+                          dc:rounded-sm dc:transition-colors
                           ${value === dim.dimension
                             ? 'bg-dc-primary-bg text-dc-primary'
                             : 'text-dc-text hover:bg-dc-surface-hover'
@@ -424,7 +424,7 @@ export const DateRangeSelector = memo(function DateRangeSelector({
           onClick={() => setShowDatePicker(!showDatePicker)}
           className={`
             dc:flex dc:items-center dc:justify-between dc:w-full dc:px-2.5 dc:py-1.5 dc:text-sm
-            bg-dc-surface dc:border border-dc-border dc:rounded
+            bg-dc-surface dc:border border-dc-border dc:rounded-sm
             hover:border-dc-primary dc:cursor-pointer dc:transition-colors
             ${showDatePicker ? 'border-dc-primary dc:ring-1 ring-dc-primary' : ''}
           `}
@@ -447,7 +447,7 @@ export const DateRangeSelector = memo(function DateRangeSelector({
                   key={preset.value}
                   type="button"
                   onClick={() => handlePresetSelect(preset.value)}
-                  className={`dc:px-3 dc:py-1.5 dc:text-xs dc:rounded dc:transition-colors ${
+                  className={`dc:px-3 dc:py-1.5 dc:text-xs dc:rounded-sm dc:transition-colors ${
                     selectedPreset === preset.value
                       ? 'bg-dc-primary text-white'
                       : 'bg-dc-surface-secondary text-dc-text hover:bg-dc-surface-hover'
@@ -469,7 +469,7 @@ export const DateRangeSelector = memo(function DateRangeSelector({
                     setCustomStart(e.target.value)
                     setSelectedPreset('custom')
                   }}
-                  className="dc:flex-1 dc:px-2 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
+                  className="dc:flex-1 dc:px-2 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
                 />
                 <span className="text-dc-text-muted dc:text-xs">to</span>
                 <input
@@ -479,14 +479,14 @@ export const DateRangeSelector = memo(function DateRangeSelector({
                     setCustomEnd(e.target.value)
                     setSelectedPreset('custom')
                   }}
-                  className="dc:flex-1 dc:px-2 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
+                  className="dc:flex-1 dc:px-2 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
                 />
               </div>
               <button
                 type="button"
                 onClick={handleCustomDateApply}
                 disabled={!customStart || !customEnd}
-                className="dc:w-full dc:px-3 dc:py-1.5 dc:text-xs bg-dc-primary text-white dc:rounded hover:bg-dc-primary-hover dc:disabled:opacity-50 dc:disabled:cursor-not-allowed dc:transition-colors"
+                className="dc:w-full dc:px-3 dc:py-1.5 dc:text-xs bg-dc-primary text-white dc:rounded-sm hover:bg-dc-primary-hover dc:disabled:opacity-50 dc:disabled:cursor-not-allowed dc:transition-colors"
               >
                 {t('retention.dateRange.applyCustom')}
               </button>

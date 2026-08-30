@@ -136,7 +136,7 @@ function ShareButton({
   return (
     <button
       onClick={onShareClick}
-      className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:transition-colors ${
+      className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded-sm dc:transition-colors ${
         shareButtonState === 'idle' && canShare
           ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg dc:border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
           : shareButtonState !== 'idle'
@@ -181,7 +181,7 @@ function RefreshButton({
       onMouseEnter={() => setIsHoveringRefresh(true)}
       onMouseLeave={() => setIsHoveringRefresh(false)}
       disabled={isRefreshing}
-      className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:transition-colors ${
+      className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded-sm dc:transition-colors ${
         isRefreshing
           ? 'text-dc-text-muted bg-dc-surface-secondary dc:border border-dc-border dc:cursor-wait'
           : showCacheBustIndicator
@@ -226,7 +226,7 @@ function ResultsHeaderToolbar({
         <select
           value={displayLimit}
           onChange={(e) => onDisplayLimitChange(Number(e.target.value))}
-          className="dc:text-xs dc:border border-dc-border dc:rounded dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
+          className="dc:text-xs dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
         >
           <option value={50}>50 {t('results.header.rows')}</option>
           <option value={100}>100 {t('results.header.rows')}</option>
@@ -239,7 +239,7 @@ function ResultsHeaderToolbar({
       {enableAI && onAIToggle && (
         <button
           onClick={onAIToggle}
-          className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:transition-colors ${
+          className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded-sm dc:transition-colors ${
             isAIOpen
               ? 'text-white bg-dc-accent dc:border border-dc-accent'
               : 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg dc:border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
@@ -279,7 +279,7 @@ function ResultsHeaderToolbar({
       {onClearClick && canClear && (
         <button
           onClick={() => setIsClearConfirmOpen(true)}
-          className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover dc:border border-dc-border dc:rounded dc:transition-colors"
+          className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover dc:border border-dc-border dc:rounded-sm dc:transition-colors"
           title={isFunnelMode ? 'Clear funnel' : 'Clear all query data'}
         >
           <TrashIcon className="dc:w-3 dc:h-3" />
@@ -294,7 +294,7 @@ function ResultsHeaderToolbar({
             setShowSchema(!showSchema)
             if (!showSchema) setShowDebug(false)
           }}
-          className={`dc:p-1.5 dc:rounded dc:transition-colors dc:relative ${
+          className={`dc:p-1.5 dc:rounded-sm dc:transition-colors dc:relative ${
             showSchema
               ? 'bg-dc-primary text-white'
               : 'text-dc-text-secondary hover:text-dc-text hover:bg-dc-surface-hover'
@@ -311,7 +311,7 @@ function ResultsHeaderToolbar({
           setShowDebug(!showDebug)
           if (!showDebug) setShowSchema(false)
         }}
-        className={`dc:p-1.5 dc:rounded dc:transition-colors dc:relative ${
+        className={`dc:p-1.5 dc:rounded-sm dc:transition-colors dc:relative ${
           showDebug
             ? 'bg-dc-primary text-white'
             : 'text-dc-text-secondary hover:text-dc-text hover:bg-dc-surface-hover'

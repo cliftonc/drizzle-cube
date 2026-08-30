@@ -53,7 +53,7 @@ export function FieldSelectionSection({
         </label>
         <button
           onClick={() => setShowAllFields(!showAllFields)}
-          className="dc:flex dc:items-center dc:gap-1 dc:text-xs dc:px-2 dc:py-1 dc:rounded hover:bg-dc-surface-hover text-dc-text-muted"
+          className="dc:flex dc:items-center dc:gap-1 dc:text-xs dc:px-2 dc:py-1 dc:rounded-sm hover:bg-dc-surface-hover text-dc-text-muted"
           title={showAllFields ? 'Show dashboard fields only' : 'Show all fields'}
         >
           {showAllFields ? (
@@ -71,18 +71,18 @@ export function FieldSelectionSection({
       </div>
       <button
         onClick={() => setShowFieldSearch(true)}
-        className="dc:w-full dc:flex dc:items-center dc:gap-2 dc:p-3 bg-dc-surface-secondary dc:rounded hover:bg-dc-surface-tertiary dc:transition-colors"
+        className="dc:w-full dc:flex dc:items-center dc:gap-2 dc:p-3 bg-dc-surface-secondary dc:rounded-sm hover:bg-dc-surface-tertiary dc:transition-colors"
       >
         {localFilter.member ? (
           <>
-            <span className={`dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded ${iconBgClass} ${iconTextClass}`}>
+            <span className={`dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm ${iconBgClass} ${iconTextClass}`}>
               {FieldIcon && <FieldIcon className="dc:w-4 dc:h-4" />}
             </span>
             <span className="dc:flex-1 dc:text-sm dc:font-medium text-dc-text dc:text-left">{fieldTitle}</span>
           </>
         ) : (
           <>
-            <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-surface-tertiary text-dc-text-muted">
+            <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm bg-dc-surface-tertiary text-dc-text-muted">
               <DimensionIcon className="dc:w-4 dc:h-4" />
             </span>
             <span className="dc:flex-1 dc:text-sm text-dc-text-muted dc:text-left">{t('dashboardFilter.clickToSelectField')}</span>
@@ -128,7 +128,7 @@ export function OperatorSection({
             setIsDateRangeDropdownOpen(false)
             setIsOperatorDropdownOpen(!isOperatorDropdownOpen)
           }}
-          className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
+          className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
         >
           <span className="dc:truncate">{operatorLabel}</span>
           <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
@@ -137,7 +137,7 @@ export function OperatorSection({
         </button>
 
         {isOperatorDropdownOpen && (
-          <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
+          <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-sm dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
             {availableOperators.map((op) => (
               <button
                 key={op.operator}

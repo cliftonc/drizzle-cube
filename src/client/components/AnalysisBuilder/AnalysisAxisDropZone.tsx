@@ -296,21 +296,21 @@ export default function AnalysisAxisDropZone({
       // Measures get colored icon box with type-specific icon
       const IconComponent = getMeasureTypeIcon(meta.measureType || 'count') || MeasureIcon
       return (
-        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-measure text-dc-measure-text dc:flex-shrink-0">
+        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm bg-dc-measure text-dc-measure-text dc:flex-shrink-0">
           <IconComponent className="dc:w-4 dc:h-4" />
         </span>
       )
     } else if (meta.type === 'timeDimension') {
       // Time dimensions get colored background matching field selector
       return (
-        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-time-dimension text-dc-time-dimension-text dc:flex-shrink-0">
+        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm bg-dc-time-dimension text-dc-time-dimension-text dc:flex-shrink-0">
           <TimeDimensionIcon className="dc:w-4 dc:h-4" />
         </span>
       )
     } else {
       // Regular dimensions get colored background matching field selector
       return (
-        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-dimension text-dc-dimension-text dc:flex-shrink-0">
+        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm bg-dc-dimension text-dc-dimension-text dc:flex-shrink-0">
           <DimensionIcon className="dc:w-4 dc:h-4" />
         </span>
       )
@@ -480,7 +480,7 @@ export default function AnalysisAxisDropZone({
                           const currentAxis = yAxisAssignment?.[field] || 'left'
                           onYAxisAssignmentChange(field, currentAxis === 'left' ? 'right' : 'left')
                         }}
-                        className={`dc:px-1.5 dc:py-0.5 dc:text-xs dc:font-medium dc:rounded dc:transition-colors dc:flex-shrink-0 ${
+                        className={`dc:px-1.5 dc:py-0.5 dc:text-xs dc:font-medium dc:rounded-sm dc:transition-colors dc:flex-shrink-0 ${
                           (yAxisAssignment?.[field] || 'left') === 'left'
                             ? 'bg-dc-info-bg text-dc-info dc:hover:opacity-80'
                             : 'bg-dc-accent-bg text-dc-accent dc:hover:opacity-80'

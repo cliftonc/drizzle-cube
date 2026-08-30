@@ -71,6 +71,7 @@ import chartBubble from '@iconify-icons/tabler/chart-bubble'
 import chartRadar from '@iconify-icons/tabler/chart-radar'
 import radar2 from '@iconify-icons/tabler/radar-2'
 import chartTreemap from '@iconify-icons/tabler/chart-treemap'
+import layoutDistributeHorizontal from '@iconify-icons/tabler/layout-distribute-horizontal'
 // Custom icons - better represents flow/funnel/retention visualizations
 import { flowIcon, funnelIcon, retentionIcon } from './customIcons.js'
 import chartDonut4 from '@iconify-icons/tabler/chart-donut-4'
@@ -165,6 +166,7 @@ export const DEFAULT_ICONS: IconRegistry = {
   chartWaterfall: { icon: stairs, category: 'chart' },
   chartCandlestick: { icon: chartCandle, category: 'chart' },
   chartMeasureProfile: { icon: chartArrowsVertical, category: 'chart' },
+  chartProportionBar: { icon: layoutDistributeHorizontal, category: 'chart' },
   chartGauge: { icon: gauge, category: 'chart' },
 
   // Measure type icons (solid)

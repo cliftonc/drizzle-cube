@@ -122,6 +122,15 @@
   /* AI Panel Gradient - Special gradient for AI features */
   --dc-ai-gradient-start: #faf5ff;
   --dc-ai-gradient-end: #eef2ff;
+
+  /* Corner Radius - Overrides Tailwind's own scale.
+     Because Tailwind is imported with prefix(dc), its radius theme variables are
+     emitted as --dc-radius-*, so every dc:rounded-sm/md/lg utility in the library
+     resolves through these. Override them here (or in a host app) to make the
+     whole UI rounder or flatter. Tailwind's defaults were .25/.375/.5rem. */
+  --dc-radius-sm: 0.125rem;
+  --dc-radius-md: 0.1875rem;
+  --dc-radius-lg: 0.25rem;
 }
 
 /* ============================================================================
@@ -224,6 +233,11 @@ html.dark {
   /* AI Panel Gradient - Dark mode versions */
   --dc-ai-gradient-start: rgba(139, 92, 246, 0.15);
   --dc-ai-gradient-end: rgba(99, 102, 241, 0.15);
+
+  /* Corner Radius - see the light theme block for how these work */
+  --dc-radius-sm: 0.125rem;
+  --dc-radius-md: 0.1875rem;
+  --dc-radius-lg: 0.25rem;
 }
 
 /* ============================================================================
@@ -325,6 +339,11 @@ html.neon {
   /* AI Panel Gradient - Neon versions */
   --dc-ai-gradient-start: rgba(0, 255, 255, 0.1);
   --dc-ai-gradient-end: rgba(255, 0, 255, 0.1);
+
+  /* Corner Radius - neon leans fully square for a harder, more technical edge */
+  --dc-radius-sm: 0rem;
+  --dc-radius-md: 0rem;
+  --dc-radius-lg: 0rem;
 }
 
 /* ============================================================================
@@ -547,6 +566,16 @@ html.neon {
    Using outline: none (not :focus-visible) because we disable accessibilityLayer
    on chart components anyway for proper click handling.
 */
+/* Axis tick labels follow the theme.
+   recharts hardcodes #666 on its own ticks, and our custom angled tick used
+   `currentColor`, which inherits whatever the host page happens to set - both
+   are unreadable on a dark background. A CSS rule covers both, since CSS wins
+   over an SVG presentation attribute. */
+.recharts-cartesian-axis-tick-label text,
+.recharts-cartesian-axis-tick text {
+  fill: var(--dc-text-muted);
+}
+
 .recharts-surface:focus,
 .recharts-wrapper:focus,
 .recharts-area:focus,

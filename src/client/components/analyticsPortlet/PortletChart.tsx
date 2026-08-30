@@ -135,7 +135,7 @@ export function PortletChart(props: PortletChartProps) {
             className="dc:flex dc:items-center dc:justify-center dc:w-full"
             style={{ height: typeof height === 'number' ? `${height}px` : height }}
           >
-            <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded dc:w-full dc:h-full dc:min-h-[100px]" />
+            <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded-sm dc:w-full dc:h-full dc:min-h-[100px]" />
           </div>
         }
       />

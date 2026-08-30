@@ -137,7 +137,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium dc:rounded dc:border dc:transition-colors"
+          className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium dc:rounded-sm dc:border dc:transition-colors"
           style={{
             borderColor: 'var(--dc-border)',
             color: 'var(--dc-text-secondary)',

@@ -114,7 +114,7 @@ function FieldDetailPanel({ field }: FieldDetailPanelProps) {
         <div className="dc:flex dc:items-center dc:justify-between">
           <span className="dc:text-xs text-dc-text-muted">{t('fieldPanel.labels.category')}</span>
           <span
-            className={`dc:text-xs dc:px-2 dc:py-0.5 dc:rounded dc:font-medium ${
+            className={`dc:text-xs dc:px-2 dc:py-0.5 dc:rounded-sm dc:font-medium ${
               field.fieldType === 'measure'
                 ? 'bg-dc-measure text-dc-measure-text'
                 : field.fieldType === 'timeDimension'

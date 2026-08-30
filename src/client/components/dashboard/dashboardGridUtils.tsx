@@ -102,6 +102,18 @@ export const adjustRowWidths = (
 export function findScrollableAncestor(element: HTMLElement | null): HTMLElement | null {
   if (!element) return null
 
+  // Two passes, because content height is not a reliable signal at mount time:
+  // this runs from a ref callback, when the dashboard may not have rendered
+  // enough content for the scroller to overflow yet. Requiring `scrollHeight >
+  // clientHeight` therefore returned null ("use viewport") for hosts that scroll
+  // in a div, which silently disabled drag auto-scroll and left the floating
+  // toolbar's visibility listener bound to a window that never scrolls.
+  //
+  // Pass 1 keeps the original, stricter rule so an ancestor that is *actually*
+  // scrolling still wins. Pass 2 falls back to the nearest ancestor that merely
+  // declares vertical scrolling — the host's stated intent, independent of how
+  // much content happens to exist right now.
+  let declaredScroller: HTMLElement | null = null
   let current = element.parentElement
 
   while (current) {
@@ -121,11 +133,18 @@ export function findScrollableAncestor(element: HTMLElement | null): HTMLElement
       return current
     }
 
+    // Remember the nearest vertically-scrollable ancestor as a fallback. Only
+    // the vertical axis: a horizontally scrolling wrapper is not the scroller
+    // these consumers care about.
+    if (!declaredScroller && (overflowY === 'auto' || overflowY === 'scroll')) {
+      declaredScroller = current
+    }
+
     if (current === document.body) break
     current = current.parentElement
   }
 
-  return null // Use viewport
+  return declaredScroller // null = use viewport
 }
 
 /** Inline "Tt" typography icon for Add Text buttons */

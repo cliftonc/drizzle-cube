@@ -199,7 +199,7 @@ export default function PortletFilterConfigModal({
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => handleToggleFilter(filter.id)}
-                      className="dc:mt-0.5 dc:mr-3 dc:h-4 dc:w-4 dc:rounded border-dc-border dc:focus:ring-2 focus:ring-dc-primary"
+                      className="dc:mt-0.5 dc:mr-3 dc:h-4 dc:w-4 dc:rounded-sm border-dc-border dc:focus:ring-2 focus:ring-dc-primary"
                       style={{
                         accentColor: 'var(--dc-primary)'
                       }}

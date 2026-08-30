@@ -67,7 +67,7 @@ export function ChatHeader({
         {showSaveAsDashboard && (
           <button
             onClick={onSaveAsDashboard}
-            className="dc:text-xs dc:px-2 dc:py-1 dc:rounded text-dc-accent dc:hover:opacity-80"
+            className="dc:text-xs dc:px-2 dc:py-1 dc:rounded-sm text-dc-accent dc:hover:opacity-80"
             title={t('notebook.saveAsDashboardTitle')}
           >
             {t('notebook.saveAsDashboard')}
@@ -77,7 +77,7 @@ export function ChatHeader({
           <button
             onClick={onClear}
             disabled={isStreaming}
-            className="dc:text-xs dc:px-2 dc:py-1 dc:rounded text-dc-text-secondary dc:hover:opacity-80 dc:disabled:opacity-40"
+            className="dc:text-xs dc:px-2 dc:py-1 dc:rounded-sm text-dc-text-secondary dc:hover:opacity-80 dc:disabled:opacity-40"
             title={t('notebook.clearTitle')}
           >
             {t('common.actions.clear')}

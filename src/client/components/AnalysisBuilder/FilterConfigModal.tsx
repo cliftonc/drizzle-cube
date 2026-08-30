@@ -401,8 +401,8 @@ export default function FilterConfigModal({
   }
 
   const modalClassName = modalPosition
-    ? 'bg-dc-surface rounded-lg border border-dc-border'
-    : 'bg-dc-surface rounded-lg border border-dc-border max-w-md w-full'
+    ? 'bg-dc-surface dc:rounded-lg dc:border border-dc-border'
+    : 'bg-dc-surface dc:rounded-lg dc:border border-dc-border dc:max-w-md dc:w-full'
 
   return (
     <>
@@ -435,7 +435,7 @@ export default function FilterConfigModal({
               <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">
                 {t('filter.modal.fieldLabel')}
               </label>
-              <div className="dc:flex dc:items-center dc:gap-2 dc:p-3 bg-dc-surface-secondary dc:rounded">
+              <div className="dc:flex dc:items-center dc:gap-2 dc:p-3 bg-dc-surface-secondary dc:rounded-sm">
                 <FieldIcon className="dc:w-5 dc:h-5 text-dc-filter-text" />
                 <span className="dc:text-sm dc:font-medium text-dc-text">{fieldTitle}</span>
               </div>
@@ -453,7 +453,7 @@ export default function FilterConfigModal({
                     setIsDateRangeDropdownOpen(false)
                     setIsOperatorDropdownOpen(!isOperatorDropdownOpen)
                   }}
-                  className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
+                  className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
                 >
                   <span className="dc:truncate">{operatorLabel}</span>
                   <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
@@ -462,7 +462,7 @@ export default function FilterConfigModal({
                 </button>
 
                 {isOperatorDropdownOpen && (
-                  <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
+                  <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-sm dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
                     {availableOperators.map((op) => (
                       <button
                         key={op.operator}
@@ -503,7 +503,7 @@ export default function FilterConfigModal({
             </button>
             <button
               onClick={() => onSave(filter)}
-              className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-primary-content bg-dc-primary hover:bg-dc-primary-hover dc:rounded dc:transition-colors"
+              className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-primary-content bg-dc-primary hover:bg-dc-primary-hover dc:rounded-sm dc:transition-colors"
             >
               {t('common.actions.save')}
             </button>

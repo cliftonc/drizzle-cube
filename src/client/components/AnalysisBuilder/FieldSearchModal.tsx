@@ -228,7 +228,7 @@ export default function FieldSearchModal({
             />
             <button
               onClick={onClose}
-              className="dc:p-1 text-dc-text-secondary hover:text-dc-text dc:rounded"
+              className="dc:p-1 text-dc-text-secondary hover:text-dc-text dc:rounded-sm"
               aria-label="Close dialog"
             >
               <CloseIcon className="dc:w-5 dc:h-5" aria-hidden={true} />
@@ -328,16 +328,16 @@ export default function FieldSearchModal({
           {/* Keyboard shortcuts - hidden on mobile */}
           <div className="dc:hidden dc:md:flex dc:items-center dc:gap-4">
             <span>
-              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">↑↓</kbd> {t('fieldSearch.shortcut.navigate')}
+              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded-sm dc:text-xs">↑↓</kbd> {t('fieldSearch.shortcut.navigate')}
             </span>
             <span>
-              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">{t('fieldSearch.shortcut.keyEnter')}</kbd> {t('fieldSearch.shortcut.select')}
+              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded-sm dc:text-xs">{t('fieldSearch.shortcut.keyEnter')}</kbd> {t('fieldSearch.shortcut.select')}
             </span>
             <span>
-              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">{t('fieldSearch.shortcut.keyShift')}</kbd>{t('fieldSearch.shortcut.plusClick')} {t('fieldSearch.shortcut.multiSelect')}
+              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded-sm dc:text-xs">{t('fieldSearch.shortcut.keyShift')}</kbd>{t('fieldSearch.shortcut.plusClick')} {t('fieldSearch.shortcut.multiSelect')}
             </span>
             <span>
-              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">{t('fieldSearch.shortcut.keyEsc')}</kbd> {t('fieldSearch.shortcut.close')}
+              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded-sm dc:text-xs">{t('fieldSearch.shortcut.keyEsc')}</kbd> {t('fieldSearch.shortcut.close')}
             </span>
           </div>
         </div>

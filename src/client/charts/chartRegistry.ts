@@ -304,6 +304,14 @@ export const chartRegistry: Record<BuiltInChartType, ChartRegistryEntry> = {
     dependencies: RECHARTS_DEP,
     config: async () => (await import('../components/charts/MeasureProfileChart.config.js')).measureProfileChartConfig,
   },
+  proportionBar: {
+    label: 'chart.proportionBar.label',
+    icon: 'chartProportionBar',
+    description: 'chart.proportionBar.description',
+    useCase: 'chart.proportionBar.useCase',
+    isAvailable: requiresMeasureAndDimension,
+    config: async () => (await import('../components/charts/ProportionBarChart.config.js')).proportionBarChartConfig,
+  },
   gauge: {
     label: 'chart.gauge.label',
     icon: 'chartGauge',

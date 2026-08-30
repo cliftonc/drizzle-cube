@@ -6,9 +6,23 @@ import LoadingIndicator from '../LoadingIndicator.js'
 interface ChartContainerProps {
   children: ReactElement
   height?: string | number
+  /**
+   * Override the default minimum height. Charts that share their portlet with
+   * another element - a wrapped summary header, say - need the plot to shrink
+   * rather than push past the card.
+   */
+  minHeight?: string | number
 }
 
-export default function ChartContainer({ children, height = "100%" }: ChartContainerProps) {
+export default function ChartContainer({
+  children,
+  height = "100%",
+  minHeight
+}: ChartContainerProps) {
+  // The default floor keeps a lone chart from collapsing, but it also stops the
+  // plot shrinking when something else shares the portlet (e.g. a summary
+  // header that has wrapped). Callers in that position pass a smaller floor.
+  const effectiveMinHeight = minHeight ?? undefined
   const { t } = useTranslation()
   // Track if container is ready to render ResponsiveContainer
   // We need to wait for the container to be in the DOM with valid dimensions
@@ -111,7 +125,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
         <div
           ref={containerRef}
           className="dc:w-full dc:h-full dc:flex-1 dc:flex dc:flex-col dc:relative"
-          style={{ minHeight: '250px', minWidth: '100px', overflow: 'hidden', userSelect: 'none' }}
+          style={{ minHeight: effectiveMinHeight ?? '250px', minWidth: '100px', overflow: 'hidden', userSelect: 'none' }}
         >
           {isReady && containerSize.width > 0 && containerSize.height > 0 ? (
             <ResponsiveContainer
@@ -136,7 +150,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
     const containerStyle = {
       height: typeof height === 'number' ? `${height}px` : height,
       width: '100%',
-      minHeight: '200px',
+      minHeight: effectiveMinHeight ?? '200px',
       minWidth: '100px',
       userSelect: 'none' as const
     }

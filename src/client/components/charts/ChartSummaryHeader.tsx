@@ -1,0 +1,105 @@
+import React from 'react'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import { formatAxisValue } from '../../utils/chartUtils.js'
+import { POSITIVE_COLOR, NEGATIVE_COLOR } from '../../utils/chartConstants.js'
+import type { SeriesSummary } from './cartesianChartHelpers.js'
+import type { AxisFormatConfig } from '../../types.js'
+
+interface ChartSummaryHeaderProps {
+  summaries: SeriesSummary[]
+  /** Resolves a series key to its display label. */
+  getSeriesLabel: (seriesKey: string) => string
+  /** Left-axis numeric format, so the header matches the axis it summarises. */
+  valueFormat?: AxisFormatConfig
+  /** Right-axis format, used for series assigned to the right axis. */
+  rightValueFormat?: AxisFormatConfig
+  /**
+   * Whether a change vs. the start of the window is meaningful. False for a
+   * categorical x-axis, where "first" and "last" are arbitrary categories.
+   */
+  showChange?: boolean
+  /**
+   * Distance from the container's left edge to the plot area, so the summary
+   * lines up with the first data point rather than the card edge.
+   */
+  leftOffset?: number
+}
+
+/**
+ * Summary band rendered above a time-series plot.
+ *
+ * Shows each series' latest value and how far it has moved since the start of
+ * the window, so the chart is readable without hovering. All values are derived
+ * from the already-fetched result set — this issues no queries of its own.
+ */
+const ChartSummaryHeader = React.memo(function ChartSummaryHeader({
+  summaries,
+  getSeriesLabel,
+  valueFormat,
+  rightValueFormat,
+  showChange = true,
+  leftOffset = 0
+}: ChartSummaryHeaderProps) {
+  const { t } = useTranslation()
+
+  if (summaries.length === 0) return null
+
+  return (
+    <div
+      className="dc:flex dc:flex-wrap dc:items-start dc:gap-x-8 dc:gap-y-2 dc:flex-shrink-0 dc:pr-1 dc:pb-2"
+      style={{ paddingLeft: leftOffset }}
+      data-testid="chart-summary-header"
+    >
+      {summaries.map((summary) => {
+        const hasChange = showChange && summary.absoluteChange !== null
+        // A dual-axis chart formats each axis differently; match the series.
+        const format = summary.axis === 'right' ? rightValueFormat : valueFormat
+        const isPositive = (summary.absoluteChange ?? 0) >= 0
+        return (
+          <div key={summary.seriesKey} className="dc:flex dc:flex-col dc:gap-0.5 dc:min-w-0">
+            <div className="dc:flex dc:items-center dc:gap-1.5 dc:min-w-0">
+              <span
+                className="dc:rounded-full dc:flex-shrink-0"
+                style={{ width: 8, height: 8, backgroundColor: summary.color }}
+              />
+              <span className="text-dc-text-secondary dc:truncate" style={{ fontSize: '12px' }}>
+                {getSeriesLabel(summary.seriesKey)}
+              </span>
+            </div>
+
+            <div className="dc:font-semibold dc:leading-none text-dc-text" style={{ fontSize: '24px' }}>
+              {summary.current === null
+                ? '—'
+                : formatAxisValue(summary.current, format)}
+            </div>
+
+            {hasChange && (
+              <>
+                <div
+                  className="dc:font-semibold dc:truncate"
+                  style={{ fontSize: '12px', color: isPositive ? POSITIVE_COLOR : NEGATIVE_COLOR }}
+                >
+                  {isPositive ? '+' : ''}
+                  {formatAxisValue(summary.absoluteChange, format)}
+                  {summary.percentageChange !== null && (
+                    <> ({isPositive ? '+' : ''}{summary.percentageChange.toFixed(1)}%)</>
+                  )}
+                </div>
+                {/* On its own line, and naming the actual period start where we
+                    know it - "since Sep 2025" says more than "since start of
+                    period" and keeps the delta line short. */}
+                <div className="text-dc-text-muted dc:truncate" style={{ fontSize: '11px' }}>
+                  {summary.baselineLabel
+                    ? t('chart.runtime.summarySince', { period: summary.baselineLabel })
+                    : t('chart.runtime.summarySincePeriodStart')}
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+})
+
+export default ChartSummaryHeader

@@ -285,7 +285,7 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="dc:fixed dc:z-50 dc:px-3 dc:py-2 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:text-sm dc:pointer-events-none"
+          className="dc:fixed dc:z-50 dc:px-3 dc:py-2 bg-dc-surface dc:border border-dc-border dc:rounded-sm dc:shadow-lg dc:text-sm dc:pointer-events-none"
           style={{
             left: tooltip.x,
             top: tooltip.y - 10,

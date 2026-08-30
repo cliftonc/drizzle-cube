@@ -8,6 +8,7 @@ import ChartErrorBoundary from '../ChartErrorBoundary.js'
 import { DrillMenu } from '../DrillMenu.js'
 import { DrillBreadcrumb } from '../DrillBreadcrumb.js'
 import { PortletChart } from './PortletChart.js'
+import { hasIntrinsicChartHeight } from './intrinsicChartHeight.js'
 import type { ChartAxisConfig, ChartDisplayConfig, ChartType, CubeQuery } from '../../types.js'
 import type { FlowChartData } from '../../types/flow.js'
 import type { RetentionChartData } from '../../types/retention.js'
@@ -70,6 +71,8 @@ export function PortletChartView(props: PortletChartViewProps) {
     onNavigateToLevel
   } = props
 
+  const hasIntrinsicHeight = hasIntrinsicChartHeight(chartType, displayConfig)
+
   return (
     <>
       <ChartErrorBoundary
@@ -77,7 +80,7 @@ export function PortletChartView(props: PortletChartViewProps) {
         portletConfig={{ chartType, chartConfig, displayConfig, height }}
         cubeQuery={query}
       >
-        <div className="dc:w-full dc:h-full dc:flex dc:flex-col dc:flex-1" style={{ minHeight: chartType === 'markdown' ? undefined : '200px' }}>
+        <div className="dc:w-full dc:h-full dc:flex dc:flex-col dc:flex-1" style={{ minHeight: hasIntrinsicHeight ? undefined : '200px' }}>
           {/* Drill breadcrumb - shows when drilling into data */}
           {isDrillEnabled && drill.drillPath.length > 0 && (
             <div className="dc:mb-2 dc:flex-shrink-0">

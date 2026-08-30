@@ -118,7 +118,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
     <button
       onClick={handleAIClick}
       disabled={aiAnalysisLoading}
-      className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded bg-dc-accent text-white hover:bg-dc-accent-hover dc:disabled:opacity-50 dc:disabled:cursor-not-allowed dc:flex dc:items-center dc:gap-1"
+      className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded-sm bg-dc-accent text-white hover:bg-dc-accent-hover dc:disabled:opacity-50 dc:disabled:cursor-not-allowed dc:flex dc:items-center dc:gap-1"
     >
       {aiAnalysisLoading ? (
         <>
@@ -150,7 +150,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
                 type="checkbox"
                 checked={useAnalyze}
                 onChange={(e) => setUseAnalyze(e.target.checked)}
-                className="dc:w-3 dc:h-3 dc:rounded border-dc-border text-dc-accent focus:ring-dc-accent"
+                className="dc:w-3 dc:h-3 dc:rounded-sm border-dc-border text-dc-accent focus:ring-dc-accent"
               />
               {t('debug.explainIncludeTiming')}
             </label>
@@ -159,7 +159,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
             <button
               onClick={() => runExplain({ analyze: useAnalyze })}
               disabled={explainLoading}
-              className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded dc:border border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
+              className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded-sm dc:border border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
             >
               {explainLoading ? t('debug.explainRunning') : t('debug.explainPlan')}
             </button>
@@ -182,7 +182,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
 
       {/* AI Analysis Error (shown inline) */}
       {aiAnalysisError && (
-        <div className="text-dc-error dc:text-sm bg-dc-danger-bg dc:p-3 dc:rounded dc:border border-dc-error">
+        <div className="text-dc-error dc:text-sm bg-dc-danger-bg dc:p-3 dc:rounded-sm dc:border border-dc-error">
           <strong>{t('debug.aiAnalysisError')}</strong> {aiAnalysisError.message}
         </div>
       )}

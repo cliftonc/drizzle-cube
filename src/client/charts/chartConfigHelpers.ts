@@ -99,3 +99,50 @@ export function stackTypeDisplayOption(description: string): DisplayOptionConfig
     description
   }
 }
+
+/**
+ * Layout density for the KPI charts.
+ *
+ * `auto` keeps the historic behaviour, where the value's font size is derived
+ * from the portlet box — which makes a wide portlet render an enormous number.
+ * `compact` uses a fixed type scale so several KPIs read as a tidy metric strip.
+ */
+export const kpiLayoutDisplayOption: DisplayOptionConfig = {
+  key: 'layout',
+  label: 'chart.option.kpiLayout.label',
+  type: 'buttonGroup',
+  defaultValue: 'auto',
+  options: [
+    { value: 'auto', label: 'chart.option.kpiLayout.auto' },
+    { value: 'compact', label: 'chart.option.kpiLayout.compact' }
+  ],
+  description: 'chart.option.kpiLayout.description'
+}
+
+/**
+ * Summary-band toggle for the time-series charts.
+ *
+ * Renders each series' latest value and its change since the start of the
+ * window above the plot, so the chart is readable without hovering.
+ */
+export const showSummaryDisplayOption: DisplayOptionConfig = {
+  key: 'showSummary',
+  label: 'chart.option.showSummary.label',
+  type: 'boolean',
+  defaultValue: false,
+  description: 'chart.option.showSummary.description'
+}
+
+/**
+ * Data-point marker toggle for the time-series charts. Dense series (hundreds
+ * of points) read far better without a marker on every one.
+ */
+export function showPointsDisplayOption(defaultValue = true): DisplayOptionConfig {
+  return {
+    key: 'showPoints',
+    label: 'chart.option.showPoints.label',
+    type: 'boolean',
+    defaultValue,
+    description: 'chart.option.showPoints.description'
+  }
+}
