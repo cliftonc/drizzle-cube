@@ -46,6 +46,7 @@ import type {
   DashboardConfig,
   PortletConfig,
   RowLayout,
+  PortletGroup,
   DashboardFilter,
   DashboardFilterMapping,
   DashboardGridSettings,
@@ -54,6 +55,8 @@ import type {
 import { useGridLayoutEngine } from './dashboard/useGridLayoutEngine.js'
 import { useRowLayoutEngine } from './dashboard/useRowLayoutEngine.js'
 import { useDashboardController } from './dashboard/useDashboardController.js'
+import type { SnapEdge } from './dashboard/groupUtils.js'
+import type { LayoutUpdate } from './dashboard/useRowLayoutEngine.js'
 
 // ============================================================================
 // Types
@@ -110,6 +113,7 @@ export interface UseDashboardResult {
   filterConfigPortlet: PortletConfig | null
   /** Portlet ID pending delete confirmation */
   deleteConfirmPortletId: string | null
+  deleteConfirmGroupId: string | null
   /** Draft rows during drag operations */
   draftRows: RowLayout[] | null
   /** Whether a portlet is being dragged */
@@ -130,6 +134,9 @@ export interface UseDashboardResult {
   selectedFilter: DashboardFilter | null
   /** Resolved rows for row-based layout */
   resolvedRows: RowLayout[]
+  resolvedGroups: PortletGroup[]
+  /** Modes the toggle should offer; a subset of allowedModes. */
+  selectableModes: DashboardLayoutMode[]
   /** Current layout mode */
   layoutMode: DashboardLayoutMode
   /** Allowed layout modes */
@@ -161,6 +168,7 @@ export interface UseDashboardActions {
 
   // Layout State (store-only)
   setDraftRows: (rows: RowLayout[] | null) => void
+  setDraftGroups: (groups: PortletGroup[] | null) => void
   setIsDraggingPortlet: (isDragging: boolean) => void
   setLastKnownLayout: (layout: LayoutItem[]) => void
   setIsInitialized: (initialized: boolean) => void
@@ -169,6 +177,7 @@ export interface UseDashboardActions {
 
   // Layout Operations (config-modifying)
   hasLayoutActuallyChanged: (newLayout: LayoutItem[]) => boolean
+  updateLayout: (next: LayoutUpdate, save?: boolean) => Promise<void>
   updateRowLayout: (rows: RowLayout[], save?: boolean, portletsOverride?: PortletConfig[]) => Promise<void>
   handleLayoutModeChange: (mode: DashboardLayoutMode) => Promise<void>
 
@@ -185,6 +194,17 @@ export interface UseDashboardActions {
 
   // Config Operations
   handlePaletteChange: (paletteName: string) => Promise<void>
+
+  // Group Operations (rows layout mode only)
+  snapPortletIntoGroup: (
+    movedPortletId: string,
+    targetPortletId: string,
+    edge: SnapEdge
+  ) => Promise<void>
+  ungroupGroup: (groupId: string) => Promise<void>
+  deleteGroup: (groupId: string) => void
+  renameGroup: (groupId: string, title: string) => Promise<void>
+  openDeleteGroupConfirm: (groupId: string) => void
 
   // Delete Confirmation
   openDeleteConfirm: (portletId: string) => void
@@ -210,7 +230,9 @@ const selectStoreState = (state: DashboardStore) => ({
   isFilterConfigModalOpen: state.isFilterConfigModalOpen,
   filterConfigPortlet: state.filterConfigPortlet,
   deleteConfirmPortletId: state.deleteConfirmPortletId,
+  deleteConfirmGroupId: state.deleteConfirmGroupId,
   draftRows: state.draftRows,
+  draftGroups: state.draftGroups,
   isDraggingPortlet: state.isDraggingPortlet,
   lastKnownLayout: state.lastKnownLayout,
   isInitialized: state.isInitialized,
@@ -230,8 +252,10 @@ const selectStoreActions = (state: DashboardStore) => ({
   openFilterConfigModal: state.openFilterConfigModal,
   closeFilterConfigModal: state.closeFilterConfigModal,
   openDeleteConfirm: state.openDeleteConfirm,
+  openDeleteGroupConfirm: state.openDeleteGroupConfirm,
   closeDeleteConfirm: state.closeDeleteConfirm,
   setDraftRows: state.setDraftRows,
+  setDraftGroups: state.setDraftGroups,
   setIsDraggingPortlet: state.setIsDraggingPortlet,
   setLastKnownLayout: state.setLastKnownLayout,
   setIsInitialized: state.setIsInitialized,
@@ -311,20 +335,33 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     )
   }, [editable, storeState.isEditMode, isResponsiveEditable, storeState.selectedFilterId])
 
+  /**
+   * Modes the toggle actually offers. Grid is withheld while the dashboard has
+   * groups: grid renders grouped portlets flat and lets you drag them, but rows
+   * mode reads `rows`/`groups` rather than x/y, so that rearranging would be
+   * silently discarded on the way back. `allowedModes` stays the capability
+   * list, so a host that asks for grid explicitly still gets it.
+   */
+  const selectableModes: DashboardLayoutMode[] = useMemo(() => {
+    const hasGroups = (config.groups?.length ?? 0) > 0
+    if (!hasGroups || layoutMode !== 'rows') return allowedModes
+    return allowedModes.filter((mode) => mode !== 'grid')
+  }, [allowedModes, config.groups, layoutMode])
+
   const canChangeLayoutMode = useMemo(() => {
     return (
       editable &&
       storeState.isEditMode &&
       isResponsiveEditable &&
       !storeState.selectedFilterId &&
-      allowedModes.length > 1
+      selectableModes.length > 1
     )
   }, [
     editable,
     storeState.isEditMode,
     isResponsiveEditable,
     storeState.selectedFilterId,
-    allowedModes.length,
+    selectableModes.length,
   ])
 
   const selectedFilter = useMemo(() => {
@@ -332,15 +369,17 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     return dashboardFilters.find((f) => f.id === storeState.selectedFilterId) ?? null
   }, [storeState.selectedFilterId, dashboardFilters])
 
-  const { resolvedRows, updateRowLayout } = useRowLayoutEngine({
+  const { resolvedRows, resolvedGroups, updateLayout, updateRowLayout } = useRowLayoutEngine({
     layoutMode,
     draftRows: storeState.draftRows,
+    draftGroups: storeState.draftGroups,
     config,
     gridSettings,
     configRef,
     onConfigChangeRef,
     onSaveRef,
     setDraftRows: storeActions.setDraftRows,
+    setDraftGroups: storeActions.setDraftGroups,
     setThumbnailDirty: storeActions.setThumbnailDirty,
   })
 
@@ -368,12 +407,17 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     selectAllForFilter,
     saveFilterConfig,
     handlePaletteChange,
+    snapPortletIntoGroup,
+    ungroupGroup,
+    deleteGroup,
+    renameGroup,
   } = useDashboardController({
     allowedModes,
     canChangeLayoutMode,
     isResponsiveEditable,
     layoutMode,
     resolvedRows,
+    resolvedGroups,
     gridSettings,
     thumbnailConfig,
     dashboardRef,
@@ -383,6 +427,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     onConfigChangeRef,
     onSaveRef,
     onSaveThumbnailRef,
+    updateLayout,
     updateRowLayout,
     portletComponentRefs,
     onPortletRefresh,
@@ -413,6 +458,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
       // Layout state
       setDraftRows: storeActions.setDraftRows,
+      setDraftGroups: storeActions.setDraftGroups,
       setIsDraggingPortlet: storeActions.setIsDraggingPortlet,
       setLastKnownLayout: storeActions.setLastKnownLayout,
       setIsInitialized: storeActions.setIsInitialized,
@@ -421,6 +467,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
       // Layout operations
       hasLayoutActuallyChanged,
+      updateLayout,
       updateRowLayout,
       handleLayoutModeChange,
 
@@ -438,8 +485,15 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       // Config operations
       handlePaletteChange,
 
+      // Group operations
+      snapPortletIntoGroup,
+      ungroupGroup,
+      deleteGroup,
+      renameGroup,
+
       // Delete confirmation
       openDeleteConfirm: storeActions.openDeleteConfirm,
+      openDeleteGroupConfirm: storeActions.openDeleteGroupConfirm,
       closeDeleteConfirm: storeActions.closeDeleteConfirm,
       confirmDelete,
 
@@ -459,6 +513,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       openEditText,
       openFilterConfig,
       hasLayoutActuallyChanged,
+      updateLayout,
       updateRowLayout,
       handleLayoutModeChange,
       savePortlet,
@@ -469,6 +524,10 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       selectAllForFilter,
       saveFilterConfig,
       handlePaletteChange,
+      snapPortletIntoGroup,
+      ungroupGroup,
+      deleteGroup,
+      renameGroup,
       confirmDelete,
     ]
   )
@@ -482,8 +541,10 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     canChangeLayoutMode,
     selectedFilter,
     resolvedRows,
+    resolvedGroups,
     layoutMode,
     allowedModes,
+    selectableModes,
 
     // Actions
     actions,

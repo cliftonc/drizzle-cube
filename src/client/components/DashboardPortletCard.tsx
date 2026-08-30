@@ -9,6 +9,7 @@ import { arePropsEqual, type DashboardPortletCardProps } from './dashboardPortle
 import { resolveEffectiveFilterField } from './dashboardPortletCard/filterField.js'
 import { usePortletCardActions } from './dashboardPortletCard/usePortletCardActions.js'
 import PortletCardHeader from './dashboardPortletCard/PortletCardHeader.js'
+import PortletFloatingActions from './dashboardPortletCard/PortletFloatingActions.js'
 import FilterFieldChip from './dashboardPortletCard/FilterFieldChip.js'
 import { buildContainerClassName, buildHeaderClassName, buildContainerStyle, resolveDisplayModes } from './dashboardPortletCard/cardStyles.js'
 
@@ -82,6 +83,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   colorPalette,
   containerProps,
   headerProps,
+  variant = 'standalone',
   setPortletRef,
   setPortletComponentRef,
   callbacks,
@@ -109,7 +111,8 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
     renderDisplayConfig,
     layoutMode,
     isEditMode,
-    portletTitle: portlet.title
+    portletTitle: portlet.title,
+    variant
   })
 
   // Get setDebugData action from store
@@ -147,7 +150,8 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
     isTransparent,
     isMarkdownAutoHeight,
     isInSelectionMode,
-    extraClassName: containerProps?.className
+    extraClassName: containerProps?.className,
+    variant
   })
 
   const mergedHeaderClassName = buildHeaderClassName(isEditMode, headerProps?.className)
@@ -188,7 +192,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
       data-portlet-id={portlet.id}
       ref={handleSetPortletRef}
       className={mergedContainerClassName}
-      style={buildContainerStyle({ isTransparent, isInSelectionMode, hasSelectedFilter, containerStyle })}
+      style={buildContainerStyle({ isTransparent, isInSelectionMode, hasSelectedFilter, containerStyle, variant })}
       onClick={(event) => {
         if (isInSelectionMode && selectedFilterId) {
           event.stopPropagation()
@@ -207,7 +211,27 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           onOpenFilterConfig={() => callbacks.onOpenFilterConfig(portlet)}
         />
       )}
-      {(!shouldHideHeader || isEditMode) && (
+      {/* Grouped children have no header, so this strip carries their actions in
+          view mode too - not just edit mode. */}
+      {variant === 'groupChild' && !isInSelectionMode && (
+        <PortletFloatingActions
+          portlet={portlet}
+          icons={icons}
+          showEditActions={editable && isEditMode}
+          copyAvailable={copyAvailable}
+          copySuccess={copySuccess}
+          xlsExportAvailable={xlsExportAvailable && !!debugData}
+          exportInProgress={exportInProgress}
+          onRefresh={(options) => callbacks.onRefresh(portlet.id, options)}
+          onCopyToClipboard={handleCopyToClipboard}
+          onExportXlsx={handleExportXlsx}
+          onOpenFilterConfig={() => callbacks.onOpenFilterConfig(portlet)}
+          onDuplicate={() => callbacks.onDuplicate(portlet.id)}
+          onEdit={() => callbacks.onEdit(portlet)}
+          onDelete={() => callbacks.onDelete(portlet.id)}
+        />
+      )}
+      {variant !== 'groupChild' && (!shouldHideHeader || isEditMode) && (
         <PortletCardHeader
           portlet={portlet}
           className={mergedHeaderClassName}

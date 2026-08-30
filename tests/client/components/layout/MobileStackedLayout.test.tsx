@@ -235,7 +235,7 @@ describe('MobileStackedLayout', () => {
 
       const { container } = render(<MobileStackedLayout config={config} />)
 
-      const refreshButton = container.querySelector('button[title="Refresh portlet data"]')
+      const refreshButton = container.querySelector('button[title="Refresh portlet"]')
       expect(refreshButton).toBeInTheDocument()
     })
 
@@ -285,7 +285,7 @@ describe('MobileStackedLayout', () => {
         />
       )
 
-      const refreshButton = container.querySelector('button[title="Refresh portlet data"]')
+      const refreshButton = container.querySelector('button[title="Refresh portlet"]')
       expect(refreshButton).toBeInTheDocument()
 
       fireEvent.click(refreshButton!)
@@ -300,7 +300,7 @@ describe('MobileStackedLayout', () => {
 
       const { container } = render(<MobileStackedLayout config={config} />)
 
-      const refreshButton = container.querySelector('button[title="Refresh portlet data"]')
+      const refreshButton = container.querySelector('button[title="Refresh portlet"]')
       fireEvent.click(refreshButton!)
 
       await waitFor(() => {
@@ -313,7 +313,7 @@ describe('MobileStackedLayout', () => {
 
       const { container } = render(<MobileStackedLayout config={config} />)
 
-      const refreshButton = container.querySelector('button[title="Refresh portlet data"]')
+      const refreshButton = container.querySelector('button[title="Refresh portlet"]')
 
       // Should not throw when clicked without callback
       expect(() => fireEvent.click(refreshButton!)).not.toThrow()
@@ -546,6 +546,112 @@ describe('MobileStackedLayout', () => {
       expect(renderedPortlets[2]).toHaveAttribute('data-title', 'Third')
       expect(renderedPortlets[3]).toHaveAttribute('data-title', 'Fourth')
       expect(renderedPortlets[4]).toHaveAttribute('data-title', 'Fifth')
+    })
+  })
+
+  describe('portlet groups', () => {
+    const groupedConfig = {
+      portlets: [
+        createTestPortlet({ id: 'g-a', title: 'Revenue', x: 0, y: 0, w: 3, h: 3 }),
+        createTestPortlet({ id: 'g-b', title: 'Orders', x: 3, y: 0, w: 3, h: 3 }),
+        createTestPortlet({ id: 'solo', title: 'Solo', x: 0, y: 3, w: 12, h: 4 })
+      ],
+      layoutMode: 'rows' as const,
+      rows: [
+        { id: 'row-1', h: 3, columns: [{ groupId: 'grp-1', w: 6 }, { portletId: 'solo', w: 6 }] }
+      ],
+      groups: [
+        {
+          id: 'grp-1',
+          title: 'Revenue KPIs',
+          direction: 'row' as const,
+          cells: [
+            { portletIds: ['g-a'] },
+            { portletIds: ['g-b'] }
+          ]
+        }
+      ]
+    }
+
+    it('should keep a group as one card containing its members', () => {
+      const { container } = render(<MobileStackedLayout config={groupedConfig} />)
+
+      const groupCard = container.querySelector('[data-group-id="grp-1"]')
+      expect(groupCard).toBeInTheDocument()
+      expect(groupCard?.querySelector('[data-portlet-id="g-a"]')).toBeInTheDocument()
+      expect(groupCard?.querySelector('[data-portlet-id="g-b"]')).toBeInTheDocument()
+    })
+
+    it('should render the group title once, not a frame per member', () => {
+      const { container } = render(<MobileStackedLayout config={groupedConfig} />)
+
+      expect(screen.getByText('Revenue KPIs')).toBeInTheDocument()
+      // Members are borderless inside the group card.
+      const member = container.querySelector('[data-portlet-id="g-a"]') as HTMLElement
+      expect(member.className).not.toContain('dc:border')
+    })
+
+    it('should not give members their own titles, matching desktop', () => {
+      render(<MobileStackedLayout config={groupedConfig} />)
+
+      // Titles the desktop group hides must stay hidden here too.
+      expect(screen.queryByText('Revenue')).not.toBeInTheDocument()
+      expect(screen.queryByText('Orders')).not.toBeInTheDocument()
+      expect(screen.getByText('Revenue KPIs')).toBeInTheDocument()
+    })
+
+    it('should render ungrouped portlets alongside the group', () => {
+      const { container } = render(<MobileStackedLayout config={groupedConfig} />)
+
+      const solo = container.querySelector('[data-portlet-id="solo"]') as HTMLElement
+      expect(solo).toBeInTheDocument()
+      expect(solo.closest('[data-group-id]')).toBeNull()
+      expect(solo.className).toContain('dc:border')
+    })
+
+    it('should order the group by its topmost member position', () => {
+      const { container } = render(<MobileStackedLayout config={groupedConfig} />)
+
+      const blocks = Array.from(
+        container.querySelectorAll('.mobile-stacked-layout > *')
+      )
+      expect(blocks[0].getAttribute('data-group-id')).toBe('grp-1')
+      expect(blocks[1].getAttribute('data-portlet-id')).toBe('solo')
+    })
+
+    it('should share the group height across stacked members, not repeat it', () => {
+      const { container } = render(<MobileStackedLayout config={groupedConfig} />)
+
+      // On desktop the two members sit side by side and each carries the
+      // group's full 3-unit height; stacked here that would double the group.
+      const member = container.querySelector('[data-portlet-id="g-a"]') as HTMLElement
+      expect(parseInt(member.style.height, 10)).toBeLessThan(3 * 80)
+    })
+
+    it('should render grouped KPI members compactly so they clear the 200px floor', () => {
+      const kpiConfig = {
+        ...groupedConfig,
+        portlets: [
+          createTestPortlet({ id: 'g-a', title: 'Revenue', chartType: 'kpiNumber', x: 0, y: 0, w: 3, h: 3 }),
+          createTestPortlet({ id: 'g-b', title: 'Orders', chartType: 'kpiNumber', x: 3, y: 0, w: 3, h: 3 }),
+          groupedConfig.portlets[2]
+        ]
+      }
+      const { container } = render(<MobileStackedLayout config={kpiConfig} />)
+
+      const member = container.querySelector('[data-portlet-id="g-a"]') as HTMLElement
+      expect(parseInt(member.style.height, 10)).toBeLessThanOrEqual(120)
+    })
+
+    it('should skip a group whose portlets no longer exist', () => {
+      const config = {
+        ...groupedConfig,
+        portlets: [groupedConfig.portlets[2]]
+      }
+      const { container } = render(<MobileStackedLayout config={config} />)
+
+      expect(container.querySelector('[data-group-id="grp-1"]')).not.toBeInTheDocument()
+      expect(container.querySelector('[data-portlet-id="solo"]')).toBeInTheDocument()
     })
   })
 })

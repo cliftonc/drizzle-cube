@@ -7,6 +7,7 @@ import type {
   DashboardGridSettings,
   DashboardLayoutMode,
   PortletConfig,
+  PortletGroup,
   RowLayout,
   ThumbnailFeatureConfig
 } from '../../types.js'
@@ -16,9 +17,19 @@ import {
   convertPortletsToRows,
   convertRowsToPortlets,
   createRowId,
-  equalizeRowColumns,
+  equalizeColumns,
   normalizeRows
 } from './layoutUtils.js'
+import type { LayoutUpdate } from './useRowLayoutEngine.js'
+import {
+  deleteGroup as deleteGroupFromLayout,
+  findPortletLocation,
+  normalizeGroups,
+  removeFromGroup,
+  snapIntoGroup,
+  ungroup,
+  type SnapEdge,
+} from './groupUtils.js'
 
 interface UseDashboardControllerOptions {
   allowedModes: DashboardLayoutMode[]
@@ -26,6 +37,7 @@ interface UseDashboardControllerOptions {
   isResponsiveEditable: boolean
   layoutMode: DashboardLayoutMode
   resolvedRows: RowLayout[]
+  resolvedGroups: PortletGroup[]
   gridSettings: DashboardGridSettings
   thumbnailConfig?: ThumbnailFeatureConfig
   dashboardRef?: RefObject<HTMLElement | null>
@@ -41,6 +53,8 @@ interface UseDashboardControllerOptions {
     | 'openFilterConfigModal'
     | 'closeFilterConfigModal'
     | 'openDeleteConfirm'
+    | 'openDeleteGroupConfirm'
+    | 'setDraftGroups'
     | 'closeDeleteConfirm'
     | 'setThumbnailDirty'
   >
@@ -48,6 +62,7 @@ interface UseDashboardControllerOptions {
   onConfigChangeRef: MutableRefObject<((config: DashboardConfig) => void) | undefined>
   onSaveRef: MutableRefObject<((config: DashboardConfig) => Promise<void> | void) | undefined>
   onSaveThumbnailRef: MutableRefObject<((thumbnailData: string) => Promise<string | void>) | undefined>
+  updateLayout: (next: LayoutUpdate, save?: boolean) => Promise<void>
   updateRowLayout: (
     rows: RowLayout[],
     save?: boolean,
@@ -63,6 +78,7 @@ export function useDashboardController({
   isResponsiveEditable,
   layoutMode,
   resolvedRows,
+  resolvedGroups,
   gridSettings,
   thumbnailConfig,
   dashboardRef,
@@ -72,6 +88,7 @@ export function useDashboardController({
   onConfigChangeRef,
   onSaveRef,
   onSaveThumbnailRef,
+  updateLayout,
   updateRowLayout,
   portletComponentRefs,
   onPortletRefresh,
@@ -82,6 +99,8 @@ export function useDashboardController({
   canChangeLayoutModeRef.current = canChangeLayoutMode
   const resolvedRowsRef = useRef(resolvedRows)
   resolvedRowsRef.current = resolvedRows
+  const resolvedGroupsRef = useRef(resolvedGroups)
+  resolvedGroupsRef.current = resolvedGroups
 
   const saveConfig = useCallback(
     async (
@@ -209,19 +228,34 @@ export function useDashboardController({
       }
 
       const cfg = configRef.current
-      const baseRows = normalizeRows(
-        cfg.rows && cfg.rows.length > 0
-          ? cfg.rows
-          : convertPortletsToRows(cfg.portlets, gridSettings),
+
+      // Normalize groups first and thread them through, exactly as
+      // useRowLayoutEngine does. Without this every group column is treated as
+      // dangling and dropped - taking its row, and any row that held only a
+      // group, with it.
+      const hasExplicitRows = Boolean(cfg.rows && cfg.rows.length > 0)
+      const inputRows = hasExplicitRows
+        ? cfg.rows!
+        : convertPortletsToRows(cfg.portlets, gridSettings)
+      const normalized = normalizeGroups(
+        hasExplicitRows ? cfg.groups : undefined,
         cfg.portlets,
+        inputRows,
         gridSettings
       )
+      const baseRows = normalizeRows(
+        normalized.rows,
+        cfg.portlets,
+        gridSettings,
+        normalized.groups
+      )
 
-      const updatedPortlets = convertRowsToPortlets(baseRows, cfg.portlets)
+      const updatedPortlets = convertRowsToPortlets(baseRows, cfg.portlets, normalized.groups)
       const updatedConfig: DashboardConfig = {
         ...cfg,
         layoutMode: mode,
         rows: baseRows,
+        groups: normalized.groups,
         portlets: updatedPortlets,
       }
 
@@ -291,7 +325,7 @@ export function useDashboardController({
                 {
                   id: createRowId(),
                   h: Math.max(gridSettings.minH, 3),
-                  columns: equalizeRowColumns([newPortletId], gridSettings),
+                  columns: equalizeColumns([{ portletId: newPortletId, w: 0 }], gridSettings),
                 },
               ]
             : baseRows
@@ -320,6 +354,10 @@ export function useDashboardController({
       const updatedPortlets = cfg.portlets.filter((p) => p.id !== portletId)
 
       if (layoutModeRef.current === 'rows') {
+        // A grouped child owns no column of its own, so the column filter below
+        // would never match it - strip it from its group first.
+        const nextGroups = removeFromGroup(resolvedGroupsRef.current, portletId).groups
+
         const nextRows = resolvedRowsRef.current
           .map((row) => ({
             ...row,
@@ -328,13 +366,10 @@ export function useDashboardController({
           .filter((row) => row.columns.length > 0)
           .map((row) => ({
             ...row,
-            columns: equalizeRowColumns(
-              row.columns.map((col) => col.portletId),
-              gridSettings
-            ),
+            columns: equalizeColumns(row.columns, gridSettings),
           }))
 
-        await updateRowLayout(nextRows, true, updatedPortlets)
+        await updateLayout({ rows: nextRows, groups: nextGroups, portlets: updatedPortlets })
       } else {
         const updatedConfig: DashboardConfig = {
           ...cfg,
@@ -343,7 +378,7 @@ export function useDashboardController({
         await saveConfig(updatedConfig, 'Auto-save failed:')
       }
     },
-    [configRef, gridSettings, onConfigChangeRef, resolvedRowsRef, saveConfig, updateRowLayout]
+    [configRef, gridSettings, onConfigChangeRef, resolvedGroupsRef, resolvedRowsRef, saveConfig, updateLayout]
   )
 
   const deletePortlet = useCallback(
@@ -353,13 +388,98 @@ export function useDashboardController({
     [storeActions]
   )
 
-  const confirmDelete = useCallback(async () => {
-    const portletId = storeApi.getState().deleteConfirmPortletId
-    if (!portletId) return
+  // =========================================================================
+  // Group actions (rows layout mode only)
+  // =========================================================================
 
-    await executeDeletePortlet(portletId)
+  /** Snap `movedPortletId` against an edge of `targetPortletId`. */
+  const snapPortletIntoGroup = useCallback(
+    async (movedPortletId: string, targetPortletId: string, edge: SnapEdge) => {
+      if (layoutModeRef.current !== 'rows') return
+
+      const next = snapIntoGroup(
+        { rows: resolvedRowsRef.current, groups: resolvedGroupsRef.current },
+        movedPortletId,
+        targetPortletId,
+        edge,
+        gridSettings
+      )
+      if (!next) return
+
+      await updateLayout({ rows: next.rows, groups: next.groups })
+    },
+    [gridSettings, resolvedGroupsRef, resolvedRowsRef, updateLayout]
+  )
+
+  /** Dissolve a group, leaving its members as ordinary columns in the same row. */
+  const ungroupGroup = useCallback(
+    async (groupId: string) => {
+      if (layoutModeRef.current !== 'rows') return
+      const next = ungroup(
+        { rows: resolvedRowsRef.current, groups: resolvedGroupsRef.current },
+        groupId,
+        gridSettings
+      )
+      await updateLayout({ rows: next.rows, groups: next.groups })
+    },
+    [gridSettings, resolvedGroupsRef, resolvedRowsRef, updateLayout]
+  )
+
+  const deleteGroup = useCallback(
+    (groupId: string) => {
+      storeActions.openDeleteGroupConfirm(groupId)
+    },
+    [storeActions]
+  )
+
+  /** Delete a group *and* every portlet inside it. */
+  const executeDeleteGroup = useCallback(
+    async (groupId: string) => {
+      if (layoutModeRef.current !== 'rows') return
+
+      const { state, removedPortletIds } = deleteGroupFromLayout(
+        { rows: resolvedRowsRef.current, groups: resolvedGroupsRef.current },
+        groupId,
+        gridSettings
+      )
+      const removed = new Set(removedPortletIds)
+      const updatedPortlets = configRef.current.portlets.filter((p) => !removed.has(p.id))
+
+      await updateLayout({ rows: state.rows, groups: state.groups, portlets: updatedPortlets })
+    },
+    [configRef, gridSettings, resolvedGroupsRef, resolvedRowsRef, updateLayout]
+  )
+
+  const renameGroup = useCallback(
+    async (groupId: string, title: string) => {
+      if (layoutModeRef.current !== 'rows') return
+      const trimmed = title.trim()
+      const groups = resolvedGroupsRef.current.map((group) =>
+        group.id === groupId ? { ...group, title: trimmed || undefined } : group
+      )
+      await updateLayout({ rows: resolvedRowsRef.current, groups })
+    },
+    [resolvedGroupsRef, resolvedRowsRef, updateLayout]
+  )
+
+  /**
+   * Live-resize two adjacent cells. `commit: false` writes a draft so the drag
+   * stays cheap; the final call persists.
+   */
+
+  const confirmDelete = useCallback(async () => {
+    const { deleteConfirmPortletId, deleteConfirmGroupId } = storeApi.getState()
+
+    if (deleteConfirmGroupId) {
+      await executeDeleteGroup(deleteConfirmGroupId)
+    } else if (deleteConfirmPortletId) {
+      await executeDeletePortlet(deleteConfirmPortletId)
+    } else {
+      return
+    }
+
     storeActions.closeDeleteConfirm()
-  }, [executeDeletePortlet, storeActions, storeApi])
+  }, [executeDeleteGroup, executeDeletePortlet, storeActions, storeApi])
 
   const duplicatePortlet = useCallback(
     async (portletId: string): Promise<string | undefined> => {
@@ -392,12 +512,38 @@ export function useDashboardController({
           ...row,
           columns: row.columns.map((col) => ({ ...col })),
         }))
+
+        const location = findPortletLocation(baseRows, resolvedGroupsRef.current, portletId)
+
+        if (location?.groupId) {
+          // Duplicating a KPI inside a group should extend that group, not push
+          // a lone copy onto the bottom of the dashboard.
+          const nextGroups = resolvedGroupsRef.current.map((group) => {
+            if (group.id !== location.groupId) return group
+            const cells = group.cells.map((cell, cellIndex) =>
+              cellIndex === location.cellIndex
+                ? {
+                    ...cell,
+                    portletIds: [
+                      ...cell.portletIds.slice(0, location.stackIndex! + 1),
+                      duplicatedPortlet.id,
+                      ...cell.portletIds.slice(location.stackIndex! + 1),
+                    ],
+                  }
+                : cell
+            )
+            return { ...group, cells }
+          })
+          await updateLayout({ rows: baseRows, groups: nextGroups, portlets: updatedPortlets })
+          return duplicatedPortlet.id
+        }
+
         const nextRows = [
           ...baseRows,
           {
             id: createRowId(),
             h: Math.max(gridSettings.minH, 3),
-            columns: equalizeRowColumns([duplicatedPortlet.id], gridSettings),
+            columns: equalizeColumns([{ portletId: duplicatedPortlet.id, w: 0 }], gridSettings),
           },
         ]
         await updateRowLayout(nextRows, true, updatedPortlets)
@@ -411,7 +557,16 @@ export function useDashboardController({
 
       return duplicatedPortlet.id
     },
-    [configRef, gridSettings, onConfigChangeRef, resolvedRowsRef, saveConfig, updateRowLayout]
+    [
+      configRef,
+      gridSettings,
+      onConfigChangeRef,
+      resolvedGroupsRef,
+      resolvedRowsRef,
+      saveConfig,
+      updateLayout,
+      updateRowLayout,
+    ]
   )
 
   const refreshPortlet = useCallback(
@@ -540,5 +695,9 @@ export function useDashboardController({
     selectAllForFilter,
     saveFilterConfig,
     handlePaletteChange,
+    snapPortletIntoGroup,
+    ungroupGroup,
+    deleteGroup,
+    renameGroup,
   }
 }

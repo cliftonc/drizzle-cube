@@ -6,8 +6,9 @@
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { ReactNode } from 'react'
 import RowManagedLayout from '../../../../src/client/components/RowManagedLayout'
-import type { PortletConfig, RowLayout, DashboardGridSettings } from '../../../../src/client/types'
+import type { PortletConfig, PortletGroup, RowLayout, DashboardGridSettings } from '../../../../src/client/types'
 
 // Helper to create test portlet
 function createTestPortlet(overrides: Partial<PortletConfig> = {}): PortletConfig {
@@ -774,7 +775,8 @@ describe('RowManagedLayout', () => {
       const columnWrapper = document.querySelector('.dc-row-layout-column-wrapper') as HTMLDivElement
       fireEvent.dragStart(columnWrapper)
 
-      expect(onPortletDragStart).toHaveBeenCalledWith(0, 0, 'p1', expect.any(Object))
+      // 5th arg is the groupId, undefined for a plain portlet column
+      expect(onPortletDragStart).toHaveBeenCalledWith(0, 0, 'p1', expect.any(Object), undefined)
     })
 
     it('should call onPortletDragEnd when portlet drag ends', () => {
@@ -978,6 +980,452 @@ describe('RowManagedLayout', () => {
 
       const resizeHandles = container.querySelectorAll('.dc-row-resize-handle')
       expect(resizeHandles).toHaveLength(3)
+    })
+  })
+})
+
+/**
+ * Portlet groups ("combination portlets") and the snap bands that create them.
+ * A group occupies a whole row column and is rendered by `renderGroup`; the
+ * snap bands are the drop targets that fold one portlet into another.
+ */
+describe('RowManagedLayout - groups and snap bands', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function createTestGroup(overrides: Partial<PortletGroup> = {}): PortletGroup {
+    return {
+      id: 'g1',
+      direction: 'row',
+      cells: [{ portletIds: ['p1'] }],
+      ...overrides
+    }
+  }
+
+  function renderGroupSpy() {
+    return vi.fn((group: PortletGroup) => (
+      <div data-testid={`group-${group.id}`}>{group.id}</div>
+    ))
+  }
+
+  function renderPortletSpy() {
+    return vi.fn((portlet: PortletConfig) => (
+      <div data-testid={`portlet-${portlet.id}`}>{portlet.title}</div>
+    ))
+  }
+
+  describe('group columns', () => {
+    it('should call renderGroup for a group column and not renderPortlet', () => {
+      const group = createTestGroup()
+      const renderGroup = renderGroupSpy()
+      const renderPortlet = renderPortletSpy()
+      const rows: RowLayout[] = [
+        createTestRow({ columns: [{ groupId: 'g1', w: 12 }] })
+      ]
+
+      render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          portlets={[createTestPortlet({ id: 'p1' })]}
+          groups={[group]}
+          renderGroup={renderGroup}
+          renderPortlet={renderPortlet}
+        />
+      )
+
+      expect(renderGroup).toHaveBeenCalledTimes(1)
+      expect(renderGroup.mock.calls[0][0]).toBe(group)
+      expect(renderPortlet).not.toHaveBeenCalled()
+      expect(screen.getByTestId('group-g1')).toBeInTheDocument()
+    })
+
+    it('should render both a group column and a portlet column in the same row', () => {
+      const group = createTestGroup()
+      const renderGroup = renderGroupSpy()
+      const renderPortlet = renderPortletSpy()
+      const portlet = createTestPortlet({ id: 'p2' })
+      const rows: RowLayout[] = [
+        createTestRow({
+          columns: [
+            { groupId: 'g1', w: 6 },
+            { portletId: 'p2', w: 6 }
+          ]
+        })
+      ]
+
+      render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          portlets={[portlet]}
+          groups={[group]}
+          renderGroup={renderGroup}
+          renderPortlet={renderPortlet}
+        />
+      )
+
+      expect(screen.getByTestId('group-g1')).toBeInTheDocument()
+      expect(screen.getByTestId('portlet-p2')).toBeInTheDocument()
+      expect(renderPortlet).toHaveBeenCalledTimes(1)
+    })
+
+    it('should render nothing for a group column whose group is missing', () => {
+      const renderGroup = renderGroupSpy()
+      const rows: RowLayout[] = [
+        createTestRow({ columns: [{ groupId: 'missing-group', w: 12 }] })
+      ]
+
+      let container: HTMLElement | undefined
+      expect(() => {
+        container = render(
+          <RowManagedLayout
+            {...defaultProps}
+            rows={rows}
+            groups={[createTestGroup()]}
+            renderGroup={renderGroup}
+          />
+        ).container
+      }).not.toThrow()
+
+      expect(renderGroup).not.toHaveBeenCalled()
+      expect(container?.querySelectorAll('.dc-row-layout-column-wrapper')).toHaveLength(0)
+    })
+
+    it('should pass the group id as the 5th arg of onPortletDragStart', () => {
+      const onPortletDragStart = vi.fn()
+      const rows: RowLayout[] = [
+        createTestRow({ columns: [{ groupId: 'g1', w: 12 }] })
+      ]
+
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          groups={[createTestGroup()]}
+          renderGroup={renderGroupSpy()}
+          canEdit={true}
+          onPortletDragStart={onPortletDragStart}
+        />
+      )
+
+      const columnWrapper = container.querySelector('.dc-row-layout-column-wrapper') as HTMLDivElement
+      fireEvent.dragStart(columnWrapper)
+
+      // Group columns carry no portlet id, so the 3rd arg is the empty string.
+      expect(onPortletDragStart).toHaveBeenCalledWith(0, 0, '', expect.anything(), 'g1')
+    })
+
+    it('should hand renderGroup a renderSnapBands callback that draws bands', () => {
+      const renderGroup = vi.fn((group: PortletGroup, renderSnapBands: (portletId: string) => ReactNode) => (
+        <div data-testid={`group-${group.id}`}>{renderSnapBands('p1')}</div>
+      ))
+      const rows: RowLayout[] = [
+        createTestRow({ columns: [{ groupId: 'g1', w: 12 }] })
+      ]
+
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          groups={[createTestGroup()]}
+          renderGroup={renderGroup}
+          canEdit={true}
+          isDragging={true}
+          onSnapDrop={vi.fn()}
+        />
+      )
+
+      expect(container.querySelectorAll('[data-snap-portlet-id="p1"]')).toHaveLength(4)
+    })
+  })
+
+  describe('snap bands', () => {
+    const snapRows: RowLayout[] = [
+      createTestRow({
+        id: 'row-snap',
+        columns: [
+          { portletId: 'p1', w: 6 },
+          { portletId: 'p2', w: 6 }
+        ]
+      })
+    ]
+    const snapPortlets = [createTestPortlet({ id: 'p1' }), createTestPortlet({ id: 'p2' })]
+
+    function renderWithBands(overrides: Record<string, unknown> = {}) {
+      return render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={snapRows}
+          portlets={snapPortlets}
+          canEdit={true}
+          isDragging={true}
+          onSnapDrop={vi.fn()}
+          {...overrides}
+        />
+      )
+    }
+
+    it('should render four bands inside each portlet when dragging in edit mode', () => {
+      const { container } = renderWithBands()
+
+      expect(container.querySelectorAll('.dc-portlet-snap-band')).toHaveLength(8)
+      for (const edge of ['top', 'right', 'bottom', 'left']) {
+        expect(container.querySelectorAll(`.dc-portlet-snap-band-${edge}`)).toHaveLength(2)
+      }
+    })
+
+    it('should call onSnapDrop with the portlet id and edge on drop', () => {
+      const onSnapDrop = vi.fn()
+      const { container } = renderWithBands({ onSnapDrop })
+
+      const rightBand = container.querySelector('[data-snap-portlet-id="p1"].dc-portlet-snap-band-right')
+      fireEvent.drop(rightBand!)
+
+      expect(onSnapDrop).toHaveBeenCalledWith('p1', 'right')
+    })
+
+    it('should call onSnapDrop for each edge', () => {
+      const onSnapDrop = vi.fn()
+      const { container } = renderWithBands({ onSnapDrop })
+
+      for (const edge of ['top', 'right', 'bottom', 'left']) {
+        const band = container.querySelector(`[data-snap-portlet-id="p2"].dc-portlet-snap-band-${edge}`)
+        fireEvent.drop(band!)
+        expect(onSnapDrop).toHaveBeenCalledWith('p2', edge)
+      }
+
+      expect(onSnapDrop).toHaveBeenCalledTimes(4)
+    })
+
+    it('should mark the hovered band active on dragOver', () => {
+      const { container } = renderWithBands()
+
+      const rightBand = container.querySelector('[data-snap-portlet-id="p1"].dc-portlet-snap-band-right') as HTMLElement
+      expect(rightBand.classList.contains('dc-snap-zone-active')).toBe(false)
+
+      act(() => {
+        fireEvent.dragOver(rightBand)
+      })
+
+      const active = container.querySelector('[data-snap-portlet-id="p1"].dc-portlet-snap-band-right') as HTMLElement
+      expect(active.classList.contains('dc-snap-zone-active')).toBe(true)
+      // Only the hovered band lights up.
+      expect(container.querySelectorAll('.dc-snap-zone-active')).toHaveLength(1)
+    })
+
+    it('should clear the active band on dragLeave', () => {
+      const { container } = renderWithBands()
+
+      const rightBand = container.querySelector('[data-snap-portlet-id="p1"].dc-portlet-snap-band-right') as HTMLElement
+      act(() => {
+        fireEvent.dragOver(rightBand)
+      })
+      act(() => {
+        fireEvent.dragLeave(rightBand)
+      })
+
+      expect(container.querySelectorAll('.dc-snap-zone-active')).toHaveLength(0)
+    })
+
+    it('should render no bands when isDragging is false', () => {
+      const { container } = renderWithBands({ isDragging: false })
+
+      expect(container.querySelectorAll('.dc-portlet-snap-band')).toHaveLength(0)
+    })
+
+    it('should render no bands when canEdit is false', () => {
+      const { container } = renderWithBands({ canEdit: false })
+
+      expect(container.querySelectorAll('.dc-portlet-snap-band')).toHaveLength(0)
+    })
+
+    it('should render no bands when onSnapDrop is omitted', () => {
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={snapRows}
+          portlets={snapPortlets}
+          canEdit={true}
+          isDragging={true}
+        />
+      )
+
+      expect(container.querySelectorAll('.dc-portlet-snap-band')).toHaveLength(0)
+    })
+
+    it('should not render bands on the portlet being dragged', () => {
+      const { container } = renderWithBands({ draggingPortletId: 'p1' })
+
+      expect(container.querySelectorAll('[data-snap-portlet-id="p1"]')).toHaveLength(0)
+      expect(container.querySelectorAll('[data-snap-portlet-id="p2"]')).toHaveLength(4)
+    })
+
+    it('should render bands on every portlet when draggingPortletId is null', () => {
+      const { container } = renderWithBands({ draggingPortletId: null })
+
+      expect(container.querySelectorAll('[data-snap-portlet-id="p1"]')).toHaveLength(4)
+      expect(container.querySelectorAll('[data-snap-portlet-id="p2"]')).toHaveLength(4)
+    })
+
+    it('should render no bands at all while a group is being dragged', () => {
+      // A group cannot nest inside a portlet, so no card offers a merge target
+      // while one is in flight - it goes to a row or a column or nowhere.
+      const { container } = renderWithBands({ draggingPortletId: null, draggingGroupId: 'g1' })
+
+      expect(container.querySelectorAll('.dc-portlet-snap-band')).toHaveLength(0)
+    })
+  })
+
+  describe('in-flight drag feedback', () => {
+    it('should mark the group column being dragged', () => {
+      const rows: RowLayout[] = [
+        createTestRow({ columns: [{ groupId: 'g1', w: 6 }, { portletId: 'p2', w: 6 }] })
+      ]
+
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          groups={[createTestGroup()]}
+          renderGroup={renderGroupSpy()}
+          isDragging={true}
+          draggingGroupId="g1"
+        />
+      )
+
+      const dragging = container.querySelectorAll('.dc-row-layout-column-dragging')
+      expect(dragging).toHaveLength(1)
+      expect(dragging[0]).toHaveAttribute('data-group-id', 'g1')
+    })
+
+    it('should mark the portlet column being dragged', () => {
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={[createTestRow({ columns: [{ portletId: 'p1', w: 6 }, { portletId: 'p2', w: 6 }] })]}
+          portlets={[createTestPortlet({ id: 'p1' }), createTestPortlet({ id: 'p2' })]}
+          isDragging={true}
+          draggingPortletId="p1"
+        />
+      )
+
+      const dragging = container.querySelectorAll('.dc-row-layout-column-dragging')
+      expect(dragging).toHaveLength(1)
+      expect(dragging[0]).toHaveAttribute('data-portlet-id', 'p1')
+    })
+
+    it('should mark nothing when no drag is in flight', () => {
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={[createTestRow({ columns: [{ portletId: 'p1', w: 12 }] })]}
+          portlets={[createTestPortlet({ id: 'p1' })]}
+        />
+      )
+
+      expect(container.querySelectorAll('.dc-row-layout-column-dragging')).toHaveLength(0)
+    })
+  })
+
+  describe('hit-test separation between bands and gap handles', () => {
+    it('should still route a column resize handle drop to onRowDrop, not onSnapDrop', () => {
+      const onRowDrop = vi.fn()
+      const onSnapDrop = vi.fn()
+      const rows: RowLayout[] = [
+        createTestRow({
+          columns: [
+            { portletId: 'p1', w: 6 },
+            { portletId: 'p2', w: 6 }
+          ]
+        })
+      ]
+
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          portlets={[createTestPortlet({ id: 'p1' }), createTestPortlet({ id: 'p2' })]}
+          canEdit={true}
+          isDragging={true}
+          onSnapDrop={onSnapDrop}
+          onRowDrop={onRowDrop}
+        />
+      )
+
+      // Bands are present, so this proves the two drop families don't collide.
+      expect(container.querySelectorAll('.dc-portlet-snap-band').length).toBeGreaterThan(0)
+
+      const resizeHandle = container.querySelector('.dc-column-resize-handle')
+      fireEvent.drop(resizeHandle!)
+
+      expect(onRowDrop).toHaveBeenCalledWith(0, 1)
+      expect(onSnapDrop).not.toHaveBeenCalled()
+    })
+
+    it('should not fire onRowDrop when a snap band is dropped on', () => {
+      const onRowDrop = vi.fn()
+      const onSnapDrop = vi.fn()
+      const rows: RowLayout[] = [
+        createTestRow({
+          columns: [
+            { portletId: 'p1', w: 6 },
+            { portletId: 'p2', w: 6 }
+          ]
+        })
+      ]
+
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          portlets={[createTestPortlet({ id: 'p1' }), createTestPortlet({ id: 'p2' })]}
+          canEdit={true}
+          isDragging={true}
+          onSnapDrop={onSnapDrop}
+          onRowDrop={onRowDrop}
+        />
+      )
+
+      const band = container.querySelector('[data-snap-portlet-id="p1"].dc-portlet-snap-band-left')
+      fireEvent.drop(band!)
+
+      expect(onSnapDrop).toHaveBeenCalledWith('p1', 'left')
+      expect(onRowDrop).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('row boundary drop zones', () => {
+    it('should add dc-drop-zone-active to the top boundary on dragOver', () => {
+      // Regression: a key-prefix mismatch meant the top boundary never lit up.
+      const { container } = render(
+        <RowManagedLayout {...defaultProps} canEdit={true} />
+      )
+
+      const topDropZone = container.querySelector('.dc-row-boundary-drop-top') as HTMLElement
+      expect(topDropZone.classList.contains('dc-drop-zone-active')).toBe(false)
+
+      act(() => {
+        fireEvent.dragOver(topDropZone)
+      })
+
+      const active = container.querySelector('.dc-row-boundary-drop-top') as HTMLElement
+      expect(active.classList.contains('dc-drop-zone-active')).toBe(true)
+    })
+
+    it('should add dc-drop-zone-active to the bottom boundary on dragOver', () => {
+      const { container } = render(
+        <RowManagedLayout {...defaultProps} canEdit={true} />
+      )
+
+      const bottomDropZone = container.querySelector('.dc-row-boundary-drop-bottom') as HTMLElement
+      act(() => {
+        fireEvent.dragOver(bottomDropZone)
+      })
+
+      const active = container.querySelector('.dc-row-boundary-drop-bottom') as HTMLElement
+      expect(active.classList.contains('dc-drop-zone-active')).toBe(true)
     })
   })
 })

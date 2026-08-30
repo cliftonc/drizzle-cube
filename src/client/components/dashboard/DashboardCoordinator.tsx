@@ -28,6 +28,9 @@ import { useElementVisibility } from '../../hooks/useElementVisibility.js'
 import { useDragAutoScroll } from '../../hooks/useDragAutoScroll.js'
 import DashboardPortletCard from '../DashboardPortletCard.js'
 import RowManagedLayout from '../RowManagedLayout.js'
+import PortletGroupCard from '../PortletGroupCard.js'
+import type { PortletCardVariant } from '../dashboardPortletCard/cardStyles.js'
+import { findPortletLocation, removeFromGroup, type SnapEdge } from '../../hooks/dashboard/groupUtils.js'
 import { ensureAnalysisConfig } from '../../utils/configMigration.js'
 import { useCubeFeatures } from '../../providers/CubeProvider.js'
 import { useResponsiveDashboard } from '../../hooks/useResponsiveDashboard.js'
@@ -35,14 +38,16 @@ import { ScrollContainerProvider } from '../../providers/ScrollContainerContext.
 import { useDashboard } from '../../hooks/useDashboardHook.js'
 import type {
   PortletConfig,
+  PortletGroup,
   DashboardFilterMapping,
   DashboardLayoutMode,
   RowLayout
 } from '../../types.js'
 import {
   getGridSettings,
-  equalizeRowColumns,
+  equalizeColumns,
   adjustRowWidths,
+  adjustInsertIndexForRemovedRow,
   createRowId,
   findScrollableAncestor
 } from './dashboardGridUtils.js'
@@ -124,7 +129,19 @@ export default function DashboardCoordinator({
   const draftRowsRef = useRef<RowLayout[] | null>(null)
   // Local ref for tracking latest drag rows synchronously (avoids stale reads from useEffect-synced ref)
   const latestDragRowsRef = useRef<RowLayout[] | null>(null)
-  const dragStateRef = useRef<{ rowIndex: number; colIndex: number; portletId: string } | null>(null)
+  /**
+   * What is currently being dragged. `groupChild` matters because such a
+   * portlet owns no column - splicing by `colIndex` would remove the whole
+   * group instead of the one child.
+   */
+  type DragSource =
+    | { kind: 'column'; rowIndex: number; colIndex: number; portletId: string }
+    | { kind: 'group'; rowIndex: number; colIndex: number; groupId: string }
+    | { kind: 'groupChild'; rowIndex: number; colIndex: number; groupId: string; portletId: string }
+  const dragStateRef = useRef<DragSource | null>(null)
+  const [draggingPortletId, setDraggingPortletId] = useState<string | null>(null)
+  /** Set only while a whole group is in flight; a group owns no `draggingPortletId`. */
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
 
   // =========================================================================
   // Dashboard State from Zustand Store via useDashboard hook
@@ -155,6 +172,7 @@ export default function DashboardCoordinator({
     isFilterConfigModalOpen,
     filterConfigPortlet,
     deleteConfirmPortletId,
+    deleteConfirmGroupId,
     draftRows,
     isDraggingPortlet,
     isInitialized,
@@ -162,7 +180,9 @@ export default function DashboardCoordinator({
     canChangeLayoutMode,
     selectedFilter,
     resolvedRows,
+    resolvedGroups,
     layoutMode,
+    selectableModes,
     actions,
   } = dashboard
 
@@ -172,6 +192,10 @@ export default function DashboardCoordinator({
   actionsRef.current = actions
   const canEditRef = useRef(canEdit)
   canEditRef.current = canEdit
+  const resolvedRowsRef = useRef(resolvedRows)
+  resolvedRowsRef.current = resolvedRows
+  const resolvedGroupsRef = useRef(resolvedGroups)
+  resolvedGroupsRef.current = resolvedGroups
 
   // Sync draftRowsRef with store state (for mouse event handlers)
   useEffect(() => {
@@ -368,6 +392,14 @@ export default function DashboardCoordinator({
     }
   }, [config, editable, isEditMode, onConfigChange, onSave, isInitialized, actions])
 
+  /**
+   * Resizing snaps to half a grid unit by default - finer than the whole unit
+   * it used to use - and to nothing at all while Shift is held, for pixel work.
+   * Read from the live move event so Shift can be pressed mid-drag.
+   */
+  const quantiseUnits = (units: number, freeform: boolean) =>
+    freeform ? units : Math.round(units * 2) / 2
+
   const startRowResize = useCallback((rowIndex: number, event: MouseEvent<HTMLDivElement>) => {
     if (!canEdit) return
     event.preventDefault()
@@ -381,7 +413,7 @@ export default function DashboardCoordinator({
 
     const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
       const delta = moveEvent.clientY - startY
-      const deltaUnits = Math.round(delta / gridSettings.rowHeight)
+      const deltaUnits = quantiseUnits(delta / gridSettings.rowHeight, moveEvent.shiftKey)
       const nextRows = startRows.map((row, index) => {
         if (index !== rowIndex) return row
         return {
@@ -428,7 +460,7 @@ export default function DashboardCoordinator({
 
     const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
       const delta = moveEvent.clientX - startX
-      const deltaUnits = Math.round(delta / unitWidth)
+      const deltaUnits = quantiseUnits(delta / unitWidth, moveEvent.shiftKey)
       if (deltaUnits === 0) {
         latestDragRowsRef.current = startRows
         actions.setDraftRows(startRows)
@@ -484,22 +516,64 @@ export default function DashboardCoordinator({
     document.addEventListener('mouseup', handleMouseUp)
   }, [canEdit, gridSettings, gridWidth, resolvedRows, actions])
 
-  const handlePortletDragStart = useCallback((rowIndex: number, colIndex: number, portletId: string, event: DragEvent<HTMLDivElement>) => {
+  const handlePortletDragStart = useCallback((
+    rowIndex: number,
+    colIndex: number,
+    portletId: string,
+    event: DragEvent<HTMLDivElement>,
+    groupId?: string
+  ) => {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', groupId ?? portletId)
+
     if (!canEditRef.current) return
-    dragStateRef.current = { rowIndex, colIndex, portletId }
+
+    dragStateRef.current = groupId
+      ? { kind: 'group', rowIndex, colIndex, groupId }
+      : { kind: 'column', rowIndex, colIndex, portletId }
+    setDraggingPortletId(groupId ? null : portletId)
+    setDraggingGroupId(groupId ?? null)
     actionsRef.current.setIsDraggingPortlet(true)
+  }, [])
+
+  /** A portlet dragged from inside a group - it owns no column of its own. */
+  const handleGroupChildDragStart = useCallback((
+    groupId: string,
+    portletId: string,
+    event: DragEvent<HTMLDivElement>
+  ) => {
+    // setData first: a dragstart that returns without it is cancelled outright.
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', portletId)
+
+    if (!canEditRef.current) return
+
+    const location = findPortletLocation(resolvedRowsRef.current, resolvedGroupsRef.current, portletId)
+    dragStateRef.current = {
+      kind: 'groupChild',
+      rowIndex: location?.rowIndex ?? 0,
+      colIndex: location?.colIndex ?? 0,
+      groupId,
+      portletId
+    }
+    setDraggingPortletId(portletId)
+    actionsRef.current.setIsDraggingPortlet(true)
   }, [])
 
   const handlePortletDragEnd = useCallback(() => {
     dragStateRef.current = null
+    setDraggingPortletId(null)
+    setDraggingGroupId(null)
     actionsRef.current.setIsDraggingPortlet(false)
   }, [])
 
   const handleRowDrop = useCallback((rowIndex: number, insertIndex: number | null) => {
     const dragState = dragStateRef.current
     if (!dragState) return
+    // Clear now, not on dragend: a committed drop re-parents the dragged column
+    // into another row, React unmounts the old node, and its dragend never
+    // fires - leaving the card stuck at its half-opacity dragging style.
+    handlePortletDragEnd()
 
     const nextRows = resolvedRows.map(row => ({
       ...row,
@@ -509,6 +583,21 @@ export default function DashboardCoordinator({
     const sourceRowIndex = dragState.rowIndex
     const sourceRow = nextRows[sourceRowIndex]
     if (!sourceRow) return
+
+    // Dragging a portlet out of a group: it has no column to splice, so strip
+    // it from the group and give it a fresh column at the drop position.
+    if (dragState.kind === 'groupChild') {
+      const { groups: nextGroups } = removeFromGroup(resolvedGroups, dragState.portletId)
+      const targetRow = nextRows[rowIndex]
+      if (!targetRow) return
+      targetRow.columns.splice(insertIndex ?? targetRow.columns.length, 0, {
+        portletId: dragState.portletId,
+        w: 0
+      })
+      targetRow.columns = equalizeColumns(targetRow.columns, gridSettings)
+      actions.updateLayout({ rows: nextRows, groups: nextGroups })
+      return
+    }
 
     const [movedColumn] = sourceRow.columns.splice(dragState.colIndex, 1)
     let sourceRowRemoved = false
@@ -538,27 +627,23 @@ export default function DashboardCoordinator({
       if (!sourceRowRemoved) {
         nextRows[sourceRowIndex] = {
           ...nextRows[sourceRowIndex],
-          columns: equalizeRowColumns(
-            nextRows[sourceRowIndex].columns.map(column => column.portletId),
-            gridSettings
-          )
+          columns: equalizeColumns(nextRows[sourceRowIndex].columns, gridSettings)
         }
       }
       nextRows[targetRowIndex] = {
         ...nextRows[targetRowIndex],
-        columns: equalizeRowColumns(
-          nextRows[targetRowIndex].columns.map(column => column.portletId),
-          gridSettings
-        )
+        columns: equalizeColumns(nextRows[targetRowIndex].columns, gridSettings)
       }
     }
 
     actions.updateRowLayout(nextRows)
-  }, [gridSettings, resolvedRows, actions])
+  }, [gridSettings, resolvedGroups, resolvedRows, actions, handlePortletDragEnd])
 
   const handleNewRowDrop = useCallback((insertIndex: number) => {
     const dragState = dragStateRef.current
     if (!dragState) return
+    // See handleRowDrop: dragend is lost when the drop re-parents the column.
+    handlePortletDragEnd()
 
     const nextRows = resolvedRows.map(row => ({
       ...row,
@@ -568,25 +653,60 @@ export default function DashboardCoordinator({
     const sourceRow = nextRows[dragState.rowIndex]
     if (!sourceRow) return
 
+    // Carry the height across rather than falling back to the default: a card
+    // dragged into a row of its own should keep the height it was given, not
+    // snap back to three units.
+    const newRowHeight = Math.max(sourceRow.h || 0, gridSettings.minH, 1)
+
+    if (dragState.kind === 'groupChild') {
+      const { groups: nextGroups } = removeFromGroup(resolvedGroups, dragState.portletId)
+      nextRows.splice(insertIndex, 0, {
+        id: createRowId(),
+        h: newRowHeight,
+        columns: equalizeColumns([{ portletId: dragState.portletId, w: 0 }], gridSettings)
+      })
+      actions.updateLayout({ rows: nextRows, groups: nextGroups })
+      return
+    }
+
     const [movedColumn] = sourceRow.columns.splice(dragState.colIndex, 1)
-    if (sourceRow.columns.length === 0) {
+    const sourceRowRemoved = sourceRow.columns.length === 0
+    if (sourceRowRemoved) {
       nextRows.splice(dragState.rowIndex, 1)
     } else {
-      sourceRow.columns = equalizeRowColumns(
-        sourceRow.columns.map(column => column.portletId),
-        gridSettings
-      )
+      sourceRow.columns = equalizeColumns(sourceRow.columns, gridSettings)
     }
+    const targetIndex = adjustInsertIndexForRemovedRow(
+      insertIndex,
+      dragState.rowIndex,
+      sourceRowRemoved
+    )
 
     const newRow: RowLayout = {
       id: createRowId(),
-      h: Math.max(gridSettings.minH, 3),
-      columns: equalizeRowColumns([movedColumn.portletId], gridSettings)
+      h: newRowHeight,
+      columns: equalizeColumns([movedColumn], gridSettings)
     }
-    nextRows.splice(insertIndex, 0, newRow)
+    nextRows.splice(targetIndex, 0, newRow)
 
     actions.updateRowLayout(nextRows)
-  }, [gridSettings, resolvedRows, actions])
+  }, [gridSettings, resolvedGroups, resolvedRows, actions, handlePortletDragEnd])
+
+  /**
+   * Snap the dragged portlet against an edge of `targetPortletId`.
+   *
+   * Only a single portlet can be snapped. A whole group moves as a column, and
+   * renders no bands at all while it is in flight, so it targets rows and
+   * columns only - the guard here is belt and braces.
+   */
+  const handleSnapDrop = useCallback((targetPortletId: string, edge: SnapEdge) => {
+    const dragState = dragStateRef.current
+    if (!dragState) return
+    if (dragState.kind === 'group') return handlePortletDragEnd()
+    if (dragState.portletId === targetPortletId) return handlePortletDragEnd()
+    handlePortletDragEnd()
+    actionsRef.current.snapPortletIntoGroup(dragState.portletId, targetPortletId, edge)
+  }, [handlePortletDragEnd])
 
   // Handle portlet refresh - use action from hook
   // Pass { bustCache: true } to bypass client and server caches (shift+click)
@@ -762,10 +882,12 @@ export default function DashboardCoordinator({
   const renderPortletCard = useCallback((
     portlet: PortletConfig,
     containerProps?: HTMLAttributes<HTMLDivElement>,
-    headerProps?: HTMLAttributes<HTMLDivElement>
+    headerProps?: HTMLAttributes<HTMLDivElement>,
+    variant: PortletCardVariant = 'standalone'
   ): ReactNode => (
     <DashboardPortletCard
       portlet={portlet}
+      variant={variant}
       editable={editable}
       layoutMode={layoutMode}
       dashboardFilters={dashboardFilters}
@@ -799,8 +921,11 @@ export default function DashboardCoordinator({
     y: portlet.y,
     w: portlet.w,
     h: portlet.h,
-    minW: gridSettings.minW,
-    minH: gridSettings.minH,
+    // Grouped children derive widths inside their group's column and can come
+    // out below the dashboard minimum; RGL would otherwise widen them, collide,
+    // and let the compactor scramble the grid.
+    minW: Math.min(gridSettings.minW, portlet.w),
+    minH: Math.min(gridSettings.minH, portlet.h),
     // Only enable drag/resize in edit mode
     isDraggable: canEdit,
     isResizable: canEdit,
@@ -850,10 +975,40 @@ export default function DashboardCoordinator({
     </ReactGridLayout>
   ), [baseLayout, handleLayoutChange, handleDragStop, handleResizeStop, gridWidth, gridSettings, canEdit, config.portlets, renderPortletCard])
 
+  const portletsById = useMemo(
+    () => new Map(config.portlets.map(portlet => [portlet.id, portlet])),
+    [config.portlets]
+  )
+
+  const renderGroupCard = useCallback((
+    group: PortletGroup,
+    renderSnapBands: (portletId: string) => ReactNode
+  ): ReactNode => (
+    <PortletGroupCard
+      group={group}
+      portlets={portletsById}
+      canEdit={canEdit}
+      renderChild={(portlet, wrapperProps) => renderPortletCard(portlet, wrapperProps, undefined, 'groupChild')}
+      onRename={(groupId, title) => { void actionsRef.current.renameGroup(groupId, title) }}
+      onUngroup={(groupId) => { void actionsRef.current.ungroupGroup(groupId) }}
+      onDelete={(groupId) => actionsRef.current.deleteGroup(groupId)}
+      onChildDragStart={handleGroupChildDragStart}
+      onChildDragEnd={handlePortletDragEnd}
+      renderSnapBands={renderSnapBands}
+    />
+  ), [
+    canEdit,
+    handleGroupChildDragStart,
+    handlePortletDragEnd,
+    portletsById,
+    renderPortletCard,
+  ])
+
   const renderRowContent = useCallback((): ReactNode => (
     <RowManagedLayout
       rows={resolvedRows}
       portlets={config.portlets}
+      groups={resolvedGroups}
       gridSettings={gridSettings}
       gridWidth={gridWidth}
       canEdit={canEdit}
@@ -864,9 +1019,13 @@ export default function DashboardCoordinator({
       onPortletDragEnd={handlePortletDragEnd}
       onRowDrop={handleRowDrop}
       onNewRowDrop={handleNewRowDrop}
+      onSnapDrop={handleSnapDrop}
+      draggingPortletId={draggingPortletId}
+      draggingGroupId={draggingGroupId}
       renderPortlet={renderPortletCard}
+      renderGroup={renderGroupCard}
     />
-  ), [resolvedRows, config.portlets, gridSettings, gridWidth, canEdit, isDraggingPortlet, startRowResize, startColumnResize, handlePortletDragStart, handlePortletDragEnd, handleRowDrop, handleNewRowDrop, renderPortletCard])
+  ), [resolvedRows, resolvedGroups, config.portlets, gridSettings, gridWidth, canEdit, isDraggingPortlet, startRowResize, startColumnResize, handlePortletDragStart, handlePortletDragEnd, handleRowDrop, handleNewRowDrop, handleSnapDrop, draggingPortletId, draggingGroupId, renderPortletCard, renderGroupCard])
 
   const renderActiveLayout = useCallback((): ReactNode => (
     layoutMode === 'rows' ? renderRowContent() : renderGridContent()
@@ -895,6 +1054,7 @@ export default function DashboardCoordinator({
     isFilterConfigModalOpen,
     filterConfigPortlet,
     deleteConfirmPortletId,
+    deleteConfirmGroupId,
     draftRows,
     isDraggingPortlet,
     isInitialized,
@@ -904,8 +1064,10 @@ export default function DashboardCoordinator({
     canChangeLayoutMode,
     selectedFilter,
     resolvedRows,
+    resolvedGroups,
     layoutMode,
     allowedModes,
+    selectableModes,
 
     // Actions
     actions,

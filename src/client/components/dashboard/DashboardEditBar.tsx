@@ -98,7 +98,7 @@ export default function DashboardEditBar() {
     isEditMode,
     isResponsiveEditable,
     layoutMode,
-    allowedModes,
+    selectableModes,
     canChangeLayoutMode,
     isScrolled,
     editBarRef,
@@ -123,7 +123,7 @@ export default function DashboardEditBar() {
           isResponsiveEditable={isResponsiveEditable}
           onToggle={actions.toggleEditMode}
         />
-        {isEditMode && allowedModes.length > 1 && (
+        {isEditMode && selectableModes.length > 1 && (
           <LayoutModeToggle
             layoutMode={layoutMode}
             canChangeLayoutMode={canChangeLayoutMode}

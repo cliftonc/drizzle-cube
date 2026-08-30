@@ -22,7 +22,7 @@ export default function DashboardToolbar() {
     isEditMode,
     isResponsiveEditable,
     layoutMode,
-    allowedModes,
+    selectableModes,
     canChangeLayoutMode,
     isEditBarVisible,
     config,
@@ -44,7 +44,7 @@ export default function DashboardToolbar() {
           onEditModeToggle={() => isResponsiveEditable && actions.toggleEditMode()}
           layoutMode={layoutMode}
           onLayoutModeChange={actions.handleLayoutModeChange}
-          allowedModes={allowedModes}
+          allowedModes={selectableModes}
           canChangeLayoutMode={canChangeLayoutMode}
           currentPalette={config.colorPalette || 'default'}
           onPaletteChange={actions.handlePaletteChange}

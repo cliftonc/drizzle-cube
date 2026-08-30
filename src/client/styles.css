@@ -79,6 +79,26 @@
   z-index: 2;
 }
 
+/* The card in flight. Drop zones are invisible until hovered, so without this
+   a drag that finds no target looks like a drag that never started. */
+.dc-row-layout-column-dragging {
+  opacity: 0.45;
+}
+
+/* Drawn as an overlay rather than an outline on the wrapper: a group card fills
+   its wrapper with an opaque background and paints over an inset outline, so
+   combined portlets showed no border while single ones did. Above the snap
+   bands (3) and preview (4) so it is never buried. */
+.dc-row-layout-column-dragging::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  border: 2px dashed var(--dc-primary);
+  border-radius: var(--dc-radius-lg);
+}
+
 .dc-split-handle {
   opacity: 0;
   pointer-events: none;
@@ -121,11 +141,6 @@
   opacity: 0;
   transform: translateX(-50%);
   transition: opacity 0.2s ease, background 0.2s ease, width 0.2s ease;
-}
-
-.dc-column-resize-handle:hover,
-.dc-column-resize-handle.dc-drop-zone-active {
-  background: rgba(var(--dc-primary-rgb), 0.1);
 }
 
 .dc-column-resize-handle:hover::after,
@@ -192,10 +207,6 @@
   transition: opacity 0.2s ease, background 0.2s ease, height 0.2s ease;
 }
 
-.dc-row-boundary-drop.dc-drop-zone-active {
-  background: rgba(var(--dc-primary-rgb), 0.1);
-}
-
 .dc-row-boundary-drop.dc-drop-zone-active::after {
   background: var(--dc-primary);
   opacity: 1;
@@ -213,11 +224,6 @@
   opacity: 0;
   transform: translateY(-50%);
   transition: opacity 0.2s ease, background 0.2s ease, height 0.2s ease;
-}
-
-.dc-row-resize-handle:hover,
-.dc-row-resize-handle.dc-drop-zone-active {
-  background: rgba(var(--dc-primary-rgb), 0.1);
 }
 
 .dc-row-resize-handle:hover::after,
@@ -245,7 +251,13 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: calc(var(--dc-column-gap, 16px) * 3);
+  /* Straddles the row edge, reaching exactly one gap into the card - which is
+     the ring the snap bands leave free (see .dc-portlet-snap-band's inset). Any
+     less and there is nowhere to aim for "insert as the first/last column",
+     because the bands own everything further in; any more and it covers a
+     group's corner toolbar, so a drag begun on the grip starts with the pointer
+     already on this zone. It was 3*gap before, which reached 2*gap inside. */
+  width: calc(var(--dc-column-gap, 16px) * 2);
   z-index: 1;
   background: transparent;
   transition: background 0.2s ease;
@@ -268,12 +280,12 @@
 
 .dc-row-edge-drop-left {
   left: 0;
-  transform: translateX(calc(-1 * var(--dc-column-gap, 16px)));
+  transform: translateX(-50%);
 }
 
 .dc-row-edge-drop-right {
   right: 0;
-  transform: translateX(var(--dc-column-gap, 16px));
+  transform: translateX(50%);
 }
 
 .dc-row-edge-drop::after {
@@ -289,10 +301,6 @@
   transition: opacity 0.2s ease, background 0.2s ease, width 0.2s ease;
 }
 
-.dc-row-edge-drop.dc-drop-zone-active {
-  background: rgba(var(--dc-primary-rgb), 0.1);
-}
-
 .dc-row-edge-drop.dc-drop-zone-active::after {
   background: var(--dc-primary);
   opacity: 1;
@@ -301,4 +309,119 @@
 
 .dc-row-resize-handle-drop {
   position: relative;
+}
+
+/* ---------------------------------------------------------------------------
+   Portlet groups ("combination portlets")
+   -------------------------------------------------------------------------*/
+
+.dc-portlet-group {
+  --dc-group-gap: 4px;
+}
+
+/* Pinned to the card corner. This only stays grabbable because the row edge
+   drop zones were moved wholly into the gutter - see .dc-row-edge-drop. */
+.dc-portlet-group-floating-toolbar {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 20;
+}
+
+/* An untitled group's controls float over the card rather than taking a header
+   row, so its inner height is identical in edit and view mode. Child action
+   strips reveal on hover of their own child so a KPI strip stays clean at rest.
+
+   Centred rather than pinned top-right: the group's own toolbar sits at the
+   card's top-left, and on a narrow child the two collide (measured 55px of
+   overlap on a 300px-wide KPI - the strip is wider than half the card, so
+   centring horizontally alone would not separate them). Hover-only, so it
+   covers nothing at rest. */
+.dc-portlet-floating-actions {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+}
+
+.dc-portlet-group-child:hover .dc-portlet-floating-actions,
+.dc-portlet-floating-actions:focus-within {
+  opacity: 1;
+}
+
+/* Snap bands are the *hit* regions, and they match what the preview promises:
+   the four of them tile the card as triangles meeting at its centre, so aiming
+   anywhere in the half you can see lands that half. They used to be narrow
+   strips inset 26-36px, which made the target far smaller than the feedback.
+
+   The inset keeps the gap handles reachable at the very edge - the column
+   resize handle doubles as the insert-between-columns drop and reaches 16px
+   into a card. The row edge drops no longer intrude at all (see
+   .dc-row-edge-drop) and the row resize handle shrinks to gutter size during a
+   drag, so the bottom needs no more room than the rest. */
+.dc-portlet-snap-band {
+  position: absolute;
+  z-index: 3;
+  background: transparent;
+  inset: 16px;
+}
+
+.dc-portlet-snap-band-top {
+  clip-path: polygon(0 0, 100% 0, 50% 50%);
+}
+
+.dc-portlet-snap-band-right {
+  clip-path: polygon(100% 0, 100% 100%, 50% 50%);
+}
+
+.dc-portlet-snap-band-bottom {
+  clip-path: polygon(100% 100%, 0 100%, 50% 50%);
+}
+
+.dc-portlet-snap-band-left {
+  clip-path: polygon(0 100%, 0 0, 50% 50%);
+}
+
+/* Cards inside a group sit flush with a 4px gutter, so the outer inset above
+   would eat a small child whole. Hug it instead. */
+.dc-portlet-group-cell .dc-portlet-snap-band {
+  inset: 4px;
+}
+
+/* Drop preview: a plain translucent wash over the half of the target the
+   dragged portlet will occupy. No border - the shape is the message. */
+.dc-portlet-snap-preview {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--dc-success) 30%, transparent);
+  border-radius: var(--dc-radius-sm);
+}
+
+.dc-portlet-snap-preview-left,
+.dc-portlet-snap-preview-right {
+  top: 0;
+  bottom: 0;
+  width: 50%;
+}
+
+.dc-portlet-snap-preview-left { left: 0; }
+.dc-portlet-snap-preview-right { right: 0; }
+
+.dc-portlet-snap-preview-top,
+.dc-portlet-snap-preview-bottom {
+  left: 0;
+  right: 0;
+  height: 50%;
+}
+
+.dc-portlet-snap-preview-top { top: 0; }
+.dc-portlet-snap-preview-bottom { bottom: 0; }
+
+/* The row resize handle reaches ~48px up into a card, which would swallow the
+   bottom snap band. It is oversized only to be a forgiving *mouse-resize*
+   target; as a drop target during a drag, gutter-sized is plenty. */
+.dc-row-layout-dragging .dc-row-resize-handle {
+  height: var(--dc-row-gap, 24px);
 }

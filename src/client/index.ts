@@ -262,6 +262,8 @@ export type {
   CubeQueryOptions,
   CubeApiOptions,
   DashboardConfig,
+  PortletGroup,
+  PortletGroupCell,
   // Feature config types
   FeaturesConfig,
   XlsExportFeatureConfig,

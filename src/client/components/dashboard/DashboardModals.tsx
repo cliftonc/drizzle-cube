@@ -27,6 +27,7 @@ export default function DashboardModals() {
     isFilterConfigModalOpen,
     filterConfigPortlet,
     deleteConfirmPortletId,
+    deleteConfirmGroupId,
     handlePortletSave,
     handleSaveFilterConfig,
     actions,
@@ -34,6 +35,10 @@ export default function DashboardModals() {
 
   const deletePortletTitle =
     config.portlets.find(p => p.id === deleteConfirmPortletId)?.title || t('dashboard.thisPortlet')
+
+  const deletingGroup = config.groups?.find(group => group.id === deleteConfirmGroupId)
+  const deletingGroupPortletCount =
+    deletingGroup?.cells.reduce((sum, cell) => sum + cell.portletIds.length, 0) ?? 0
 
   return (
     <>
@@ -69,6 +74,17 @@ export default function DashboardModals() {
         portletTitle={filterConfigPortlet?.title || ''}
         schema={schema || null}
         portlet={filterConfigPortlet}
+      />
+
+      {/* Delete Group Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmGroupId}
+        onClose={actions.closeDeleteConfirm}
+        onConfirm={actions.confirmDelete}
+        title={t('dashboard.group.deleteTitle')}
+        message={t('dashboard.group.deleteConfirm', { count: String(deletingGroupPortletCount) })}
+        confirmText={t('common.actions.delete')}
+        confirmVariant="danger"
       />
 
       {/* Delete Confirmation Modal */}

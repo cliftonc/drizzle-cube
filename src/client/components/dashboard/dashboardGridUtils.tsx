@@ -7,8 +7,7 @@
 import type { CSSProperties } from 'react'
 import type {
   DashboardConfig,
-  DashboardGridSettings,
-  RowLayoutColumn
+  DashboardGridSettings
 } from '../../types.js'
 
 export const DEFAULT_GRID_SETTINGS: DashboardGridSettings = {
@@ -18,7 +17,15 @@ export const DEFAULT_GRID_SETTINGS: DashboardGridSettings = {
   minH: 1
 }
 
-export const createRowId = () => `row-${Date.now()}`
+// Row maths lives in hooks/dashboard/layoutUtils.ts; re-exported here so the
+// coordinator and the controller/engine share one implementation.
+export {
+  createRowId,
+  equalizeRowColumns,
+  equalizeColumns,
+  adjustRowWidths,
+  adjustInsertIndexForRemovedRow
+} from '../../hooks/dashboard/layoutUtils.js'
 
 export const getGridSettings = (config: DashboardConfig): DashboardGridSettings => ({
   cols: config.grid?.cols ?? DEFAULT_GRID_SETTINGS.cols,
@@ -26,74 +33,6 @@ export const getGridSettings = (config: DashboardConfig): DashboardGridSettings 
   minW: config.grid?.minW ?? DEFAULT_GRID_SETTINGS.minW,
   minH: config.grid?.minH ?? DEFAULT_GRID_SETTINGS.minH
 })
-
-export const equalizeRowColumns = (
-  portletIds: string[],
-  gridSettings: DashboardGridSettings
-): RowLayoutColumn[] => {
-  const count = portletIds.length
-  if (count === 0) return []
-
-  const { cols, minW } = gridSettings
-  const minTotal = minW * count
-
-  if (minTotal > cols) {
-    const base = Math.floor(cols / count)
-    const remainder = cols % count
-    return portletIds.map((id, index) => ({
-      portletId: id,
-      w: base + (index < remainder ? 1 : 0)
-    }))
-  }
-
-  const remaining = cols - minTotal
-  const extra = Math.floor(remaining / count)
-  const remainder = remaining % count
-
-  return portletIds.map((id, index) => ({
-    portletId: id,
-    w: minW + extra + (index < remainder ? 1 : 0)
-  }))
-}
-
-export const adjustRowWidths = (
-  columns: RowLayoutColumn[],
-  gridSettings: DashboardGridSettings
-): RowLayoutColumn[] => {
-  if (columns.length === 0) return []
-
-  const { cols, minW } = gridSettings
-  const adjusted = columns.map(column => ({
-    ...column,
-    w: Math.max(minW, column.w)
-  }))
-
-  let total = adjusted.reduce((sum, column) => sum + column.w, 0)
-  if (total === cols) return adjusted
-
-  if (total < cols) {
-    let remaining = cols - total
-    let index = 0
-    while (remaining > 0) {
-      adjusted[index % adjusted.length].w += 1
-      remaining -= 1
-      index += 1
-    }
-    return adjusted
-  }
-
-  let overflow = total - cols
-  for (let index = adjusted.length - 1; index >= 0 && overflow > 0; index -= 1) {
-    const column = adjusted[index]
-    const reducible = Math.max(0, column.w - minW)
-    if (reducible === 0) continue
-    const delta = Math.min(reducible, overflow)
-    column.w -= delta
-    overflow -= delta
-  }
-
-  return adjusted
-}
 
 /**
  * Finds the nearest scrollable ancestor of an element.

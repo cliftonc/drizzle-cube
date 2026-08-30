@@ -32,6 +32,7 @@ import type {
   DashboardLayoutMode,
   DashboardGridSettings,
   RowLayout,
+  PortletGroup,
   FeaturesConfig
 } from '../../types.js'
 
@@ -90,6 +91,7 @@ export interface DashboardContextValue {
   isFilterConfigModalOpen: boolean
   filterConfigPortlet: PortletConfig | null
   deleteConfirmPortletId: string | null
+  deleteConfirmGroupId: string | null
   draftRows: RowLayout[] | null
   isDraggingPortlet: boolean
   isInitialized: boolean
@@ -99,8 +101,11 @@ export interface DashboardContextValue {
   canChangeLayoutMode: boolean
   selectedFilter: DashboardFilter | null
   resolvedRows: RowLayout[]
+  resolvedGroups: PortletGroup[]
   layoutMode: DashboardLayoutMode
   allowedModes: DashboardLayoutMode[]
+  /** Modes the toggle should offer; a subset of allowedModes. */
+  selectableModes: DashboardLayoutMode[]
 
   // ---- Actions ----
   actions: UseDashboardActions
