@@ -3,7 +3,8 @@
  *
  * The point of `layout: 'compact'` is that nothing scales with the container —
  * so these assert on the fixed type scale and on the pieces the reference
- * design calls for (uppercase label, coloured delta, before/after sub-line).
+ * design calls for (coloured delta, before/after sub-line). The label
+ * deliberately matches the default KPI layout so the two read as a set.
  */
 
 import { render, screen } from '@testing-library/react'
@@ -62,6 +63,21 @@ describe('KPI compact layout', () => {
         />
       )
       expect(screen.getByText(/vs 500/)).toBeInTheDocument()
+    })
+
+    it('styles the label like the default KPI layout', () => {
+      render(
+        <KpiNumber
+          data={[{ 'Metrics.engineers': 604 }]}
+          chartConfig={valueConfig}
+          displayConfig={{ layout: 'compact' }}
+        />
+      )
+      const label = screen.getByText('engineers')
+      expect(label.parentElement?.className).toContain('dc:font-bold')
+      expect(label.parentElement?.className).toContain('text-dc-text-secondary')
+      expect(label.parentElement?.className).not.toContain('uppercase')
+      expect(label.parentElement?.style.fontSize).toBe('14px')
     })
 
     it('falls back to the auto layout when layout is not set', () => {

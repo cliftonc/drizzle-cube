@@ -48,9 +48,12 @@ const KpiCompactLayout = React.memo(function KpiCompactLayout({
       // content below the fold once centred.
       style={{ height: '100%', minHeight: '80px' }}
     >
+      {/* Matches the default KPI layout's label (bold, 14px, secondary) so
+          compact and auto KPIs sitting on one dashboard read as a set. Only
+          the alignment differs. */}
       <div
-        className="dc:flex dc:items-center dc:gap-1 dc:font-semibold dc:uppercase text-dc-text-muted"
-        style={{ fontSize: '11px', letterSpacing: '0.06em', lineHeight: 1.2 }}
+        className="dc:flex dc:items-center dc:gap-1 dc:font-bold text-dc-text-secondary"
+        style={{ fontSize: '14px', lineHeight: 1.2 }}
       >
         <span className="dc:truncate">{label}</span>
         {labelAdornment}
