@@ -18,10 +18,14 @@ import AreaChart from '../../../../src/client/components/charts/AreaChart'
 
 // Mock ChartContainer to bypass the dimension check and render children immediately
 vi.mock('../../../../src/client/components/charts/ChartContainer', () => ({
-  default: ({ children, height }: { children: React.ReactElement; height?: string | number }) => {
+  default: ({ children, height, minHeight }: { children: React.ReactElement; height?: string | number; minHeight?: string | number }) => {
     const heightStyle = typeof height === 'number' ? `${height}px` : (height || '100%')
     return (
-      <div style={{ height: heightStyle, width: '100%' }} data-testid="chart-container">
+      <div
+        style={{ height: heightStyle, width: '100%' }}
+        data-testid="chart-container"
+        data-min-height={minHeight === undefined ? 'default' : String(minHeight)}
+      >
         {React.cloneElement(children, { width: 800, height: 400 })}
       </div>
     )
@@ -199,6 +203,29 @@ describe('AreaChart', () => {
 
       const svg = container.querySelector('svg')
       expect(svg).toBeInTheDocument()
+    })
+  })
+
+  describe('summary header sizing', () => {
+    it('lets the plot shrink when the summary is shown, so a wrapped header cannot clip it', () => {
+      // The header wraps, so its height is not knowable up front. The plot takes
+      // the remaining flex space and must be allowed below the usual floor,
+      // otherwise header + plot exceeds the portlet.
+      render(
+        <AreaChart
+          data={mockAreaData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showSummary: true }}
+        />
+      )
+      const container = screen.getByTestId('chart-container')
+      expect(container.getAttribute('data-min-height')).toBe('0')
+      expect(container.style.height).toBe('100%')
+    })
+
+    it('keeps the default floor when there is no summary', () => {
+      render(<AreaChart data={mockAreaData} chartConfig={basicChartConfig} />)
+      expect(screen.getByTestId('chart-container').getAttribute('data-min-height')).toBe('default')
     })
   })
 

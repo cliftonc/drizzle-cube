@@ -1633,7 +1633,7 @@
   "chart.runtime.kpiPeriodFallback": "period",
   "chart.runtime.noDataShort": "No data",
   "chart.option.showSummary.label": "Summary header",
-  "chart.option.showSummary.description": "Show each series' latest value and its change since the start of the window above the chart",
+  "chart.option.showSummary.description": "Show each series' latest value above the chart, with its change since the start of the window on time-based charts",
   "chart.runtime.summarySincePeriodStart": "since start of period",
   "chart.proportionBar.label": "Proportion Bar",
   "chart.proportionBar.description": "Show a part-to-whole breakdown as a single stacked horizontal bar",

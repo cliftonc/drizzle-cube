@@ -383,9 +383,28 @@ export function isTimeOrderedXAxis(queryObject: any, xAxisField: string | undefi
   return timeDimensions.some((td: any) => td?.dimension === xAxisField)
 }
 
+/**
+ * Resolve which Y axis a series key is plotted against — the same rule the
+ * `<Area>`/`<Line>` elements use, so summaries and series never disagree.
+ */
+export function makeAxisResolver(
+  resolveField: (seriesKey: string) => string | undefined,
+  yAxisAssignment: Record<string, 'left' | 'right'>
+): (seriesKey: string) => 'left' | 'right' {
+  return (seriesKey: string) => {
+    const field = resolveField(seriesKey)
+    return field && yAxisAssignment[field] === 'right' ? 'right' : 'left'
+  }
+}
+
 export interface SeriesSummary {
   seriesKey: string
   color: string
+  /**
+   * Which Y axis this series is plotted against, so the summary can be
+   * formatted with that axis' format rather than always the left one.
+   */
+  axis: 'left' | 'right'
   /** Latest non-null value in the window. */
   current: number | null
   /** First non-null value in the window — the baseline the delta is measured from. */
@@ -405,9 +424,11 @@ export interface SeriesSummary {
 export function computeSeriesSummaries(
   chartData: any[],
   seriesKeys: string[],
-  colorPalette?: ColorPalette
+  colorPalette?: ColorPalette,
+  resolveAxis?: (seriesKey: string) => 'left' | 'right'
 ): SeriesSummary[] {
   return seriesKeys.map((seriesKey, index) => {
+    const axis = resolveAxis ? resolveAxis(seriesKey) : 'left'
     const numbers: number[] = []
     for (const row of chartData || []) {
       const raw = row?.[seriesKey]
@@ -418,19 +439,20 @@ export function computeSeriesSummaries(
 
     const color = getSeriesColor(colorPalette, index)
     if (numbers.length === 0) {
-      return { seriesKey, color, current: null, baseline: null, absoluteChange: null, percentageChange: null }
+      return { seriesKey, color, axis, current: null, baseline: null, absoluteChange: null, percentageChange: null }
     }
 
     const current = numbers[numbers.length - 1]
     const baseline = numbers[0]
     if (numbers.length < 2) {
-      return { seriesKey, color, current, baseline: null, absoluteChange: null, percentageChange: null }
+      return { seriesKey, color, axis, current, baseline: null, absoluteChange: null, percentageChange: null }
     }
 
     const absoluteChange = current - baseline
     return {
       seriesKey,
       color,
+      axis,
       current,
       baseline,
       absoluteChange,

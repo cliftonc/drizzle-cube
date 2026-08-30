@@ -1529,7 +1529,7 @@
   "chart.runtime.kpiPeriodFallback": "periode",
   "chart.runtime.noDataShort": "Geen gegevens",
   "chart.option.showSummary.label": "Samenvattingskop",
-  "chart.option.showSummary.description": "Toon boven de grafiek de laatste waarde per reeks en de verandering sinds het begin van de periode",
+  "chart.option.showSummary.description": "Toon boven de grafiek de laatste waarde per reeks, met de verandering sinds het begin van de periode bij tijdgebaseerde grafieken",
   "chart.runtime.summarySincePeriodStart": "sinds begin van de periode",
   "chart.proportionBar.label": "Verhoudingsbalk",
   "chart.proportionBar.description": "Toon een verdeling van het geheel als één gestapelde horizontale balk",

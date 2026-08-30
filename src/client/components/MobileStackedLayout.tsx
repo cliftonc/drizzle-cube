@@ -13,38 +13,9 @@ import { ScrollContainerProvider } from '../providers/ScrollContainerContext.js'
 import type { DashboardFilter, DashboardConfig } from '../types.js'
 import type { ColorPalette } from '../utils/colorPalettes.js'
 import { ensureAnalysisConfig } from '../utils/configMigration.js'
-
-/**
- * Finds the nearest scrollable ancestor of an element.
- */
-function findScrollableAncestor(element: HTMLElement | null): HTMLElement | null {
-  if (!element) return null
-
-  let current = element.parentElement
-
-  while (current) {
-    const style = window.getComputedStyle(current)
-    const overflowY = style.overflowY
-    const overflowX = style.overflowX
-
-    const hasScrollableOverflow =
-      overflowY === 'auto' || overflowY === 'scroll' ||
-      overflowX === 'auto' || overflowX === 'scroll'
-
-    const hasScrollContent =
-      current.scrollHeight > current.clientHeight ||
-      current.scrollWidth > current.clientWidth
-
-    if (hasScrollableOverflow && hasScrollContent) {
-      return current
-    }
-
-    if (current === document.body) break
-    current = current.parentElement
-  }
-
-  return null
-}
+// Shared with DashboardCoordinator so both layouts detect the scroll container
+// the same way - this was previously duplicated here and drifted.
+import { findScrollableAncestor } from './dashboard/dashboardGridUtils.js'
 
 interface MobileStackedLayoutProps {
   config: DashboardConfig

@@ -6,7 +6,8 @@ import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import {
   computeSeriesSummaries,
-  isTimeOrderedXAxis
+  isTimeOrderedXAxis,
+  makeAxisResolver
 } from '../../../src/client/components/charts/cartesianChartHelpers'
 import ChartSummaryHeader from '../../../src/client/components/charts/ChartSummaryHeader'
 import { getPlotLeftOffset, Y_AXIS_WIDTH } from '../../../src/client/components/charts/chartScaffolding'
@@ -145,5 +146,55 @@ describe('getPlotLeftOffset', () => {
 
   it('is unchanged by a right-hand axis, which only affects the right margin', () => {
     expect(getPlotLeftOffset(true)).toBe(getPlotLeftOffset(false))
+  })
+})
+
+describe('dual Y-axis summaries', () => {
+  const yAxisAssignment: Record<string, 'left' | 'right'> = {
+    'Sales.revenue': 'left',
+    'Sales.conversionRate': 'right',
+  }
+  const resolveField = (key: string) => key
+  const rows = [
+    { 'Sales.revenue': 1000, 'Sales.conversionRate': 0.2 },
+    { 'Sales.revenue': 2000, 'Sales.conversionRate': 0.5 },
+  ]
+
+  it('tags each series with the axis it is plotted against', () => {
+    const summaries = computeSeriesSummaries(
+      rows,
+      ['Sales.revenue', 'Sales.conversionRate'],
+      undefined,
+      makeAxisResolver(resolveField, yAxisAssignment)
+    )
+    expect(summaries.map(s => s.axis)).toEqual(['left', 'right'])
+  })
+
+  it('defaults to the left axis when no assignment is given', () => {
+    const [s] = computeSeriesSummaries(rows, ['Sales.revenue'])
+    expect(s.axis).toBe('left')
+  })
+
+  it('formats each series with its own axis format', () => {
+    // Regression: every summary used to be formatted with leftYAxisFormat, so a
+    // right-axis series rendered with the wrong unit.
+    const summaries = computeSeriesSummaries(
+      rows,
+      ['Sales.revenue', 'Sales.conversionRate'],
+      undefined,
+      makeAxisResolver(resolveField, yAxisAssignment)
+    )
+    render(
+      <ChartSummaryHeader
+        summaries={summaries}
+        getSeriesLabel={(k) => k}
+        valueFormat={{ unit: 'currency', decimals: 0, abbreviate: false }}
+        rightValueFormat={{ unit: 'percent', decimals: 1 }}
+      />
+    )
+    // left axis -> currency
+    expect(screen.getByText(/\$2,000/)).toBeInTheDocument()
+    // right axis -> percent, NOT currency
+    expect(screen.getByText(/50\.0%/)).toBeInTheDocument()
   })
 })

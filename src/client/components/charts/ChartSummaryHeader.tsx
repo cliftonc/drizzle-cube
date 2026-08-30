@@ -9,8 +9,10 @@ interface ChartSummaryHeaderProps {
   summaries: SeriesSummary[]
   /** Resolves a series key to its display label. */
   getSeriesLabel: (seriesKey: string) => string
-  /** Numeric format, so the header matches the axis it summarises. */
+  /** Left-axis numeric format, so the header matches the axis it summarises. */
   valueFormat?: AxisFormatConfig
+  /** Right-axis format, used for series assigned to the right axis. */
+  rightValueFormat?: AxisFormatConfig
   /**
    * Whether a change vs. the start of the window is meaningful. False for a
    * categorical x-axis, where "first" and "last" are arbitrary categories.
@@ -23,9 +25,6 @@ interface ChartSummaryHeaderProps {
   leftOffset?: number
 }
 
-/** Fixed height reserved for the band, so callers can subtract it from the plot. */
-export const CHART_SUMMARY_HEADER_HEIGHT = 56
-
 /**
  * Summary band rendered above a time-series plot.
  *
@@ -37,6 +36,7 @@ const ChartSummaryHeader = React.memo(function ChartSummaryHeader({
   summaries,
   getSeriesLabel,
   valueFormat,
+  rightValueFormat,
   showChange = true,
   leftOffset = 0
 }: ChartSummaryHeaderProps) {
@@ -46,12 +46,14 @@ const ChartSummaryHeader = React.memo(function ChartSummaryHeader({
 
   return (
     <div
-      className="dc:flex dc:flex-wrap dc:items-start dc:gap-x-8 dc:gap-y-2 dc:flex-shrink-0 dc:pr-1 dc:pb-2 dc:overflow-hidden"
-      style={{ minHeight: CHART_SUMMARY_HEADER_HEIGHT, paddingLeft: leftOffset }}
+      className="dc:flex dc:flex-wrap dc:items-start dc:gap-x-8 dc:gap-y-2 dc:flex-shrink-0 dc:pr-1 dc:pb-2"
+      style={{ paddingLeft: leftOffset }}
       data-testid="chart-summary-header"
     >
       {summaries.map((summary) => {
         const hasChange = showChange && summary.absoluteChange !== null
+        // A dual-axis chart formats each axis differently; match the series.
+        const format = summary.axis === 'right' ? rightValueFormat : valueFormat
         const isPositive = (summary.absoluteChange ?? 0) >= 0
         return (
           <div key={summary.seriesKey} className="dc:flex dc:flex-col dc:gap-0.5 dc:min-w-0">
@@ -68,7 +70,7 @@ const ChartSummaryHeader = React.memo(function ChartSummaryHeader({
             <div className="dc:font-semibold dc:leading-none text-dc-text" style={{ fontSize: '24px' }}>
               {summary.current === null
                 ? '—'
-                : formatAxisValue(summary.current, valueFormat)}
+                : formatAxisValue(summary.current, format)}
             </div>
 
             {hasChange && (
@@ -78,7 +80,7 @@ const ChartSummaryHeader = React.memo(function ChartSummaryHeader({
                   style={{ color: isPositive ? POSITIVE_COLOR : NEGATIVE_COLOR }}
                 >
                   {isPositive ? '+' : ''}
-                  {formatAxisValue(summary.absoluteChange, valueFormat)}
+                  {formatAxisValue(summary.absoluteChange, format)}
                   {summary.percentageChange !== null && (
                     <> ({isPositive ? '+' : ''}{summary.percentageChange.toFixed(1)}%)</>
                   )}
