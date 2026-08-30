@@ -323,7 +323,6 @@
   "chart.dropZone.series.empty": "Sleep dimensies hier naar splits gegevens naar reeksen",
   "chart.dropZone.maxReached": "Maximaal aantal items bereikt",
   "chart.dropZone.default.empty": "Sleep velden hierheen",
-
   "chart.bar.dropZone.xAxis.empty": "Sleep dimensies & tijdsdimensies hierheen",
   "chart.bar.dropZone.yAxis.empty": "Sleep metingen hierheen",
   "chart.bar.dropZone.series.empty": "Sleep dimensies hierheen om gegevens in reeksen te splitsen",
@@ -376,14 +375,12 @@
   "chart.measureProfile.dropZone.yAxis.empty": "Sleep 2+ metingen hierheen (weergegeven links → rechts)",
   "chart.measureProfile.dropZone.series.empty": "Sleep een dimensie hierheen om meerdere lijnen te maken",
   "chart.gauge.dropZone.yAxis.empty": "Sleep 1 meting hierheen (optioneel 2e voor dynamisch max)",
-
   "chart.activityGrid.validation.timeDimensionRequired": "Tijdsdimensie is vereist voor activiteitsraster",
   "chart.activityGrid.validation.measureRequired": "Activiteitsmeting is vereist voor intensiteitstoewijzing",
   "chart.kpiDelta.validation.measureRequired": "Een meting is vereist voor KPI Delta-grafieken",
   "chart.heatmap.validation.xAxisRequired": "X-as dimensie vereist",
   "chart.heatmap.validation.yAxisRequired": "Y-as dimensie vereist",
   "chart.heatmap.validation.valueRequired": "Waardemeting vereist",
-
   "chart.option.stacking.label": "Stapeling",
   "chart.option.stacking.none": "Geen",
   "chart.option.stacking.stacked": "Gestapeld",
@@ -525,7 +522,7 @@
   "chart.configText.add_2_or_more_measures_they_become_the_x_axis_categories_in_the_order_li": "Voeg 2 of meer meetwaarden toe — ze worden de X-as-categorieen in de opgegeven volgorde",
   "chart.configText.add_an_accent_colored_border_on_one_side_of_the_content": "Voeg een accentgekleurde rand toe aan een zijde van de inhoud",
   "chart.configText.all_fields_to_display_as_columns": "Alle velden om als kolommen weer te geven",
-  "chart.configText.array_of_value_0_1_fraction_color_bands_shown_as_outer_arc_markers": "Array van {value (0-1 fractie), color}-banden, getoond als markeringen op de buitenste boog",
+  "chart.gauge.thresholds.description": "Elke band loopt van zijn waarde tot de volgende. Waarden staan op de schaal van de meter.",
   "chart.configText.axes_categories": "Assen (Categorieen)",
   "chart.configText.bubble_colour": "Bubbelkleur",
   "chart.configText.bubble_labels": "Bubbellabels",
@@ -946,7 +943,6 @@
   "chart.availability.requiresTimeDimension": "Vereist een tijdsdimensie",
   "chart.availability.scatter": "Vereist 2 metingen, of 1 meting plus 1 dimensie",
   "chart.availability.bubble": "Vereist ten minste 2 metingen en 1 dimensie",
-
   "chart.runtime.noData": "Geen gegevens beschikbaar",
   "chart.runtime.noDataHint.bar": "Geen datapunten om weer te geven in staafgrafiek",
   "chart.runtime.noDataHint.line": "Geen datapunten om weer te geven in lijngrafiek",
@@ -1423,7 +1419,6 @@
   "dashboard.deletePortletConfirm": "Zijn je sure je want naar verwijder",
   "dashboard.deletePortletSuffix": "? Deze action kan niet zijn undone.",
   "dashboard.thisPortlet": "deze portlet",
-
   "dashboard.portlet.action.edit": "Portlet bewerken",
   "dashboard.portlet.action.duplicate": "Portlet dupliceren",
   "dashboard.portlet.action.delete": "Portlet verwijderen",
@@ -1431,7 +1426,6 @@
   "dashboard.portlet.action.drag": "Portlet slepen",
   "dashboard.portlet.action.filterConfig": "Dashboardfilters configureren",
   "dashboard.portlet.action.filterConfigActive": "Dashboardfilters configureren ({count} actief)",
-
   "dashboard.group.rename": "Groep hernoemen",
   "dashboard.group.drag": "Groep slepen",
   "dashboard.group.titlePlaceholder": "Groepstitel",
@@ -1520,7 +1514,6 @@
   "analyticsPage.title": "Analysepagina - Komt in fase 4",
   "dataHistogram.average": "Gemiddelde van {count} waarden",
   "dataHistogram.valuesInRange": "{count} waarden in deze bereik",
-
   "mcp.status.connecting": "Verbinden...",
   "mcp.status.loading": "Laden...",
   "mcp.status.waiting": "Wachten op queryresultaten...",
@@ -1536,7 +1529,6 @@
   "mcp.footer.measuresPlural": "{count} metrieken",
   "mcp.footer.dimensions": "{count} dimensie",
   "mcp.footer.dimensionsPlural": "{count} dimensies",
-
   "chart.option.kpiLayout.label": "Lay-out",
   "chart.option.kpiLayout.description": "Compact gebruikt een vaste tekstgrootte zodat meerdere KPI's uitlijnen als een metriekstrook; auto schaalt de waarde naar de portlet",
   "chart.option.kpiLayout.auto": "Automatisch",
@@ -1573,5 +1565,9 @@
   "chart.option.proportionBarLabels.label": "Labels tonen",
   "chart.runtime.summarySince": "sinds {period}",
   "chart.option.showPoints.label": "Datapunten tonen",
-  "chart.option.showPoints.description": "Teken een markering bij elk datapunt. Schakel dit uit bij dichte reeksen, waar de markeringen de lijn verbergen"
+  "chart.option.showPoints.description": "Teken een markering bij elk datapunt. Schakel dit uit bij dichte reeksen, waar de markeringen de lijn verbergen",
+  "chart.gauge.thresholds.from": "Band begint bij",
+  "chart.gauge.thresholds.colour": "Bandkleur",
+  "chart.gauge.thresholds.add": "Band toevoegen",
+  "chart.gauge.thresholds.remove": "Band verwijderen"
 }

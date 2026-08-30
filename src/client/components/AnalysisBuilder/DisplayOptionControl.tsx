@@ -2,18 +2,22 @@
  * DisplayOptionControl Component
  *
  * Renders a single structured display option (boolean, string, number, select,
- * color, paletteColor, axisFormat, stringArray, buttonGroup) for the
+ * color, paletteColor, axisFormat, stringArray, buttonGroup, thresholdBands) for the
  * AnalysisDisplayConfigPanel. Each option type has its own small presentational
  * component so the dispatcher stays flat. Behaviour is identical to the previous
  * inline rendering.
  */
 
 import type { ReactElement } from 'react'
-import type { ChartDisplayConfig, ColorPalette, AxisFormatConfig } from '../../types.js'
+import type { ChartDisplayConfig, ColorPalette, AxisFormatConfig, ThresholdBand } from '../../types.js'
 import type { DisplayOptionConfig } from '../../charts/chartConfigs.js'
 import { AxisFormatControls } from '../charts/AxisFormatControls.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
 import StringArrayInput from './StringArrayInput.js'
+import { parseThresholds } from '../charts/gaugeChartHelpers.js'
+
+/** Neutral starting colour for a newly added threshold band. */
+const DEFAULT_BAND_COLOUR = '#22c55e'
 
 type SetValue = (value: unknown) => void
 
@@ -244,6 +248,87 @@ function ButtonGroupOption({ option, displayConfig, setValue, t }: OptionRenderP
   )
 }
 
+
+/**
+ * Threshold bands for the gauge.
+ *
+ * A band's `value` is stored as a 0-1 fraction of the gauge's min->max range,
+ * which is not what anyone wants to type. The editor works in the gauge's own
+ * units - read from the same displayConfig - and converts on the way in and out,
+ * so a 0-100 dial is edited as 50, not 0.5.
+ */
+function ThresholdBandsOption({ option, displayConfig, setValue, t }: OptionRenderProps) {
+  const key = option.key as keyof ChartDisplayConfig
+  const raw = displayConfig[key]
+  const bands = parseThresholds(raw as string | ThresholdBand[] | undefined)
+
+  const min = Number(displayConfig.minValue ?? 0)
+  const max = Number(displayConfig.maxValue ?? 100)
+  const span = max - min
+  // A zero span would make every band land on the same point; fall back to
+  // editing the raw fraction rather than dividing by zero.
+  const usable = Number.isFinite(span) && span !== 0
+  const toScale = (fraction: number) => (usable ? min + fraction * span : fraction)
+  const toFraction = (scaled: number) => (usable ? (scaled - min) / span : scaled)
+
+  const commit = (next: ThresholdBand[]) => {
+    const sorted = [...next].sort((a, b) => a.value - b.value)
+    setValue(sorted.length > 0 ? sorted : undefined)
+  }
+  const update = (index: number, patch: Partial<ThresholdBand>) =>
+    commit(bands.map((band, i) => (i === index ? { ...band, ...patch } : band)))
+
+  return (
+    <div className="dc:space-y-1">
+      <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
+      <div className="dc:space-y-1">
+        {bands.map((band, index) => (
+          <div key={index} className="dc:flex dc:items-center dc:gap-2">
+            <input
+              type="color"
+              value={band.color}
+              onChange={(e) => update(index, { color: e.target.value })}
+              aria-label={t('chart.gauge.thresholds.colour')}
+              className="dc:w-10 dc:h-8 dc:shrink-0 dc:border border-dc-border dc:rounded-sm dc:cursor-pointer"
+            />
+            <input
+              type="number"
+              value={Number(toScale(band.value).toFixed(4))}
+              onChange={(e) => {
+                const scaled = Number(e.target.value)
+                if (Number.isFinite(scaled)) update(index, { value: toFraction(scaled) })
+              }}
+              aria-label={t('chart.gauge.thresholds.from')}
+              className="dc:flex-1 dc:min-w-0 dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+            />
+            <button
+              type="button"
+              onClick={() => commit(bands.filter((_, i) => i !== index))}
+              title={t('chart.gauge.thresholds.remove')}
+              className="dc:px-2 dc:py-1 dc:text-sm dc:shrink-0 dc:rounded-sm text-dc-danger hover:bg-dc-danger-bg dc:cursor-pointer"
+            >
+              &times;
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          const last = bands[bands.length - 1]
+          // Drop the new band midway between the last one and the top of the dial.
+          const next = last ? Math.min(1, (last.value + 1) / 2) : 0
+          commit([...bands, { value: next, color: DEFAULT_BAND_COLOUR }])
+        }}
+        className="dc:text-xs dc:px-2 dc:py-1 dc:rounded-sm dc:border border-dc-border text-dc-text-secondary hover:bg-dc-surface-hover dc:cursor-pointer"
+      >
+        {t('chart.gauge.thresholds.add')}
+      </button>
+      <OptionDescription description={option.description} t={t} />
+    </div>
+  )
+}
+
 // Dispatch table — keyed by option.type. Keeps the control's render flat.
 const OPTION_RENDERERS: Record<string, (props: OptionRenderProps) => ReactElement | null> = {
   boolean: BooleanOption,
@@ -254,7 +339,8 @@ const OPTION_RENDERERS: Record<string, (props: OptionRenderProps) => ReactElemen
   color: ColorOption,
   axisFormat: AxisFormatOption,
   stringArray: StringArrayOption,
-  buttonGroup: ButtonGroupOption
+  buttonGroup: ButtonGroupOption,
+  thresholdBands: ThresholdBandsOption
 }
 
 interface DisplayOptionControlProps {

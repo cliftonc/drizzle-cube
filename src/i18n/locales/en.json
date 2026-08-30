@@ -7,7 +7,6 @@
   "analysis.modes.flow.description": "Bidirectional path analysis with Sankey visualisation",
   "analysis.modes.retention.label": "Retention",
   "analysis.modes.retention.description": "Cohort-based retention analysis over time periods",
-
   "analysis.ai.title": "AI Query Generator",
   "analysis.ai.generating": "Generating...",
   "analysis.ai.placeholder": "Describe your query in natural language... (e.g., 'Show total sales by month for the last year')",
@@ -18,33 +17,27 @@
   "analysis.ai.button.close": "Close",
   "analysis.ai.button.generate": "Generate",
   "analysis.ai.button.generating": "Generating...",
-
   "analysis.sections.metrics": "Metrics",
   "analysis.sections.breakdown": "Breakdown",
   "analysis.sections.dimensions": "Dimensions",
   "analysis.sections.filters": "Filter",
   "analysis.sections.limit": "Limit",
-
   "analysis.tabs.query": "Query",
   "analysis.tabs.chart": "Chart",
   "analysis.tabs.chartTitle": "Chart configuration",
   "analysis.tabs.display": "Display",
   "analysis.tabs.displayTitle": "Display options",
-
   "analysis.multiQuery.removeQuery": "Remove query",
   "analysis.multiQuery.addQuery": "Add new query",
   "analysis.multiQuery.addAnother": "Add another query",
   "analysis.multiQuery.mergeExplanation": "In merge mode, dimensions are shared from Q1.",
   "analysis.multiQuery.switchToSeparate": "Switch to separate series",
-
   "analysis.mergeStrategy.concat": "Separate series",
   "analysis.mergeStrategy.merge": "Merge by dimension",
   "analysis.mergeStrategy.funnel": "Funnel",
-
   "analysis.placeholders.addMetrics": "Add metrics to generate SQL",
   "analysis.placeholders.hoverField": "Hover over a field to see details",
   "analysis.placeholders.noData": "No data available",
-
   "common.actions.accept": "Accept",
   "common.actions.cancel": "Cancel",
   "common.actions.delete": "Delete",
@@ -61,15 +54,12 @@
   "common.actions.navigate": "Navigate",
   "common.actions.share": "Share",
   "common.loading": "Loading...",
-
   "common.modal.processing": "Processing...",
   "common.modal.dashboardName": "Dashboard Name",
   "common.modal.deleteConfirmation": "Are you sure? This action cannot be undone.",
-
   "common.sorting.ascending": "Sorted ascending (click for descending)",
   "common.sorting.descending": "Sorted descending (click to remove)",
   "common.sorting.none": "Click to sort ascending",
-
   "fieldTypes.count": "Count",
   "fieldTypes.countDistinct": "Count Distinct",
   "fieldTypes.countDistinctApprox": "Count Distinct (Approx)",
@@ -84,17 +74,14 @@
   "fieldTypes.time": "Time Dimension",
   "fieldTypes.geo": "Geographic",
   "fieldTypes.dimension": "Dimension",
-
   "fieldPanel.emptyState": "Hover over a field to see details",
   "fieldPanel.usageHint": "Press Enter or click to add this field to your query.",
   "fieldPanel.labels.type": "Type",
   "fieldPanel.labels.cube": "Cube",
   "fieldPanel.labels.category": "Category",
-  
   "fieldCategory.measure": "Measure",
   "fieldCategory.timeDimension": "Time Dimension",
   "fieldCategory.dimension": "Dimension",
-
   "fieldSearch.placeholder.metrics": "Search metrics...",
   "fieldSearch.placeholder.filter": "Search fields to filter...",
   "fieldSearch.placeholder.dimensions": "Search dimensions...",
@@ -120,7 +107,6 @@
   "fieldSearch.shortcut.select": "Select",
   "fieldSearch.shortcut.multiSelect": "Multi-select",
   "fieldSearch.shortcut.close": "Close",
-
   "filter.group.condition": "condition",
   "filter.group.conditions": "conditions",
   "filter.group.addFilter": "Add Filter",
@@ -129,7 +115,6 @@
   "filter.group.removeGroup": "Remove group",
   "filter.group.empty": "No conditions in this group",
   "filter.group.addFilterLink": "Add a filter",
-
   "filter.modal.title": "Edit Filter",
   "filter.modal.fieldLabel": "Field",
   "filter.modal.operatorLabel": "Operator",
@@ -148,14 +133,12 @@
   "filter.modal.noValues": "No values found",
   "filter.modal.multiSelectHint": "Hold Shift to select multiple values",
   "filter.modal.enterValue": "Enter value...",
-
   "filter.removeButton.title": "Remove filter",
   "filter.section.clearAll": "Clear all",
   "filter.section.dropHint": "Drop to add filter",
   "filter.section.empty": "No filters applied",
   "filter.valueDisplay.empty": "(empty)",
   "filter.valueDisplay.more": "more",
-
   "filter.operator.equals.label": "equals",
   "filter.operator.equals.description": "Exact match",
   "filter.operator.notEquals.label": "not equals",
@@ -218,7 +201,6 @@
   "filter.operator.arrayOverlaps.description": "Array field contains any of the specified values (PostgreSQL only)",
   "filter.operator.arrayContained.label": "array values in",
   "filter.operator.arrayContained.description": "All array field values are within specified values (PostgreSQL only)",
-
   "dateRange.custom": "Custom",
   "dateRange.today": "Today",
   "dateRange.yesterday": "Yesterday",
@@ -238,17 +220,14 @@
   "dateRange.lastNQuarters": "Last N quarters",
   "dateRange.lastYear": "Last year",
   "dateRange.lastNYears": "Last N years",
-
   "timeGranularity.hour": "Hour",
   "timeGranularity.day": "Day",
   "timeGranularity.week": "Week",
   "timeGranularity.month": "Month",
   "timeGranularity.quarter": "Quarter",
   "timeGranularity.year": "Year",
-
   "query.limit.label": "Limit",
   "query.limit.clear": "Clear",
-
   "chart.bar.label": "Bar Chart",
   "chart.bar.description": "Compare values across categories",
   "chart.bar.useCase": "Best for comparing discrete categories, showing rankings, or displaying changes over time",
@@ -327,14 +306,12 @@
   "chart.gauge.label": "Gauge Chart",
   "chart.gauge.description": "Half-circle arc gauge for a single KPI value versus a maximum target",
   "chart.gauge.useCase": "Best for high-water marks vs equity, margin utilisation, or any single value progress toward a goal",
-
   "chart.config.chartType": "Chart Type",
   "chart.config.loading": "Loading chart configuration...",
   "chart.config.axisConfig": "Chart Configuration",
   "chart.config.unassigned": "Unassigned Fields",
   "chart.config.unassignedHint": "Drag fields to chart axes above",
   "chart.config.noFields": "Add metrics and breakdowns in the Query tab to configure chart axes",
-
   "chart.dropZone.xAxis.label": "X-Axis (Categories)",
   "chart.dropZone.xAxis.description": "Dimensions and time dimensions for grouping",
   "chart.dropZone.xAxis.empty": "Drop dimensions & time dimensions here",
@@ -346,7 +323,6 @@
   "chart.dropZone.series.empty": "Drop dimensions here to split data into series",
   "chart.dropZone.maxReached": "Maximum items reached",
   "chart.dropZone.default.empty": "Drop fields here",
-
   "chart.bar.dropZone.xAxis.empty": "Drop dimensions & time dimensions here",
   "chart.bar.dropZone.yAxis.empty": "Drop measures here",
   "chart.bar.dropZone.series.empty": "Drop dimensions here to split data into series",
@@ -399,14 +375,12 @@
   "chart.measureProfile.dropZone.yAxis.empty": "Drop 2+ measures here (displayed left → right)",
   "chart.measureProfile.dropZone.series.empty": "Drop a dimension here to create multiple lines",
   "chart.gauge.dropZone.yAxis.empty": "Drop 1 measure here (optional 2nd for dynamic max)",
-
   "chart.activityGrid.validation.timeDimensionRequired": "Time dimension is required for activity grid",
   "chart.activityGrid.validation.measureRequired": "Activity measure is required for intensity mapping",
   "chart.kpiDelta.validation.measureRequired": "A measure is required for KPI Delta charts",
   "chart.heatmap.validation.xAxisRequired": "X-axis dimension required",
   "chart.heatmap.validation.yAxisRequired": "Y-axis dimension required",
   "chart.heatmap.validation.valueRequired": "Value measure required",
-
   "chart.option.stacking.label": "Stacking",
   "chart.option.stacking.none": "None",
   "chart.option.stacking.stacked": "Stacked",
@@ -539,7 +513,6 @@
   "chart.option.accentBorder.top": "Top",
   "chart.option.accentBorder.bottom": "Bottom",
   "chart.option.accentBorder.description": "Add an accent-coloured border on one side of the content",
-
   "chart.configText.20_percent": "20%",
   "chart.configText.40_percent": "40%",
   "chart.configText.60_percent": "60%",
@@ -549,7 +522,7 @@
   "chart.configText.add_2_or_more_measures_they_become_the_x_axis_categories_in_the_order_li": "Add 2 or more measures — they become the X-axis categories in the order listed",
   "chart.configText.add_an_accent_colored_border_on_one_side_of_the_content": "Add an accent-colored border on one side of the content",
   "chart.configText.all_fields_to_display_as_columns": "All fields to display as columns",
-  "chart.configText.array_of_value_0_1_fraction_color_bands_shown_as_outer_arc_markers": "Array of {value (0–1 fraction), color} bands shown as outer arc markers",
+  "chart.gauge.thresholds.description": "Each band runs from its value up to the next one. Values are on the gauge’s own scale.",
   "chart.configText.axes_categories": "Axes (Categories)",
   "chart.configText.bubble_colour": "Bubble Colour",
   "chart.configText.bubble_labels": "Bubble Labels",
@@ -670,11 +643,9 @@
   "chart.configText.y_axis": "Y-Axis",
   "chart.configText.y_axis_measures": "Y-Axis (Measures)",
   "chart.configText.y_axis_value": "Y-Axis (Value)",
-
   "display.loading": "Loading display options...",
   "display.noOptions": "No display options available for this chart type.",
   "display.heading": "Display Options",
-
   "results.loading.title": "Executing Query...",
   "results.loading.subtitle": "Running your query against the cube API",
   "results.error.title": "Query Execution Failed",
@@ -709,7 +680,6 @@
   "results.warning.refreshNow": "Refresh Now",
   "results.share.copied": "Copied!",
   "results.share.noChart": "(no chart)",
-
   "server.errors.dbNotConfigured": "Database executor not configured",
   "server.errors.cubeNotFound": "Cube '{cubeName}' not found",
   "server.errors.noCubesInQuery": "No cubes found in query",
@@ -736,7 +706,6 @@
   "server.errors.invalidFlowConfig": "Query does not contain a valid flow configuration",
   "server.errors.invalidRetentionConfig": "Query does not contain a valid retention configuration",
   "server.errors.llmInitFailed": "Failed to initialize LLM provider",
-
   "server.validation.ai.bindingKeyRequired.flow": "flow.bindingKey is required",
   "server.validation.ai.bindingKeyRequired.funnel": "funnel.bindingKey is required",
   "server.validation.ai.bindingKeyRequired.retention": "retention.bindingKey is required",
@@ -773,12 +742,10 @@
   "server.validation.ai.suggestUseTimeDimension": "Use a dimension with type \"time\" for timeDimensions",
   "server.validation.ai.timeDimensionRequired.flow": "flow.timeDimension is required",
   "server.validation.ai.timeDimensionRequired.funnel": "funnel.timeDimension is required",
-
   "server.validation.chart.barNeedsDimension": "Bar charts need an xAxis dimension for category labels. Add a dimension to the query or use \"table\" chart type instead.",
   "server.validation.chart.barXAxisRequired": "chartConfig.xAxis is required for bar charts. Put a dimension in xAxis so bars have category labels.",
   "server.validation.chart.dropZoneRequired": "chartConfig.{key} is required for {chartType} chart ({label}). Accepts: {acceptDesc}.",
   "server.validation.chart.seriesDuplicatesXAxis": "chartConfig.series must not contain the same field as xAxis (found: {duplicates}). The series field is only for splitting into grouped/stacked sub-series by a DIFFERENT dimension. Remove the duplicate from series.",
-
   "server.validation.flow.bindingKeyCubeNotFound": "Binding key cube not found: {cubeName}",
   "server.validation.flow.bindingKeyDimNotFound": "Binding key dimension not found: {dimName} in cube {cubeName}",
   "server.validation.flow.bindingKeyMappingCubeNotFound": "Binding key mapping cube not found: {cubeName}",
@@ -800,7 +767,6 @@
   "server.validation.flow.stepsAfterRange": "stepsAfter must be between 0 and 5, got: {value}",
   "server.validation.flow.timeDimCubeNotFound": "Time dimension cube not found: {cubeName}",
   "server.validation.flow.timeDimNotFound": "Time dimension not found: {dimName} in cube {cubeName}",
-
   "server.validation.funnel.bindingKeyCubeNotFound": "Binding key cube not found: {cubeName}",
   "server.validation.funnel.bindingKeyDimNotFound": "Binding key dimension not found: {dimName} in cube {cubeName}",
   "server.validation.funnel.bindingKeyMappingCubeNotFound": "Binding key mapping cube not found: {cubeName}",
@@ -816,7 +782,6 @@
   "server.validation.funnel.stepTimeToConvertFormat": "Step {step} timeToConvert must be ISO 8601 duration format: {value}",
   "server.validation.funnel.timeDimCubeNotFound": "Time dimension cube not found: {cubeName}",
   "server.validation.funnel.timeDimNotFound": "Time dimension not found: {dimName} in cube {cubeName}",
-
   "server.validation.retention.bindingKeyCubeNotFound": "Binding key cube not found: {cubeName}",
   "server.validation.retention.bindingKeyDimNotFound": "Binding key dimension not found: {dimName} in cube {cubeName}",
   "server.validation.retention.bindingKeyMappingCubeNotFound": "Binding key mapping cube not found: {cubeName}",
@@ -839,11 +804,9 @@
   "server.validation.retention.periodsMax": "Periods cannot exceed 52 (performance limit)",
   "server.validation.retention.periodsMin": "Periods must be at least 1",
   "server.validation.retention.timeDimNotFound": "Time dimension not found: {dimName}",
-
   "server.validation.calculatedMeasure.mustHaveCalculatedSql": "Calculated measure '{cubeName}.{fieldName}' must have calculatedSql property",
   "server.validation.calculatedMeasure.invalidSyntax": "Invalid calculatedSql syntax in '{cubeName}.{fieldName}': {errors}",
   "server.validation.calculatedMeasure.circularDependency": "Circular dependency detected in calculated measures: {cycle}",
-
   "server.validation.query.multipleQueryModes": "Query contains multiple query modes: {modes}",
   "server.validation.query.funnelBindingKeyCubeNotFound": "Funnel binding key cube not found: {cubeName}",
   "server.validation.query.flowBindingKeyCubeNotFound": "Flow binding key cube not found: {cubeName}",
@@ -870,7 +833,6 @@
   "server.validation.query.invalidFilterMemberFormat": "Invalid filter member format: {member}. Expected format: 'CubeName.fieldName'",
   "server.validation.query.cubeNotFoundForFilter": "Cube '{cubeName}' not found (referenced in filter '{member}')",
   "server.validation.query.filterFieldNotFound": "Filter field '{fieldName}' not found on cube '{cubeName}' (must be a dimension or measure){hint}",
-
   "server.errors.funnel.cubeNotFoundForStep": "Cube not found for step: {cube}",
   "server.errors.funnel.cubeNotFoundForBindingKey": "Cube not found for binding key: {bindingKey}",
   "server.errors.funnel.cannotResolveCubeForStep": "Cannot resolve cube for step - multi-cube funnel requires cube specification in each step",
@@ -880,7 +842,6 @@
   "server.errors.funnel.timeDimNotFound": "Time dimension not found: {timeDimension}",
   "server.errors.funnel.noTimeDimMapping": "No time dimension mapping found for cube: {cubeName}",
   "server.errors.funnel.timeDimMappingNotFound": "Time dimension not found: {dimension}",
-
   "server.errors.flow.cannotResolveCube": "Cannot resolve cube for flow query",
   "server.errors.flow.cubeNotFound": "Cube not found: {cubeName}",
   "server.errors.flow.bindingKeyDimNotFound": "Binding key dimension not found: {bindingKey}",
@@ -890,7 +851,6 @@
   "server.errors.flow.noTimeDimMapping": "No time dimension mapping found for cube: {cubeName}",
   "server.errors.flow.timeDimMappingNotFound": "Time dimension not found: {dimension}",
   "server.errors.flow.eventDimNotFound": "Event dimension not found: {eventDimension}",
-
   "server.validation.template.emptyReference": "Empty member reference {} found in template",
   "server.validation.template.invalidMemberReference": "Invalid member reference {ref}: must start with letter or underscore, and contain only letters, numbers, underscores, and dots",
   "server.validation.template.multipleDots": "Invalid member reference {ref}: only one dot allowed (Cube.measure format)",
@@ -899,7 +859,6 @@
   "server.validation.template.substituteMeasureNotResolved": "Cannot substitute {ref}: measure '{measureName}' not resolved yet. Ensure measures are resolved in dependency order.",
   "server.validation.template.unmatchedClosingBrace": "Unmatched closing brace at position {position}",
   "server.validation.template.unmatchedOpeningBrace": "Unmatched opening brace in template",
-
   "notebook.aiAssistant": "AI Assistant",
   "notebook.saveAsDashboard": "Save as Dashboard",
   "notebook.saveAsDashboardTitle": "Save notebook as a dashboard",
@@ -928,7 +887,6 @@
   "notebook.collapsed.expandChat": "Expand AI chat",
   "notebook.collapsed.aiChat": "AI Chat",
   "notebook.collapsed.markdown": "Markdown",
-
   "schema.loading": "Loading cube schema...",
   "schema.error": "Failed to load cube schema",
   "schema.noCubes": "No cubes found",
@@ -943,7 +901,6 @@
   "schema.timeDimensions": "Time Dimensions ({count})",
   "schema.dimensions": "Dimensions ({count})",
   "schema.cubeInfo": "Cube info",
-
   "dataBrowser.selectCube": "Select a cube",
   "dataBrowser.selectCubeHint": "Choose a cube from the sidebar to browse its data",
   "dataBrowser.loadingData": "Loading data...",
@@ -955,7 +912,6 @@
   "dataBrowser.sidebar.cubes": "Cubes",
   "dataBrowser.sidebar.searchPlaceholder": "Search...",
   "dataBrowser.sidebar.noCubes": "No cubes found",
-
   "queryAnalysis.summary": "Query Summary",
   "queryAnalysis.summary.type": "Type",
   "queryAnalysis.summary.cubes": "Cubes",
@@ -978,10 +934,8 @@
   "queryAnalysis.preAggregations.joinKeys": "Join keys:",
   "queryAnalysis.warnings": "Warnings",
   "queryAnalysis.cubesInvolved": "Cubes involved:",
-
   "common.actions.copied": "Copied",
   "common.actions.copyToClipboard": "Copy to clipboard",
-
   "chart.availability.requiresMeasure": "Requires at least 1 measure",
   "chart.availability.requiresTwoMeasures": "Requires at least 2 measures",
   "chart.availability.requiresDimension": "Requires at least 1 dimension",
@@ -989,7 +943,6 @@
   "chart.availability.requiresTimeDimension": "Requires a time dimension",
   "chart.availability.scatter": "Requires 2 measures, or 1 measure plus 1 dimension",
   "chart.availability.bubble": "Requires at least 2 measures and 1 dimension",
-
   "chart.runtime.noData": "No data available",
   "chart.runtime.noDataHint.bar": "No data points to display in bar chart",
   "chart.runtime.noDataHint.line": "No data points to display in line chart",
@@ -1012,7 +965,6 @@
   "chart.runtime.noDataHint.funnel": "Configure a funnel with at least 2 steps and a binding key",
   "chart.runtime.noDataHint.flow": "Configure a flow analysis with a starting step and event dimension",
   "chart.runtime.noDataHint.retention": "Configure retention analysis to see results",
-
   "chart.runtime.noValidData": "No valid data",
   "chart.runtime.noValidDataHint.bar": "No valid data points for bar chart after transformation",
   "chart.runtime.noValidDataHint.line": "No valid data points for line chart after transformation",
@@ -1026,7 +978,6 @@
   "chart.runtime.noValidDataHint.boxPlot": "Could not compute box plot statistics from the provided data",
   "chart.runtime.noValidDataHint.gauge": "Gauge value is not a valid number",
   "chart.runtime.noValidDataHint.kpiText": "All values are null or invalid",
-
   "chart.runtime.configError": "Configuration Error",
   "chart.runtime.configErrorHint.axisInvalid": "Invalid or missing chart axis configuration",
   "chart.runtime.configErrorHint.axisFields": "Missing required X-axis or Y-axis fields",
@@ -1039,18 +990,14 @@
   "chart.runtime.configErrorHint.bubbleRequired": "Bubble chart requires xAxis, yAxis, series, and sizeField dimensions",
   "chart.runtime.configErrorHint.bubbleOptional": "Optional: colorField for bubble coloring",
   "chart.runtime.configErrorHint.activityGridRequired": "Activity grid requires a time dimension and a measure",
-
   "chart.runtime.chartError": "{chartType} Error",
   "chart.runtime.unknownError": "Unknown rendering error",
   "chart.runtime.checkConfig": "Check the data and configuration",
-
   "chart.runtime.unableToRender": "Unable to render retention data",
   "chart.runtime.dataFormatIncorrect": "Data format may be incorrect",
-
   "chart.runtime.measuringDimensions": "Measuring chart dimensions...",
   "chart.runtime.unableToDisplay": "Unable to display chart",
   "chart.runtime.responsiveContainerError": "Failed to create responsive container",
-
   "chart.runtime.noDataToDisplay": "No data to display",
   "chart.runtime.table.invalidStructure": "Data structure is invalid",
   "chart.runtime.heatmapNoResults": "The query returned no results for the heatmap",
@@ -1059,12 +1006,10 @@
   "chart.runtime.heatmapYRequired": "Y-axis dimension required. ",
   "chart.runtime.heatmapValueRequired": "Value measure required.",
   "chart.runtime.heatmapTruncated": "Data truncated to {maxRows}x{maxCols} cells (original: {originalRows}x{originalCols}). Add filters to reduce dimensions.",
-
   "chart.runtime.activityGridGranularityTooHigh": "Granularity Too High",
   "chart.runtime.activityGridGranularityHint": "Activity grids work best with hour, day, week, month, or quarter granularity",
   "chart.runtime.activityGridGranularityAction": "Please choose a lower granularity for your time dimension",
   "chart.runtime.activityGridConfigRequired": "Configuration Required",
-
   "chart.runtime.retention.cohort": "Cohort",
   "chart.runtime.retention.segment": "Segment",
   "chart.runtime.retention.users": "Users",
@@ -1076,29 +1021,23 @@
   "chart.runtime.retention.noData": "No data",
   "chart.runtime.retention.total": "Total",
   "chart.runtime.retention.retention": "Retention",
-
   "chart.runtime.funnel.noData": "No funnel data",
   "chart.runtime.funnel.steps": "steps",
   "chart.runtime.funnel.overall": "Overall:",
   "chart.runtime.funnel.completed": "{completed} / {total} completed",
-
   "chart.runtime.flow.noData": "No flow data",
   "chart.runtime.flow.events": "events",
   "chart.runtime.flow.eventsAfter": "events (after)",
   "chart.runtime.flow.paths": "Paths:",
   "chart.runtime.flow.startingEntities": "starting entities",
   "chart.runtime.flow.entities": "entities",
-
   "chart.runtime.kpiDelta.insufficientData": "Insufficient Data",
   "chart.runtime.kpiDelta.requiresTwoPoints": "Delta calculation requires at least 2 data points",
   "chart.runtime.kpiDelta.currentPoints": "Current data points: {count}",
   "chart.runtime.kpiDelta.noVariance": "No variance data",
-
   "chart.runtime.kpiNumber.noData": "No data",
-
   "chart.runtime.markdown.noContent": "No content",
   "chart.runtime.markdown.addContent": "Add markdown content in the chart configuration",
-
   "chart.runtime.axisFormat.label": "Label",
   "chart.runtime.axisFormat.autoLabel": "Auto-generated label",
   "chart.runtime.axisFormat.unit": "Unit",
@@ -1115,24 +1054,19 @@
   "chart.runtime.axisFormat.leftYAxis": "Left Y-Axis",
   "chart.runtime.axisFormat.rightYAxis": "Right Y-Axis",
   "chart.runtime.axisFormat.xAxis": "X-Axis",
-
   "chart.runtime.missingDep.title": "Missing Dependency",
   "chart.runtime.missingDep.description": "The {chartType} chart requires the {packageName} package.",
   "chart.runtime.missingDep.restartHint": "After installing, restart your development server.",
-
   "chart.runtime.unknownChartType": "Unknown chart type",
   "chart.runtime.unknownChartTypeHint": "\"{chartType}\" is not registered",
-
   "chart.runtime.boxPlot.truncated": "Data truncated to {max} groups (original: {total})",
   "chart.runtime.candlestick.truncated": "Showing first {max} candles (total: {total})",
   "chart.runtime.bar.hiddenPoints": "{count} data point(s) with no values hidden",
-
   "chart.runtime.waterfall.increase": "Increase",
   "chart.runtime.waterfall.decrease": "Decrease",
   "chart.runtime.waterfall.total": "Total",
   "chart.runtime.tooltip.noData": "No data",
   "chart.runtime.tooltip.targetValue": "Target Value",
-
   "results.toolbar.refreshing": "Refreshing",
   "results.toolbar.refresh": "Refresh",
   "results.toolbar.refreshTitle": "Refresh data (Shift+click to bypass cache)",
@@ -1155,7 +1089,6 @@
   "results.toolbar.mergedTableView": "Merged table view",
   "results.view.table": "Table",
   "results.warning.filterHint": "Consider adding filters to improve performance.",
-
   "results.debug.query": "Query:",
   "results.debug.queryAnalysis": "Query Analysis",
   "results.debug.copyMarkdownTitle": "Copy query, analysis, and SQL as markdown",
@@ -1173,15 +1106,12 @@
   "results.debug.generatedSql": "Generated SQL",
   "results.debug.loadingSql": "Loading SQL...",
   "results.debug.executionError": "Execution Error",
-
   "results.confirm.clearFunnel": "Clear Funnel",
   "results.confirm.clearQuery": "Clear Query",
   "results.confirm.clearFunnelMessage": "Are you sure you want to clear this funnel? This action cannot be undone.",
   "results.confirm.clearQueryMessage": "Are you sure you want to clear this query? This action cannot be undone.",
-
   "results.table.noData": "No data to display",
   "results.table.noDataHint": "Run a query to see table data",
-
   "results.flow.noData": "No flow data to display",
   "results.flow.noDataHint": "Configure flow analysis to see results",
   "results.flow.nodes": "Nodes ({count})",
@@ -1191,14 +1121,12 @@
   "results.flow.count": "Count",
   "results.flow.from": "From",
   "results.flow.to": "To",
-
   "results.debug.funnel.label": "Funnel Query",
   "results.debug.funnel.steps": "{count} steps",
   "results.debug.funnel.serverQuery": "Funnel Server Query",
   "results.debug.funnel.noQuery": "No funnel query configured",
   "results.debug.funnel.sqlPlaceholder": "Configure funnel binding key to generate SQL",
   "results.debug.funnel.stepsTitle": "Funnel Steps",
-
   "results.debug.flow.label": "Flow Query",
   "results.debug.flow.badge": "{before} before, {after} after",
   "results.debug.flow.serverQuery": "Flow Server Query",
@@ -1211,7 +1139,6 @@
   "results.debug.flow.stepsAfter": "Steps After:",
   "results.debug.flow.notSet": "Not set",
   "results.debug.flow.responseTitle": "Server Response (Sankey Data)",
-
   "results.debug.retention.label": "Retention Query",
   "results.debug.retention.badge": "{segments} segment(s), {users} users",
   "results.debug.retention.serverQuery": "Retention Server Query",
@@ -1227,9 +1154,7 @@
   "results.debug.retention.avgPeriod1": "Avg Period 1:",
   "results.debug.retention.maxPeriod1": "Max Period 1:",
   "results.debug.retention.minPeriod1": "Min Period 1:",
-
   "results.debug.standard.sqlPlaceholder": "Add metrics to generate SQL",
-
   "flow.tabs.flow": "Flow",
   "flow.tabs.display": "Display",
   "flow.tabs.displayUnavailable": "Display options not available",
@@ -1255,7 +1180,6 @@
   "flow.joinStrategy.auto": "Auto (prefer lateral if available)",
   "flow.joinStrategy.lateral": "Lateral (index seeks)",
   "flow.joinStrategy.window": "Window (ROW_NUMBER)",
-
   "retention.tabs.retention": "Retention",
   "retention.tabs.display": "Display",
   "retention.tabs.displayUnavailable": "Display options not available",
@@ -1278,7 +1202,6 @@
   "retention.settings.periodsLabel": "Number of Periods ({min}-{max})",
   "retention.settings.periodsWarning": "High period count may impact query performance.",
   "retention.settings.retentionTypeLabel": "Retention Type",
-
   "debug.explainPlan": "Explain Plan",
   "debug.explainRunning": "Running...",
   "debug.explainIncludeTiming": "Include timing",
@@ -1296,7 +1219,6 @@
   "debug.aiAnalyzing": "Analyzing...",
   "debug.aiAnalysis": "AI Analysis",
   "debug.aiAnalysisError": "AI Analysis Error:",
-
   "explainAI.title": "AI Performance Analysis",
   "explainAI.assessment.good": "Good",
   "explainAI.assessment.warning": "Warning",
@@ -1316,14 +1238,12 @@
   "explainAI.type.table": "TABLE",
   "explainAI.type.cube": "CUBE",
   "explainAI.type.general": "TIP",
-
   "errorBoundary.modeError": "Mode Error",
   "errorBoundary.modeErrorDescription": "There was a problem with the {mode} mode. This might be due to invalid configuration data.",
   "errorBoundary.showDetails": "Show error details",
   "errorBoundary.unknownError": "Unknown error",
   "errorBoundary.tryAgain": "Try Again",
   "errorBoundary.switchToQuery": "Switch to Query Mode",
-
   "funnel.tabs.steps": "Steps",
   "funnel.tabs.display": "Display",
   "funnel.tabs.displayUnavailable": "Display options not available",
@@ -1342,7 +1262,6 @@
   "funnel.step.filtersPlural": "{count} filters",
   "funnel.step.within": "within {time}",
   "funnel.step.noFilters": "No filters configured",
-
   "funnel.config.configuration": "Configuration",
   "funnel.config.cube": "Cube",
   "funnel.config.cubeHelp": "Select a cube configured for funnel analysis",
@@ -1355,12 +1274,10 @@
   "funnel.config.timeDimensionHelp": "Timestamp field for step ordering",
   "funnel.config.timeDimensionPlaceholder": "Select time dimension",
   "funnel.config.noMatchingFields": "No matching fields found",
-
   "funnel.bindingKey.searchPlaceholder": "Search dimensions...",
   "funnel.bindingKey.noMatching": "No matching dimensions found",
   "funnel.bindingKey.helpText": "Select a dimension that identifies entities across funnel steps (e.g., user ID, order ID)",
   "funnel.bindingKey.clearTitle": "Clear binding key",
-
   "flow.config.configuration": "Configuration",
   "flow.config.cube": "Cube",
   "flow.config.cubeHelp": "Select a cube configured for flow analysis",
@@ -1376,7 +1293,6 @@
   "flow.config.eventDimensionHelp": "Dimension that categorizes events (node labels in Sankey)",
   "flow.config.eventDimensionPlaceholder": "Select event dimension",
   "flow.config.noMatchingFields": "No matching fields found",
-
   "retention.config.configuration": "Configuration",
   "retention.config.cube": "Cube",
   "retention.config.cubeHelp": "Select the cube containing your user events",
@@ -1390,20 +1306,16 @@
   "retention.config.timestampPlaceholder": "Select timestamp",
   "retention.config.noMatchingFields": "No matching fields found",
   "retention.config.searchPlaceholder": "Search...",
-
   "display.showLegend": "Show Legend",
   "display.showGrid": "Show Grid",
   "display.showTooltip": "Show Tooltip",
   "display.stacked": "Stacked",
   "display.hideHeader": "Hide Header",
-
   "fieldSearch.aria.closeDialog": "Close dialog",
   "fieldSearch.aria.filterByCube": "Filter by cube",
   "fieldSearch.aria.cubeCategories": "Cube categories",
   "fieldSearch.aria.availableFields": "Available fields",
-
   "chart.dropZone.required": "This field is required",
-
   "common.actions.apply": "Apply",
   "common.actions.done": "Done",
   "common.actions.update": "Update",
@@ -1412,7 +1324,6 @@
   "common.actions.selectAll": "Select All",
   "common.saving": "Saving...",
   "common.labels.title": "Title",
-
   "dashboardFilter.editFilter": "Edit Filter",
   "dashboardFilter.filterLabel": "Filter Label",
   "dashboardFilter.enterFilterLabel": "Enter filter label",
@@ -1441,7 +1352,6 @@
   "dashboardFilter.selectFieldRequired": "Please select a field for the filter",
   "dashboardFilter.notSet": "(not set)",
   "dashboardFilter.clickToConfigure": "Click to configure",
-
   "dashboardFilter.customDate.startDate": "Start Date",
   "dashboardFilter.customDate.endDate": "End Date",
   "dashboardFilter.customDate.sinceDate": "Since Date",
@@ -1449,41 +1359,33 @@
   "dashboardFilter.customDate.number": "Number",
   "dashboardFilter.customDate.unit": "Unit",
   "dashboardFilter.customDate.lastNPreview": "Last {number} {unit}",
-
   "dashboardFilter.editMode.filters": "Filters",
   "dashboardFilter.editMode.noFilters": "No filters configured. Click \"Add\" to create one.",
   "dashboardFilter.editMode.dateRange": "Date Range",
   "dashboardFilter.editMode.filter": "Filter",
   "dashboardFilter.editMode.editFilter": "Edit filter",
   "dashboardFilter.editMode.removeFilter": "Remove filter",
-
   "dashboardFilter.filterValue.editValue": "Edit value",
-
   "dashboardFilter.readOnly.filters": "Filters",
-
   "filter.shared.fieldsInQuery": "Fields in Query ({count})",
   "filter.shared.allAvailableFields": "All Available Fields ({count})",
   "filter.shared.noFieldsMatch": "No fields found matching \"{searchTerm}\"",
   "filter.shared.searchFields": "Search fields...",
   "filter.shared.selectField": "Select field...",
   "filter.shared.schemaNotLoaded": "Schema not loaded",
-
   "filter.shared.group.addFilter": "Add Filter",
   "filter.shared.group.addAndGroup": "Add AND Group",
   "filter.shared.group.addOrGroup": "Add OR Group",
   "filter.shared.group.addCondition": "Add condition",
   "filter.shared.group.noConditions": "No conditions in this group.",
   "filter.shared.group.addFilterLink": "Add a filter",
-
   "filter.shared.builder.filters": "Filters ({count})",
   "filter.shared.builder.clearAll": "Clear all",
   "filter.shared.builder.addFilter": "Add Filter",
-
   "filter.shared.dateRange.title": "Date Ranges ({count})",
   "filter.shared.dateRange.clearAll": "Clear all",
   "filter.shared.dateRange.addDateRange": "Add Date Range",
   "filter.shared.dateRange.allHaveDateRanges": "All time dimensions already have date ranges",
-
   "filter.shared.valueSelector.noValueRequired": "No value required",
   "filter.shared.valueSelector.to": "to",
   "filter.shared.valueSelector.min": "Min",
@@ -1497,7 +1399,6 @@
   "filter.shared.valueSelector.noMatchingValues": "No matching values",
   "filter.shared.valueSelector.noValuesAvailable": "No values available",
   "filter.shared.valueSelector.enterValue": "Enter {type} value",
-
   "dashboard.noPortlets": "No Portlets",
   "dashboard.noPortletsDescription": "Add your first portlet to start visualizing your data",
   "dashboard.addText": "Add Text",
@@ -1507,9 +1408,9 @@
   "dashboard.grid": "Grid",
   "dashboard.rows": "Rows",
   "dashboard.desktopRequired": "Desktop view required for editing",
-  "dashboard.editModeHint": "Drag \u2022 Resize \u2022 Auto-save",
+  "dashboard.editModeHint": "Drag • Resize • Auto-save",
   "dashboard.filterSelectionMode": "Filter Selection Mode - Click portlets to toggle '{filterLabel}'",
-  "dashboard.filterSelectionEscHint": "\u2022 Press Enter or Esc to save",
+  "dashboard.filterSelectionEscHint": "• Press Enter or Esc to save",
   "dashboard.filterFieldChipHint": "Click to change which field this filter applies to for this portlet",
   "dashboard.editPortlet": "Edit Portlet",
   "dashboard.addNewPortlet": "Add New Portlet",
@@ -1518,7 +1419,6 @@
   "dashboard.deletePortletConfirm": "Are you sure you want to delete",
   "dashboard.deletePortletSuffix": "? This action cannot be undone.",
   "dashboard.thisPortlet": "this portlet",
-
   "dashboard.portlet.action.edit": "Edit portlet",
   "dashboard.portlet.action.duplicate": "Duplicate portlet",
   "dashboard.portlet.action.delete": "Delete portlet",
@@ -1526,7 +1426,6 @@
   "dashboard.portlet.action.drag": "Drag portlet",
   "dashboard.portlet.action.filterConfig": "Configure dashboard filters",
   "dashboard.portlet.action.filterConfigActive": "Configure dashboard filters ({count} active)",
-
   "dashboard.group.rename": "Rename group",
   "dashboard.group.drag": "Drag group",
   "dashboard.group.titlePlaceholder": "Group title",
@@ -1534,12 +1433,10 @@
   "dashboard.group.delete": "Delete group",
   "dashboard.group.deleteTitle": "Delete Group",
   "dashboard.group.deleteConfirm": "Are you sure you want to delete this group and all {count} portlets inside it? This action cannot be undone.",
-
   "dashboard.editModal.dashboardName": "Dashboard Name",
   "dashboard.editModal.enterDashboardName": "Enter dashboard name...",
   "dashboard.editModal.descriptionOptional": "Description (optional)",
   "dashboard.editModal.enterDescription": "Enter description...",
-
   "portlet.configRequired": "Configuration Required",
   "portlet.copyToClipboard": "Copy chart to clipboard",
   "portlet.copied": "Copied!",
@@ -1561,7 +1458,6 @@
   "portlet.configureRetention": "Please configure the retention analysis (binding key, time dimension, and date range).",
   "portlet.configureFunnel": "Please add at least two funnel steps.",
   "portlet.addMetricOrBreakdown": "Please add at least one metric or breakdown to your query.",
-
   "portlet.filterConfig.title": "Configure Dashboard Filters",
   "portlet.filterConfig.subtitle": "Choose which dashboard filters apply to \"{portletTitle}\"",
   "portlet.filterConfig.noFilters": "No dashboard filters available",
@@ -1578,13 +1474,11 @@
   "portlet.filterConfig.applyToFieldDefault": "Default ({field})",
   "portlet.filterConfig.mappedTo": "Mapped to {field}",
   "portlet.filterConfig.mappedFieldMissing": "The mapped field \"{field}\" is no longer available in the schema",
-
   "textPortlet.editText": "Edit Text",
   "textPortlet.addText": "Add Text",
   "textPortlet.markdownContent": "Markdown Content",
   "textPortlet.markdownHint": "Supports headers (#), bold (**text**), italic (*text*), links ([text](url)), lists (- item), and horizontal rules (---).",
   "textPortlet.preview": "Preview",
-
   "debug.title": "Chart Debug Information",
   "debug.chartType": "Chart Type",
   "debug.fieldAnalysis": "Field Analysis",
@@ -1603,7 +1497,6 @@
   "debug.escKey": "ESC",
   "debug.toClose": "to close",
   "debug.tooltip": "Debug chart configuration",
-
   "error.unableToRender": "Unable to render chart",
   "error.unableToRenderNamed": "Unable to render {title}",
   "error.renderDescription": "There was an error rendering this chart component. The error details are shown below.",
@@ -1613,18 +1506,14 @@
   "error.cubeQuery": "Cube Query",
   "error.componentStack": "Component Stack",
   "error.tryAgain": "Try Again",
-
   "drill.back": "Back",
   "drill.goBackOneLevel": "Go back one level",
   "drill.returnToTop": "Return to top level",
   "drill.navigateTo": "Navigate to {label}",
   "drill.empty": "(empty)",
-
   "analyticsPage.title": "Analytics Page - Coming in Phase 4",
-
   "dataHistogram.average": "Average of {count} values",
   "dataHistogram.valuesInRange": "{count} values in this range",
-
   "mcp.status.connecting": "Connecting...",
   "mcp.status.loading": "Loading...",
   "mcp.status.waiting": "Waiting for query results...",
@@ -1640,7 +1529,6 @@
   "mcp.footer.measuresPlural": "{count} measures",
   "mcp.footer.dimensions": "{count} dimension",
   "mcp.footer.dimensionsPlural": "{count} dimensions",
-
   "chart.option.kpiLayout.label": "Layout",
   "chart.option.kpiLayout.description": "Compact uses a fixed type size so several KPIs line up as a metric strip; auto scales the value to fill the portlet",
   "chart.option.kpiLayout.auto": "Auto",
@@ -1677,5 +1565,9 @@
   "chart.option.proportionBarLabels.label": "Show labels",
   "chart.runtime.summarySince": "since {period}",
   "chart.option.showPoints.label": "Show data points",
-  "chart.option.showPoints.description": "Draw a marker at every data point. Turn off for dense series, where the markers obscure the line"
+  "chart.option.showPoints.description": "Draw a marker at every data point. Turn off for dense series, where the markers obscure the line",
+  "chart.gauge.thresholds.from": "Band starts at",
+  "chart.gauge.thresholds.colour": "Band colour",
+  "chart.gauge.thresholds.add": "Add band",
+  "chart.gauge.thresholds.remove": "Remove band"
 }

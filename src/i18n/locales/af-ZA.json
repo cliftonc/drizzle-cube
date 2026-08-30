@@ -462,7 +462,7 @@
   "chart.configText.add_2_or_more_measures_they_become_the_x_axis_categories_in_the_order_li": "crwdns5259:0crwdne5259:0",
   "chart.configText.add_an_accent_colored_border_on_one_side_of_the_content": "crwdns5261:0crwdne5261:0",
   "chart.configText.all_fields_to_display_as_columns": "crwdns5263:0crwdne5263:0",
-  "chart.configText.array_of_value_0_1_fraction_color_bands_shown_as_outer_arc_markers": "crwdns5265:0crwdne5265:0",
+  "chart.gauge.thresholds.description": "Elke band loop van sy waarde tot by die volgende. Waardes is op die meter se eie skaal.",
   "chart.configText.axes_categories": "crwdns5267:0crwdne5267:0",
   "chart.configText.bubble_colour": "crwdns5269:0crwdne5269:0",
   "chart.configText.bubble_labels": "crwdns5271:0crwdne5271:0",
@@ -882,7 +882,6 @@
   "chart.availability.requiresTimeDimension": "Requires a time dimension",
   "chart.availability.scatter": "Requires 2 measures, or 1 measure plus 1 dimension",
   "chart.availability.bubble": "Requires at least 2 measures and 1 dimension",
-
   "chart.runtime.noData": "crwdns4153:0crwdne4153:0",
   "chart.runtime.noDataHint.bar": "crwdns4155:0crwdne4155:0",
   "chart.runtime.noDataHint.line": "crwdns4157:0crwdne4157:0",
@@ -1430,5 +1429,9 @@
   "drill.empty": "crwdns5241:0crwdne5241:0",
   "analyticsPage.title": "crwdns5243:0crwdne5243:0",
   "dataHistogram.average": "crwdns5507:0{count}crwdne5507:0",
-  "dataHistogram.valuesInRange": "crwdns5245:0{count}crwdne5245:0"
+  "dataHistogram.valuesInRange": "crwdns5245:0{count}crwdne5245:0",
+  "chart.gauge.thresholds.from": "Band begin by",
+  "chart.gauge.thresholds.colour": "Bandkleur",
+  "chart.gauge.thresholds.add": "Voeg band by",
+  "chart.gauge.thresholds.remove": "Verwyder band"
 }
