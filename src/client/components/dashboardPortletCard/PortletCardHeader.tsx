@@ -3,23 +3,13 @@
  * the card component flat.
  */
 
-import React, { type CSSProperties, type ComponentType } from 'react'
+import React, { type CSSProperties } from 'react'
 import type { PortletConfig } from '../../types.js'
 import DebugModal from '../DebugModal.js'
 import { getIcon } from '../../icons/registry.js'
 import type { PortletDebugDataEntry } from '../../stores/dashboardStore.js'
+import EditActionButtons, { ICON_STYLE, type CardIcons } from './EditActionButtons.js'
 
-const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'currentColor' }
-
-type IconComponent = ComponentType<{ className?: string; style?: CSSProperties }>
-
-interface CardIcons {
-  RefreshIcon: IconComponent
-  EditIcon: IconComponent
-  DeleteIcon: IconComponent
-  CopyIcon: IconComponent
-  FilterIcon: IconComponent
-}
 
 interface PortletCardHeaderProps {
   portlet: PortletConfig
@@ -73,70 +63,6 @@ function CacheIndicator({ cachedAt }: { cachedAt: string }) {
         <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
       </svg>
     </span>
-  )
-}
-
-/** Edit-mode action buttons: filter config, duplicate, edit, delete. */
-function EditActionButtons({
-  portlet,
-  icons,
-  onOpenFilterConfig,
-  onDuplicate,
-  onEdit,
-  onDelete
-}: {
-  portlet: PortletConfig
-  icons: CardIcons
-  onOpenFilterConfig: () => void
-  onDuplicate: () => void
-  onEdit: () => void
-  onDelete: () => void
-}) {
-  const mappingCount = portlet.dashboardFilterMapping?.length ?? 0
-
-  const stop = (handler: () => void) => (event: React.MouseEvent | React.TouchEvent) => {
-    event.stopPropagation()
-    if ('preventDefault' in event && event.type === 'touchend') event.preventDefault()
-    handler()
-  }
-
-  return (
-    <>
-      <button
-        onClick={stop(onOpenFilterConfig)}
-        onTouchEnd={stop(onOpenFilterConfig)}
-        className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors dc:relative"
-        title={`Configure dashboard filters${mappingCount > 0 ? ` (${mappingCount} active)` : ''}`}
-        style={{ color: mappingCount > 0 ? 'var(--dc-primary)' : 'var(--dc-text-secondary)' }}
-      >
-        <icons.FilterIcon style={ICON_STYLE} />
-      </button>
-
-      <button
-        onClick={stop(onDuplicate)}
-        onTouchEnd={stop(onDuplicate)}
-        className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
-        title="Duplicate portlet"
-      >
-        <icons.CopyIcon style={ICON_STYLE} />
-      </button>
-      <button
-        onClick={stop(onEdit)}
-        onTouchEnd={stop(onEdit)}
-        className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
-        title="Edit portlet"
-      >
-        <icons.EditIcon style={ICON_STYLE} />
-      </button>
-      <button
-        onClick={stop(onDelete)}
-        onTouchEnd={stop(onDelete)}
-        className="dc:p-1 dc:mr-0.5 bg-transparent dc:border-none dc:rounded-sm dc:cursor-pointer hover:bg-dc-danger-bg text-dc-danger dc:transition-colors"
-        title="Delete portlet"
-      >
-        <icons.DeleteIcon style={ICON_STYLE} />
-      </button>
-    </>
   )
 }
 

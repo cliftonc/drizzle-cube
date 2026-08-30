@@ -5,6 +5,7 @@
 
 import type { HTMLAttributes, ReactNode, ComponentType, CSSProperties } from 'react'
 import type { ChartType, DashboardFilter, DashboardLayoutMode, PortletConfig } from '../../types.js'
+import type { PortletCardVariant } from './cardStyles.js'
 import type { ColorPalette } from '../../utils/colorPalettes.js'
 
 // Shape mirrors DashboardPortletCardProps; kept here to type the comparators.
@@ -12,6 +13,7 @@ export interface DashboardPortletCardProps {
   portlet: PortletConfig
   editable: boolean
   layoutMode?: DashboardLayoutMode
+  variant?: PortletCardVariant
   dashboardFilters?: DashboardFilter[]
   configEagerLoad?: boolean
   loadingComponent?: ReactNode
@@ -59,7 +61,7 @@ export function shallowEqualObjects<T extends object>(
   return true
 }
 
-const SCALAR_KEYS = ['editable', 'layoutMode', 'configEagerLoad'] as const
+const SCALAR_KEYS = ['editable', 'layoutMode', 'configEagerLoad', 'variant'] as const
 const REF_KEYS = [
   'portlet', 'dashboardFilters', 'colorPalette', 'loadingComponent', 'callbacks', 'icons',
   'setPortletRef', 'setPortletComponentRef'

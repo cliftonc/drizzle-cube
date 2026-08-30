@@ -353,8 +353,38 @@ export interface DashboardGridSettings {
   minH: number
 }
 
+/**
+ * One cell along a group's main axis. `portletIds` are stacked perpendicular to
+ * the group's `direction`. Cells share the main axis equally and stacks share
+ * the cross axis equally - a group is an evenly divided frame, with no
+ * per-cell sizing to set or drag.
+ */
+export interface PortletGroupCell {
+  portletIds: string[]
+}
+
+/**
+ * A "combination portlet": several portlets snapped together so they render
+ * inside one card. Layout-only - the portlets themselves stay flat in
+ * `DashboardConfig.portlets` and are referenced by id from here.
+ *
+ * Depth is deliberately capped at two (cells along one axis, a stack inside
+ * each). Snapping perpendicular onto an already-stacked portlet joins that
+ * stack rather than creating a third level.
+ */
+export interface PortletGroup {
+  id: string
+  /** When absent or empty, no title bar is rendered. */
+  title?: string
+  direction: 'row' | 'column'
+  cells: PortletGroupCell[]
+}
+
 export interface RowLayoutColumn {
-  portletId: string
+  /** Exactly one of `portletId` / `groupId` is set. */
+  portletId?: string
+  /** Set when this column hosts a PortletGroup instead of a single portlet. */
+  groupId?: string
   w: number
 }
 
@@ -370,6 +400,7 @@ export interface DashboardConfig {
   layoutMode?: DashboardLayoutMode
   grid?: DashboardGridSettings
   rows?: RowLayout[]
+  groups?: PortletGroup[] // Combination portlets (rows layout mode only)
   layouts?: { [key: string]: any } // react-grid-layout layouts
   colorPalette?: string // Name of the color palette to use (defaults to 'default')
   filters?: DashboardFilter[] // Dashboard-level filters that can be applied to portlets

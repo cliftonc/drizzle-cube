@@ -6,6 +6,9 @@
 import type { CSSProperties } from 'react'
 import type { ChartType, ChartDisplayConfig } from '../../types.js'
 
+/** How much chrome a card draws. Group children are frameless and headerless. */
+export type PortletCardVariant = 'standalone' | 'groupChild'
+
 export interface PortletDisplayModes {
   isMarkdownAutoHeight: boolean
   isTransparentContent: boolean
@@ -24,8 +27,21 @@ export function resolveDisplayModes(params: {
   layoutMode: string
   isEditMode: boolean
   portletTitle?: string
+  variant?: PortletCardVariant
 }): PortletDisplayModes {
-  const { renderChartType, renderDisplayConfig, layoutMode, isEditMode, portletTitle } = params
+  const { renderChartType, renderDisplayConfig, layoutMode, isEditMode, portletTitle, variant } = params
+
+  // A group child fills a flex cell with no intrinsic height, so markdown
+  // auto-height (which drops `h-full`) would collapse it to nothing.
+  if (variant === 'groupChild') {
+    const isMarkdownChild = renderChartType === 'markdown'
+    return {
+      isMarkdownAutoHeight: false,
+      isTransparentContent: isMarkdownChild && !!renderDisplayConfig?.transparentBackground,
+      isTransparent: true,
+      shouldHideHeader: true
+    }
+  }
 
   const isMarkdown = renderChartType === 'markdown'
   // isTransparent gated on !isEditMode so chrome is visible for editing
@@ -46,8 +62,22 @@ export function buildContainerClassName(params: {
   isMarkdownAutoHeight: boolean
   isInSelectionMode: boolean
   extraClassName?: string
+  variant?: PortletCardVariant
 }): string {
-  const { isTransparent, isMarkdownAutoHeight, isInSelectionMode, extraClassName } = params
+  const { isTransparent, isMarkdownAutoHeight, isInSelectionMode, extraClassName, variant } = params
+
+  if (variant === 'groupChild') {
+    return [
+      // `group` arms the hover reveal of PortletFloatingActions; `relative`
+      // anchors it. No border or background - the group card supplies those.
+      'dc-portlet-group-child dc:group dc:relative dc:flex dc:flex-col dc:h-full dc:min-h-0 dc:overflow-hidden',
+      isInSelectionMode ? 'dc:cursor-pointer' : '',
+      extraClassName
+    ]
+      .filter(Boolean)
+      .join(' ')
+  }
+
   return [
     isTransparent
       ? 'dc:flex dc:flex-col dc:transition-all'
@@ -75,9 +105,21 @@ export function buildContainerStyle(params: {
   isInSelectionMode: boolean
   hasSelectedFilter: boolean
   containerStyle?: CSSProperties
+  variant?: PortletCardVariant
 }): CSSProperties {
-  const { isTransparent, isInSelectionMode, hasSelectedFilter, containerStyle } = params
+  const { isTransparent, isInSelectionMode, hasSelectedFilter, containerStyle, variant } = params
   const selected = isInSelectionMode && hasSelectedFilter
+
+  if (variant === 'groupChild') {
+    // Borderless, so filter selection is signalled with an inset ring instead.
+    return {
+      boxShadow: selected ? 'inset 0 0 0 2px var(--dc-primary)' : 'none',
+      borderWidth: 0,
+      backgroundColor: selected ? 'color-mix(in srgb, var(--dc-primary) 5%, transparent)' : 'transparent',
+      opacity: isInSelectionMode && !hasSelectedFilter ? '0.5' : '1',
+      ...containerStyle
+    }
+  }
 
   return {
     boxShadow: isTransparent ? 'none' : 'var(--dc-shadow-sm)',
@@ -86,7 +128,7 @@ export function buildContainerStyle(params: {
     backgroundColor: isTransparent
       ? 'transparent'
       : selected
-        ? 'rgba(var(--dc-primary-rgb), 0.05)'
+        ? 'color-mix(in srgb, var(--dc-primary) 5%, transparent)'
         : 'var(--dc-surface)',
     opacity: isInSelectionMode && !hasSelectedFilter ? '0.5' : '1',
     ...containerStyle
