@@ -634,7 +634,7 @@ describe('BarChart', () => {
   })
 
   describe('showAllXLabels', () => {
-    it('should render with all X labels shown by default', () => {
+    it('should render by default (labels thinned unless opted in)', () => {
       render(<BarChart data={mockData} chartConfig={basicChartConfig} />)
       expect(screen.getByTestId('chart-container')).toBeInTheDocument()
     })

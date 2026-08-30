@@ -206,6 +206,36 @@ describe('AreaChart', () => {
     })
   })
 
+  describe('x-axis label density', () => {
+    // Forcing a label per point produced hundreds of overlapping ticks on a
+    // dense series - measured at 139 ticks across a 571px axis. The default now
+    // hands thinning back to recharts, which is width-aware; opting in still
+    // forces one label per point.
+    const denseData = Array.from({ length: 60 }, (_, i) => ({
+      'Orders.createdAt': `2024-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
+      'Sales.revenue': 1000 + i,
+    }))
+    const countTicks = (c: HTMLElement) =>
+      c.querySelectorAll('.recharts-xAxis .recharts-cartesian-axis-tick').length
+
+    // The default path hands thinning to recharts, which decides from measured
+    // text width. jsdom reports zero-width text, so recharts concludes
+    // everything fits and the thinning cannot be observed here - it was
+    // verified in a real browser instead (139 ticks -> 7 on a 571px axis).
+    // Only the opt-in path, which is width-independent, is assertable.
+
+    it('renders every label when explicitly opted in', () => {
+      const { container } = render(
+        <AreaChart
+          data={denseData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showAllXLabels: true }}
+        />
+      )
+      expect(countTicks(container)).toBe(denseData.length)
+    })
+  })
+
   describe('data point markers', () => {
     const countDots = (container: HTMLElement) =>
       container.querySelectorAll('.recharts-layer circle, circle').length

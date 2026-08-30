@@ -85,7 +85,7 @@ const AreaChart = React.memo(function AreaChart({
       connectNulls: displayConfig?.connectNulls ?? false
     }
 
-    const showAllXLabels = displayConfig?.showAllXLabels ?? true
+    const showAllXLabels = displayConfig?.showAllXLabels ?? false
 
     // Extract axis format configs
     const leftYAxisFormat = displayConfig?.leftYAxisFormat

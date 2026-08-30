@@ -29,7 +29,7 @@ const LEGACY_OPTIONS: LegacyOptionSpec[] = [
   { key: 'showGrid', labelKey: 'display.showGrid', defaultChecked: true },
   { key: 'showTooltip', labelKey: 'display.showTooltip', defaultChecked: true },
   { key: 'stacked', labelKey: 'display.stacked', defaultChecked: false },
-  { key: 'showAllXLabels', labelKey: 'chart.option.showAllXLabels.label', defaultChecked: true },
+  { key: 'showAllXLabels', labelKey: 'chart.option.showAllXLabels.label', defaultChecked: false },
   { key: 'hideHeader', labelKey: 'display.hideHeader', defaultChecked: false }
 ]
 

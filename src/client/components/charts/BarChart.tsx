@@ -45,7 +45,7 @@ const BarChart = React.memo(function BarChart({
     showTooltip: displayConfig?.showTooltip ?? true
   }
 
-  const showAllXLabels = displayConfig?.showAllXLabels ?? true
+  const showAllXLabels = displayConfig?.showAllXLabels ?? false
 
   // Extract axis format configs
   const leftYAxisFormat = displayConfig?.leftYAxisFormat
