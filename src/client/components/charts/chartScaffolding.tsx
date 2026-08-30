@@ -147,7 +147,7 @@ export function renderDualYAxes(
                   value: leftYAxisFormat?.label || getFieldLabel(leftAxisFields[0]),
                   angle: -90,
                   position: 'left',
-                  style: { textAnchor: 'middle', fontSize: '12px' }
+                  style: { textAnchor: 'middle', fontSize: '12px', fill: 'var(--dc-text-muted)' }
                 }
               : undefined
         }
@@ -164,7 +164,7 @@ export function renderDualYAxes(
                   value: rightYAxisFormat?.label || getFieldLabel(rightAxisFields[0]),
                   angle: 90,
                   position: 'right',
-                  style: { textAnchor: 'middle', fontSize: '12px' }
+                  style: { textAnchor: 'middle', fontSize: '12px', fill: 'var(--dc-text-muted)' }
                 }
               : undefined
           }

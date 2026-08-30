@@ -52,7 +52,7 @@ const AngledXAxisTick: React.FC<AngledXAxisTickProps> = ({
         y={0}
         dy={16}
         textAnchor="end"
-        fill="currentColor"
+        fill="var(--dc-text-muted)"
         fontSize={12}
         transform="rotate(-45)"
       >

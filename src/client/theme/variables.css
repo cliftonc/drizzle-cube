@@ -566,6 +566,16 @@ html.neon {
    Using outline: none (not :focus-visible) because we disable accessibilityLayer
    on chart components anyway for proper click handling.
 */
+/* Axis tick labels follow the theme.
+   recharts hardcodes #666 on its own ticks, and our custom angled tick used
+   `currentColor`, which inherits whatever the host page happens to set - both
+   are unreadable on a dark background. A CSS rule covers both, since CSS wins
+   over an SVG presentation attribute. */
+.recharts-cartesian-axis-tick-label text,
+.recharts-cartesian-axis-tick text {
+  fill: var(--dc-text-muted);
+}
+
 .recharts-surface:focus,
 .recharts-wrapper:focus,
 .recharts-area:focus,
