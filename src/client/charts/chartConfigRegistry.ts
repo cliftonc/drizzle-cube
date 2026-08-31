@@ -21,6 +21,7 @@ import { heatmapChartConfig } from '../components/charts/HeatMapChart.config.js'
 import { retentionHeatmapConfig } from '../components/charts/RetentionHeatmap.config.js'
 import { retentionCombinedConfig } from '../components/charts/RetentionCombinedChart.config.js'
 import { boxPlotChartConfig } from '../components/charts/BoxPlotChart.config.js'
+import { dotStripChartConfig } from '../components/charts/DotStripChart.config.js'
 import { waterfallChartConfig } from '../components/charts/WaterfallChart.config.js'
 import { candlestickChartConfig } from '../components/charts/CandlestickChart.config.js'
 import { measureProfileChartConfig } from '../components/charts/MeasureProfileChart.config.js'
@@ -62,6 +63,7 @@ const baseConfigs: Record<BuiltInChartType, ChartTypeConfig> = {
   retentionHeatmap: retentionHeatmapConfig,
   retentionCombined: retentionCombinedConfig,
   boxPlot: boxPlotChartConfig,
+  dotStrip: dotStripChartConfig,
   waterfall: waterfallChartConfig,
   candlestick: candlestickChartConfig,
   measureProfile: measureProfileChartConfig,

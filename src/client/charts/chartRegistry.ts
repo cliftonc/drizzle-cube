@@ -278,6 +278,14 @@ export const chartRegistry: Record<BuiltInChartType, ChartRegistryEntry> = {
     isAvailable: requiresMeasureAndDimension,
     config: async () => (await import('../components/charts/BoxPlotChart.config.js')).boxPlotChartConfig,
   },
+  dotStrip: {
+    label: 'chart.dotStrip.label',
+    icon: 'chartDotStrip',
+    description: 'chart.dotStrip.description',
+    useCase: 'chart.dotStrip.useCase',
+    isAvailable: requiresMeasureAndDimension,
+    config: async () => (await import('../components/charts/DotStripChart.config.js')).dotStripChartConfig,
+  },
   waterfall: {
     label: 'chart.waterfall.label',
     icon: 'chartWaterfall',

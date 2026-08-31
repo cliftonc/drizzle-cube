@@ -114,6 +114,7 @@ export type BuiltInChartType =
   | 'retentionHeatmap'
   | 'retentionCombined'
   | 'boxPlot'
+  | 'dotStrip'
   | 'waterfall'
   | 'candlestick'
   | 'proportionBar'
@@ -235,6 +236,13 @@ export interface ChartDisplayConfig {
   showPercentages?: boolean // Show each segment's share beneath the bar
   sortSegments?: boolean // Order segments largest-first rather than by query order
   fitToWidth?: boolean
+
+  // Dot strip (beeswarm) specific display options
+  showMedianMarker?: boolean // Vertical tick at each band's median
+  showBandStats?: boolean // `n=` and spread badges in the band gutter
+  showExtremeLabels?: boolean // Annotate each band's min/max dot with its identity label
+  dotSize?: 'small' | 'medium' | 'large' // Dot radius, which also drives the beeswarm spacing
+  bandSort?: 'none' | 'valueDesc' | 'valueAsc' | 'count' // Row ordering
 
   // DataTable specific display options
   pivotTimeDimension?: boolean // Pivot time dimension as columns (default: true when time dimension present)
