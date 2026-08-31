@@ -47,6 +47,7 @@ Adapters handle **only** operations that differ between databases:
 | `buildTimeDimension` | `DATE_TRUNC` vs `DATE_FORMAT` vs `date()` modifiers |
 | `buildStringCondition` | `ILIKE` vs `LOWER()+LIKE` |
 | `castToType` | `::type` vs `CAST(x AS type)` |
+| `tryCastToType` | Tolerant cast — NULL (not an error or a silent 0) on unparseable input. Regex/GLOB-guarded CASE (Postgres/MySQL/SingleStore/SQLite) vs native `TRY_CAST` (DuckDB/Databend/Snowflake) |
 | `buildAvg` | `COALESCE` vs `IFNULL` for null handling |
 | `buildBooleanLiteral` | `TRUE/FALSE` vs `1/0` |
 | `buildCaseWhen` | Until Drizzle adds native CASE support |

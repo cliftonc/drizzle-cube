@@ -27,7 +27,7 @@ import {
 
 /** REST handlers keyed by endpoint; each closes over the shared semantic layer. */
 export interface RestHandlers {
-  handleMetaGet<TRes>(port: HttpPort<TRes>): TRes
+  handleMetaGet<TRes>(port: HttpPort<TRes>, getBaseSecurityContext: BaseSecurityContextThunk): Promise<TRes>
   handleSqlGet<TRes>(port: HttpPort<TRes>, getBaseSecurityContext: BaseSecurityContextThunk): Promise<TRes>
   handleSqlPost<TRes>(port: HttpPort<TRes>, getBaseSecurityContext: BaseSecurityContextThunk): Promise<TRes>
   handleDryRunGet<TRes>(port: HttpPort<TRes>, getBaseSecurityContext: BaseSecurityContextThunk): Promise<TRes>
@@ -43,7 +43,7 @@ export function createRestHandlers(semanticLayer: SemanticLayerCompiler): RestHa
     securityContext: SecurityContext,
     port: HttpPort<TRes>
   ): Promise<TRes> {
-    const validation = semanticLayer.validateQuery(query)
+    const validation = semanticLayer.validateQuery(query, securityContext)
     if (!validation.isValid) {
       return port.send(400, formatErrorResponse(`Query validation failed: ${validation.errors.join(', ')}`, 400))
     }
@@ -59,10 +59,17 @@ export function createRestHandlers(semanticLayer: SemanticLayerCompiler): RestHa
     return port.send(200, formatSqlResponse(query, sqlResult))
   }
 
-  function handleMetaGet<TRes>(port: HttpPort<TRes>): TRes {
+  async function handleMetaGet<TRes>(
+    port: HttpPort<TRes>,
+    getBaseSecurityContext: BaseSecurityContextThunk
+  ): Promise<TRes> {
     try {
-      // Get cached metadata (fast path)
-      return port.send(200, formatMetaResponse(semanticLayer.getMetadata()))
+      // Metadata is the caller's cube set, so it is read under their security
+      // context — there is no context-free metadata path. A throwing extractor
+      // surfaces as a 500 here, matching the other REST handlers.
+      const securityContext = await resolveSecurityContext(getBaseSecurityContext, (n) => port.getHeader(n))
+      // Metadata is cached per cube set (fast path)
+      return port.send(200, formatMetaResponse(semanticLayer.getMetadata(securityContext)))
     } catch (error) {
       // codeql[js/log-injection] error source is internal, not user-controlled
       console.error('Metadata error:', error)
@@ -205,7 +212,7 @@ export function createRestHandlers(semanticLayer: SemanticLayerCompiler): RestHa
       const options = (body?.options || {}) as ExplainOptions
       const securityContext = await resolveSecurityContext(getBaseSecurityContext, (n) => port.getHeader(n))
 
-      const validation = semanticLayer.validateQuery(query)
+      const validation = semanticLayer.validateQuery(query, securityContext)
       if (!validation.isValid) {
         return port.send(400, { error: `Query validation failed: ${validation.errors.join(', ')}` })
       }

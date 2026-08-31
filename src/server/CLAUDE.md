@@ -131,7 +131,7 @@ src/server/
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `SemanticLayerCompiler` | `compiler.ts` | Cube registry, query validation, metadata caching, executor integration |
+| `SemanticLayerCompiler` | `compiler.ts` | Cube registry (base set + per-tenant cube sets), query validation, per-set metadata caching, executor integration |
 | `QueryExecutor` | `executor.ts` | Unified query orchestrator — routes to regular/comparison/funnel/flow/retention paths |
 | `LogicalPlanBuilder` | `logical-plan/logical-plan-builder.ts` | Builds logical plan with analysis trace |
 | `LogicalPlanner` | `logical-plan/logical-planner.ts` | Planning phases: cube usage, primary cube, joins, CTE decisions |
@@ -150,9 +150,10 @@ src/server/
 
 1. **Drizzle-only SQL** — all SQL goes through Drizzle's query builder; no raw string construction
 2. **Mandatory security context** — every cube defines `sql: (securityContext) => ...` row-level filter; enforced at plan time; propagated to all joined tables
-3. **Type safety** — cube definitions are validated against Drizzle schema types
-4. **Multi-database** — features must work across all 7 engines: postgres, mysql, sqlite, singlestore, duckdb, databend, snowflake
-5. **SQL object isolation** — reused column/SQL expressions are double-wrapped via `isolateSqlExpression` to prevent Drizzle's mutable `queryChunks` from causing corruption across SELECT/WHERE/GROUP BY
+3. **No cube set is resolvable without a security context** — cube *shape*, not just row filtering, is tenant-scoped. `SemanticLayerCompiler.resolveCubes(securityContext)` is the only path by which cube contents are read for a query, metadata, validation or MCP response, so `getMetadata`/`validateQuery`/`getCube`/`getAllCubes(Map)`/`getCubeNames`/`hasCube` all **require** a `SecurityContext`. Set lifecycle (`registerCube`, `registerCubeSet`, `unregisterCubeSet`, `getCubeSetStats`) is the deliberate exception — registration defines tenancy rather than operating within it. An unknown cube-set id falls back to the base set unless `missingCubeSet: 'throw'` is configured; that default is security-relevant, so choose it consciously. See `docs/per-tenant-cube-sets.md`.
+4. **Type safety** — cube definitions are validated against Drizzle schema types
+5. **Multi-database** — features must work across all 7 engines: postgres, mysql, sqlite, singlestore, duckdb, databend, snowflake
+6. **SQL object isolation** — reused column/SQL expressions are double-wrapped via `isolateSqlExpression` to prevent Drizzle's mutable `queryChunks` from causing corruption across SELECT/WHERE/GROUP BY
 
 ## SQL Object Isolation
 

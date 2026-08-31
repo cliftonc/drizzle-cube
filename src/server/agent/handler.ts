@@ -83,8 +83,12 @@ export async function* handleAgentChat(options: {
   const tools = getToolDefinitions()
   const executor = createToolExecutor({ semanticLayer, securityContext })
 
-  // Build system prompt from cube metadata + optional per-request context
-  const metadata = semanticLayer.getMetadata()
+  // Build system prompt from cube metadata + optional per-request context.
+  // The metadata is the caller's cube set: the chat handler is always given the
+  // request's security context (adapters resolve it from `extractSecurityContext`
+  // before opening the SSE stream), so the agent only ever sees this tenant's
+  // cubes in its system prompt.
+  const metadata = semanticLayer.getMetadata(securityContext)
   let systemPrompt = buildAgentSystemPrompt(metadata)
   if (options.systemContext) {
     systemPrompt += `\n\n## User Context\n\n${options.systemContext}`

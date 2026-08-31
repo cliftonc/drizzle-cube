@@ -219,7 +219,8 @@ await server.listen({ port: 3000 })
 
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
-| `cubes` | `Cube[]` | ✅ | - | Array of cube definitions to register |
+| `cubes` | `Cube[]` | ⚠️ | - | Array of cube definitions to register. Required unless `semanticLayer` is provided |
+| `semanticLayer` | `SemanticLayerCompiler` | ❌ | - | Pre-configured compiler. Required for [per-tenant cube sets](../../../docs/per-tenant-cube-sets.md), since the caller must own the compiler to call `registerCubeSet` |
 | `drizzle` | `DrizzleDatabase` | ✅ | - | Fully connected Drizzle database instance |
 | `schema` | `TSchema` | ⚠️ | - | Database schema for type inference (recommended) |
 | `extractSecurityContext` | `Function` | ✅ | - | Extract security context from HTTP requests (called for every request) |
@@ -355,7 +356,15 @@ Execute analytical queries.
 Execute queries via GET with query string parameter.
 
 ### `GET /cubejs-api/v1/meta`
-Get cube metadata and schema information.
+Get cube metadata and schema information. Tenant-scoped: this route resolves
+`extractSecurityContext` like every other route and returns only that tenant's
+cubes. If your extractor throws for unauthenticated requests, anonymous
+`/meta` calls now fail — return `SINGLE_TENANT_CONTEXT` (from `drizzle-cube/server`)
+from your extractor if you genuinely want public metadata. drizzle-cube now
+sets `Cache-Control: private, no-store` on every REST response (`/load`,
+`/sql`, `/dry-run`, `/batch`, `/explain` included), so `/meta` must not be
+cached in a shared cache/CDN keyed on URL alone. See
+[per-tenant cube sets](../../../docs/per-tenant-cube-sets.md).
 
 **Response:**
 ```json

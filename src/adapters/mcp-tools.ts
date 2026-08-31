@@ -281,7 +281,7 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
   // Per-tool executors. `load` and `chart` share the same query path; `chart`
   // only differs by carrying _meta.ui on its definition.
   const toolHandlers: Record<string, (args: unknown, meta?: unknown) => Promise<MCPToolResult>> = {
-    discover: (args) => runDiscoverTool(handlerDeps, args),
+    discover: (args, meta) => runDiscoverTool(handlerDeps, args, meta),
     validate: (args, meta) => runValidateTool(handlerDeps, args, meta),
     load: (args, meta) => runLoadTool(handlerDeps, args, meta),
     chart: (args, meta) => runLoadTool(handlerDeps, args, meta)

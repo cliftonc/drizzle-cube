@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import express, { Express } from 'express'
 import request from 'supertest'
 import { createCubeRouter, mountCubeRoutes, createCubeApp } from '../../src/adapters/express'
+import { SemanticLayerCompiler } from '../../src/server'
 import {
   createTestSemanticLayer,
   getTestSchema,
@@ -464,5 +465,51 @@ describe('Express Adapter', () => {
         .expect(200)
       expect(response.body.result.tools).toBeDefined()
     })
+  })
+})
+
+describe('Express Adapter — per-tenant cube sets', () => {
+  let closeFn: (() => void) | null = null
+
+  afterAll(() => { closeFn?.() })
+
+  it('serves each tenant its own cubes via an injected semanticLayer', async () => {
+    const { db, close } = await createTestSemanticLayer()
+    closeFn = close
+    const { schema } = await getTestSchema()
+    const { testEmployeesCube, testDepartmentsCube } = await createTestCubesForCurrentDatabase()
+
+    // Cube sets require the caller to own the compiler, so the adapter must
+    // accept one rather than always building its own.
+    const semanticLayer = new SemanticLayerCompiler({
+      drizzle: db,
+      schema,
+      engineType: getTestDatabaseType() as 'postgres' | 'mysql' | 'sqlite',
+      contextToCubeSetId: (ctx) => String(ctx.organisationId)
+    })
+    semanticLayer.registerCube(testEmployeesCube)
+    semanticLayer.registerCubeSet('1', [testDepartmentsCube])
+
+    const makeApp = (organisationId: number) => {
+      const app = express()
+      app.use('/', createCubeRouter({
+        semanticLayer,
+        drizzle: db,
+        schema,
+        extractSecurityContext: async () => ({ organisationId }),
+        engineType: getTestDatabaseType() as 'postgres' | 'mysql' | 'sqlite'
+      }))
+      return app
+    }
+
+    const tenantOne = await request(makeApp(1)).get('/cubejs-api/v1/meta').expect(200)
+    const tenantTwo = await request(makeApp(2)).get('/cubejs-api/v1/meta').expect(200)
+
+    const names = (res: any) => res.body.cubes.map((c: any) => c.name).sort()
+    expect(names(tenantOne)).toContain('Departments')
+    expect(names(tenantTwo)).not.toContain('Departments')
+
+    // /meta varies per tenant, so it must not be publicly cacheable.
+    expect(tenantOne.headers['cache-control']).toBe('private, no-store')
   })
 })

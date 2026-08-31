@@ -36,6 +36,7 @@ import {
   type McpDispatchContext,
   type McpAppConfig
 } from '../../src/adapters/mcp-transport'
+import type { MCPResource } from '../../src/adapters/mcp-transport'
 import { createTestSemanticLayer } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
@@ -653,7 +654,12 @@ describe('MCP Transport Layer', () => {
         const { testEmployeesCube } = await createTestCubesForCurrentDatabase()
         semanticLayer.registerCube(testEmployeesCube)
 
-        const resources = buildMcpResources(semanticLayer, defaults => defaults.filter(resource => resource.uri !== 'drizzle-cube://quickstart'))
+        const resources = buildMcpResources(
+          semanticLayer,
+          testSecurityContexts.org1,
+          (defaults: MCPResource[]) =>
+            defaults.filter(resource => resource.uri !== 'drizzle-cube://quickstart')
+        )
 
         expect(resources.some(resource => resource.uri === 'drizzle-cube://schema')).toBe(true)
         expect(resources.some(resource => resource.uri === 'drizzle-cube://quickstart')).toBe(false)

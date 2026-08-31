@@ -22,6 +22,7 @@ import { FilterBuilder } from '../src/server/builders/filter-builder'
 import { DateTimeBuilder } from '../src/server/builders/date-time-builder'
 import type { DatabaseAdapter, WindowFunctionType, WindowFunctionConfig } from '../src/server/adapters/base-adapter'
 import type { TimeGranularity, QueryContext, Cube, PhysicalQueryPlan } from '../src/server/types'
+import { testCastHelpers } from './helpers/query-context'
 
 // ============================================
 // Mock Database Adapters
@@ -202,7 +203,8 @@ function createMockQueryContext(): QueryContext {
   return {
     db: {} as any,
     schema: {} as any,
-    securityContext: { organisationId: 'org-1' }
+    securityContext: { organisationId: 'org-1' },
+    ...testCastHelpers()
   }
 }
 

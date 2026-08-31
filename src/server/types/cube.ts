@@ -77,6 +77,19 @@ export interface QueryContext {
    * without aggregation wrappers. Set from SemanticQuery.ungrouped.
    */
   ungrouped?: boolean
+  /**
+   * Cast an expression to a type, in this engine's dialect (`::decimal` on
+   * Postgres, `CAST(... AS DECIMAL)` elsewhere). Strict: unparseable input
+   * fails the query on Postgres and silently yields `0` on MySQL/SQLite.
+   */
+  cast: (fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer') => SQL
+  /**
+   * Cast an expression to a type, yielding NULL rather than failing when the
+   * input cannot be parsed. Use this over {@link QueryContext.cast} whenever
+   * the source column is free text — one dirty value should leave a row with a
+   * NULL cell, not fail the whole query.
+   */
+  tryCast: (fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer') => SQL
 }
 
 /**
@@ -180,7 +193,13 @@ export interface Dimension {
   /** Whether this is a primary key */
   primaryKey?: boolean
 
-  /** Whether to show in UI */
+  /**
+   * Whether to include this dimension in generated cube metadata (`/meta`,
+   * the client field picker, AI prompts). Defaults to `true` (shown) when
+   * omitted. Setting `shown: false` hides the dimension from metadata/UI
+   * only — it remains fully usable in queries and filters, matching Cube.js
+   * semantics for `shown: false`.
+   */
   shown?: boolean
 
   /** Display format */
@@ -224,7 +243,13 @@ export interface Measure {
   /** Display format */
   format?: string
 
-  /** Whether to show in UI */
+  /**
+   * Whether to include this measure in generated cube metadata (`/meta`,
+   * the client field picker, AI prompts). Defaults to `true` (shown) when
+   * omitted. Setting `shown: false` hides the measure from metadata/UI
+   * only — it remains fully usable in queries and filters, matching Cube.js
+   * semantics for `shown: false`.
+   */
   shown?: boolean
 
   /** Filters applied to this measure */

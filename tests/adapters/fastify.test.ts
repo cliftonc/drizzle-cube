@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { FastifyInstance } from 'fastify'
 import { cubePlugin, createCubeApp } from '../../src/adapters/fastify'
+import Fastify from 'fastify'
+import { SemanticLayerCompiler } from '../../src/server'
 import {
   createTestSemanticLayer,
   getTestSchema,
@@ -557,5 +559,58 @@ describe('Fastify Adapter', () => {
     ).rejects.toThrow('At least one cube must be provided')
 
     await testApp.close()
+  })
+})
+
+describe('Fastify Adapter — per-tenant cube sets', () => {
+  let closeFn: (() => void) | null = null
+
+  afterAll(() => { closeFn?.() })
+
+  it('serves each tenant its own cubes via an injected semanticLayer', async () => {
+    const { db, close } = await createTestSemanticLayer()
+    closeFn = close
+    const { schema } = await getTestSchema()
+    const { testEmployeesCube, testDepartmentsCube } = await createTestCubesForCurrentDatabase()
+
+    // Cube sets require the caller to own the compiler, so the plugin must
+    // accept one instead of always constructing its own from `cubes`.
+    const semanticLayer = new SemanticLayerCompiler({
+      drizzle: db,
+      schema,
+      engineType: getTestDatabaseType() as 'postgres' | 'mysql' | 'sqlite',
+      contextToCubeSetId: (ctx) => String(ctx.organisationId)
+    })
+    semanticLayer.registerCube(testEmployeesCube)
+    semanticLayer.registerCubeSet('1', [testDepartmentsCube])
+
+    const makeApp = async (organisationId: number) => {
+      const instance = Fastify()
+      await instance.register(cubePlugin as any, {
+        semanticLayer,
+        drizzle: db,
+        schema,
+        extractSecurityContext: async () => ({ organisationId }),
+        engineType: getTestDatabaseType() as 'postgres' | 'mysql' | 'sqlite'
+      })
+      return instance
+    }
+
+    const one = await makeApp(1)
+    const two = await makeApp(2)
+    try {
+      const tenantOne = await one.inject({ method: 'GET', url: '/cubejs-api/v1/meta' })
+      const tenantTwo = await two.inject({ method: 'GET', url: '/cubejs-api/v1/meta' })
+
+      expect(tenantOne.statusCode).toBe(200)
+      const names = (res: any) => JSON.parse(res.body).cubes.map((c: any) => c.name)
+      expect(names(tenantOne)).toContain('Departments')
+      expect(names(tenantTwo)).not.toContain('Departments')
+
+      expect(tenantOne.headers['cache-control']).toBe('private, no-store')
+    } finally {
+      await one.close()
+      await two.close()
+    }
   })
 })

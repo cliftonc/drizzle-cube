@@ -214,7 +214,9 @@ describe('createToolExecutor', () => {
         minScore: 0.5,
       })
 
-      expect(mockHandleDiscover).toHaveBeenCalledWith(semanticLayer, {
+      // handleDiscover now takes the request's security context, so discovery
+      // sees only the cubes that context resolves to.
+      expect(mockHandleDiscover).toHaveBeenCalledWith(semanticLayer, mockSecurityContext, {
         topic: 'sales',
         intent: 'analyze revenue',
         limit: 5,

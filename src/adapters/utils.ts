@@ -165,10 +165,11 @@ function collectDryRunAnalysis(
 
 function validateDryRunQuery(
   query: SemanticQuery,
+  securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler,
   label: string
 ): void {
-  const validation = semanticLayer.validateQuery(query)
+  const validation = semanticLayer.validateQuery(query, securityContext)
   if (!validation.isValid) {
     throw new Error(`${label} validation failed: ${validation.errors.join(', ')}`)
   }
@@ -335,7 +336,7 @@ async function handleRegularDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  validateDryRunQuery(query, semanticLayer, 'Query')
+  validateDryRunQuery(query, securityContext, semanticLayer, 'Query')
   const cubesUsed = collectRegularReferencedCubes(query)
   const isMultiCube = cubesUsed.length > 1
   const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
@@ -372,7 +373,7 @@ async function handleComparisonDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  validateDryRunQuery(query, semanticLayer, 'Comparison query')
+  validateDryRunQuery(query, securityContext, semanticLayer, 'Comparison query')
   const cubesUsed = collectRegularReferencedCubes(query)
   const isMultiCube = cubesUsed.length > 1
   const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
@@ -602,7 +603,7 @@ async function handleFunnelDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  validateDryRunQuery(query, semanticLayer, 'Funnel query')
+  validateDryRunQuery(query, securityContext, semanticLayer, 'Funnel query')
   const cubesUsed = collectFunnelReferencedCubes(query)
   const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
   const funnel = query.funnel!
@@ -643,7 +644,7 @@ async function handleFlowDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  validateDryRunQuery(query, semanticLayer, 'Flow query')
+  validateDryRunQuery(query, securityContext, semanticLayer, 'Flow query')
   const cubesUsed = collectFlowReferencedCubes(query)
   const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
   const flow = query.flow!
@@ -678,7 +679,7 @@ async function handleRetentionDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  validateDryRunQuery(query, semanticLayer, 'Retention query')
+  validateDryRunQuery(query, securityContext, semanticLayer, 'Retention query')
   const cubesUsed = collectRetentionReferencedCubes(query)
   const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
   const retention = query.retention!
@@ -821,9 +822,12 @@ export interface ValidateRequest {
  */
 export async function handleSuggest(
   semanticLayer: SemanticLayerCompiler,
+  securityContext: SecurityContext,
   body: SuggestRequest
 ): Promise<QuerySuggestion> {
-  const metadata = semanticLayer.getMetadata()
+  // Suggestions are built from cube metadata, so they are scoped to the cube
+  // set this caller may see — never the base set.
+  const metadata = semanticLayer.getMetadata(securityContext)
   return suggestQuery(metadata, body.naturalLanguage, body.cube)
 }
 
@@ -832,13 +836,17 @@ export async function handleSuggest(
  */
 export async function handleValidate(
   semanticLayer: SemanticLayerCompiler,
-  body: ValidateRequest,
-  securityContext?: SecurityContext
+  securityContext: SecurityContext,
+  body: ValidateRequest
 ): Promise<AIValidationResult & { sql?: { sql: string; params?: any[] } }> {
-  const metadata = semanticLayer.getMetadata()
+  // The query is validated against the caller's cube set. The context used to be
+  // optional here — callers that could not authenticate still got base-set
+  // metadata back. That escape hatch is gone: a caller with no resolvable
+  // context gets no cube list at all.
+  const metadata = semanticLayer.getMetadata(securityContext)
   const result = await aiValidateQuery(body.query, metadata)
 
-  if (result.isValid && securityContext) {
+  if (result.isValid) {
     try {
       const query = normalizeQueryFields(
         (result.correctedQuery ?? body.query) as Record<string, unknown>

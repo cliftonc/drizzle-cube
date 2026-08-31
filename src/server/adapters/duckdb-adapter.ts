@@ -148,6 +148,23 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
     }
   }
 
+  /**
+   * Build DuckDB tolerant type casting using the native TRY_CAST function, which returns
+   * NULL on conversion failure instead of raising an error (unlike `::`/CAST).
+   */
+  tryCastToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL {
+    switch (targetType) {
+      case 'timestamp':
+        return sql`TRY_CAST(${fieldExpr} AS timestamp)`
+      case 'decimal':
+        return sql`TRY_CAST(${fieldExpr} AS decimal)`
+      case 'integer':
+        return sql`TRY_CAST(${fieldExpr} AS integer)`
+      default:
+        throw new Error(`Unsupported cast type: ${targetType}`)
+    }
+  }
+
   // ============================================
   // Statistical & Window Function Methods
   // ============================================

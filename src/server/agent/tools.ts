@@ -260,7 +260,7 @@ export function createToolExecutor(options: {
 
   // discover_cubes
   executors.set('discover_cubes', async (input) => {
-    const result = await handleDiscover(semanticLayer, {
+    const result = await handleDiscover(semanticLayer, securityContext, {
       topic: input.topic as string | undefined,
       intent: input.intent as string | undefined,
       limit: input.limit as number | undefined,
@@ -298,14 +298,16 @@ export function createToolExecutor(options: {
 
   // get_cube_metadata
   executors.set('get_cube_metadata', async () => {
-    const metadata = semanticLayer.getMetadata()
+    const metadata = semanticLayer.getMetadata(securityContext)
     return { result: JSON.stringify(metadata) }
   })
 
-  // Build a metadata lookup for field validation
+  // Build a metadata lookup for field validation. The executor is created per
+  // chat request and closes over that request's security context, so this
+  // lookup is the caller's cube set — not a shared, base-set snapshot.
   // Metadata names are already fully qualified: "CubeName.fieldName"
   const cubeMetadataMap = new Map<string, { measures: string[]; dimensions: string[] }>()
-  for (const cube of semanticLayer.getMetadata()) {
+  for (const cube of semanticLayer.getMetadata(securityContext)) {
     cubeMetadataMap.set(cube.name, {
       measures: (cube.measures || []).map(m => m.name),
       dimensions: (cube.dimensions || []).map(d => d.name),
@@ -422,7 +424,7 @@ export function createToolExecutor(options: {
     // Normalize before validation (fix double-prefixed fields, order keys, etc.)
     parsedQuery = normalizeQueryFields(parsedQuery)
 
-    const validation = semanticLayer.validateQuery(parsedQuery as any)
+    const validation = semanticLayer.validateQuery(parsedQuery as any, securityContext)
     if (!validation.isValid) {
       return {
         result: `Invalid query — fix these errors and retry:\n${validation.errors.join('\n')}\n\nAttempted query:\n${JSON.stringify(parsedQuery, null, 2)}`,
@@ -512,7 +514,7 @@ export function createToolExecutor(options: {
         // Normalize before validation (fix double-prefixed fields, etc.)
         parsedQuery = normalizeQueryFields(parsedQuery)
 
-        const validation = semanticLayer.validateQuery(parsedQuery as any)
+        const validation = semanticLayer.validateQuery(parsedQuery as any, securityContext)
         if (!validation.isValid) {
           errors.push(`Portlet "${portlet.title}": ${validation.errors.join(', ')}`)
         }

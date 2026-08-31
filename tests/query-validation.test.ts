@@ -9,8 +9,9 @@ import {
 } from './helpers/test-database'
 
 
-import { 
-  SemanticLayerCompiler
+import {
+  SemanticLayerCompiler,
+  SINGLE_TENANT_CONTEXT
 } from '../src/server'
 
 import type { 
@@ -49,7 +50,7 @@ describe('Query Validation', () => {
         dimensions: ['Employees.name']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(true)
       expect(result.errors).toHaveLength(0)
     })
@@ -59,7 +60,7 @@ describe('Query Validation', () => {
         measures: ['NonExistentCube.count']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Cube 'NonExistentCube' not found (referenced in measure 'NonExistentCube.count')")
     })
@@ -69,7 +70,7 @@ describe('Query Validation', () => {
         dimensions: ['NonExistentCube.name']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Cube 'NonExistentCube' not found (referenced in dimension 'NonExistentCube.name')")
     })
@@ -81,7 +82,7 @@ describe('Query Validation', () => {
         measures: ['Employees.nonExistentMeasure']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Measure 'nonExistentMeasure' not found on cube 'Employees'")
     })
@@ -91,7 +92,7 @@ describe('Query Validation', () => {
         dimensions: ['Employees.nonExistentDimension']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Dimension 'nonExistentDimension' not found on cube 'Employees'")
     })
@@ -102,7 +103,7 @@ describe('Query Validation', () => {
         dimensions: ['Employees.name', 'Departments.name']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(true)
       expect(result.errors).toHaveLength(0)
     })
@@ -118,7 +119,7 @@ describe('Query Validation', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(true)
       expect(result.errors).toHaveLength(0)
     })
@@ -132,7 +133,7 @@ describe('Query Validation', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("TimeDimension 'nonExistentDate' not found on cube 'Employees' (must be a dimension with time type)")
     })
@@ -146,7 +147,7 @@ describe('Query Validation', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Cube 'NonExistentCube' not found (referenced in timeDimension 'NonExistentCube.startDate')")
     })
@@ -163,7 +164,7 @@ describe('Query Validation', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(true)
       expect(result.errors).toHaveLength(0)
     })
@@ -178,7 +179,7 @@ describe('Query Validation', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(true)
       expect(result.errors).toHaveLength(0)
     })
@@ -193,7 +194,7 @@ describe('Query Validation', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Filter field 'nonExistentField' not found on cube 'Employees' (must be a dimension or measure)")
     })
@@ -208,7 +209,7 @@ describe('Query Validation', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Cube 'NonExistentCube' not found (referenced in filter 'NonExistentCube.name')")
     })
@@ -220,7 +221,7 @@ describe('Query Validation', () => {
         measures: ['InvalidFormat']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Invalid measure format: InvalidFormat. Expected format: 'CubeName.fieldName'")
     })
@@ -230,7 +231,7 @@ describe('Query Validation', () => {
         dimensions: ['InvalidFormat']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Invalid dimension format: InvalidFormat. Expected format: 'CubeName.fieldName'")
     })
@@ -245,7 +246,7 @@ describe('Query Validation', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Invalid filter member format: InvalidFormat. Expected format: 'CubeName.fieldName'")
     })
@@ -255,7 +256,7 @@ describe('Query Validation', () => {
     it('should fail validation for completely empty query', () => {
       const query: SemanticQuery = {}
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain('Query must reference at least one cube through measures, dimensions, or filters')
     })
@@ -267,7 +268,7 @@ describe('Query Validation', () => {
         filters: []
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain('Query must reference at least one cube through measures, dimensions, or filters')
     })
@@ -280,7 +281,7 @@ describe('Query Validation', () => {
         dimensions: ['Employees.name', 'Departments.name']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(true)
       expect(result.errors).toHaveLength(0)
     })
@@ -291,7 +292,7 @@ describe('Query Validation', () => {
         dimensions: ['Employees.name']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Cube 'NonExistentCube' not found (referenced in measure 'NonExistentCube.count')")
     })

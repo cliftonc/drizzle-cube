@@ -1,8 +1,9 @@
 # Records Table — spec
 
 **Discussion:** [#1007](https://github.com/cliftonc/drizzle-cube/discussions/1007) — _Custom Records Table_ (andrew-hu368)
-**Status:** 📝 Spec, awaiting confirmation. No code written.
-**Revision:** v2 — supersedes the two-query `attributeColumns` design. See _Superseded approach_ at the end.
+**Status:** 🚧 Foundation built; the Records Table widget itself is still to do.
+**Revision:** v3 — supersedes v2's "attributes are global to the deployment" premise. Attribute dimensions are
+now generated **per tenant** via cube sets. See _Revision history_ at the end.
 
 ---
 
@@ -25,9 +26,13 @@ EAV — [dynamic data models](https://docs.cube.dev/docs/data-modeling/dynamic),
 `asyncModule()` generate the model, explicitly for _"generating models from a remote source"_. Cube has no
 server-side pivot and no EXISTS filter primitive; `pivotConfig` is client-side `ResultSet` reshaping only.
 
-Because the attribute set is **global to a configured drizzle-cube instance** (not per-`securityContext`), the
-generated model needs no per-tenant compilation — so drizzle-cube does not need Cube's `COMPILE_CONTEXT` equivalent,
-and `/meta` stays a shared cache.
+~~Because the attribute set is global to a configured drizzle-cube instance (not per-`securityContext`), the
+generated model needs no per-tenant compilation.~~ **Retracted in v3.** That premise was never confirmed by the
+requester, and per-organisation attributes are the normal case — the whole point of letting an admin define them.
+drizzle-cube now has a `COMPILE_CONTEXT` equivalent: **cube sets**, registered per tenant at application boot
+(`contextToCubeSetId` + `registerCubeSet`), documented in
+[`docs/per-tenant-cube-sets.md`](../per-tenant-cube-sets.md). `/meta` is consequently tenant-scoped and cached
+per set, not shared.
 
 Once attributes are dimensions, everything downstream works through paths that already exist:
 
@@ -120,6 +125,9 @@ as number:                          100, 99, 98, 85, 68, 9
 either errors (Postgres: `text > integer`) or compares lexicographically, where `'9'` passes and `'100'` fails.
 
 ## Core changes required
+
+**Status:** items 1, 2, 3 and 5 are **done**, together with the per-tenant cube sets they turned out to need.
+Items 4 and 6 remain, alongside the whole of _The Records Table itself_ below.
 
 | # | Change | Why | Where |
 |---|---|---|---|
@@ -249,13 +257,29 @@ Precedence: `rowLink` wins; otherwise the existing drill path.
   `employee_attribute_values`, seeded), which does not exist today.
 - `/quality-gate` before the PR.
 
-## Superseded approach
+## Revision history
 
-v1 of this spec fetched attribute values in a **second record-grain query** per page (`attributeColumns` config in
+**v1 → v2.** v1 fetched attribute values in a **second record-grain query** per page (`attributeColumns` config in
 Cube's `pivotConfig` vocabulary, spread client-side). It avoided the join fan-out and kept pagination correct, but
 because values arrived after the page it could not sort or filter by an attribute server-side. Generated dimensions
-supersede it: same correctness, no bespoke query path, and filtering and sorting work. It remains the fallback for
-deployments that cannot regenerate cube definitions at boot.
+supersede it: same correctness, no bespoke query path, and filtering and sorting work.
+
+**v2 → v3.** v2 assumed one attribute set per deployment, so a single global model sufficed. That premise was never
+confirmed and does not hold for per-organisation attributes, where it would serve tenant A's columns to tenant B the
+moment the sets diverged. v3 makes cube definitions resolvable per tenant:
+
+- `SemanticLayerCompiler` gains **cube sets** — `contextToCubeSetId(securityContext)` selects a set registered at
+  boot with `registerCubeSet(setId, cubes)`, merged over the shared base set at registration time.
+- `securityContext` became **required** on every cube-resolving method (`getMetadata`, `validateQuery`, `getCube`,
+  `getAllCubes(Map)`, `getCubeNames`, `hasCube`), so no request path can reach a cube list without one. Set
+  lifecycle is the deliberate exception: registration defines tenancy rather than operating within it.
+- `/meta` resolves the security context and is cached per set; the query cache key carries a `setId:generation`
+  component, so results can neither cross tenants nor survive a re-registration that changed a definition. Every
+  REST response now carries `Cache-Control: private, no-store`, since `/meta` is no longer identical for all callers.
+- `buildAttributeDimensions()` and the tolerant `tryCastToType` shipped as part of this, and are useful
+  independently of the Records Table.
+
+Full design and the boot loop: [`docs/per-tenant-cube-sets.md`](../per-tenant-cube-sets.md).
 
 ## Open questions for the requester
 

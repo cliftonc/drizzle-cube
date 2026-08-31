@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http'
 import postgres from 'postgres'
 import { neon } from '@neondatabase/serverless'
-import { employees, departments, productivity, prEvents, teams, employeeTeams, analyticsPages, settings, schema } from '../server/schema'
+import { employees, departments, productivity, prEvents, teams, employeeTeams, analyticsPages, settings, attributes, employeeAttributeValues, schema } from '../server/schema'
 import { productivityDashboardConfig } from '../server/dashboard-config'
 
 // Default connection string for CLI usage
@@ -903,6 +903,59 @@ export async function executeSeed(db?: any, connectionString?: string) {
     
     console.log(`✅ Inserted analytics page: ${insertedPage[0].name}`)
     
+    // Insert user-defined attributes (EAV) — deliberately different per
+    // organisation, so /meta returns a different cube shape per tenant and the
+    // per-tenant cube sets in server/cubes.ts have something to generate from.
+    console.log('🏷️  Inserting per-organisation attributes...')
+    const insertedAttributes = await database.insert(attributes)
+      .values([
+        { name: 'Health', valueType: 'string', organisationId: 1 },
+        { name: 'Completion', valueType: 'number', organisationId: 1 },
+        { name: 'Owner', valueType: 'string', organisationId: 2 }
+      ])
+      .returning()
+
+    type SeededAttribute = { id: number; name: string; organisationId: number }
+    const org1Attributes: SeededAttribute[] = insertedAttributes
+      .filter((a: SeededAttribute) => a.organisationId === 1)
+    const healthAttribute = org1Attributes.find((a: SeededAttribute) => a.name === 'Health')
+    const completionAttribute = org1Attributes.find((a: SeededAttribute) => a.name === 'Completion')
+
+    const attributeValues: Array<{
+      employeeId: number
+      attributeId: number
+      value: string
+      organisationId: number
+    }> = []
+
+    if (healthAttribute && completionAttribute) {
+      const healthStates = ['On track', 'At risk', 'Blocked']
+      insertedEmployees.forEach((employee: { id: number }, index: number) => {
+        attributeValues.push({
+          employeeId: employee.id,
+          attributeId: healthAttribute.id,
+          value: healthStates[index % healthStates.length],
+          organisationId: 1
+        })
+        attributeValues.push({
+          employeeId: employee.id,
+          attributeId: completionAttribute.id,
+          // Every 11th row is deliberately unparseable, so the safe numeric
+          // cast is exercised rather than assumed.
+          value: index % 11 === 0 ? 'n/a' : String((index * 7) % 101),
+          organisationId: 1
+        })
+      })
+    }
+
+    if (attributeValues.length > 0) {
+      await database.insert(employeeAttributeValues).values(attributeValues)
+    }
+
+    console.log(
+      `✅ Inserted ${insertedAttributes.length} attributes and ${attributeValues.length} attribute values`
+    )
+
     // Insert initial settings (including Gemini AI call counter)
     console.log('⚙️ Inserting initial settings...')
     const initialSettings = [

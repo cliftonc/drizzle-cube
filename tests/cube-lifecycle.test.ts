@@ -37,27 +37,27 @@ describe('Cube Lifecycle', () => {
     it('should register a cube and make it available', () => {
       compiler.registerCube(employeesCube)
 
-      expect(compiler.hasCube('Employees')).toBe(true)
-      expect(compiler.getCube('Employees')).toBe(employeesCube)
-      expect(compiler.getCubeNames()).toEqual(['Employees'])
+      expect(compiler.hasCube('Employees', securityContext)).toBe(true)
+      expect(compiler.getCube('Employees', securityContext)).toBe(employeesCube)
+      expect(compiler.getCubeNames(securityContext)).toEqual(['Employees'])
     })
 
     it('should register multiple cubes', () => {
       compiler.registerCube(employeesCube)
       compiler.registerCube(departmentsCube)
 
-      expect(compiler.getCubeNames()).toEqual(['Employees', 'Departments'])
-      expect(compiler.getAllCubes()).toHaveLength(2)
+      expect(compiler.getCubeNames(securityContext)).toEqual(['Employees', 'Departments'])
+      expect(compiler.getAllCubes(securityContext)).toHaveLength(2)
     })
 
     it('should overwrite a cube with the same name', () => {
       compiler.registerCube(employeesCube)
-      const meta1 = compiler.getMetadata()
+      const meta1 = compiler.getMetadata(securityContext)
       expect(meta1).toHaveLength(1)
 
       // Re-register with same name overwrites
       compiler.registerCube(employeesCube)
-      expect(compiler.getAllCubes()).toHaveLength(1)
+      expect(compiler.getAllCubes(securityContext)).toHaveLength(1)
     })
   })
 
@@ -69,9 +69,9 @@ describe('Cube Lifecycle', () => {
       const result = compiler.unregisterCube('Employees')
 
       expect(result).toBe(true)
-      expect(compiler.hasCube('Employees')).toBe(false)
-      expect(compiler.hasCube('Departments')).toBe(true)
-      expect(compiler.getCubeNames()).toEqual(['Departments'])
+      expect(compiler.hasCube('Employees', securityContext)).toBe(false)
+      expect(compiler.hasCube('Departments', securityContext)).toBe(true)
+      expect(compiler.getCubeNames(securityContext)).toEqual(['Departments'])
     })
 
     it('should return false for a non-existent cube', () => {
@@ -84,12 +84,12 @@ describe('Cube Lifecycle', () => {
       compiler.registerCube(departmentsCube)
 
       // Prime the metadata cache
-      const meta1 = compiler.getMetadata()
+      const meta1 = compiler.getMetadata(securityContext)
       expect(meta1).toHaveLength(2)
 
       compiler.unregisterCube('Employees')
 
-      const meta2 = compiler.getMetadata()
+      const meta2 = compiler.getMetadata(securityContext)
       expect(meta2).toHaveLength(1)
       expect(meta2[0].name).toBe('Departments')
     })
@@ -100,7 +100,7 @@ describe('Cube Lifecycle', () => {
 
       const result = compiler.validateQuery({
         measures: ['Employees.count']
-      })
+      }, securityContext)
 
       expect(result.isValid).toBe(false)
       expect(result.errors[0]).toContain("Cube 'Employees' not found")
@@ -114,7 +114,7 @@ describe('Cube Lifecycle', () => {
       const result = compiler.removeCube('Employees')
 
       expect(result).toBe(true)
-      expect(compiler.hasCube('Employees')).toBe(false)
+      expect(compiler.hasCube('Employees', securityContext)).toBe(false)
     })
 
     it('should return false for non-existent cube', () => {
@@ -130,27 +130,27 @@ describe('Cube Lifecycle', () => {
 
       compiler.clearCubes()
 
-      expect(compiler.getAllCubes()).toHaveLength(0)
-      expect(compiler.getCubeNames()).toEqual([])
-      expect(compiler.hasCube('Employees')).toBe(false)
-      expect(compiler.hasCube('Departments')).toBe(false)
-      expect(compiler.hasCube('Productivity')).toBe(false)
+      expect(compiler.getAllCubes(securityContext)).toHaveLength(0)
+      expect(compiler.getCubeNames(securityContext)).toEqual([])
+      expect(compiler.hasCube('Employees', securityContext)).toBe(false)
+      expect(compiler.hasCube('Departments', securityContext)).toBe(false)
+      expect(compiler.hasCube('Productivity', securityContext)).toBe(false)
     })
 
     it('should invalidate metadata cache', () => {
       compiler.registerCube(employeesCube)
-      const meta1 = compiler.getMetadata()
+      const meta1 = compiler.getMetadata(securityContext)
       expect(meta1).toHaveLength(1)
 
       compiler.clearCubes()
 
-      const meta2 = compiler.getMetadata()
+      const meta2 = compiler.getMetadata(securityContext)
       expect(meta2).toHaveLength(0)
     })
 
     it('should be safe to call on empty compiler', () => {
       expect(() => compiler.clearCubes()).not.toThrow()
-      expect(compiler.getAllCubes()).toHaveLength(0)
+      expect(compiler.getAllCubes(securityContext)).toHaveLength(0)
     })
   })
 
@@ -159,14 +159,14 @@ describe('Cube Lifecycle', () => {
       compiler.registerCube(employeesCube)
       compiler.unregisterCube('Employees')
 
-      expect(compiler.hasCube('Employees')).toBe(false)
+      expect(compiler.hasCube('Employees', securityContext)).toBe(false)
 
       compiler.registerCube(employeesCube)
-      expect(compiler.hasCube('Employees')).toBe(true)
+      expect(compiler.hasCube('Employees', securityContext)).toBe(true)
 
       const validation = compiler.validateQuery({
         measures: ['Employees.count']
-      })
+      }, securityContext)
       expect(validation.isValid).toBe(true)
     })
 
@@ -176,9 +176,9 @@ describe('Cube Lifecycle', () => {
 
       compiler.registerCube(departmentsCube)
 
-      expect(compiler.getCubeNames()).toEqual(['Departments'])
-      expect(compiler.getMetadata()).toHaveLength(1)
-      expect(compiler.getMetadata()[0].name).toBe('Departments')
+      expect(compiler.getCubeNames(securityContext)).toEqual(['Departments'])
+      expect(compiler.getMetadata(securityContext)).toHaveLength(1)
+      expect(compiler.getMetadata(securityContext)[0].name).toBe('Departments')
     })
 
     it('should execute queries after re-registration', async () => {
@@ -221,23 +221,23 @@ describe('Cube Lifecycle', () => {
       compiler.registerCube(employeesCube)
       compiler.registerCube(departmentsCube)
 
-      const meta1 = compiler.getMetadata()
+      const meta1 = compiler.getMetadata(securityContext)
       expect(meta1.map((m: any) => m.name)).toEqual(['Employees', 'Departments'])
 
       compiler.unregisterCube('Employees')
-      const meta2 = compiler.getMetadata()
+      const meta2 = compiler.getMetadata(securityContext)
       expect(meta2.map((m: any) => m.name)).toEqual(['Departments'])
 
       compiler.registerCube(productivityCube)
-      const meta3 = compiler.getMetadata()
+      const meta3 = compiler.getMetadata(securityContext)
       expect(meta3.map((m: any) => m.name)).toEqual(['Departments', 'Productivity'])
 
       compiler.clearCubes()
-      const meta4 = compiler.getMetadata()
+      const meta4 = compiler.getMetadata(securityContext)
       expect(meta4).toEqual([])
 
       compiler.registerCube(employeesCube)
-      const meta5 = compiler.getMetadata()
+      const meta5 = compiler.getMetadata(securityContext)
       expect(meta5.map((m: any) => m.name)).toEqual(['Employees'])
     })
   })

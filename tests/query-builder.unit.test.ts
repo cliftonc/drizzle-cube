@@ -17,6 +17,7 @@ import { MySQLAdapter } from '../src/server/adapters/mysql-adapter'
 import { SQLiteAdapter } from '../src/server/adapters/sqlite-adapter'
 import { defineCube } from '../src/server/cube-utils'
 import type { Cube, QueryContext, SemanticQuery } from '../src/server/types'
+import { testCastHelpers } from './helpers/query-context'
 
 // Mock table for testing
 const mockTable = {
@@ -118,7 +119,8 @@ function createMockContext(): QueryContext {
     securityContext: {
       organisationId: 'org-123',
       userId: 'user-456'
-    }
+    },
+    ...testCastHelpers()
   }
 }
 
