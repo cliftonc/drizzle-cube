@@ -27,21 +27,42 @@ function qualify(cubeName: string, member: string): string {
   return member.includes('.') ? member : `${cubeName}.${member}`
 }
 
-/** Build measure metadata, normalizing drillMembers to fully-qualified names. */
+/**
+ * Strip a same-cube qualifier from a member name so it can be looked up in
+ * `cube.dimensions`/`cube.measures`. A level written as `'hiddenTag'` or as
+ * `'Widgets.hiddenTag'` (self-qualified) both resolve to the same local key;
+ * a level qualified with a different cube name is left untouched (returns
+ * `null`) since it cannot be resolved against this cube's own members.
+ */
+function unqualifyOwnCube(cubeName: string, member: string): string | null {
+  if (!member.includes('.')) return member
+  const prefix = `${cubeName}.`
+  return member.startsWith(prefix) ? member.slice(prefix.length) : null
+}
+
+/**
+ * Build measure metadata, normalizing drillMembers to fully-qualified names.
+ *
+ * Measures with `shown: false` are omitted from the result — matching Cube.js
+ * semantics, where a hidden measure remains fully usable in queries but is
+ * excluded from metadata/UI surfaces. `shown: undefined` means shown, so
+ * today's behaviour is preserved exactly.
+ */
 export function buildMeasureMetadata(cube: Cube): MeasureMetadata[] {
   const keys = Object.keys(cube.measures)
-  const measures: MeasureMetadata[] = new Array(keys.length)
+  const measures: MeasureMetadata[] = []
 
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i]
     const measure = cube.measures[key]
+    if (measure.shown === false) continue
 
     let drillMembers: string[] | undefined
     if (measure.drillMembers && measure.drillMembers.length > 0) {
       drillMembers = measure.drillMembers.map(member => qualify(cube.name, member))
     }
 
-    measures[i] = {
+    measures.push({
       name: `${cube.name}.${key}`,
       title: measure.title || key,
       shortTitle: measure.title || key,
@@ -50,26 +71,34 @@ export function buildMeasureMetadata(cube: Cube): MeasureMetadata[] {
       description: measure.description,
       synonyms: measure.synonyms,
       drillMembers
-    }
+    })
   }
 
   return measures
 }
 
-/** Build dimension metadata, including granularities for time dimensions. */
+/**
+ * Build dimension metadata, including granularities for time dimensions.
+ *
+ * Dimensions with `shown: false` are omitted from the result — matching
+ * Cube.js semantics, where a hidden dimension remains fully usable in queries
+ * but is excluded from metadata/UI surfaces. `shown: undefined` means shown,
+ * so today's behaviour is preserved exactly.
+ */
 export function buildDimensionMetadata(cube: Cube): DimensionMetadata[] {
   const keys = Object.keys(cube.dimensions)
-  const dimensions: DimensionMetadata[] = new Array(keys.length)
+  const dimensions: DimensionMetadata[] = []
 
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i]
     const dimension = cube.dimensions[key]
+    if (dimension.shown === false) continue
 
     const granularities: TimeGranularity[] | undefined = dimension.type === 'time'
       ? (dimension.granularities || DEFAULT_TIME_GRANULARITIES)
       : undefined
 
-    dimensions[i] = {
+    dimensions.push({
       name: `${cube.name}.${key}`,
       title: dimension.title || key,
       shortTitle: dimension.title || key,
@@ -78,7 +107,7 @@ export function buildDimensionMetadata(cube: Cube): DimensionMetadata[] {
       description: dimension.description,
       synonyms: dimension.synonyms,
       granularities
-    }
+    })
   }
 
   return dimensions
@@ -110,17 +139,36 @@ export function buildRelationshipMetadata(
   return relationships
 }
 
-/** Build hierarchy metadata, qualifying level names to full member names. */
+/**
+ * Build hierarchy metadata, qualifying level names to full member names.
+ *
+ * Levels referencing a dimension with `shown: false` are dropped, so a
+ * hierarchy never emits a dangling reference to a dimension that has been
+ * omitted from the cube's own dimension metadata. A hierarchy left with no
+ * visible levels is omitted entirely rather than published as empty.
+ */
 export function buildHierarchyMetadata(cube: Cube): HierarchyMetadata[] {
   const hierarchies: HierarchyMetadata[] = []
   if (!cube.hierarchies) return hierarchies
 
   for (const [, hierarchy] of Object.entries(cube.hierarchies)) {
+    const levels = hierarchy.levels
+      .filter(level => {
+        const localKey = unqualifyOwnCube(cube.name, level)
+        // A level qualified with a different cube's name can't be resolved
+        // against this cube's dimensions — pass it through unfiltered.
+        if (localKey === null) return true
+        return cube.dimensions[localKey]?.shown !== false
+      })
+      .map(level => qualify(cube.name, level))
+
+    if (levels.length === 0) continue
+
     hierarchies.push({
       name: hierarchy.name,
       title: hierarchy.title || hierarchy.name,
       cubeName: cube.name,
-      levels: hierarchy.levels.map(level => qualify(cube.name, level))
+      levels
     })
   }
 

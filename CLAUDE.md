@@ -76,6 +76,7 @@ Treat green `test:sqlite` + `test:client` + `lint` + `typecheck` as a passing ve
 - **Never** construct SQL strings manually — always use Drizzle query builder or parameterized `sql` templates
 - **Every cube MUST filter by `securityContext`** for multi-tenant isolation
 - Pattern: `sql: (securityContext) => eq(table.orgId, securityContext.orgId)`
+- **Nothing resolves cubes without a `securityContext`** — cube *shape* is tenant-scoped too, via per-tenant cube sets (`contextToCubeSetId` + `registerCubeSet`), so `getMetadata`, `validateQuery`, `getCube` and friends all require one. `/meta` is tenant-scoped and not publicly cacheable. See `docs/per-tenant-cube-sets.md`.
 
 ## Core Principles
 

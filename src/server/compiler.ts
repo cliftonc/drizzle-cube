@@ -37,9 +37,89 @@ import { t } from '../i18n/runtime.js'
 // compiler (breaks the compiler ↔ executor cycle).
 export { validateQueryAgainstCubes } from './query-validator.js'
 
+/**
+ * Identifier of the base cube set — the cubes registered with {@link
+ * SemanticLayerCompiler.registerCube}, shared by every tenant. The empty string
+ * is used so a set id can never collide with it (`registerCubeSet` rejects it).
+ */
+export const BASE_CUBE_SET_ID = ''
+
+/**
+ * Security context for deployments with no tenancy at all.
+ *
+ * Every cube-resolving method requires a `SecurityContext` so that omitting one
+ * is a compile error rather than a silent fall back to the wrong tenant's
+ * cubes. Single-tenant callers pass this constant to say "no tenancy here" out
+ * loud, instead of an anonymous `{}` that reads like an oversight.
+ */
+export const SINGLE_TENANT_CONTEXT: SecurityContext = Object.freeze({})
+
+/** Reported to `onCubeSetRegistered` after each {@link SemanticLayerCompiler.registerCubeSet}. */
+export interface CubeSetRegistrationInfo {
+  /** The set that was registered. */
+  setId: string
+  /** Cubes in the set after merging over the base set. */
+  cubeCount: number
+  /** Total dimensions across those cubes — the number that explains a slow boot. */
+  dimensionCount: number
+  /**
+   * Monotonic across the whole compiler — incremented on every registration of
+   * any set, never reset. Part of the cache key, so results computed from
+   * superseded definitions can never be served.
+   */
+  generation: number
+  /** Wall-clock cost of this registration. */
+  durationMs: number
+}
+
+/** Aggregate registration cost, for a single summary line after the boot loop. */
+export interface CubeSetStats {
+  /** Number of registered sets, excluding the base set. */
+  setCount: number
+  /** Total cubes across all sets (merged), excluding the base set. */
+  cubeCount: number
+  /** Sum of every set's most recent registration time. */
+  totalRegistrationMs: number
+  /** The most expensive set to register, if any sets are registered. */
+  slowestSet?: { setId: string; durationMs: number }
+}
+
+/** Internal per-set state. `merged` is precomputed so request paths never merge. */
+interface CubeSetEntry {
+  /** Cubes registered for this set, before merging. */
+  overlay: Map<string, Cube>
+  /** Base cubes with the overlay applied over them — what queries actually see. */
+  merged: Map<string, Cube>
+  generation: number
+  durationMs: number
+}
+
+/** Log cube-set registration when DC_DEBUG=true or DC_DEBUG=cubesets */
+function debugCubeSet(message: string): void {
+  if (typeof process === 'undefined') return
+  const flag = process.env?.DC_DEBUG
+  if (flag !== 'true' && flag !== 'cubesets') return
+  console.log(`[DC_DEBUG] ${message}`)
+}
+
 export class SemanticLayerCompiler {
-  private cubes: Map<string, Cube> = new Map()
-  private metadataCache?: CubeMetadata[]
+  /** Cubes shared by every tenant. */
+  private baseCubes: Map<string, Cube> = new Map()
+  /** Per-tenant overlays, keyed by cube-set id. */
+  private cubeSets: Map<string, CubeSetEntry> = new Map()
+  /** Generated metadata per cube set (`BASE_CUBE_SET_ID` for the base set). */
+  private metadataCache: Map<string, CubeMetadata[]> = new Map()
+  /** Bumped on every base-set mutation; part of every set's cache key. */
+  private baseGeneration = 0
+  /**
+   * Monotonic registration counter, never reset. Used as each set's generation
+   * so that unregistering a set and registering a different one under the same
+   * id cannot reproduce an earlier cache key and serve its stale results.
+   */
+  private registrationCounter = 0
+  private contextToCubeSetId?: (securityContext: SecurityContext) => string | number | undefined
+  private missingCubeSet: 'base' | 'throw' = 'base'
+  private onCubeSetRegistered?: (info: CubeSetRegistrationInfo) => void
   private cacheConfig?: CacheConfig
   private rlsSetup?: RLSSetupFn
   private planOptimiser?: PlanOptimiser
@@ -70,6 +150,25 @@ export class SemanticLayerCompiler {
      * Defaults to a no-op IdentityOptimiser when omitted.
      */
     planOptimiser?: PlanOptimiser
+    /**
+     * Maps a security context to the cube set that serves it — drizzle-cube's
+     * equivalent of Cube's `contextToAppId`. Return `undefined` (or omit this
+     * option entirely) to serve the base set, which is the single-tenant
+     * behaviour and the default.
+     */
+    contextToCubeSetId?: (securityContext: SecurityContext) => string | number | undefined
+    /**
+     * What to do when `contextToCubeSetId` names a set that is not registered.
+     * `'base'` (default) serves the base set; `'throw'` fails the request, for
+     * deployments where every tenant is required to have its own set.
+     */
+    missingCubeSet?: 'base' | 'throw'
+    /**
+     * Called after each `registerCubeSet` with its cost. Registering a set per
+     * tenant is real startup work, so it is reported rather than hidden; emit
+     * it to your own logger or metrics.
+     */
+    onCubeSetRegistered?: (info: CubeSetRegistrationInfo) => void
   }) {
     if (options?.databaseExecutor) {
       // Extract ingredients from pre-built executor
@@ -84,6 +183,9 @@ export class SemanticLayerCompiler {
     this.cacheConfig = options?.cache
     this.rlsSetup = options?.rlsSetup
     this.planOptimiser = options?.planOptimiser
+    this.contextToCubeSetId = options?.contextToCubeSetId
+    this.missingCubeSet = options?.missingCubeSet ?? 'base'
+    this.onCubeSetRegistered = options?.onCubeSetRegistered
   }
 
   /**
@@ -159,18 +261,196 @@ export class SemanticLayerCompiler {
    * Validates calculated measures during registration
    */
   registerCube(cube: Cube): void {
-    // Validate calculated measures
-    this.validateCalculatedMeasures(cube)
+    this.prepareCube(cube, this.baseCubes)
+    this.baseCubes.set(cube.name, cube)
 
-    // Auto-populate dependencies for calculated measures
-    const resolver = new CalculatedMeasureResolver(this.cubes)
+    // A base cube is visible to every tenant, so every set's merged view and
+    // every cached metadata entry is now stale.
+    this.baseGeneration++
+    this.rebuildAllMergedSets()
+    this.metadataCache.clear()
+  }
+
+  // ============================================
+  // Cube sets — per-tenant cube definitions
+  //
+  // Lifecycle (register / unregister / stats) is boot-and-admin API and takes
+  // no security context: registering *defines* tenancy rather than operating
+  // within it. Every path that reads cube *contents* goes through
+  // `resolveCubes`, which requires a context.
+  // ============================================
+
+  /**
+   * Register the cubes that serve one tenant, overlaying the base set.
+   *
+   * Cubes are matched to the base set by name, so a set can either add cubes or
+   * replace a base cube with a tenant-specific version (the usual case for
+   * generated per-tenant dimensions). Call once per tenant at application boot;
+   * calling again for the same id replaces that set and invalidates its cached
+   * metadata and query results.
+   */
+  registerCubeSet(setId: string, cubes: Cube[]): void {
+    if (setId === BASE_CUBE_SET_ID) {
+      throw new Error(t('server.errors.cubeSetIdEmpty'))
+    }
+
+    const startedAt = Date.now()
+    const overlay = new Map<string, Cube>()
+
+    // Prepare each cube against base + the overlay built so far, so a set cube
+    // may reference another cube in the same set as well as a base cube.
+    for (const cube of cubes) {
+      const visible = new Map(this.baseCubes)
+      for (const [name, registered] of overlay) visible.set(name, registered)
+      this.prepareCube(cube, visible)
+      overlay.set(cube.name, cube)
+    }
+
+    const generation = ++this.registrationCounter
+    const merged = this.mergeWithBase(overlay)
+    const durationMs = Date.now() - startedAt
+
+    this.cubeSets.set(setId, { overlay, merged, generation, durationMs })
+    this.metadataCache.delete(setId)
+
+    let dimensionCount = 0
+    for (const cube of overlay.values()) {
+      dimensionCount += Object.keys(cube.dimensions ?? {}).length
+    }
+    const info: CubeSetRegistrationInfo = {
+      setId,
+      cubeCount: merged.size,
+      dimensionCount,
+      generation,
+      durationMs
+    }
+    debugCubeSet(
+      `registered cube set '${setId}': ${overlay.size} cube(s), ${dimensionCount} dimension(s), ` +
+      `generation ${generation}, ${durationMs}ms`
+    )
+    this.onCubeSetRegistered?.(info)
+  }
+
+  /**
+   * Remove a tenant's cube set. That tenant then resolves to the base set (or
+   * throws, under `missingCubeSet: 'throw'`).
+   * Returns true if the set existed.
+   */
+  unregisterCubeSet(setId: string): boolean {
+    const removed = this.cubeSets.delete(setId)
+    if (removed) {
+      this.metadataCache.delete(setId)
+    }
+    return removed
+  }
+
+  /** Whether a cube set is registered for this id. */
+  hasCubeSet(setId: string): boolean {
+    return this.cubeSets.has(setId)
+  }
+
+  /** Ids of every registered cube set, excluding the base set. */
+  getCubeSetIds(): string[] {
+    return Array.from(this.cubeSets.keys())
+  }
+
+  /**
+   * Aggregate registration cost across all sets — for the single summary line
+   * worth logging after a boot loop.
+   */
+  getCubeSetStats(): CubeSetStats {
+    let cubeCount = 0
+    let totalRegistrationMs = 0
+    let slowestSet: { setId: string; durationMs: number } | undefined
+
+    for (const [setId, entry] of this.cubeSets) {
+      cubeCount += entry.merged.size
+      totalRegistrationMs += entry.durationMs
+      if (!slowestSet || entry.durationMs > slowestSet.durationMs) {
+        slowestSet = { setId, durationMs: entry.durationMs }
+      }
+    }
+
+    return { setCount: this.cubeSets.size, cubeCount, totalRegistrationMs, slowestSet }
+  }
+
+  /**
+   * Validate and enrich a cube ahead of registration, against the cubes that
+   * will be visible alongside it.
+   */
+  private prepareCube(cube: Cube, visibleCubes: Map<string, Cube>): void {
+    this.validateCalculatedMeasures(cube, visibleCubes)
+    const resolver = new CalculatedMeasureResolver(visibleCubes)
     resolver.populateDependencies(cube)
+  }
 
-    // Register the cube
-    this.cubes.set(cube.name, cube)
+  /** Base cubes with an overlay applied over them, by cube name. */
+  private mergeWithBase(overlay: Map<string, Cube>): Map<string, Cube> {
+    const merged = new Map(this.baseCubes)
+    for (const [name, cube] of overlay) {
+      merged.set(name, cube)
+    }
+    return merged
+  }
 
-    // Invalidate metadata cache when cubes change
-    this.invalidateMetadataCache()
+  /** Recompute every set's merged view — after any base-set mutation. */
+  private rebuildAllMergedSets(): void {
+    for (const entry of this.cubeSets.values()) {
+      entry.merged = this.mergeWithBase(entry.overlay)
+    }
+  }
+
+  /**
+   * Resolve the cube set serving this security context.
+   *
+   * Returns {@link BASE_CUBE_SET_ID} when no mapping is configured or the
+   * mapping yields nothing. A configured id that has no registered set falls
+   * back to the base set, or throws under `missingCubeSet: 'throw'`.
+   */
+  private resolveSetId(securityContext: SecurityContext): string {
+    if (!this.contextToCubeSetId) return BASE_CUBE_SET_ID
+
+    const resolved = this.contextToCubeSetId(securityContext)
+    if (resolved === undefined || resolved === null || resolved === '') {
+      return BASE_CUBE_SET_ID
+    }
+
+    const setId = String(resolved)
+    if (!this.cubeSets.has(setId)) {
+      if (this.missingCubeSet === 'throw') {
+        throw new Error(t('server.errors.cubeSetNotFound', { setId }))
+      }
+      return BASE_CUBE_SET_ID
+    }
+    return setId
+  }
+
+  /**
+   * The cubes this security context may see.
+   *
+   * This is the only path by which cube *contents* are read for a query,
+   * metadata, validation or MCP response — so no such path can reach a cube
+   * list without a security context. The returned map must be treated as
+   * read-only; it is the live merged view, not a copy.
+   */
+  private resolveCubes(securityContext: SecurityContext): Map<string, Cube> {
+    const setId = this.resolveSetId(securityContext)
+    if (setId === BASE_CUBE_SET_ID) return this.baseCubes
+    return this.cubeSets.get(setId)?.merged ?? this.baseCubes
+  }
+
+  /**
+   * Cache-key component identifying which cube definitions produced a result.
+   *
+   * Appended unconditionally to every query cache key: the security-context
+   * hash is not enough, because `includeSecurityContext: false` and a custom
+   * `securityContextSerializer` can both hash two tenants identically. The
+   * generation makes re-registering a set invalidate its cached results, so a
+   * retyped or renamed dimension cannot be served stale for the TTL.
+   */
+  private cubeSetCacheKey(setId: string): string {
+    const setGeneration = this.cubeSets.get(setId)?.generation ?? 0
+    return `${setId}:${this.baseGeneration}.${setGeneration}`
   }
 
   /**
@@ -179,17 +459,32 @@ export class SemanticLayerCompiler {
    * Throws an error listing all unresolved references.
    */
   validateCubeReferences(): void {
-    const errors: string[] = []
-    for (const [cubeName, cube] of this.cubes) {
+    // Each set is validated against its own merged view: an overlay cube
+    // joining a base cube is the normal case, and a base cube may be replaced
+    // by a set whose joins differ.
+    const errors = new Set<string>()
+
+    for (const message of this.unresolvedJoinRefs(this.baseCubes)) errors.add(message)
+    for (const entry of this.cubeSets.values()) {
+      for (const message of this.unresolvedJoinRefs(entry.merged)) errors.add(message)
+    }
+
+    if (errors.size > 0) {
+      const details = Array.from(errors, message => `  - ${message}`).join('\n')
+      throw new Error(t('server.errors.unresolvedCubeRefs', { details }))
+    }
+  }
+
+  /** Join targets naming a cube that is absent from the given cube scope. */
+  private *unresolvedJoinRefs(cubes: Map<string, Cube>): Generator<string> {
+    for (const [cubeName, cube] of cubes) {
       if (!cube.joins) continue
       for (const [joinName, joinDef] of Object.entries(cube.joins)) {
-        if (typeof joinDef.targetCube === 'string' && !this.cubes.has(joinDef.targetCube)) {
-          errors.push(t('server.errors.cubeRefUnresolved', { cubeName, joinName, targetCube: joinDef.targetCube }))
+        const { targetCube } = joinDef
+        if (typeof targetCube === 'string' && !cubes.has(targetCube)) {
+          yield t('server.errors.cubeRefUnresolved', { cubeName, joinName, targetCube })
         }
       }
-    }
-    if (errors.length > 0) {
-      throw new Error(t('server.errors.unresolvedCubeRefs', { details: errors.map(e => `  - ${e}`).join('\n') }))
     }
   }
 
@@ -197,7 +492,7 @@ export class SemanticLayerCompiler {
    * Validate calculated measures in a cube
    * Checks template syntax, dependency existence, and circular dependencies
    */
-  private validateCalculatedMeasures(cube: Cube): void {
+  private validateCalculatedMeasures(cube: Cube, visibleCubes: Map<string, Cube>): void {
     const errors: string[] = []
 
     // Check each measure
@@ -220,8 +515,8 @@ export class SemanticLayerCompiler {
           continue
         }
 
-        // Validate dependencies exist (using current cubes + this cube)
-        const tempCubes = new Map(this.cubes)
+        // Validate dependencies exist (using the visible cubes + this cube)
+        const tempCubes = new Map(visibleCubes)
         tempCubes.set(cube.name, cube)
         const resolver = new CalculatedMeasureResolver(tempCubes)
 
@@ -235,7 +530,7 @@ export class SemanticLayerCompiler {
 
     // Check for circular dependencies across all calculated measures in the cube
     if (errors.length === 0) {
-      const tempCubes = new Map(this.cubes)
+      const tempCubes = new Map(visibleCubes)
       tempCubes.set(cube.name, cube)
       const resolver = new CalculatedMeasureResolver(tempCubes)
       resolver.buildGraph(cube)
@@ -259,22 +554,24 @@ export class SemanticLayerCompiler {
   /**
    * Get a cube by name
    */
-  getCube(name: string): Cube | undefined {
-    return this.cubes.get(name)
+  getCube(name: string, securityContext: SecurityContext): Cube | undefined {
+    return this.resolveCubes(securityContext).get(name)
   }
 
   /**
    * Get all registered cubes
    */
-  getAllCubes(): Cube[] {
-    return Array.from(this.cubes.values())
+  getAllCubes(securityContext: SecurityContext): Cube[] {
+    return Array.from(this.resolveCubes(securityContext).values())
   }
 
   /**
-   * Get all cubes as a Map for multi-cube queries
+   * Get all cubes as a Map for multi-cube queries.
+   *
+   * Returns the live merged view for this context — treat it as read-only.
    */
-  getAllCubesMap(): Map<string, Cube> {
-    return this.cubes
+  getAllCubesMap(securityContext: SecurityContext): Map<string, Cube> {
+    return this.resolveCubes(securityContext)
   }
 
   /**
@@ -287,7 +584,11 @@ export class SemanticLayerCompiler {
     options?: ExecutionOptions
   ): Promise<QueryResult> {
     const executor = this.createQueryExecutor(true)
-    return executor.execute(this.cubes, query, securityContext, options)
+    const setId = this.resolveSetId(securityContext)
+    return executor.execute(this.cubeSetId2Cubes(setId), query, securityContext, {
+      ...options,
+      cubeSetKey: this.cubeSetCacheKey(setId)
+    })
   }
 
   /**
@@ -310,8 +611,8 @@ export class SemanticLayerCompiler {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<QueryResult> {
-    // Validate cube exists
-    const cube = this.cubes.get(cubeName)
+    // Validate cube exists for this tenant
+    const cube = this.resolveCubes(securityContext).get(cubeName)
     if (!cube) {
       throw new Error(t('server.errors.cubeNotFound', { cubeName }))
     }
@@ -325,16 +626,22 @@ export class SemanticLayerCompiler {
    * Uses caching to improve performance for repeated requests
    * Cache is invalidated when cubes are modified (registerCube, removeCube, clearCubes)
    */
-  getMetadata(): CubeMetadata[] {
-    // Return cached metadata if available
-    if (this.metadataCache) {
-      return this.metadataCache
+  getMetadata(securityContext: SecurityContext): CubeMetadata[] {
+    const setId = this.resolveSetId(securityContext)
+
+    // Return cached metadata for this cube set if available
+    const cached = this.metadataCache.get(setId)
+    if (cached) {
+      return cached
     }
 
-    // Generate and cache metadata
-    this.metadataCache = Array.from(this.cubes.values()).map(cube => this.generateCubeMetadata(cube))
+    // Generate and cache metadata for this cube set
+    const cubes = this.cubeSetId2Cubes(setId)
+    const metadata = Array.from(cubes.values())
+      .map(cube => this.generateCubeMetadata(cube, cubes))
+    this.metadataCache.set(setId, metadata)
 
-    return this.metadataCache
+    return metadata
   }
 
   /**
@@ -373,10 +680,10 @@ export class SemanticLayerCompiler {
    * Generate cube metadata for API responses from cubes
    * Includes drill-down support: drillMembers on measures, granularities on time dimensions, hierarchies
    */
-  private generateCubeMetadata(cube: Cube): CubeMetadata {
+  private generateCubeMetadata(cube: Cube, cubes: Map<string, Cube>): CubeMetadata {
     const measures = buildMeasureMetadata(cube)
     const dimensions = buildDimensionMetadata(cube)
-    const relationships = buildRelationshipMetadata(cube, this.cubes, c => this.getColumnName(c))
+    const relationships = buildRelationshipMetadata(cube, cubes, c => this.getColumnName(c))
     const hierarchies = buildHierarchyMetadata(cube)
 
     const result: CubeMetadata = {
@@ -403,7 +710,7 @@ export class SemanticLayerCompiler {
     query: SemanticQuery, 
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
-    const cube = this.getCube(cubeName)
+    const cube = this.getCube(cubeName, securityContext)
     if (!cube) {
       throw new Error(t('server.errors.cubeNotFound', { cubeName }))
     }
@@ -421,7 +728,7 @@ export class SemanticLayerCompiler {
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
     const executor = this.createQueryExecutor()
-    const result = await executor.generateMultiCubeSQL(this.cubes, query, securityContext)
+    const result = await executor.generateMultiCubeSQL(this.resolveCubes(securityContext), query, securityContext)
     return this.formatSqlResult(result)
   }
 
@@ -433,7 +740,7 @@ export class SemanticLayerCompiler {
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
     const executor = this.createQueryExecutor()
-    const result = await executor.dryRunSQL(this.cubes, query, securityContext)
+    const result = await executor.dryRunSQL(this.resolveCubes(securityContext), query, securityContext)
     return this.formatSqlResult(result)
   }
 
@@ -481,14 +788,14 @@ export class SemanticLayerCompiler {
     options?: ExplainOptions
   ): Promise<ExplainResult> {
     const executor = this.createQueryExecutor()
-    return executor.explainQuery(this.cubes, query, securityContext, options)
+    return executor.explainQuery(this.resolveCubes(securityContext), query, securityContext, options)
   }
 
   /**
    * Check if a cube exists
    */
-  hasCube(name: string): boolean {
-    return this.cubes.has(name)
+  hasCube(name: string, securityContext: SecurityContext): boolean {
+    return this.resolveCubes(securityContext).has(name)
   }
 
   /**
@@ -503,8 +810,10 @@ export class SemanticLayerCompiler {
    * Remove a cube
    */
   removeCube(name: string): boolean {
-    const result = this.cubes.delete(name)
+    const result = this.baseCubes.delete(name)
     if (result) {
+      this.baseGeneration++
+      this.rebuildAllMergedSets()
       this.invalidateMetadataCache()
     }
     return result
@@ -514,7 +823,9 @@ export class SemanticLayerCompiler {
    * Clear all cubes
    */
   clearCubes(): void {
-    this.cubes.clear()
+    this.baseCubes.clear()
+    this.baseGeneration++
+    this.rebuildAllMergedSets()
     this.invalidateMetadataCache()
   }
 
@@ -523,22 +834,28 @@ export class SemanticLayerCompiler {
    * Called whenever cubes are modified
    */
   private invalidateMetadataCache(): void {
-    this.metadataCache = undefined
+    this.metadataCache.clear()
+  }
+
+  /** Cubes for an already-resolved set id. */
+  private cubeSetId2Cubes(setId: string): Map<string, Cube> {
+    if (setId === BASE_CUBE_SET_ID) return this.baseCubes
+    return this.cubeSets.get(setId)?.merged ?? this.baseCubes
   }
 
   /**
    * Get cube names
    */
-  getCubeNames(): string[] {
-    return Array.from(this.cubes.keys())
+  getCubeNames(securityContext: SecurityContext): string[] {
+    return Array.from(this.resolveCubes(securityContext).keys())
   }
 
   /**
    * Validate a query against registered cubes
    * Ensures all referenced cubes and fields exist
    */
-  validateQuery(query: SemanticQuery): { isValid: boolean; errors: string[] } {
-    return validateQueryAgainstCubes(this.cubes, query)
+  validateQuery(query: SemanticQuery, securityContext: SecurityContext): { isValid: boolean; errors: string[] } {
+    return validateQueryAgainstCubes(this.resolveCubes(securityContext), query)
   }
 
   /**
@@ -551,6 +868,6 @@ export class SemanticLayerCompiler {
     securityContext: SecurityContext
   ): QueryAnalysis {
     const executor = this.createQueryExecutor(true)
-    return executor.analyzeQuery(this.cubes, query, securityContext)
+    return executor.analyzeQuery(this.resolveCubes(securityContext), query, securityContext)
   }
 }

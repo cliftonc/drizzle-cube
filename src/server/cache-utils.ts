@@ -31,12 +31,17 @@ export interface CacheKeyConfig {
  * @param query - The semantic query to cache
  * @param securityContext - Security context for tenant isolation
  * @param config - Cache key configuration
+ * @param cubeSetKey - Identifies the cube definitions behind the result. Always
+ *   included when present: `includeSecurityContext: false` and a custom
+ *   `securityContextSerializer` can each hash two tenants identically, so the
+ *   security-context hash alone cannot keep differing cube sets apart.
  * @returns Deterministic cache key string
  */
 export function generateCacheKey(
   query: SemanticQuery,
   securityContext: SecurityContext,
-  config: CacheKeyConfig = {}
+  config: CacheKeyConfig = {},
+  cubeSetKey?: string
 ): string {
   const prefix = config.keyPrefix ?? 'drizzle-cube:'
 
@@ -53,6 +58,10 @@ export function generateCacheKey(
       : JSON.stringify(sortObject(securityContext))
     const ctxHash = strongHash(ctxString)
     key += `:ctx:${ctxHash}`
+  }
+
+  if (cubeSetKey) {
+    key += `:cubes:${cubeSetKey}`
   }
 
   return key

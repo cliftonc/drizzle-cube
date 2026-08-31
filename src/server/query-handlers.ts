@@ -85,9 +85,13 @@ const DATE_FILTERING_GUIDE_TEXT: string =
  */
 export async function handleDiscover(
   semanticLayer: SemanticLayerCompiler,
+  securityContext: SecurityContext,
   body: DiscoverRequest
 ): Promise<DiscoverResponse> {
-  const metadata = semanticLayer.getMetadata()
+  // Discovery lists the caller's cubes, so it runs against the cube set their
+  // security context resolves to. There is no context-free discovery path —
+  // an unauthenticated caller is told nothing about the schema.
+  const metadata = semanticLayer.getMetadata(securityContext)
   const results = discoverCubes(metadata, {
     topic: body.topic,
     intent: body.intent,
@@ -263,7 +267,7 @@ export async function handleLoad(
   const query = normalizeQueryFields(body.query as Record<string, unknown>) as SemanticQuery
 
   // Validate query structure and field existence
-  const validation = semanticLayer.validateQuery(query)
+  const validation = semanticLayer.validateQuery(query, securityContext)
   if (!validation.isValid) {
     throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
   }

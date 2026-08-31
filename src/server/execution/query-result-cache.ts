@@ -16,9 +16,13 @@ export class QueryResultCache {
    * Returns the cache key when caching is enabled and a provider is configured,
    * otherwise undefined (which disables lookup and store).
    */
-  generateKey(query: SemanticQuery, securityContext: SecurityContext): string | undefined {
+  generateKey(
+    query: SemanticQuery,
+    securityContext: SecurityContext,
+    cubeSetKey?: string
+  ): string | undefined {
     if (this.cacheConfig?.enabled !== false && this.cacheConfig?.provider) {
-      return generateCacheKey(query, securityContext, this.cacheConfig)
+      return generateCacheKey(query, securityContext, this.cacheConfig, cubeSetKey)
     }
     return undefined
   }

@@ -4,7 +4,14 @@
  */
 
 // Export main classes with Drizzle integration
-export { SemanticLayerCompiler } from './compiler.js'
+export { SemanticLayerCompiler, BASE_CUBE_SET_ID, SINGLE_TENANT_CONTEXT } from './compiler.js'
+export type { CubeSetRegistrationInfo, CubeSetStats } from './compiler.js'
+export { buildAttributeDimensions } from './attribute-dimensions.js'
+export type {
+  AttributeDefinition,
+  AttributeValueType,
+  BuildAttributeDimensionsOptions
+} from './attribute-dimensions.js'
 export { QueryExecutor } from './executor.js'
 
 // Query-mode detection (single source of truth for comparison/funnel/flow/retention)
@@ -155,8 +162,13 @@ export type { SQL } from 'drizzle-orm'
 
 
 /**
- * Create a new semantic layer instance with Drizzle integration
- * Use this when you need multiple isolated instances
+ * Create a new semantic layer instance with Drizzle integration.
+ *
+ * Use this when you need multiple isolated instances. To serve different cube
+ * definitions to different tenants from one instance, prefer cube sets —
+ * `new SemanticLayerCompiler({ contextToCubeSetId })` plus `registerCubeSet()`
+ * per tenant — which shares the base cubes and keeps metadata and result caches
+ * correctly partitioned.
  */
 export function createDrizzleSemanticLayer(options: {
   drizzle: DrizzleDatabase

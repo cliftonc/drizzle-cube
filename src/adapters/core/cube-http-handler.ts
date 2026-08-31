@@ -25,6 +25,7 @@ import type { SemanticQuery } from '../../server/index.js'
 import type { MCPOptions } from '../utils.js'
 import { formatCubeResponse, formatErrorResponse } from '../utils.js'
 import type { HttpPort, McpHttpPort } from './http-port.js'
+import { withRestCacheHeaders } from './http-port.js'
 import {
   resolveSecurityContext,
   type BaseSecurityContextThunk
@@ -79,7 +80,7 @@ export function createCubeHttpHandler(options: CubeHttpHandlerOptions): CubeHttp
     // Merge the request locale into the (pre-locale) security context here in the core.
     const securityContext = await resolveSecurityContext(getBaseSecurityContext, (n) => port.getHeader(n))
 
-    const validation = semanticLayer.validateQuery(query)
+    const validation = semanticLayer.validateQuery(query, securityContext)
     if (!validation.isValid) {
       return port.send(400, formatErrorResponse(
         `Query validation failed: ${validation.errors.join(', ')}`,
@@ -133,10 +134,22 @@ export function createCubeHttpHandler(options: CubeHttpHandlerOptions): CubeHttp
     }
   }
 
+  // Every REST response — success, 400 and 500 alike — is stamped with
+  // `Cache-Control: private, no-store` here, at the one point where the REST
+  // surface is assembled. Listing each endpoint is deliberate: adding a handler
+  // to `RestHandlers` without guarding it is then a compile error, rather than a
+  // tenant's cube list sitting in a shared cache. MCP is excluded on purpose —
+  // see `withRestCacheHeaders`.
   return {
-    handleLoadGet,
-    handleLoadPost,
-    handleMcpPost,
-    ...restHandlers
+    handleLoadGet: (port, ctx) => handleLoadGet(withRestCacheHeaders(port), ctx),
+    handleLoadPost: (port, ctx) => handleLoadPost(withRestCacheHeaders(port), ctx),
+    handleMetaGet: (port, ctx) => restHandlers.handleMetaGet(withRestCacheHeaders(port), ctx),
+    handleSqlGet: (port, ctx) => restHandlers.handleSqlGet(withRestCacheHeaders(port), ctx),
+    handleSqlPost: (port, ctx) => restHandlers.handleSqlPost(withRestCacheHeaders(port), ctx),
+    handleDryRunGet: (port, ctx) => restHandlers.handleDryRunGet(withRestCacheHeaders(port), ctx),
+    handleDryRunPost: (port, ctx) => restHandlers.handleDryRunPost(withRestCacheHeaders(port), ctx),
+    handleBatchPost: (port, ctx) => restHandlers.handleBatchPost(withRestCacheHeaders(port), ctx),
+    handleExplainPost: (port, ctx) => restHandlers.handleExplainPost(withRestCacheHeaders(port), ctx),
+    handleMcpPost
   }
 }

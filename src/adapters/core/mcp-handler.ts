@@ -13,13 +13,13 @@ import type { MCPOptions, McpAppConfig } from '../utils.js'
 import {
   buildJsonRpcError,
   buildJsonRpcResult,
-  buildMcpResources,
   dispatchMcpMethod,
   isNotification,
   negotiateProtocol,
   parseJsonRpc,
   primeEventId,
   resolveMcpPrompts,
+  resolveMcpResources,
   resolveMcpInstructions,
   serializeSseEvent,
   wantsEventStream,
@@ -65,20 +65,19 @@ export function createMcpPostHandler(
   const appEnabled = !!mcp.app
   const appConfig: McpAppConfig | undefined = typeof mcp.app === 'object' ? mcp.app : undefined
 
-  // Resolve the static resources/prompts/instructions lazily on first MCP request.
-  // `buildMcpResources` reads the live cube metadata, so deferring it keeps
-  // construction cheap and avoids touching the semantic layer for adapters (or
-  // tests) that never exercise an MCP request.
-  let statics: { resources: ReturnType<typeof buildMcpResources>; prompts: ReturnType<typeof resolveMcpPrompts>; instructions: string } | undefined
-  function getStatics() {
-    if (!statics) {
-      statics = {
-        resources: buildMcpResources(semanticLayer, mcp.resources),
-        prompts: resolveMcpPrompts(mcp.prompts),
-        instructions: resolveMcpInstructions(mcp.instructions)
-      }
-    }
-    return statics
+  // Resources/prompts/instructions configured on MCPOptions are genuinely
+  // static — they are pure functions of the config, with no cube metadata in
+  // them — so they are resolved once, here.
+  //
+  // The metadata-derived `drizzle-cube://schema` resource is deliberately NOT
+  // built here. It is the caller's cube set, and this function runs at handler
+  // construction, before any request exists: building it here would freeze
+  // every tenant's schema resource to the base set. `dispatchMcpMethod` appends
+  // it per request, behind the resolved security context.
+  const statics = {
+    resources: resolveMcpResources(mcp.resources),
+    prompts: resolveMcpPrompts(mcp.prompts),
+    instructions: resolveMcpInstructions(mcp.instructions)
   }
 
   async function handleMcpPost<TRes>(
@@ -122,7 +121,7 @@ export function createMcpPostHandler(
 
     const wantsStream = wantsEventStream(acceptHeader)
     const isInitialize = rpcRequest.method === 'initialize'
-    const { resources, prompts, instructions } = getStatics()
+    const { resources, prompts, instructions } = statics
 
     try {
       const result = await dispatchMcpMethod(

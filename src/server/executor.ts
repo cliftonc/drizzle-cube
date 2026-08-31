@@ -172,7 +172,7 @@ export class QueryExecutor {
 
       // Check cache BEFORE expensive operations (after validation, includes security context)
       // Skip cache lookup if options.skipCache is true (but still cache the result later)
-      const cacheKey = this.resultCache.generateKey(query, securityContext)
+      const cacheKey = this.resultCache.generateKey(query, securityContext, options?.cubeSetKey)
       const cached = await this.resultCache.lookup(cacheKey, options?.skipCache ?? false)
       if (cached) {
         return cached
@@ -366,11 +366,7 @@ export class QueryExecutor {
     // Config already validated once on the execute path via validateQueryForMode.
 
     // Create query context
-    const context: QueryContext = {
-      db: this.dbExecutor.db,
-      schema: this.dbExecutor.schema,
-      securityContext
-    }
+    const context: QueryContext = this.createQueryContext(securityContext)
 
     // Build funnel query using Drizzle query builder
     // The refactored buildFunnelQuery returns a query builder with .toSQL() support
@@ -424,11 +420,7 @@ export class QueryExecutor {
     // Config already validated once on the execute path via validateQueryForMode.
 
     // Create query context
-    const context: QueryContext = {
-      db: this.dbExecutor.db,
-      schema: this.dbExecutor.schema,
-      securityContext
-    }
+    const context: QueryContext = this.createQueryContext(securityContext)
 
     // Build flow query using Drizzle query builder
     const flowQuery = this.flowQueryBuilder.buildFlowQuery(config, cubes, context)
@@ -479,11 +471,7 @@ export class QueryExecutor {
     // Config already validated once on the execute path via validateQueryForMode.
 
     // Create query context
-    const context: QueryContext = {
-      db: this.dbExecutor.db,
-      schema: this.dbExecutor.schema,
-      securityContext
-    }
+    const context: QueryContext = this.createQueryContext(securityContext)
 
     // Build retention query using Drizzle query builder
     const retentionQuery = this.retentionQueryBuilder.buildRetentionQuery(config, cubes, context)
@@ -599,7 +587,11 @@ export class QueryExecutor {
       schema: this.dbExecutor.schema,
       securityContext,
       filterCache,
-      ungrouped: query?.ungrouped
+      ungrouped: query?.ungrouped,
+      // Bound so a cube author can emit portable SQL without reaching for the
+      // engine adapter, which is not otherwise reachable from a cube's sql fn.
+      cast: (fieldExpr, targetType) => this.databaseAdapter.castToType(fieldExpr, targetType),
+      tryCast: (fieldExpr, targetType) => this.databaseAdapter.tryCastToType(fieldExpr, targetType)
     }
   }
 
@@ -813,11 +805,7 @@ export class QueryExecutor {
     }
 
     // Create query context
-    const context: QueryContext = {
-      db: this.dbExecutor.db,
-      schema: this.dbExecutor.schema,
-      securityContext
-    }
+    const context: QueryContext = this.createQueryContext(securityContext)
 
     // Build the analysis query using its Drizzle query builder, then extract
     // the SQL string and parameters via .toSQL().

@@ -97,6 +97,14 @@ export interface SqlResult {
 export interface ExecutionOptions {
   /** Skip the cache lookup (but still cache the result for future requests) */
   skipCache?: boolean
+  /**
+   * Identifies the cube definitions that produced the result, as
+   * `setId:baseGeneration.setGeneration`. Appended unconditionally to the query
+   * cache key so results can never be shared between tenants whose cube sets
+   * differ, nor survive a re-registration that changed a definition.
+   * Set by SemanticLayerCompiler; callers do not supply it.
+   */
+  cubeSetKey?: string
 }
 
 /**

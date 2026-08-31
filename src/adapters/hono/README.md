@@ -202,8 +202,9 @@ const cubeApp = createCubeApp({
 
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
-| `cubes` | `Cube[]` | ✅ | - | Array of cube definitions to register |
-| `drizzle` | `DrizzleDatabase` | ✅ | - | Fully connected Drizzle database instance |
+| `cubes` | `Cube[]` | ✅ unless `semanticLayer` provided | - | Array of cube definitions to register |
+| `semanticLayer` | `SemanticLayerCompiler` | ❌ | - | Pre-configured semantic layer. Provide this instead of `cubes` when your app needs [per-tenant cube sets](https://www.drizzle-cube.dev/semantic-layer/cube-sets/) — the app must own the compiler to call `registerCubeSet` |
+| `drizzle` | `DrizzleDatabase` | ✅ unless `semanticLayer` provided | - | Fully connected Drizzle database instance |
 | `schema` | `TSchema` | ⚠️ | - | Database schema for type inference (recommended) |
 | `extractSecurityContext` | `Function` | ✅ | - | Extract security context from HTTP requests (called for every request) |
 | `engineType` | `'postgres'\|'mysql'\|'sqlite'` | ❌ | auto-detected | Database engine type |
@@ -374,7 +375,15 @@ Execute analytical queries.
 Execute queries via GET with query string parameter.
 
 ### `GET /cubejs-api/v1/meta`
-Get cube metadata and schema information.
+Get cube metadata and schema information. Tenant-scoped: this route resolves
+`extractSecurityContext` like every other route and returns only that tenant's
+cubes. If your extractor throws for unauthenticated requests, anonymous
+`/meta` calls now fail — return `SINGLE_TENANT_CONTEXT` (from `drizzle-cube/server`)
+from your extractor if you genuinely want public metadata. drizzle-cube now
+sets `Cache-Control: private, no-store` on every REST response (`/load`,
+`/sql`, `/dry-run`, `/batch`, `/explain` included), so `/meta` must not be
+cached in a shared cache/CDN keyed on URL alone. See
+[per-tenant cube sets](https://www.drizzle-cube.dev/semantic-layer/cube-sets/).
 
 **Response:**
 ```json

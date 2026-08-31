@@ -148,6 +148,33 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
     }
   }
 
+  /**
+   * Build PostgreSQL tolerant type casting: NULL on unparseable input instead of an error.
+   * PostgreSQL has no TRY_CAST, and `CAST(x AS type DEFAULT NULL ON ERROR)` (added in a
+   * recent PostgreSQL release) requires a minimum server version. This repo pins no minimum
+   * PostgreSQL version anywhere (CI/dev docker-compose both run `postgres:18`, but nothing
+   * documents that as a floor for consumers), so we don't assume newer syntax is available.
+   * Instead, guard the cast with a POSIX regex (`~`) so we only ever attempt to cast values
+   * that already look like the target type; anything else short-circuits to NULL before the
+   * cast runs, so PostgreSQL never gets a chance to raise.
+   *
+   * The timestamp guard only validates ISO 8601 *shape* (see timestampTryCastPattern) — it
+   * will not catch calendar-invalid dates like 2024-02-30, which would still error. A full
+   * guarantee would need a helper SQL function (out of scope here).
+   */
+  tryCastToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL {
+    switch (targetType) {
+      case 'timestamp':
+        return sql`CASE WHEN ${fieldExpr} ~ ${this.timestampTryCastPattern()} THEN ${fieldExpr}::timestamp ELSE NULL END`
+      case 'decimal':
+        return sql`CASE WHEN ${fieldExpr} ~ ${this.decimalTryCastPattern()} THEN ${fieldExpr}::decimal ELSE NULL END`
+      case 'integer':
+        return sql`CASE WHEN ${fieldExpr} ~ ${this.integerTryCastPattern()} THEN ${fieldExpr}::integer ELSE NULL END`
+      default:
+        throw new Error(`Unsupported cast type: ${targetType}`)
+    }
+  }
+
   // ============================================
   // Statistical & Window Function Methods
   // ============================================

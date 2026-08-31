@@ -331,7 +331,13 @@ interface McpDispatchState {
   appEnabled?: boolean
   serverName: string
   prompts: MCPPrompt[]
-  resources: MCPResource[]
+  /**
+   * Resolves the resource list for THIS request, including the caller's schema
+   * resource. A thunk rather than an array because the schema resource is the
+   * tenant's cube metadata: it is resolved from the request's security context
+   * on every message, and never cached across requests or sessions.
+   */
+  getResources: () => Promise<MCPResource[]>
   instructions: string
 }
 
@@ -368,9 +374,10 @@ function buildInitializeResult(params: unknown, state: McpDispatchState): unknow
 }
 
 /** Build the `resources/list` result. */
-function buildResourcesList(state: McpDispatchState): unknown {
+async function buildResourcesList(state: McpDispatchState): Promise<unknown> {
+  const resources = await state.getResources()
   return {
-    resources: state.resources.map(({ uri, name, description, mimeType }) => ({
+    resources: resources.map(({ uri, name, description, mimeType }) => ({
       uri,
       name,
       description,
@@ -381,9 +388,10 @@ function buildResourcesList(state: McpDispatchState): unknown {
 }
 
 /** Build the `resources/read` result for the requested (or first) resource. */
-function buildResourceRead(params: unknown, state: McpDispatchState): unknown {
+async function buildResourceRead(params: unknown, state: McpDispatchState): Promise<unknown> {
   const uri = (params as any)?.uri as string | undefined
-  const resource = state.resources.find(r => r.uri === uri) || state.resources[0]
+  const resources = await state.getResources()
+  const resource = resources.find(r => r.uri === uri) || resources[0]
   if (!resource) throw jsonRpcError(-32602, 'resource not found')
   return {
     contents: [
@@ -414,13 +422,19 @@ export async function dispatchMcpMethod(
   ctx: McpDispatchContext
 ): Promise<unknown> {
   const { appEnabled, appConfig } = ctx
+  // The static resources only — the metadata-derived schema resource is added
+  // per request below, under the caller's security context.
   const baseResources = ctx.resources ?? RESOURCES
   const state: McpDispatchState = {
     appEnabled,
     serverName: ctx.serverName ?? 'drizzle-cube',
     prompts: ctx.prompts ?? PROMPTS,
-    // Add MCP App visualization resource when app mode is enabled
-    resources: appEnabled ? [...baseResources, ...getMcpAppResource(appConfig)] : baseResources,
+    getResources: async () => {
+      const securityContext = await ctx.extractSecurityContext(ctx.rawRequest, ctx.rawResponse)
+      const resources = buildMcpResources(ctx.semanticLayer, securityContext, baseResources)
+      // Add MCP App visualization resource when app mode is enabled
+      return appEnabled ? [...resources, ...getMcpAppResource(appConfig)] : resources
+    },
     instructions: ctx.instructions ?? getDefaultMcpInstructions()
   }
 
@@ -437,13 +451,13 @@ export async function dispatchMcpMethod(
       return executeToolCall(params, ctx)
 
     case 'resources/list':
-      return buildResourcesList(state)
+      return await buildResourcesList(state)
 
     case 'resources/templates/list':
       return { resourceTemplates: [], nextCursor: '' }
 
     case 'resources/read':
-      return buildResourceRead(params, state)
+      return await buildResourceRead(params, state)
 
     case 'prompts/list':
       return {
@@ -664,16 +678,22 @@ async function executeToolCall(params: unknown, ctx: McpDispatchContext) {
   const args = p.arguments
   try {
     switch (p.name) {
-      case 'discover':
-        return wrapContent(await handleDiscover(semanticLayer, (args || {}) as DiscoverRequest))
+      case 'discover': {
+        // Discovery reads the caller's cube set, so it needs their context —
+        // there is no longer an unauthenticated view of the schema. A throwing
+        // extractor falls through to the catch below and comes back as an
+        // isError tool result the model can react to.
+        const securityContext = await extractSecurityContext(rawRequest, rawResponse)
+        return wrapContent(await handleDiscover(semanticLayer, securityContext, (args || {}) as DiscoverRequest))
+      }
       case 'validate': {
         const body = (args || {}) as ValidateRequest
         if (!body.query) throw jsonRpcError(-32602, 'query is required')
-        let securityContext: SecurityContext | undefined
-        try {
-          securityContext = await extractSecurityContext(rawRequest, rawResponse)
-        } catch { /* validate works without auth — SQL just won't be included */ }
-        return wrapContent(await handleValidate(semanticLayer, body, securityContext))
+        // Validation is against this caller's cubes. This used to tolerate a
+        // failing extractor and validate against the base set with the SQL
+        // omitted; that is a base-set escape hatch and is gone.
+        const securityContext = await extractSecurityContext(rawRequest, rawResponse)
+        return wrapContent(await handleValidate(semanticLayer, securityContext, body))
       }
       case 'load': {
         const body = (args || {}) as LoadRequest
@@ -917,21 +937,36 @@ export function resolveMcpInstructions(instructions?: MCPInstructionsResolver): 
   return instructions ?? defaults
 }
 
-export function buildMcpSchemaResource(semanticLayer: SemanticLayerCompiler): MCPResource {
+/**
+ * The `drizzle-cube://schema` resource: this caller's cube metadata as JSON.
+ *
+ * Its body is tenant-specific, so it must be built per request under the
+ * caller's security context. Building it once at handler construction — as this
+ * used to be — would freeze every tenant's view to the base set.
+ */
+export function buildMcpSchemaResource(
+  semanticLayer: SemanticLayerCompiler,
+  securityContext: SecurityContext
+): MCPResource {
   return {
     uri: 'drizzle-cube://schema',
     name: 'Cube Schema',
     description: 'Current cube metadata as JSON',
     mimeType: 'application/json',
-    text: JSON.stringify(semanticLayer.getMetadata(), null, 2)
+    text: JSON.stringify(semanticLayer.getMetadata(securityContext), null, 2)
   }
 }
 
+/**
+ * Static resources plus this caller's schema resource. Call per request, never
+ * at setup time — see {@link buildMcpSchemaResource}.
+ */
 export function buildMcpResources(
   semanticLayer: SemanticLayerCompiler,
+  securityContext: SecurityContext,
   resources?: MCPResourceResolver
 ): MCPResource[] {
-  const schemaResource = buildMcpSchemaResource(semanticLayer)
+  const schemaResource = buildMcpSchemaResource(semanticLayer, securityContext)
   const baseResources = resolveMcpResources(resources)
     .filter(resource => resource.uri !== schemaResource.uri)
 

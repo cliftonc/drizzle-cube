@@ -12,9 +12,10 @@ import postgres from 'postgres'
 import { neon } from '@neondatabase/serverless'
 import { createCubeApp } from '../../src/adapters/hono/index.js'
 import type { SecurityContext, DrizzleDatabase } from '../../src/server/index.js'
-import { MemoryCacheProvider } from '../../src/server/index.js'
+import { MemoryCacheProvider, SemanticLayerCompiler } from '../../src/server/index.js'
 import { schema } from './schema.js'
 import { allCubes } from './cubes.js'
+import { registerAttributeCubeSets } from './attribute-cubes.js'
 import type { Schema } from './schema.js'
 import analyticsApp from './analytics-routes.js'
 import notebooksApp from './notebooks-routes.js'
@@ -227,9 +228,28 @@ const cacheProvider = new MemoryCacheProvider({
   cleanupIntervalMs: 30000 // Cleanup every 30 seconds
 })
 
+// Own the compiler here rather than letting the adapter create one, so cube
+// definitions can differ per tenant. Attributes are user-defined per
+// organisation, so each organisation gets its own cube set — see
+// docs/per-tenant-cube-sets.md.
+const semanticLayer = new SemanticLayerCompiler({
+  drizzle: db,
+  schema,
+  engineType: 'postgres',
+  contextToCubeSetId: (ctx) => String(ctx.organisationId),
+  onCubeSetRegistered: (info) =>
+    console.log(
+      `   cube set ${info.setId}: ${info.cubeCount} cube(s), ` +
+      `${info.dimensionCount} dimension(s) in ${info.durationMs}ms`
+    )
+})
+
+allCubes.forEach(cube => semanticLayer.registerCube(cube))
+await registerAttributeCubeSets(semanticLayer, db)
+
 // Mount the cube API routes
 const cubeApp = createCubeApp({
-  cubes: allCubes,
+  semanticLayer,
   drizzle: db,
   schema,
   extractSecurityContext,

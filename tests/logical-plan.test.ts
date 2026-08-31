@@ -30,6 +30,7 @@ import type {
   OptimiserContext,
   QueryNode
 } from '../src/server'
+import { testCastHelpers } from './helpers/query-context'
 
 const dbType = getTestDatabaseType()
 
@@ -58,7 +59,8 @@ describe(`Logical Plan Pipeline (${dbType})`, () => {
     ctx = {
       db: (dbExecutor as any).db,
       schema: (dbExecutor as any).schema,
-      securityContext
+      securityContext,
+      ...testCastHelpers()
     }
   })
 
