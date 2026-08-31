@@ -222,7 +222,7 @@ app.listen(3000)
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
 | `cubes` | `Cube[]` | ⚠️ | - | Array of cube definitions to register. Required unless `semanticLayer` is provided |
-| `semanticLayer` | `SemanticLayerCompiler` | ❌ | - | Pre-configured compiler. Required for [per-tenant cube sets](../../../docs/per-tenant-cube-sets.md), since the caller must own the compiler to call `registerCubeSet` |
+| `semanticLayer` | `SemanticLayerCompiler` | ❌ | - | Pre-configured compiler. Required for [per-tenant cube sets](https://www.drizzle-cube.dev/semantic-layer/cube-sets/), since the caller must own the compiler to call `registerCubeSet` |
 | `drizzle` | `DrizzleDatabase` | ✅ | - | Fully connected Drizzle database instance |
 | `schema` | `TSchema` | ⚠️ | - | Database schema for type inference (recommended) |
 | `extractSecurityContext` | `Function` | ✅ | - | Extract security context from HTTP requests (called for every request) |
@@ -397,7 +397,7 @@ from your extractor if you genuinely want public metadata. drizzle-cube now
 sets `Cache-Control: private, no-store` on every REST response (`/load`,
 `/sql`, `/dry-run`, `/batch`, `/explain` included), so `/meta` must not be
 cached in a shared cache/CDN keyed on URL alone. See
-[per-tenant cube sets](../../../docs/per-tenant-cube-sets.md).
+[per-tenant cube sets](https://www.drizzle-cube.dev/semantic-layer/cube-sets/).
 
 **Response:**
 ```json

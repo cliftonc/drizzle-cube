@@ -203,7 +203,7 @@ const cubeApp = createCubeApp({
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
 | `cubes` | `Cube[]` | ✅ unless `semanticLayer` provided | - | Array of cube definitions to register |
-| `semanticLayer` | `SemanticLayerCompiler` | ❌ | - | Pre-configured semantic layer. Provide this instead of `cubes` when your app needs [per-tenant cube sets](../../../docs/per-tenant-cube-sets.md) — the app must own the compiler to call `registerCubeSet` |
+| `semanticLayer` | `SemanticLayerCompiler` | ❌ | - | Pre-configured semantic layer. Provide this instead of `cubes` when your app needs [per-tenant cube sets](https://www.drizzle-cube.dev/semantic-layer/cube-sets/) — the app must own the compiler to call `registerCubeSet` |
 | `drizzle` | `DrizzleDatabase` | ✅ unless `semanticLayer` provided | - | Fully connected Drizzle database instance |
 | `schema` | `TSchema` | ⚠️ | - | Database schema for type inference (recommended) |
 | `extractSecurityContext` | `Function` | ✅ | - | Extract security context from HTTP requests (called for every request) |
@@ -383,7 +383,7 @@ from your extractor if you genuinely want public metadata. drizzle-cube now
 sets `Cache-Control: private, no-store` on every REST response (`/load`,
 `/sql`, `/dry-run`, `/batch`, `/explain` included), so `/meta` must not be
 cached in a shared cache/CDN keyed on URL alone. See
-[per-tenant cube sets](../../../docs/per-tenant-cube-sets.md).
+[per-tenant cube sets](https://www.drizzle-cube.dev/semantic-layer/cube-sets/).
 
 **Response:**
 ```json
