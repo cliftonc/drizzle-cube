@@ -1,7 +1,8 @@
 import { Fragment, useState, useCallback, type HTMLAttributes, type ReactNode, type MouseEvent, type DragEvent } from 'react'
 import type { DashboardGridSettings, PortletConfig, PortletGroup, RowLayout } from '../types.js'
 import type { SnapEdge } from '../hooks/dashboard/groupUtils.js'
-import { ensureAnalysisConfig } from '../utils/configMigration.js'
+import type { PortletCardVariant } from './dashboardPortletCard/cardStyles.js'
+import { computeRowBands, headerHasBottomRule, isAutoHeightRow } from './rowManagedLayout/sections.js'
 
 const SNAP_EDGES: SnapEdge[] = ['top', 'right', 'bottom', 'left']
 
@@ -32,11 +33,18 @@ interface RowManagedLayoutProps {
   draggingPortletId?: string | null
   /** Id of the group currently being dragged, so its members ignore their bands. */
   draggingGroupId?: string | null
-  renderPortlet: (portlet: PortletConfig, containerProps?: HTMLAttributes<HTMLDivElement>, headerProps?: HTMLAttributes<HTMLDivElement>) => ReactNode
+  renderPortlet: (
+    portlet: PortletConfig,
+    containerProps?: HTMLAttributes<HTMLDivElement>,
+    headerProps?: HTMLAttributes<HTMLDivElement>,
+    variant?: PortletCardVariant
+  ) => ReactNode
   /** Renders a group column. Omitted in contexts that have no groups. */
   renderGroup?: (
     group: PortletGroup,
-    renderSnapBands: (portletId: string) => ReactNode
+    renderSnapBands: (portletId: string) => ReactNode,
+    /** Set inside a section, where the section card draws the only frame. */
+    frameless?: boolean
   ) => ReactNode
 }
 
@@ -128,6 +136,154 @@ export default function RowManagedLayout({
     })
   }, [activeDropKey, canEdit, draggingGroupId, draggingPortletId, isDragging, onSnapDrop])
 
+  const bands = canEdit ? null : computeRowBands(rows, portletMap, gridSettings.cols)
+
+  /** A header drawing its own bottom line supplies the divider the section would draw. */
+  const sectionHeaderIsRuled = (headerRowIndex: number): boolean => {
+    const portletId = rows[headerRowIndex]?.columns[0]?.portletId
+    const portlet = portletId ? portletMap.get(portletId) : undefined
+    return !!portlet && headerHasBottomRule(portlet)
+  }
+
+  /**
+   * One row. Split out of the render so a section band can call it for a run
+   * of rows, and so the banded and flat paths stay one definition.
+   */
+  const renderRow = (row: RowLayout, rowIndex: number, inSection: boolean): ReactNode => {
+    const autoHeight = isAutoHeightRow(row, portletMap)
+    const rowHeight = autoHeight ? undefined : row.h * gridSettings.rowHeight
+    const safeGridWidth = gridWidth || gridSettings.cols * gridSettings.rowHeight
+    const paddingLeft = activeDropKey === `row-${rowIndex}-insert-0` ? COLUMN_GAP : 0
+    const paddingRight = activeDropKey === `row-${rowIndex}-insert-${row.columns.length}` ? COLUMN_GAP : 0
+    const rowContentWidth = safeGridWidth - (row.columns.length - 1) * COLUMN_GAP - paddingLeft - paddingRight
+    const unitWidth = rowContentWidth / gridSettings.cols
+
+    return (
+      <div key={row.id} className="dc-row-layout-row-wrapper">
+        <div
+          className="dc-row-layout-row"
+          style={{
+            height: rowHeight ?? 'auto',
+            paddingLeft,
+            paddingRight,
+          }}
+        >
+          {row.columns.map((column, columnIndex) => {
+            const group = column.groupId ? groupMap.get(column.groupId) : undefined
+            const portlet =
+              !group && column.portletId ? portletMap.get(column.portletId) : undefined
+            if (!group && !portlet) return null
+
+            const key = group ? group.id : portlet!.id
+            const width = column.w * unitWidth
+
+            // Without this the only sign a drag is live is the native ghost:
+            // drop zones stay invisible until one is hovered.
+            const isBeingDragged = group
+              ? draggingGroupId === group.id
+              : draggingPortletId === portlet!.id
+
+            return (
+              <div
+                key={key}
+                className={`dc-row-layout-column-wrapper dc-row-layout-column${isBeingDragged ? ' dc-row-layout-column-dragging' : ''}`}
+                draggable={canEdit}
+                data-row-index={rowIndex.toString()}
+                data-column-index={columnIndex.toString()}
+                data-portlet-id={portlet?.id}
+                data-group-id={group?.id}
+                onDragStart={handlePortletDragStart}
+                onDragEnd={handlePortletDragEnd}
+                style={{
+                  flex: `0 0 ${width}px`,
+                  maxWidth: `${width}px`
+                }}
+              >
+                {group
+                  ? renderGroup?.(group, renderSnapBands, inSection)
+                  : (
+                    <>
+                      {renderPortlet(portlet!, undefined, undefined, inSection ? 'sectionChild' : 'standalone')}
+                      {renderSnapBands(portlet!.id)}
+                    </>
+                  )}
+                {columnIndex < row.columns.length - 1 && (
+                  <div
+                    className={`dc-column-resize-handle dc-split-handle${activeDropKey === `row-${rowIndex}-insert-${columnIndex + 1}` ? ' dc-drop-zone-active' : ''}`}
+                    onMouseDown={(event) => onColumnResize(rowIndex, columnIndex, event)}
+                    onDragOver={(event) => {
+                      if (!canEdit) return
+                      event.preventDefault()
+                      setDropActive(`row-${rowIndex}-insert-${columnIndex + 1}`)
+                    }}
+                    onDragLeave={() => setDropActive(null)}
+                    onDrop={(event) => {
+                      if (!canEdit) return
+                      event.preventDefault()
+                      event.stopPropagation()
+                      setDropActive(null)
+                      onRowDrop(rowIndex, columnIndex + 1)
+                    }}
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
+        {canEdit && (
+          <>
+            <div
+              className={`dc-row-edge-drop dc-row-edge-drop-left dc-split-handle${activeDropKey === `row-${rowIndex}-insert-0` ? ' dc-drop-zone-active' : ''}`}
+              onDragOver={(event) => {
+                event.preventDefault()
+                setDropActive(`row-${rowIndex}-insert-0`)
+              }}
+              onDragLeave={() => {
+                setDropActive(null)
+              }}
+              onDrop={(event) => {
+                event.preventDefault()
+                setDropActive(null)
+                onRowDrop(rowIndex, 0)
+              }}
+            />
+            <div
+              className={`dc-row-edge-drop dc-row-edge-drop-right dc-split-handle${activeDropKey === `row-${rowIndex}-insert-${row.columns.length}` ? ' dc-drop-zone-active' : ''}`}
+              onDragOver={(event) => {
+                event.preventDefault()
+                setDropActive(`row-${rowIndex}-insert-${row.columns.length}`)
+              }}
+              onDragLeave={() => {
+                setDropActive(null)
+              }}
+              onDrop={(event) => {
+                event.preventDefault()
+                setDropActive(null)
+                onRowDrop(rowIndex, row.columns.length)
+              }}
+            />
+          </>
+        )}
+        {canEdit && (
+          <div
+            className={`dc-row-resize-handle dc-split-handle${autoHeight ? ' dc-row-resize-handle-drop-only' : ''}${activeDropKey === `row-insert-${rowIndex + 1}` ? ' dc-drop-zone-active' : ''}`}
+            onMouseDown={autoHeight ? undefined : (event) => onRowResize(rowIndex, event)}
+            onDragOver={(event) => {
+              event.preventDefault()
+              setDropActive(`row-insert-${rowIndex + 1}`)
+            }}
+            onDragLeave={() => setDropActive(null)}
+            onDrop={(event) => {
+              event.preventDefault()
+              setDropActive(null)
+              onNewRowDrop(rowIndex + 1)
+            }}
+          />
+        )}
+      </div>
+    )
+  }
+
   const topDropActive = activeDropKey === 'row-insert-0'
   const bottomDropActive = activeDropKey === 'row-bottom'
 
@@ -156,149 +312,21 @@ export default function RowManagedLayout({
           }}
         />
       )}
-      {rows.map((row, rowIndex) => {
-        // Row auto-height only when all columns are markdown and request autoHeight.
-        const isAutoHeightRow = row.columns.length > 0 && row.columns.every(col => {
-          // A group column has an explicit height, so it never auto-heights.
-          if (col.groupId) return false
-          const portlet = col.portletId ? portletMap.get(col.portletId) : undefined
-          if (!portlet) return false
-          const normalized = ensureAnalysisConfig(portlet)
-          const chartMode = normalized.analysisConfig.charts[normalized.analysisConfig.analysisType]
-          return chartMode?.chartType === 'markdown' && (chartMode.displayConfig?.autoHeight ?? true)
-        })
-        const rowHeight = isAutoHeightRow ? undefined : row.h * gridSettings.rowHeight
-        const safeGridWidth = gridWidth || gridSettings.cols * gridSettings.rowHeight
-        const paddingLeft = activeDropKey === `row-${rowIndex}-insert-0` ? COLUMN_GAP : 0
-        const paddingRight = activeDropKey === `row-${rowIndex}-insert-${row.columns.length}` ? COLUMN_GAP : 0
-        const rowContentWidth = safeGridWidth - (row.columns.length - 1) * COLUMN_GAP - paddingLeft - paddingRight
-        const unitWidth = rowContentWidth / gridSettings.cols
-
-        return (
-          <div key={row.id} className="dc-row-layout-row-wrapper">
-            <div
-              className="dc-row-layout-row"
-              style={{
-                height: rowHeight ?? 'auto',
-                paddingLeft,
-                paddingRight,
-              }}
-            >
-              {row.columns.map((column, columnIndex) => {
-                const group = column.groupId ? groupMap.get(column.groupId) : undefined
-                const portlet =
-                  !group && column.portletId ? portletMap.get(column.portletId) : undefined
-                if (!group && !portlet) return null
-
-                const key = group ? group.id : portlet!.id
-                const width = column.w * unitWidth
-
-                // Without this the only sign a drag is live is the native ghost:
-                // drop zones stay invisible until one is hovered.
-                const isBeingDragged = group
-                  ? draggingGroupId === group.id
-                  : draggingPortletId === portlet!.id
-
-                return (
-                  <div
-                    key={key}
-                    className={`dc-row-layout-column-wrapper dc-row-layout-column${isBeingDragged ? ' dc-row-layout-column-dragging' : ''}`}
-                    draggable={canEdit}
-                    data-row-index={rowIndex.toString()}
-                    data-column-index={columnIndex.toString()}
-                    data-portlet-id={portlet?.id}
-                    data-group-id={group?.id}
-                    onDragStart={handlePortletDragStart}
-                    onDragEnd={handlePortletDragEnd}
-                    style={{
-                      flex: `0 0 ${width}px`,
-                      maxWidth: `${width}px`
-                    }}
-                  >
-                    {group
-                      ? renderGroup?.(group, renderSnapBands)
-                      : (
-                        <>
-                          {renderPortlet(portlet!)}
-                          {renderSnapBands(portlet!.id)}
-                        </>
-                      )}
-                    {columnIndex < row.columns.length - 1 && (
-                      <div
-                        className={`dc-column-resize-handle dc-split-handle${activeDropKey === `row-${rowIndex}-insert-${columnIndex + 1}` ? ' dc-drop-zone-active' : ''}`}
-                        onMouseDown={(event) => onColumnResize(rowIndex, columnIndex, event)}
-                        onDragOver={(event) => {
-                          if (!canEdit) return
-                          event.preventDefault()
-                          setDropActive(`row-${rowIndex}-insert-${columnIndex + 1}`)
-                        }}
-                        onDragLeave={() => setDropActive(null)}
-                        onDrop={(event) => {
-                          if (!canEdit) return
-                          event.preventDefault()
-                          event.stopPropagation()
-                          setDropActive(null)
-                          onRowDrop(rowIndex, columnIndex + 1)
-                        }}
-                      />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-            {canEdit && (
-              <>
+      {bands
+        ? bands.map(band => (
+            band.kind === 'loose'
+              ? renderRow(rows[band.rowIndex], band.rowIndex, false)
+              : (
                 <div
-                  className={`dc-row-edge-drop dc-row-edge-drop-left dc-split-handle${activeDropKey === `row-${rowIndex}-insert-0` ? ' dc-drop-zone-active' : ''}`}
-                  onDragOver={(event) => {
-                    event.preventDefault()
-                    setDropActive(`row-${rowIndex}-insert-0`)
-                  }}
-                  onDragLeave={() => {
-                    setDropActive(null)
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault()
-                    setDropActive(null)
-                    onRowDrop(rowIndex, 0)
-                  }}
-                />
-                <div
-                  className={`dc-row-edge-drop dc-row-edge-drop-right dc-split-handle${activeDropKey === `row-${rowIndex}-insert-${row.columns.length}` ? ' dc-drop-zone-active' : ''}`}
-                  onDragOver={(event) => {
-                    event.preventDefault()
-                    setDropActive(`row-${rowIndex}-insert-${row.columns.length}`)
-                  }}
-                  onDragLeave={() => {
-                    setDropActive(null)
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault()
-                    setDropActive(null)
-                    onRowDrop(rowIndex, row.columns.length)
-                  }}
-                />
-              </>
-            )}
-            {canEdit && (
-              <div
-                className={`dc-row-resize-handle dc-split-handle${isAutoHeightRow ? ' dc-row-resize-handle-drop-only' : ''}${activeDropKey === `row-insert-${rowIndex + 1}` ? ' dc-drop-zone-active' : ''}`}
-                onMouseDown={isAutoHeightRow ? undefined : (event) => onRowResize(rowIndex, event)}
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  setDropActive(`row-insert-${rowIndex + 1}`)
-                }}
-                onDragLeave={() => setDropActive(null)}
-                onDrop={(event) => {
-                  event.preventDefault()
-                  setDropActive(null)
-                  onNewRowDrop(rowIndex + 1)
-                }}
-              />
-            )}
-          </div>
-        )
-      })}
+                  className={`dc-dashboard-section${sectionHeaderIsRuled(band.headerRowIndex) ? ' dc-dashboard-section-ruled' : ''}`}
+                  key={`section-${rows[band.headerRowIndex].id}`}
+                >
+                  {renderRow(rows[band.headerRowIndex], band.headerRowIndex, true)}
+                  {band.bodyRowIndices.map(index => renderRow(rows[index], index, true))}
+                </div>
+              )
+          ))
+        : rows.map((row, rowIndex) => renderRow(row, rowIndex, false))}
       {canEdit && (
         <div
           className={`dc-row-boundary-drop dc-row-boundary-drop-bottom dc-split-handle${activeDropKey === 'row-bottom' ? ' dc-drop-zone-active' : ''}`}

@@ -130,7 +130,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
 
   return (
     <div
-      className={`dc:w-full dc:overflow-auto ${transparentBackground ? '' : 'dc:p-4 '}${fontSizeClasses[fontSize] || 'dc:text-lg'} ${alignmentClasses[alignment] || 'dc:text-left'}`}
+      className={`dc-markdown-content dc:w-full dc:overflow-auto ${transparentBackground ? '' : 'dc:p-4 '}${fontSizeClasses[fontSize] || 'dc:text-lg'} ${alignmentClasses[alignment] || 'dc:text-left'}`}
       style={{
         height: height === "100%" ? "100%" : height,
         ...accentBorderStyle
