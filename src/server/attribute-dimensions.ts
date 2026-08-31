@@ -102,6 +102,15 @@ export interface BuildAttributeDimensionsOptions {
  *   returned by a subquery" on Postgres.
  * - **Security inside the subquery**, not merely on the outer query.
  *
+ * **Grouping limitation.** The subquery correlates on the record key, so a
+ * *grouped* query must also group by that key — `dimensions: ['Employees.id',
+ * 'Employees.attr_1']` is fine, `dimensions: ['Employees.attr_1']` with a
+ * measure is not. Postgres rejects the latter with "subquery uses ungrouped
+ * column … from outer query", and MySQL with `only_full_group_by`; SQLite
+ * permits it. Record-grain listings (`ungrouped: true`) — the case this exists
+ * for — are unaffected. If you need to aggregate freely by an attribute, pivot
+ * it into a real column with a view (see the performance ladder below).
+ *
  * Performance: projection is cheap (a page of 25 rows is 25 indexed lookups per
  * attribute), but `ORDER BY (SELECT …)` and `WHERE (SELECT …) = …` are
  * proportional to the base table because no index serves them. At tens of

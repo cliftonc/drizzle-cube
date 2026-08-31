@@ -166,3 +166,25 @@ it is measurable rather than hidden:
 If boot time becomes a problem, the shape of the fix is to make attributes real
 indexable columns rather than to load fewer sets — see the performance ladder in
 the EAV documentation.
+
+## Limitation: generated attributes in grouped queries
+
+Each generated dimension is a correlated subquery keyed on the record's primary
+key, so a **grouped** query must also group by that key:
+
+```js
+// Fine — the record key is grouped, so the correlation is legal.
+{ dimensions: ['Employees.id', 'Employees.attr_1'], measures: ['Employees.count'] }
+
+// Rejected by Postgres and by MySQL under only_full_group_by.
+{ dimensions: ['Employees.attr_1'], measures: ['Employees.count'] }
+```
+
+Postgres reports *"subquery uses ungrouped column … from outer query"*. SQLite
+permits it, so this will not surface in a SQLite-only test run.
+
+Record-grain listings — `ungrouped: true`, the case attribute dimensions exist
+for — are unaffected, as are filtering and sorting. If you need to aggregate
+freely across an attribute, pivot it into a real column with a view
+(`MAX(CASE WHEN attribute_id = … THEN value END)`), which also makes filtering
+and sorting indexable.

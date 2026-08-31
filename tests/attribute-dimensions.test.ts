@@ -10,7 +10,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDatabaseExecutor, getTestSchema } from './helpers/test-database'
+import { createTestDatabaseExecutor, getTestSchema, getTestDatabaseType } from './helpers/test-database'
 import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
 import { SemanticLayerCompiler, buildAttributeDimensions } from '../src/server'
 import type { Cube, SecurityContext, QueryContext } from '../src/server'
@@ -222,10 +222,9 @@ describe('buildAttributeDimensions', () => {
     })
   })
 
-  describe('alias safety: the subquery references the base table directly', () => {
+  describe('joined cubes, and the grouping limitation', () => {
     // Generated dimensions hard-reference their base Drizzle table, while the
-    // planner derives aliases independently. This is the case the spec said to
-    // verify rather than assume.
+    // planner derives aliases independently. Verified rather than assumed.
     let compiler: SemanticLayerCompiler
 
     beforeAll(async () => {
@@ -239,10 +238,28 @@ describe('buildAttributeDimensions', () => {
       compiler.registerCube(cubes.testProductivityCube)
     })
 
-    it('works when the cube is joined to another cube', async () => {
+    it('works ungrouped when the cube is joined to another cube', async () => {
       const result = await compiler.execute(
         {
           dimensions: ['Employees.attr_1', 'Departments.name'],
+          ungrouped: true,
+          limit: 20
+        },
+        securityContext
+      )
+
+      expect(result.data.length).toBeGreaterThan(0)
+      expect(result.data.some(row => row['Employees.attr_1'] !== null)).toBe(true)
+    })
+
+    it('works in a grouped query when the record key is also grouped', async () => {
+      // The subquery correlates on the record key, so that key must itself be
+      // grouped. Postgres rejects the alternative outright ("subquery uses
+      // ungrouped column ... from outer query"), and MySQL does the same under
+      // only_full_group_by.
+      const result = await compiler.execute(
+        {
+          dimensions: ['Employees.id', 'Employees.attr_1'],
           measures: ['Employees.count']
         },
         securityContext
@@ -252,16 +269,20 @@ describe('buildAttributeDimensions', () => {
       expect(result.data.some(row => row['Employees.attr_1'] !== null)).toBe(true)
     })
 
-    it('works alongside a measure from a second fact cube', async () => {
-      const result = await compiler.execute(
-        {
-          dimensions: ['Employees.attr_1'],
-          measures: ['Employees.count', 'Productivity.totalLinesOfCode']
-        },
+    it('is rejected by strict engines when grouped without the record key', async () => {
+      // Documents a real limitation rather than asserting it away. SQLite is
+      // permissive here; Postgres and MySQL are not, so the expectation is
+      // engine-dependent.
+      const run = () => compiler.execute(
+        { dimensions: ['Employees.attr_1', 'Departments.name'], measures: ['Employees.count'] },
         securityContext
       )
 
-      expect(result.data.length).toBeGreaterThan(0)
+      if (getTestDatabaseType() === 'sqlite') {
+        await expect(run()).resolves.toBeDefined()
+      } else {
+        await expect(run()).rejects.toThrow()
+      }
     })
   })
 
