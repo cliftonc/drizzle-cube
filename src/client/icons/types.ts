@@ -108,6 +108,7 @@ export interface IconRegistry {
   chartHeatmap: IconDefinition
   chartRetention: IconDefinition
   chartBoxPlot: IconDefinition
+  chartDotStrip: IconDefinition
   chartWaterfall: IconDefinition
   chartCandlestick: IconDefinition
   chartMeasureProfile: IconDefinition

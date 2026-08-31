@@ -67,6 +67,7 @@ import chartLine from '@iconify-icons/tabler/chart-line'
 import chartAreaLine from '@iconify-icons/tabler/chart-area-line'
 import chartPie from '@iconify-icons/tabler/chart-pie'
 import chartDots2 from '@iconify-icons/tabler/chart-dots-2'
+import chartDots3 from '@iconify-icons/tabler/chart-dots-3'
 import chartBubble from '@iconify-icons/tabler/chart-bubble'
 import chartRadar from '@iconify-icons/tabler/chart-radar'
 import radar2 from '@iconify-icons/tabler/radar-2'
@@ -165,6 +166,7 @@ export const DEFAULT_ICONS: IconRegistry = {
   chartHeatmap: { icon: chartGridDots, category: 'chart' },
   chartRetention: { icon: retentionIcon, category: 'chart' },
   chartBoxPlot: { icon: boxPadding, category: 'chart' },
+  chartDotStrip: { icon: chartDots3, category: 'chart' },
   chartWaterfall: { icon: stairs, category: 'chart' },
   chartCandlestick: { icon: chartCandle, category: 'chart' },
   chartMeasureProfile: { icon: chartArrowsVertical, category: 'chart' },

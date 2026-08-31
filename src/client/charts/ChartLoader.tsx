@@ -58,6 +58,7 @@ const chartImportMap: Record<BuiltInChartType, () => Promise<{ default: LazyChar
   retentionHeatmap: () => import('../components/charts/RetentionHeatmap.js'),
   retentionCombined: () => import('../components/charts/RetentionCombinedChart.js'),
   boxPlot: () => import('../components/charts/BoxPlotChart.js'),
+  dotStrip: () => import('../components/charts/DotStripChart.js'),
   waterfall: () => import('../components/charts/WaterfallChart.js'),
   candlestick: () => import('../components/charts/CandlestickChart.js'),
   measureProfile: () => import('../components/charts/MeasureProfileChart.js'),

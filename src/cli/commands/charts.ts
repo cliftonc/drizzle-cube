@@ -53,6 +53,7 @@ const BUILT_IN_CHARTS: Record<BuiltInChartType, ScaffoldableChart | null> = {
   sunburst: { file: 'SunburstChart', description: 'Sunburst chart — hierarchical pie chart' },
   heatmap: { file: 'HeatMapChart', description: 'Heatmap — color-coded matrix' },
   boxPlot: { file: 'BoxPlotChart', description: 'Box plot — statistical distribution' },
+  dotStrip: { file: 'DotStripChart', description: 'Dot strip plot — individual values spread within categorical bands' },
   waterfall: { file: 'WaterfallChart', description: 'Waterfall chart — cumulative values' },
   candlestick: { file: 'CandlestickChart', description: 'Candlestick chart — financial OHLC data' },
   gauge: { file: 'GaugeChart', description: 'Gauge — meter-style value display' },
