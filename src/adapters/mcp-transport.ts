@@ -6,6 +6,10 @@ import {
 } from '../server/ai/mcp-prompts.js'
 import { QUERY_PARAMS_SCHEMA } from '../server/ai/query-schema.js'
 import {
+  RECORDS_TABLE_CHART_CONFIG_SCHEMA,
+  RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA
+} from '../server/ai/chart-schema.js'
+import {
   handleDiscover,
   handleValidate,
   handleLoad,
@@ -28,6 +32,19 @@ export const MCP_APP_MIME_TYPE = 'text/html;profile=mcp-app'
 
 // MCP App HTML loaded from generated file (built by scripts/generate-mcp-app-html.ts)
 import { mcpAppHtml } from '../mcp-app/generated-html.js'
+import { MCP_APP_CHART_TYPES } from '../mcp-app/chartTypes.js'
+
+/**
+ * Chart types the `chart` tool may be asked for: everything the MCP App can
+ * render, minus the content-only ones that ignore the query the tool requires.
+ * Derived so the model is never offered a type the app would silently fall back
+ * to a table for. `chartTypes.ts` is value-import-free from the client graph, so
+ * this stays a plain string array in the adapters build.
+ */
+const CHART_TOOL_TYPES: string[] = MCP_APP_CHART_TYPES.filter(
+  // `markdown` renders static text and takes no query — nothing for this tool to run.
+  type => type !== 'markdown'
+)
 
 /** Get the bundled MCP App HTML, optionally with locale config injected. Returns empty string if not yet built. */
 export function getMcpAppHtml(config?: McpAppConfig): string {
@@ -592,8 +609,10 @@ Use "load" for data retrieval. Use "chart" to visualise results with an interact
 Same query format as "load", but renders results in the MCP App chart UI.
 Include a "chart" object to control the visualization.
 
-Chart types: bar, line, area, pie, scatter, bubble, radar, treemap, kpiNumber, kpiDelta, table, recordsTable, heatmap, funnel, sankey, sunburst, waterfall, activityGrid, boxPlot
-Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, part-of-whole -> pie, correlation -> scatter/bubble, distribution -> boxPlot, record-level listing -> recordsTable`,
+Chart types: ${CHART_TOOL_TYPES.join(', ')}
+Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, part-of-whole -> pie, correlation -> scatter/bubble, distribution -> boxPlot, record-level listing -> recordsTable
+
+recordsTable renders one row per record, so pair it with "ungrouped": true in the query. Its columns are plain text unless you say otherwise: use chart.displayConfig.columnFormats to give each column a kind (number, date, badge, progress), which is what makes the listing readable.`,
       inputSchema: {
         type: 'object',
         required: ['query'],
@@ -609,12 +628,7 @@ Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, p
             properties: {
               type: {
                 type: 'string',
-                enum: [
-                  'bar', 'line', 'area', 'pie', 'scatter', 'bubble', 'radar', 'radialBar',
-                  'treemap', 'table', 'kpiNumber', 'kpiDelta', 'heatmap', 'boxPlot',
-                  'funnel', 'sankey', 'sunburst', 'retentionHeatmap', 'retentionCombined',
-                  'waterfall', 'activityGrid', 'recordsTable'
-                ],
+                enum: CHART_TOOL_TYPES,
                 description: 'Chart type to render'
               },
               title: {
@@ -633,7 +647,8 @@ Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, p
                     description: 'Dual Y-axis: map measure fields to "left" or "right". Only bar/line/area with 2+ measures of different scales.'
                   },
                   sizeField: { type: 'string', description: 'Bubble chart size field' },
-                  colorField: { type: 'string', description: 'Bubble chart color field' }
+                  colorField: { type: 'string', description: 'Bubble chart color field' },
+                  ...RECORDS_TABLE_CHART_CONFIG_SCHEMA
                 }
               },
               displayConfig: {
@@ -645,7 +660,8 @@ Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, p
                   showTooltip: { type: 'boolean' },
                   stacked: { type: 'boolean' },
                   stackType: { type: 'string', enum: ['none', 'normal', 'percent'] },
-                  orientation: { type: 'string', enum: ['horizontal', 'vertical'] }
+                  orientation: { type: 'string', enum: ['horizontal', 'vertical'] },
+                  ...RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA
                 }
               },
               // Backward-compatible flat aliases (deprecated — use chartConfig instead)

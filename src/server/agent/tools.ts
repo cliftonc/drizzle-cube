@@ -4,12 +4,17 @@
  * Tool definitions are provider-agnostic — each provider wraps them in its own format.
  */
 
+import type { BuiltInChartType } from '../../client/types.js'
 import type { SemanticLayerCompiler } from '../compiler.js'
 import type { SecurityContext } from '../types/index.js'
 import type { AgentSSEEvent } from './types.js'
 import type { ToolDefinition } from './providers/types.js'
 import { handleDiscover, handleLoad, normalizeQueryFields } from '../query-handlers.js'
 import { validateChartConfig, inferChartConfig, buildChartRequirementsDescription } from './chart-validation.js'
+import {
+  RECORDS_TABLE_CHART_CONFIG_SCHEMA,
+  RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA
+} from '../ai/chart-schema.js'
 import { QUERY_PARAMS_SCHEMA } from '../ai/query-schema.js'
 
 /**
@@ -24,11 +29,22 @@ export interface ToolExecutionResult {
   sideEffect?: AgentSSEEvent
 }
 
-/** Chart types available to the agent */
-const AGENT_ALLOWED_CHART_TYPES = [
+/**
+ * Chart types the dashboard agent may create — a deliberately curated subset of
+ * `BuiltInChartType`, not a derived list. Every type here is one the agent can
+ * configure well from a query alone; charts needing hand-tuned config that the
+ * tool schema does not describe (candlestick OHLC fields, gauge thresholds) are
+ * left out on purpose, so widening this is a product decision rather than an
+ * oversight.
+ *
+ * Typed against `BuiltInChartType` (type-only import — no runtime dependency on
+ * the client graph) so a renamed or removed chart type fails `npm run typecheck`
+ * here instead of silently offering the model a type that no longer renders.
+ */
+const AGENT_ALLOWED_CHART_TYPES: BuiltInChartType[] = [
   'bar', 'line', 'area', 'pie', 'scatter', 'radar', 'bubble', 'table',
   'kpiNumber', 'kpiDelta', 'funnel', 'heatmap', 'sankey', 'sunburst',
-  'retentionHeatmap', 'retentionCombined', 'boxPlot', 'markdown'
+  'retentionHeatmap', 'retentionCombined', 'boxPlot', 'markdown', 'recordsTable'
 ]
 
 /**
@@ -106,7 +122,8 @@ export function getToolDefinitions(): ToolDefinition[] {
               yAxisAssignment: {
                 type: 'object',
                 description: 'Dual Y-axis: map measure fields to "left" or "right" axis. Only for bar, line, area charts with 2+ measures of different scales. Example: {"Sales.revenue": "left", "Sales.conversionRate": "right"}'
-              }
+              },
+              ...RECORDS_TABLE_CHART_CONFIG_SCHEMA
             },
             description: 'Chart axis configuration'
           },
@@ -117,7 +134,8 @@ export function getToolDefinitions(): ToolDefinition[] {
               showGrid: { type: 'boolean' },
               showTooltip: { type: 'boolean' },
               stacked: { type: 'boolean' },
-              orientation: { type: 'string', enum: ['horizontal', 'vertical'] }
+              orientation: { type: 'string', enum: ['horizontal', 'vertical'] },
+              ...RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA
             },
             description: 'Chart display configuration'
           }
@@ -176,13 +194,15 @@ export function getToolDefinitions(): ToolDefinition[] {
                     yAxis: { type: 'array', items: { type: 'string' } },
                     series: { type: 'array', items: { type: 'string' } },
                     sizeField: { type: 'string' },
-                    colorField: { type: 'string' }
+                    colorField: { type: 'string' },
+                    ...RECORDS_TABLE_CHART_CONFIG_SCHEMA
                   },
                   description: 'Chart axis configuration'
                 },
                 displayConfig: {
                   type: 'object',
-                  description: 'Chart display configuration (for markdown: { content, hideHeader, transparentBackground, autoHeight })'
+                  description: 'Chart display configuration (for markdown: { content, hideHeader, transparentBackground, autoHeight })',
+                  properties: RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA
                 },
                 dashboardFilterMapping: {
                   type: 'array',
@@ -276,6 +296,9 @@ export function createToolExecutor(options: {
         relevanceScore: cube.relevanceScore,
         suggestedMeasures: cube.suggestedMeasures,
         suggestedDimensions: cube.suggestedDimensions,
+        // Only present when a suggested field's name doesn't say what it is
+        // (EAV attributes), so it costs nothing on ordinary cubes.
+        ...(cube.fieldTitles ? { fieldTitles: cube.fieldTitles } : {}),
         capabilities: cube.capabilities,
         // Only include analysisConfig if advanced modes are available, and only the essentials
         ...(cube.capabilities.funnel || cube.capabilities.flow || cube.capabilities.retention
@@ -454,7 +477,12 @@ export function createToolExecutor(options: {
     const portletData = {
       id,
       title: input.title as string,
-      query: input.query as string,
+      // The normalised query, not the raw string the model sent: validation and
+      // chart-config inference both ran against this one, so shipping the raw
+      // string would put a portlet on the notebook that was never the thing
+      // checked — a dropped bad order key or an uncorrected double-prefixed
+      // field would surface as a runtime error at render time instead.
+      query: JSON.stringify(parsedQuery),
       chartType: resolvedChartType,
       chartConfig: finalChartConfig,
       displayConfig: input.displayConfig as Record<string, unknown> | undefined
@@ -493,6 +521,9 @@ export function createToolExecutor(options: {
 
       // Validate each portlet's query (skip markdown portlets)
       const errors: string[] = []
+      // Chart configs completed during validation, reused when the dashboard is
+      // built so a saved portlet gets the same inference `add_portlet` applies.
+      const inferredChartConfigs = new Map<Record<string, unknown>, Record<string, unknown>>()
       for (const portlet of portlets) {
         const chartType = portlet.chartType as string
         if (chartType === 'markdown') continue
@@ -517,7 +548,23 @@ export function createToolExecutor(options: {
         const validation = semanticLayer.validateQuery(parsedQuery as any, securityContext)
         if (!validation.isValid) {
           errors.push(`Portlet "${portlet.title}": ${validation.errors.join(', ')}`)
+          continue
         }
+
+        // The same chart checks `add_portlet` runs, so a dashboard cannot be
+        // saved with a portlet the notebook would have rejected — a records
+        // table over a grouped query would list aggregates, not records.
+        const inferredConfig = inferChartConfig(
+          chartType,
+          portlet.chartConfig as Record<string, unknown> | undefined,
+          parsedQuery
+        )
+        const configValidation = validateChartConfig(chartType, inferredConfig, parsedQuery)
+        if (!configValidation.isValid) {
+          errors.push(`Portlet "${portlet.title}": ${configValidation.errors.join(', ')}`)
+          continue
+        }
+        inferredChartConfigs.set(portlet, inferredConfig)
       }
 
       if (errors.length > 0) {
@@ -556,7 +603,7 @@ export function createToolExecutor(options: {
             charts: {
               [modeKey]: {
                 chartType,
-                chartConfig: (p.chartConfig as Record<string, unknown>) || {},
+                chartConfig: inferredChartConfigs.get(p) ?? (p.chartConfig as Record<string, unknown>) ?? {},
                 displayConfig: (p.displayConfig as Record<string, unknown>) || {},
               },
             },

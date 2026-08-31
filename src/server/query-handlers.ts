@@ -262,6 +262,7 @@ export async function handleLoad(
   data: Record<string, unknown>[]
   annotation: any
   query: SemanticQuery
+  total?: number
 }> {
   // Auto-correct common AI-generated field mistakes before validation
   const query = normalizeQueryFields(body.query as Record<string, unknown>) as SemanticQuery
@@ -278,6 +279,9 @@ export async function handleLoad(
   return {
     data: result.data,
     annotation: result.annotation,
-    query
+    query,
+    // A caller that asked for `total` gets it: without this a paged record
+    // listing has rows but no row count, so it cannot page.
+    ...(result.total !== undefined ? { total: result.total } : {})
   }
 }

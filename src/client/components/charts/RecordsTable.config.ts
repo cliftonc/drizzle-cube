@@ -24,7 +24,10 @@ export const recordsTableConfig: ChartTypeConfig = {
       description: 'chart.recordsTable.dropZone.hiddenColumns.description',
       mandatory: false,
       acceptTypes: ['dimension', 'timeDimension', 'measure'],
-      emptyText: 'chart.recordsTable.dropZone.hiddenColumns.empty'
+      emptyText: 'chart.recordsTable.dropZone.hiddenColumns.empty',
+      // Hiding is a deliberate choice: auto-filling this from the query would
+      // hide every column and render an empty table.
+      excludeFromInference: true
     }
   ],
   displayOptions: ['hideHeader'],

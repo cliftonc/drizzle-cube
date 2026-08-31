@@ -194,6 +194,19 @@ export interface Dimension {
   primaryKey?: boolean
 
   /**
+   * The column this dimension's SQL correlates on, for dimensions built from a
+   * correlated subquery (see `buildAttributeDimensions`).
+   *
+   * A correlated subquery in the SELECT list is only legal under GROUP BY when
+   * the column it correlates on is itself grouped: Postgres otherwise rejects
+   * the query with "subquery uses ungrouped column … from outer query", and
+   * MySQL does the same under `only_full_group_by`. The planner cannot see
+   * inside an opaque `sql` function, so a dimension that needs this declares it
+   * and the GROUP BY builder adds the key.
+   */
+  correlatesOn?: AnyColumn
+
+  /**
    * Whether to include this dimension in generated cube metadata (`/meta`,
    * the client field picker, AI prompts). Defaults to `true` (shown) when
    * omitted. Setting `shown: false` hides the dimension from metadata/UI

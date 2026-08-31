@@ -4,15 +4,12 @@
  * Operates on raw load results + query metadata (no CubeProvider context needed).
  */
 
-import type { ChartType } from '../client/types.js'
 import { isSankeyData } from '../client/types/flow.js'
 import { isChartAvailableForShape } from './chartAvailability.js'
-
-/** Chart types available in the MCP App (subset of full ChartType) */
-export type McpChartType = ChartType
+import type { McpAppChartType } from './chartTypes.js'
 
 export interface ChartSelection {
-  chartType: McpChartType
+  chartType: McpAppChartType
   xAxis: string[]
   yAxis: string[]
   series: string[]
@@ -34,15 +31,6 @@ interface LoadQuery {
   order?: Record<string, string>
   limit?: number
 }
-
-/** Chart types shown in the MCP App switcher */
-export const SUPPORTED_CHARTS: McpChartType[] = [
-  'bar', 'line', 'area', 'pie', 'scatter', 'kpiNumber', 'table', 'treemap',
-  'radar', 'radialBar', 'bubble', 'funnel', 'waterfall', 'gauge',
-  'heatmap', 'sankey', 'sunburst', 'boxPlot', 'activityGrid',
-  'kpiDelta', 'kpiText', 'candlestick', 'measureProfile', 'markdown',
-  'recordsTable',
-]
 
 function getMeasures(query: LoadQuery): string[] {
   return query.measures || []
@@ -124,7 +112,7 @@ function getDefaultChartAxes(query: LoadQuery): Omit<ChartSelection, 'chartType'
  * Check if a chart type is available for the given query shape
  */
 export function isChartAvailable(
-  chartType: McpChartType,
+  chartType: McpAppChartType,
   query: LoadQuery,
   rowCount: number,
   hasFlowData = false,
@@ -144,7 +132,7 @@ export function isChartAvailable(
 /**
  * Select the best chart type based on query + data shape
  */
-export function autoSelectChartType(query: LoadQuery, data: any[]): McpChartType {
+export function autoSelectChartType(query: LoadQuery, data: any[]): McpAppChartType {
   // Flow queries return a single-row payload of { nodes, links } — visualize as Sankey.
   if (isSankeyData(data[0])) {
     return 'sankey'
@@ -183,7 +171,7 @@ export function autoSelectChartType(query: LoadQuery, data: any[]): McpChartType
   return 'table'
 }
 
-export function deriveChartConfig(query: LoadQuery, data: any[], chartType: McpChartType): ChartSelection {
+export function deriveChartConfig(query: LoadQuery, data: any[], chartType: McpAppChartType): ChartSelection {
   if (chartType === 'table') {
     return {
       chartType,

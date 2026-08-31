@@ -26,6 +26,14 @@ export interface AxisDropZoneConfig {
 
   /** Enable L/R axis toggle for items in this drop zone (for dual Y-axis support) */
   enableDualAxis?: boolean
+
+  /**
+   * Keep this zone out of automatic chart-config inference (the agent's
+   * `inferChartConfig`). For zones whose meaning is subtractive or opt-in — the
+   * records table's hidden columns being the case in point — filling them from
+   * the query changes what renders rather than completing a partial config.
+   */
+  excludeFromInference?: boolean
 }
 
 /**

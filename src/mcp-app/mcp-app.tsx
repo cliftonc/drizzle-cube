@@ -41,12 +41,17 @@ import { isSankeyData } from '../client/types/flow.js'
 import McpChartSwitcher from './McpChartSwitcher.js'
 
 // Auto-selection
-import { autoSelectChartType, deriveChartConfig, type McpChartType } from './chartAutoSelect.js'
+import { autoSelectChartType, deriveChartConfig, type ChartSelection } from './chartAutoSelect.js'
+import { isMcpAppChartType, type McpAppChartType } from './chartTypes.js'
 import { parseLoadResult, type LoadResult } from './parseLoadResult.js'
 import { applyHostContext, applyFallbackTheme } from './theme-bridge.js'
 import './global.css'
 
-const chartComponentMap: Record<string, React.ComponentType<ChartProps>> = {
+// The MCP App is a single inlined HTML bundle, so components are static imports
+// rather than ChartLoader's lazy map. Typed as an exhaustive record over
+// `McpAppChartType`: listing a type in `MCP_APP_CHART_TYPES` without importing its
+// component here is a typecheck error, which is what keeps the two in step.
+const chartComponentMap: Record<McpAppChartType, React.ComponentType<ChartProps>> = {
   bar: BarChart,
   line: LineChart,
   area: AreaChart,
@@ -115,7 +120,8 @@ function fallbackLabel(field: string): string {
 }
 
 interface ChartHint {
-  type?: McpChartType
+  /** Raw type from the host payload — narrowed via `isMcpAppChartType` before use. */
+  type?: string
   title?: string
   chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
@@ -124,11 +130,28 @@ interface ChartHint {
   yAxis?: string[]
 }
 
+/**
+ * The field arrangement a chart component reads, from an auto-derived selection.
+ *
+ * Both the load path and the switcher go through here: a chart that lays out
+ * something other than x/y axes — the records table uses `columns` — would
+ * otherwise render unconfigured on whichever path forgot to copy its field.
+ */
+function toChartAxisConfig(selection: ChartSelection): ChartAxisConfig {
+  return {
+    xAxis: selection.xAxis,
+    yAxis: selection.yAxis,
+    series: selection.series,
+    valueField: selection.valueField,
+    columns: selection.columns,
+  }
+}
+
 /** Normalize a chart hint into chartConfig + displayConfig */
 function normalizeHint(
   hint: ChartHint,
   baseChartConfig: ChartAxisConfig,
-  chartType: McpChartType,
+  chartType: McpAppChartType,
 ): {
   chartConfig: ChartAxisConfig
   displayConfig: ChartDisplayConfig
@@ -161,7 +184,7 @@ type ChartConfigSource = 'auto' | 'hint' | 'manual'
 
 export function McpApp() {
   const [result, setResult] = useState<LoadResult | null>(null)
-  const [chartType, setChartType] = useState<McpChartType>('table')
+  const [chartType, setChartType] = useState<McpAppChartType>('table')
   const [chartConfig, setChartConfig] = useState<ChartAxisConfig>({})
   const [displayConfig, setDisplayConfig] = useState<ChartDisplayConfig>({})
   const [chartConfigSource, setChartConfigSource] = useState<ChartConfigSource>('auto')
@@ -203,14 +226,11 @@ export function McpApp() {
       const query = parsed.query || {}
       const nextHint = hint || null
       const autoChartType = autoSelectChartType(query, parsed.data)
-      const resolvedChartType = nextHint?.type || autoChartType
+      // A hint type only wins if the app can actually render it; otherwise fall
+      // back to auto-selection rather than rendering an empty frame.
+      const resolvedChartType = isMcpAppChartType(nextHint?.type) ? nextHint.type : autoChartType
       const derivedSelection = deriveChartConfig(query, parsed.data, resolvedChartType)
-      const derivedChartConfig: ChartAxisConfig = {
-        xAxis: derivedSelection.xAxis,
-        yAxis: derivedSelection.yAxis,
-        series: derivedSelection.series,
-        valueField: derivedSelection.valueField,
-      }
+      const derivedChartConfig = toChartAxisConfig(derivedSelection)
 
       chartHintRef.current = nextHint
       setChartHint(nextHint)
@@ -264,18 +284,13 @@ export function McpApp() {
     applyFallbackTheme()
   }, [])
 
-  const handleChartTypeChange = useCallback((ct: McpChartType) => {
+  const handleChartTypeChange = useCallback((ct: McpAppChartType) => {
     if (!result) return
 
     const derivedSelection = deriveChartConfig(result.query || {}, result.data || [], ct)
 
     setChartType(derivedSelection.chartType)
-    setChartConfig({
-      xAxis: derivedSelection.xAxis,
-      yAxis: derivedSelection.yAxis,
-      series: derivedSelection.series,
-      valueField: derivedSelection.valueField,
-    })
+    setChartConfig(toChartAxisConfig(derivedSelection))
     setDisplayConfig({})
     setChartConfigSource('manual')
   }, [result])

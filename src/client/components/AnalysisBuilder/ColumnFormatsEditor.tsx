@@ -312,7 +312,10 @@ function BadgeColorRows({
   onChange: (format: ColumnFormatConfig) => void
   t: (key: string) => string
 }) {
-  const entries = format.badgeColors ?? []
+  // A config written by an agent may carry something other than the array this
+  // editor expects; ignoring it lets the editor open and rewrite the value
+  // rather than crashing on the portlet the user came here to fix.
+  const entries = Array.isArray(format.badgeColors) ? format.badgeColors : []
   const palette = colorPalette?.colors ?? []
 
   const update = (next: Array<{ value: string; colorIndex: number }>) =>

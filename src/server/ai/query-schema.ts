@@ -92,7 +92,7 @@ export const QUERY_PARAMS_SCHEMA = {
   },
   ungrouped: {
     type: 'boolean',
-    description: 'When true, returns raw row-level data without GROUP BY. Requires at least one dimension. Incompatible with count/countDistinct measures and analysis modes.'
+    description: 'When true, returns raw row-level data without GROUP BY. Requires at least one dimension. Incompatible with count/countDistinct measures and analysis modes. Cannot reference two cubes joined by a hasMany relationship in EITHER direction (e.g. Departments hasMany Employees) — an ungrouped query stays at one record grain, so keep it to a single cube plus its to-one joins. A field from a hasMany-related cube has to be pre-aggregated in a grouped query instead.'
   },
   funnel: {
     type: 'object',

@@ -251,7 +251,7 @@ export function buildAgentSystemPrompt(metadata: CubeMetadata[]): string {
     '- Dashboard grid is 12 columns wide',
     '- KPI cards: w=3, h=3 — place at the top in a row of 4',
     '- Overview charts (bar, line, area): w=6, h=4',
-    '- Wide charts (heatmap, table): w=12, h=5',
+    '- Wide charts (heatmap, table, recordsTable): w=12, h=5',
     '- Section headers (markdown): w=12, h=1',
     '',
     '### Section Headers',
