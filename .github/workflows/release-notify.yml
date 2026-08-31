@@ -4,6 +4,10 @@ on:
   workflow_run:
     workflows: ["Publish to NPM"]
     types: [completed]
+  # Lets a release be re-announced without republishing — e.g. after fixing a
+  # transient webhook failure. Safe to run repeatedly: the Discussions step is
+  # idempotent.
+  workflow_dispatch:
 
 permissions:
   discussions: write
@@ -11,7 +15,7 @@ permissions:
 jobs:
   notify:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Get release info
@@ -43,6 +47,23 @@ jobs:
           ---
           [View full release on GitHub](${RELEASE_URL}) | [NPM package](https://www.npmjs.com/package/drizzle-cube/v/${VERSION})"
 
+          # Skip if this release was already announced. Re-running the job
+          # otherwise posts a duplicate, which is how v0.8.0 ended up with two.
+          EXISTING=$(gh api graphql -f query='
+            query($owner: String!, $name: String!) {
+              repository(owner: $owner, name: $name) {
+                discussions(first: 25, orderBy: {field: CREATED_AT, direction: DESC}) {
+                  nodes { title url }
+                }
+              }
+            }' -f owner="${GITHUB_REPOSITORY%/*}" -f name="${GITHUB_REPOSITORY#*/}" \
+            --jq ".data.repository.discussions.nodes[] | select(.title == \"$RELEASE_NAME\") | .url" | head -n1)
+
+          if [ -n "$EXISTING" ]; then
+            echo "Discussion already exists for $RELEASE_NAME: $EXISTING — skipping"
+            exit 0
+          fi
+
           gh api graphql -f query='
             mutation($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
               createDiscussion(input: {repositoryId: $repoId, categoryId: $categoryId, title: $title, body: $body}) {
@@ -64,22 +85,44 @@ jobs:
           BODY=$(cat /tmp/release_body.txt)
           VERSION="${RELEASE_TAG#v}"
 
-          # Build Discord embed payload using jq to safely handle special characters
+          # Build the embed with jq, which handles special characters safely.
+          #
+          # Discord caps an embed description at 4096 characters and rejects the
+          # whole request if it is exceeded — which is how v0.8.0's notification
+          # failed with a bare "exit code 22". Release notes should not be
+          # constrained by that, so the body is truncated to fit and the embed
+          # always links out to the full notes.
           PAYLOAD=$(jq -n \
             --arg name "$RELEASE_NAME" \
             --arg url "$RELEASE_URL" \
             --arg body "$BODY" \
             --arg npm "https://www.npmjs.com/package/drizzle-cube/v/${VERSION}" \
-            '{
-              username: "Drizzle Cube",
-              embeds: [{
-                title: $name,
-                url: $url,
-                description: ($body + "\n\n[NPM Package](" + $npm + ")"),
-                color: 5793266
-              }]
-            }')
+            '
+              ("\n\n[Full release notes](" + $url + ") | [NPM Package](" + $npm + ")") as $suffix
+              | (4096 - ($suffix | length)) as $budget
+              | (if ($body | length) > $budget
+                 then ($body[0:$budget - 2] + "…")
+                 else $body end) as $description
+              | {
+                  username: "Drizzle Cube",
+                  embeds: [{
+                    title: $name,
+                    url: $url,
+                    description: ($description + $suffix),
+                    color: 5793266
+                  }]
+                }')
 
-          curl -sf -H "Content-Type: application/json" \
+          # Report the status and Discord'"'"'s response on failure; `curl -sf`
+          # previously swallowed both, leaving only an opaque exit code.
+          STATUS=$(curl -sS -o /tmp/discord_response.txt -w '%{http_code}' \
+            -H "Content-Type: application/json" \
             -d "$PAYLOAD" \
-            "$DISCORD_WEBHOOK"
+            "$DISCORD_WEBHOOK")
+
+          if [ "$STATUS" -ge 300 ] || [ "$STATUS" -lt 200 ]; then
+            echo "Discord webhook returned HTTP $STATUS"
+            cat /tmp/discord_response.txt
+            exit 1
+          fi
+          echo "Discord notification sent (HTTP $STATUS)"
