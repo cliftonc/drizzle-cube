@@ -7,33 +7,77 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
+import type { BuiltInChartType } from '../../client/types.js'
 
-// Built-in chart types with descriptions
-const BUILT_IN_CHARTS: Record<string, string> = {
-  bar: 'Bar chart — compare values across categories',
-  line: 'Line chart — show trends over time',
-  area: 'Area chart — line chart with filled areas',
-  pie: 'Pie chart — show proportions of a whole',
-  scatter: 'Scatter chart — show relationships between two measures',
-  bubble: 'Bubble chart — scatter with size dimension',
-  radar: 'Radar chart — multi-axis comparison',
-  radialBar: 'Radial bar chart — circular bar chart',
-  treemap: 'Treemap — hierarchical data as nested rectangles',
-  table: 'Data table — sortable tabular display',
-  recordsTable: 'Records table — record listing with per-column formats and links',
-  activityGrid: 'Activity grid — GitHub-style contribution calendar',
-  kpiNumber: 'KPI number — single metric display',
-  kpiDelta: 'KPI delta — metric with change indicator',
-  kpiText: 'KPI text — text-based metric',
-  funnel: 'Funnel chart — conversion funnel visualization',
-  sankey: 'Sankey diagram — flow visualization',
-  sunburst: 'Sunburst chart — hierarchical pie chart',
-  heatmap: 'Heatmap — color-coded matrix',
-  boxPlot: 'Box plot — statistical distribution',
-  waterfall: 'Waterfall chart — cumulative values',
-  candlestick: 'Candlestick chart — financial OHLC data',
-  gauge: 'Gauge — meter-style value display',
-  measureProfile: 'Measure profile — detailed measure analysis',
+/** A built-in offered as a `charts init --from <type>` starting point. */
+interface ScaffoldableChart {
+  /** Component/config file basename under the packaged charts dir (`{file}.tsx` + `{file}.config.ts`). */
+  file: string
+  /** One-line summary for `charts list`. */
+  description: string
+}
+
+/**
+ * Built-in charts the CLI can scaffold from, keyed by chart type.
+ *
+ * Deliberately the CLI's own table rather than something derived from
+ * `chartRegistry`: the CLI ships as a standalone CJS bundle (`build:cli`) and
+ * importing the registry at runtime would pull the whole chart-config graph —
+ * and its i18n keys, which this plain-text listing would then have to resolve —
+ * into it. The `BuiltInChartType` import is type-only, so the bundle stays clean
+ * while the record stays **exhaustive**: adding a chart type fails
+ * `npm run typecheck` here until it is either given an entry or explicitly
+ * marked `null`, which is the decision this table exists to force.
+ *
+ * `null` means "not offered as a scaffolding starting point"; give it a
+ * `ScaffoldableChart` to enable it.
+ */
+const BUILT_IN_CHARTS: Record<BuiltInChartType, ScaffoldableChart | null> = {
+  bar: { file: 'BarChart', description: 'Bar chart — compare values across categories' },
+  line: { file: 'LineChart', description: 'Line chart — show trends over time' },
+  area: { file: 'AreaChart', description: 'Area chart — line chart with filled areas' },
+  pie: { file: 'PieChart', description: 'Pie chart — show proportions of a whole' },
+  scatter: { file: 'ScatterChart', description: 'Scatter chart — show relationships between two measures' },
+  bubble: { file: 'BubbleChart', description: 'Bubble chart — scatter with size dimension' },
+  radar: { file: 'RadarChart', description: 'Radar chart — multi-axis comparison' },
+  radialBar: { file: 'RadialBarChart', description: 'Radial bar chart — circular bar chart' },
+  treemap: { file: 'TreeMapChart', description: 'Treemap — hierarchical data as nested rectangles' },
+  table: { file: 'DataTable', description: 'Data table — sortable tabular display' },
+  recordsTable: { file: 'RecordsTable', description: 'Records table — record listing with per-column formats and links' },
+  activityGrid: { file: 'ActivityGridChart', description: 'Activity grid — GitHub-style contribution calendar' },
+  kpiNumber: { file: 'KpiNumber', description: 'KPI number — single metric display' },
+  kpiDelta: { file: 'KpiDelta', description: 'KPI delta — metric with change indicator' },
+  kpiText: { file: 'KpiText', description: 'KPI text — text-based metric' },
+  funnel: { file: 'FunnelChart', description: 'Funnel chart — conversion funnel visualization' },
+  sankey: { file: 'SankeyChart', description: 'Sankey diagram — flow visualization' },
+  sunburst: { file: 'SunburstChart', description: 'Sunburst chart — hierarchical pie chart' },
+  heatmap: { file: 'HeatMapChart', description: 'Heatmap — color-coded matrix' },
+  boxPlot: { file: 'BoxPlotChart', description: 'Box plot — statistical distribution' },
+  waterfall: { file: 'WaterfallChart', description: 'Waterfall chart — cumulative values' },
+  candlestick: { file: 'CandlestickChart', description: 'Candlestick chart — financial OHLC data' },
+  gauge: { file: 'GaugeChart', description: 'Gauge — meter-style value display' },
+  measureProfile: { file: 'MeasureProfileChart', description: 'Measure profile — detailed measure analysis' },
+
+  // Content-only chart (skipQuery) — no query, axes or drop zones to copy.
+  markdown: null,
+  // Auto-configure from the retention analysis payload rather than from axes,
+  // so they are not useful as a generic starting point.
+  retentionHeatmap: null,
+  retentionCombined: null,
+  // Not currently offered; give it an entry to enable.
+  proportionBar: null,
+}
+
+/** Resolve a `--from` argument (an arbitrary string) to a scaffoldable chart. */
+function lookupScaffold(chartType: string): ScaffoldableChart | null {
+  return scaffoldableCharts().find(([type]) => type === chartType)?.[1] ?? null
+}
+
+/** The subset that `charts list` / `charts init --from` actually offer. */
+function scaffoldableCharts(): [BuiltInChartType, ScaffoldableChart][] {
+  return Object.entries(BUILT_IN_CHARTS).filter(
+    (entry): entry is [BuiltInChartType, ScaffoldableChart] => entry[1] !== null
+  )
 }
 
 /**
@@ -41,9 +85,10 @@ const BUILT_IN_CHARTS: Record<string, string> = {
  */
 export function chartsList(): void {
   console.log('\nAvailable built-in chart types:\n')
-  const maxLen = Math.max(...Object.keys(BUILT_IN_CHARTS).map(k => k.length))
-  for (const [type, desc] of Object.entries(BUILT_IN_CHARTS)) {
-    console.log(`  ${type.padEnd(maxLen + 2)} ${desc}`)
+  const charts = scaffoldableCharts()
+  const maxLen = Math.max(...charts.map(([type]) => type.length))
+  for (const [type, chart] of charts) {
+    console.log(`  ${type.padEnd(maxLen + 2)} ${chart.description}`)
   }
   console.log(`\nUse --from <type> with 'charts init' to copy a built-in as starting point.`)
   console.log(`Example: npx drizzle-cube charts init --from bar\n`)
@@ -67,7 +112,7 @@ export function chartsInit(): void {
   const customName = values.name as string | undefined
 
   if (fromBuiltIn) {
-    if (!BUILT_IN_CHARTS[fromBuiltIn]) {
+    if (!lookupScaffold(fromBuiltIn)) {
       console.error(`\nUnknown chart type: "${fromBuiltIn}"`)
       console.error(`Run 'npx drizzle-cube charts list' to see available types.\n`)
       process.exit(1)
@@ -133,25 +178,15 @@ Generating a template based on the ${chartType} chart instead.
     return
   }
 
-  // Map chart type to file names
-  const fileMap: Record<string, string> = {
-    bar: 'BarChart', line: 'LineChart', area: 'AreaChart', pie: 'PieChart',
-    scatter: 'ScatterChart', bubble: 'BubbleChart', radar: 'RadarChart',
-    radialBar: 'RadialBarChart', treemap: 'TreeMapChart', table: 'DataTable',
-    recordsTable: 'RecordsTable',
-    activityGrid: 'ActivityGridChart', kpiNumber: 'KpiNumber', kpiDelta: 'KpiDelta',
-    kpiText: 'KpiText', funnel: 'FunnelChart', sankey: 'SankeyChart',
-    sunburst: 'SunburstChart', heatmap: 'HeatMapChart', boxPlot: 'BoxPlotChart',
-    waterfall: 'WaterfallChart', candlestick: 'CandlestickChart',
-    gauge: 'GaugeChart', measureProfile: 'MeasureProfileChart',
-  }
-
-  const fileName = fileMap[chartType]
-  if (!fileName) {
+  // File names come from the same record that drives `charts list`, so a chart
+  // can never be listed but un-scaffoldable (or vice versa).
+  const scaffold = lookupScaffold(chartType)
+  if (!scaffold) {
     console.error(`No file mapping for chart type: ${chartType}`)
     scaffoldExample(outputDir, name)
     return
   }
+  const fileName = scaffold.file
 
   const componentSource = path.join(sourceDir, `${fileName}.tsx`)
   const configSource = path.join(sourceDir, `${fileName}.config.ts`)

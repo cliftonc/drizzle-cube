@@ -160,9 +160,23 @@ function renderDate(value: unknown, format: ColumnFormatConfig | undefined): Ren
   return { kind: 'text', text: formatTimeValue(value, format?.dateGranularity) }
 }
 
+/**
+ * Colour mappings that are actually usable.
+ *
+ * A `columnFormats` entry can arrive from an agent tool call or a hand-edited
+ * portlet, where `badgeColors` may not be the array of `{ value, colorIndex }`
+ * the type promises — an object map and colour names instead of palette indices
+ * are the common shapes. Anything unusable is discarded so the badge renders
+ * neutral, which is what an unmapped value does anyway.
+ */
+function usableBadgeColors(format: ColumnFormatConfig | undefined): ColumnFormatConfig['badgeColors'] {
+  if (!Array.isArray(format?.badgeColors)) return []
+  return format.badgeColors.filter(entry => entry && typeof entry.colorIndex === 'number')
+}
+
 function renderBadge(value: unknown, format: ColumnFormatConfig | undefined): RenderedCell {
   const text = stringify(value)
-  return { kind: 'badge', text, colorIndex: format?.badgeColors?.find(e => e.value === text)?.colorIndex }
+  return { kind: 'badge', text, colorIndex: usableBadgeColors(format)?.find(e => e.value === text)?.colorIndex }
 }
 
 const PROGRESS_NUMBER_FORMAT = { unit: 'number', abbreviate: false, decimals: 0 } as const

@@ -6,11 +6,63 @@
 import type { LLMProvider, ToolDefinition, InternalMessage, ToolResult, NormalizedEvent, ContentBlock } from './types.js'
 
 /**
- * Convert JSON Schema type strings to Gemini's uppercase SchemaType enum values.
- * Gemini requires uppercase type values like "STRING", "NUMBER", "OBJECT", etc.
+ * Render a JSON Schema as a compact type sketch.
+ *
+ * Used for constructs Gemini's schema cannot hold. Dropping them would leave the
+ * model to invent a shape — an object map instead of the array of
+ * `{ value, colorIndex }` that `badgeColors` wants, say — so the shape is
+ * carried over as prose instead of being lost.
+ */
+function describeSchemaShape(schema: unknown, depth = 0): string {
+  if (!schema || typeof schema !== 'object') return 'value'
+  const node = schema as Record<string, unknown>
+
+  const values = node.enum
+  if (Array.isArray(values) && values.length > 0) {
+    return values.map(entry => (typeof entry === 'string' ? `"${entry}"` : String(entry))).join('|')
+  }
+
+  const type = typeof node.type === 'string' ? node.type.toLowerCase() : 'value'
+
+  if (type === 'array') {
+    return depth >= MAX_SHAPE_DEPTH ? 'array' : `array of ${describeSchemaShape(node.items, depth + 1)}`
+  }
+
+  if (type === 'object') {
+    const properties = node.properties as Record<string, unknown> | undefined
+    if (!properties || depth >= MAX_SHAPE_DEPTH) return 'object'
+    const required = new Set(Array.isArray(node.required) ? node.required : [])
+    const fields = Object.entries(properties).map(([key, value]) => {
+      const marker = required.has(key) ? ' (required)' : ''
+      return `${key}: ${describeSchemaShape(value, depth + 1)}${marker}`
+    })
+    return `{ ${fields.join(', ')} }`
+  }
+
+  return type
+}
+
+/** Nesting beyond this is summarised — the sketch is guidance, not a schema. */
+const MAX_SHAPE_DEPTH = 3
+
+/**
+ * Convert a JSON Schema tool parameter into the dialect Gemini accepts.
+ *
+ * Gemini's function declarations take an OpenAPI 3.0 *subset*, not JSON Schema:
+ * types are uppercase, there is no `additionalProperties`, and `enum` is only
+ * valid on a STRING. Sending either unsupported construct fails the whole
+ * request with a 400 ("Unknown name \"additionalProperties\"", "Invalid value
+ * … (TYPE_STRING), 25"), taking every other tool down with it.
+ *
+ * Our shared chart schema legitimately uses both — `columnFormats` is a map
+ * keyed by field name, `pageSize` is 25|50|100 — so rather than drop the
+ * constraints and leave Gemini guessing, they are folded into the property's
+ * description. The model still learns the shape; the request stays valid.
  */
 function convertSchemaForGemini(schema: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {}
+  // Constraints Gemini cannot express, carried over as prose instead.
+  const notes: string[] = []
 
   for (const [key, value] of Object.entries(schema)) {
     if (key === 'type' && typeof value === 'string') {
@@ -27,9 +79,30 @@ function convertSchemaForGemini(schema: Record<string, unknown>): Record<string,
       result[key] = props
     } else if (key === 'items' && typeof value === 'object' && value !== null) {
       result[key] = convertSchemaForGemini(value as Record<string, unknown>)
+    } else if ((key === 'anyOf' || key === 'oneOf' || key === 'allOf') && Array.isArray(value)) {
+      // Each branch is a schema in its own right — without this its `type` stays
+      // lowercase and its nested constructs go unconverted.
+      result[key] = value.map(branch =>
+        branch && typeof branch === 'object'
+          ? convertSchemaForGemini(branch as Record<string, unknown>)
+          : branch
+      )
+    } else if (key === 'additionalProperties') {
+      // A map keyed by caller-chosen names has no Gemini equivalent; keep the
+      // value's shape so the model does not have to invent one.
+      if (value && typeof value === 'object') {
+        notes.push(`Each value is: ${describeSchemaShape(value)}.`)
+      }
+    } else if (key === 'enum' && Array.isArray(value) && value.some(entry => typeof entry !== 'string')) {
+      notes.push(`Allowed values: ${value.join(', ')}.`)
     } else {
       result[key] = value
     }
+  }
+
+  if (notes.length > 0) {
+    const existing = typeof result.description === 'string' ? result.description : ''
+    result.description = [existing, ...notes].filter(Boolean).join(' ')
   }
 
   return result

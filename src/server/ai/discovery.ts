@@ -8,6 +8,7 @@ import { QUERY_SCHEMAS } from './schemas.js'
 import {
   accumulateFieldScores,
   topScoredFields,
+  buildFieldTitles,
   scoreFieldForBestMatch,
   type ScoreFns,
 } from './discovery-helpers.js'
@@ -23,6 +24,12 @@ export interface CubeDiscoveryResult {
   matchedOn: ('name' | 'title' | 'description' | 'exampleQuestions' | 'measures' | 'dimensions')[]
   suggestedMeasures: string[]
   suggestedDimensions: string[]
+  /**
+   * Titles for suggested fields whose name does not say what they are — chiefly
+   * user-defined (EAV) attributes, addressed as `attr_<id>`. Keyed by field name
+   * so the names above stay copyable verbatim. Omitted when nothing needs it.
+   */
+  fieldTitles?: Record<string, string>
 
   // Analysis capabilities
   capabilities: {
@@ -404,6 +411,8 @@ export function discoverCubes(
       const analysisConfig = buildAnalysisConfig(cube)
       const hints = generateHints(cube, analysisConfig)
       const hasAnalysisModes = capabilities.funnel || capabilities.flow || capabilities.retention
+      const suggestedMeasures = cube.measures.slice(0, 5).map(m => m.name)
+      const suggestedDimensions = cube.dimensions.slice(0, 5).map(d => d.name)
 
       return {
         cube: cube.name,
@@ -411,8 +420,12 @@ export function discoverCubes(
         description: cube.description,
         relevanceScore: 1,
         matchedOn: [] as CubeDiscoveryResult['matchedOn'],
-        suggestedMeasures: cube.measures.slice(0, 5).map(m => m.name),
-        suggestedDimensions: cube.dimensions.slice(0, 5).map(d => d.name),
+        suggestedMeasures,
+        suggestedDimensions,
+        fieldTitles: buildFieldTitles(
+          [...cube.measures, ...cube.dimensions],
+          [...suggestedMeasures, ...suggestedDimensions]
+        ),
         capabilities,
         analysisConfig,
         hints: hints.length > 0 ? hints : undefined,
@@ -448,6 +461,10 @@ export function discoverCubes(
         matchedOn,
         suggestedMeasures,
         suggestedDimensions,
+        fieldTitles: buildFieldTitles(
+          [...cube.measures, ...cube.dimensions],
+          [...suggestedMeasures, ...suggestedDimensions]
+        ),
         capabilities,
         analysisConfig,
         hints: hints.length > 0 ? hints : undefined,

@@ -789,6 +789,7 @@
   "server.validation.chart.barNeedsDimension": "Staafgrafieken hebben een xAxis-dimensie nodig voor categorielabels. Voeg een dimensie toe aan de query of gebruik in plaats daarvan het grafiektype \"table\".",
   "server.validation.chart.barXAxisRequired": "chartConfig.xAxis is vereist voor staaf grafieken. Put een dimensie in xAxis so bars hebben categorie labels.",
   "server.validation.chart.dropZoneRequired": "chartConfig.{key} is vereist voor {chartType} grafiek ({label}). Accepts: {acceptDesc}.",
+  "server.validation.chart.recordGrainNeedsUngrouped": "{chartType} toont één rij per record, dus de query moet \"ungrouped\": true instellen. Voeg dit toe aan de query en verwijder count/countDistinct metingen — die kunnen niet ongegroepeerd worden. Een ongegroepeerde query kan ook niet twee cubes omvatten die via hasMany verbonden zijn, dus beperk deze tot één cube plus zijn to-one joins.",
   "server.validation.chart.seriesDuplicatesXAxis": "chartConfig.series mag niet hetzelfde veld bevatten als xAxis (gevonden: {duplicates}). Het series-veld is alleen bedoeld om te splitsen in gegroepeerde/gestapelde subseries met een ANDERE dimensie. Verwijder het duplicaat uit series.",
   "server.validation.flow.bindingKeyCubeNotFound": "Koppeling sleutel cube niet gevonden: {cubeName}",
   "server.validation.flow.bindingKeyDimNotFound": "Koppeling sleutel dimensie niet gevonden: {dimName} in cube {cubeName}",

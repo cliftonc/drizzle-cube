@@ -10,7 +10,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDatabaseExecutor, getTestSchema, getTestDatabaseType, skipIfDatabend } from './helpers/test-database'
+import { createTestDatabaseExecutor, getTestSchema, skipIfDatabend } from './helpers/test-database'
 import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
 import { SemanticLayerCompiler, buildAttributeDimensions } from '../src/server'
 import type { Cube, SecurityContext, QueryContext } from '../src/server'
@@ -302,20 +302,31 @@ describe('buildAttributeDimensions', () => {
       expect(result.data.some(row => row[member('Employees')] !== null)).toBe(true)
     })
 
-    it('is rejected by strict engines when grouped without the record key', async () => {
-      // Documents a real limitation rather than asserting it away. SQLite is
-      // permissive here; Postgres and MySQL are not, so the expectation is
-      // engine-dependent.
-      const run = () => compiler.execute(
+    // The record key is added to GROUP BY on the caller's behalf: the dimension
+    // declares what it correlates on, so the planner no longer needs the caller
+    // to know that a correlated subquery has to be grouped by its key. Before
+    // this, Postgres rejected the query outright ("subquery uses ungrouped
+    // column ... from outer query") and MySQL did the same under
+    // only_full_group_by.
+    it.skipIf(skipIfDatabend())('groups by the record key without the caller asking', async () => {
+      const result = await compiler.execute(
         { dimensions: [member('Employees'), 'Departments.name'], measures: ['Employees.count'] },
         securityContext
       )
 
-      if (getTestDatabaseType() === 'sqlite') {
-        await expect(run()).resolves.toBeDefined()
-      } else {
-        await expect(run()).rejects.toThrow()
-      }
+      expect(result.data.length).toBeGreaterThan(0)
+      expect(result.data.some(row => row[member('Employees')] !== null)).toBe(true)
+    })
+
+    it('puts the correlation key in the GROUP BY, not just the subquery', async () => {
+      const { sql } = await compiler.dryRun(
+        { dimensions: [member('Employees')], measures: ['Employees.count'] },
+        securityContext
+      )
+
+      // Identifier quoting differs per engine (double quotes, backticks, none).
+      const groupBy = sql.slice(sql.search(/GROUP\s+BY/i))
+      expect(groupBy).toMatch(/employees[`"]?\s*\.\s*[`"]?id/i)
     })
   })
 

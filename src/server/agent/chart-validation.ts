@@ -6,8 +6,8 @@
  * Builds per-chart-type guidance for the tool description.
  */
 
-import { t } from '../../i18n/runtime.js'
-import { chartConfigRegistry } from '../../client/charts/chartConfigRegistry.js'
+import { t, isTranslationKey } from '../../i18n/runtime.js'
+import { chartConfigRegistry, isRecordGrainChart } from '../../client/charts/chartConfigRegistry.js'
 import type { ChartTypeConfig } from '../../client/charts/chartConfigs.js'
 
 interface ValidationResult {
@@ -69,12 +69,29 @@ function validateSeriesNotDuplicatingXAxis(
 }
 
 /**
+ * Collect the record-grain requirement error, if applicable.
+ *
+ * A listing chart shows one row per record, so its query must be ungrouped —
+ * otherwise the rows come back aggregated and the table silently lists group
+ * totals instead of records.
+ */
+function validateRecordGrainQuery(
+  chartType: string,
+  query: Record<string, unknown>,
+  errors: string[]
+): void {
+  if (!isRecordGrainChart(chartType)) return
+  if (query.ungrouped === true) return
+  errors.push(t('server.validation.chart.recordGrainNeedsUngrouped', { chartType }))
+}
+
+/**
  * Validate chartConfig against the chart type's drop zone requirements.
  */
 export function validateChartConfig(
   chartType: string,
   chartConfig: Record<string, unknown> | undefined,
-  _query: Record<string, unknown>
+  query: Record<string, unknown>
 ): ValidationResult {
   const config = chartConfigRegistry[chartType] as ChartTypeConfig | undefined
   if (!config) {
@@ -90,9 +107,12 @@ export function validateChartConfig(
 
   validateMandatoryZones(config, chartType, chartConfig, errors)
 
+  // Listing charts need row-level data, not aggregates
+  validateRecordGrainQuery(chartType, query, errors)
+
   // Bar charts must have an xAxis dimension
   if (chartType === 'bar') {
-    validateBarXAxis(chartConfig, _query, errors)
+    validateBarXAxis(chartConfig, query, errors)
   }
 
   // series must not duplicate xAxis (causes sparse, broken-looking charts)
@@ -191,6 +211,7 @@ export function inferChartConfig(
   }
 
   for (const zone of config.dropZones) {
+    if (zone.excludeFromInference) continue // Opt-in only — inferring it changes what renders
     if (hasConfigValue(result[zone.key])) continue // Already set by agent
 
     if (zone.key === 'sizeField' || zone.key === 'colorField') {
@@ -204,6 +225,15 @@ export function inferChartConfig(
 }
 
 /**
+ * Resolve a chart-config string that is an i18n key for built-in charts, and may
+ * be literal text for plugin charts.
+ */
+function resolveConfigText(value: string | undefined): string {
+  if (!value) return ''
+  return isTranslationKey(value) ? t(value) : value
+}
+
+/**
  * Build per-chart-type requirements text for the agent tool description.
  * Includes description, useCase, and drop zone requirements for each chart type.
  */
@@ -214,15 +244,20 @@ export function buildChartRequirementsDescription(allowedChartTypes: string[]): 
     const config = chartConfigRegistry[chartType] as ChartTypeConfig | undefined
     if (!config) continue
 
-    // Build the description/useCase prefix
-    const desc = config.description ?? ''
-    const useCase = config.useCase ?? ''
+    // Build the description/useCase prefix. Both are i18n keys on the registry
+    // entry, so they need resolving — an unresolved key tells the model nothing.
+    const desc = resolveConfigText(config.description)
+    const useCase = resolveConfigText(config.useCase)
     const context = [desc, useCase].filter(Boolean).join('. ')
     const contextSuffix = context ? ` — ${context}.` : ''
+    // A listing chart is only correct over row-level data.
+    const grainNote = isRecordGrainChart(chartType)
+      ? ' Query MUST set "ungrouped": true, which also means one cube plus its to-one joins — an ungrouped query cannot span a hasMany relationship.'
+      : ''
 
     const mandatoryZones = config.dropZones.filter(z => z.mandatory)
     if (mandatoryZones.length === 0 && !config.skipQuery) {
-      lines.push(`  ${chartType}${contextSuffix} chartConfig auto-inferred from query.`)
+      lines.push(`  ${chartType}${contextSuffix}${grainNote} chartConfig auto-inferred from query.`)
       continue
     }
 
@@ -236,7 +271,7 @@ export function buildChartRequirementsDescription(allowedChartTypes: string[]): 
       const maxNote = z.maxItems ? ` (max ${z.maxItems})` : ''
       return `${z.key}=[${accept}]${maxNote}`
     })
-    lines.push(`  ${chartType}${contextSuffix} Requires ${zoneDescs.join(', ')}.`)
+    lines.push(`  ${chartType}${contextSuffix}${grainNote} Requires ${zoneDescs.join(', ')}.`)
   }
 
   return lines.join('\n')

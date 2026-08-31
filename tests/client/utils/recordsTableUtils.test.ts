@@ -35,6 +35,38 @@ describe('renderCellValue', () => {
     expect(renderCellValue('On track', format)).toEqual({ kind: 'badge', text: 'On track', colorIndex: undefined })
   })
 
+  // A columnFormats entry can arrive from an agent tool call: an object map
+  // keyed by value, and colour names instead of palette indices, are the shapes
+  // models reach for. Neither should take the table down.
+  it('renders a badge neutral when badgeColors is not the expected array', () => {
+    const format = { kind: 'badge', badgeColors: { 'On track': 'green' } } as any
+
+    expect(() => renderCellValue('On track', format)).not.toThrow()
+    expect(renderCellValue('On track', format)).toEqual({
+      kind: 'badge',
+      text: 'On track',
+      colorIndex: undefined
+    })
+  })
+
+  it('ignores badge entries whose colorIndex is not a palette index', () => {
+    const format = {
+      kind: 'badge',
+      badgeColors: [{ value: 'On track', colorIndex: 'green' }, { value: 'Blocked', colorIndex: 1 }]
+    } as any
+
+    expect(renderCellValue('On track', format)).toEqual({
+      kind: 'badge',
+      text: 'On track',
+      colorIndex: undefined
+    })
+    expect(renderCellValue('Blocked', format)).toEqual({
+      kind: 'badge',
+      text: 'Blocked',
+      colorIndex: 1
+    })
+  })
+
   it('clamps progress to its bounds at both ends', () => {
     const format = { kind: 'progress' as const, progressMin: 0, progressMax: 100 }
     expect(renderCellValue(-20, format)).toMatchObject({ fraction: 0 })

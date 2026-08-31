@@ -102,14 +102,17 @@ export interface BuildAttributeDimensionsOptions {
  *   returned by a subquery" on Postgres.
  * - **Security inside the subquery**, not merely on the outer query.
  *
- * **Grouping limitation.** The subquery correlates on the record key, so a
- * *grouped* query must also group by that key — `dimensions: ['Employees.id',
- * 'Employees.attr_1']` is fine, `dimensions: ['Employees.attr_1']` with a
- * measure is not. Postgres rejects the latter with "subquery uses ungrouped
- * column … from outer query", and MySQL with `only_full_group_by`; SQLite
- * permits it. Record-grain listings (`ungrouped: true`) — the case this exists
- * for — are unaffected. If you need to aggregate freely by an attribute, pivot
- * it into a real column with a view (see the performance ladder below).
+ * **Grouping.** The subquery correlates on the record key, so a *grouped* query
+ * must also group by that key or Postgres rejects it with "subquery uses
+ * ungrouped column … from outer query" (MySQL likewise under
+ * `only_full_group_by`; SQLite permits it). The caller does not have to know
+ * that: each generated dimension declares its key via `Dimension.correlatesOn`,
+ * and the GROUP BY builder adds it. The grouping is therefore per record — the
+ * only grain at which a per-record attribute can be read — so an aggregate over
+ * an attribute counts records, not attribute values. If you need to aggregate
+ * freely *by* an attribute, pivot it into a real column with a view (see the
+ * performance ladder below). Record-grain listings (`ungrouped: true`) skip
+ * GROUP BY entirely and are unaffected.
  *
  * Performance: projection is cheap (a page of 25 rows is 25 indexed lookups per
  * attribute), but `ORDER BY (SELECT …)` and `WHERE (SELECT …) = …` are
@@ -150,6 +153,10 @@ export function buildAttributeDimensions(
       title: attribute.name,
       type: valueType,
       shown,
+      // The subquery below correlates on the record key, so a grouped query has
+      // to group by that key for the SQL to be legal. Declared rather than
+      // inferred: the planner cannot see inside the `sql` function.
+      correlatesOn: recordKey,
       sql: (ctx: QueryContext): SQL => {
         const value = valueType === 'string'
           ? sql`${valueColumn}`

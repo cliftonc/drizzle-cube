@@ -15,6 +15,18 @@ export function setDebugMode(enabled: boolean): void {
 }
 
 /**
+ * Narrow a runtime string to a known translation key.
+ *
+ * Keys carried in data — chart labels, descriptions and drop-zone text stored in
+ * chart configs — arrive at server code as plain strings, and plugin charts may
+ * legitimately carry literal text instead of a key. Callers resolving such a
+ * value need this check rather than a cast.
+ */
+export function isTranslationKey(key: string): key is TranslationKey {
+  return Object.prototype.hasOwnProperty.call(en, key)
+}
+
+/**
  * Translate a key, optionally interpolating ICU {var} parameters.
  * Returns the key path itself if no translation is found (debuggable).
  */

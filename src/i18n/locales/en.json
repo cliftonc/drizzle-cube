@@ -789,6 +789,7 @@
   "server.validation.chart.barNeedsDimension": "Bar charts need an xAxis dimension for category labels. Add a dimension to the query or use \"table\" chart type instead.",
   "server.validation.chart.barXAxisRequired": "chartConfig.xAxis is required for bar charts. Put a dimension in xAxis so bars have category labels.",
   "server.validation.chart.dropZoneRequired": "chartConfig.{key} is required for {chartType} chart ({label}). Accepts: {acceptDesc}.",
+  "server.validation.chart.recordGrainNeedsUngrouped": "{chartType} lists one row per record, so its query must set \"ungrouped\": true. Add it to the query, and remove count/countDistinct measures — they cannot be ungrouped. An ungrouped query also cannot span two cubes joined by hasMany, so keep it to one cube plus its to-one joins.",
   "server.validation.chart.seriesDuplicatesXAxis": "chartConfig.series must not contain the same field as xAxis (found: {duplicates}). The series field is only for splitting into grouped/stacked sub-series by a DIFFERENT dimension. Remove the duplicate from series.",
   "server.validation.flow.bindingKeyCubeNotFound": "Binding key cube not found: {cubeName}",
   "server.validation.flow.bindingKeyDimNotFound": "Binding key dimension not found: {dimName} in cube {cubeName}",

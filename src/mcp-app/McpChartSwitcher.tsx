@@ -2,25 +2,16 @@ import { useState } from 'react'
 import { getChartTypeIcon } from '../client/icons/index.js'
 import { chartConfigRegistry } from '../client/charts/chartConfigRegistry.js'
 import { useTranslation } from '../client/hooks/useTranslation.js'
-import { isChartAvailable, type McpChartType } from './chartAutoSelect.js'
-
-/** Chart types that have real components in the MCP app */
-const MCP_CHART_TYPES: McpChartType[] = [
-  'bar', 'line', 'area', 'pie', 'scatter', 'treemap',
-  'kpiNumber', 'kpiDelta', 'kpiText', 'table',
-  'radar', 'radialBar', 'bubble', 'funnel',
-  'waterfall', 'gauge', 'boxPlot', 'candlestick',
-  'activityGrid', 'measureProfile',
-  'sankey', 'sunburst', 'heatmap', 'markdown',
-  'recordsTable',
-]
+import { isChartAvailable } from './chartAutoSelect.js'
+// The picker offers exactly what the app can render, in list order — see chartTypes.ts.
+import { MCP_APP_CHART_TYPES, type McpAppChartType } from './chartTypes.js'
 
 interface McpChartSwitcherProps {
-  selected: McpChartType
+  selected: McpAppChartType
   query: any
   rowCount: number
   hasFlowData: boolean
-  onSelect: (chartType: McpChartType) => void
+  onSelect: (chartType: McpAppChartType) => void
 }
 
 export default function McpChartSwitcher({ selected, query, rowCount, hasFlowData, onSelect }: McpChartSwitcherProps) {
@@ -85,7 +76,7 @@ export default function McpChartSwitcher({ selected, query, rowCount, hasFlowDat
           padding: 6,
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
-            {MCP_CHART_TYPES.map(ct => {
+            {MCP_APP_CHART_TYPES.map(ct => {
               const available = isChartAvailable(ct, query, rowCount, hasFlowData)
               const isSelected = ct === selected
               const Icon = getChartTypeIcon(ct)

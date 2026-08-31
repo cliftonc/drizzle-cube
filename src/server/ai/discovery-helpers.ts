@@ -75,6 +75,38 @@ export function topScoredFields(scores: Map<string, number>, limit: number): str
     .map(([name]) => name)
 }
 
+/** Comparable form of a label: lowercase, alphanumerics only. */
+function labelKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+/**
+ * Titles for suggested fields whose name does not already say what they are.
+ *
+ * Most field names describe themselves (`Employees.salary`), so repeating the
+ * title would be noise. A user-defined (EAV) attribute is the case this exists
+ * for: it is addressed by a generated slot name like `attr_2`, and the title is
+ * the only thing that says it means "Completion %". Discovery scores against
+ * that title, so without this the caller is handed an opaque identifier and told
+ * it is relevant.
+ *
+ * Returned as a separate name-keyed map rather than annotated into the field
+ * lists, which callers are told to copy verbatim into queries.
+ */
+export function buildFieldTitles(fields: Field[], suggested: string[]): Record<string, string> | undefined {
+  const wanted = new Set(suggested)
+  const titles: Record<string, string> = {}
+
+  for (const field of fields) {
+    if (!wanted.has(field.name) || !field.title) continue
+    const shortName = field.name.split('.').pop() || field.name
+    if (labelKey(shortName) === labelKey(field.title)) continue
+    titles[field.name] = field.title
+  }
+
+  return Object.keys(titles).length > 0 ? titles : undefined
+}
+
 /**
  * Score a single field as a best-match candidate (used by findBestFieldMatch).
  * Returns the best score across name, title and synonyms (no description match).

@@ -95,6 +95,40 @@ describe('getToolDefinitions', () => {
     expect(chartTypeProp.enum).toContain('sunburst')
     expect(chartTypeProp.enum).toContain('retentionHeatmap')
     expect(chartTypeProp.enum).toContain('retentionCombined')
+    expect(chartTypeProp.enum).toContain('recordsTable')
+  })
+
+  // A records table is only readable when the model formats each column, so the
+  // schema has to describe that shape rather than leave displayConfig opaque.
+  it('should describe records-table columns and per-column formats in add_portlet', () => {
+    const tools = getToolDefinitions()
+    const addPortlet = tools.find((t) => t.name === 'add_portlet')!
+    const chartConfig = addPortlet.parameters.properties.chartConfig as {
+      properties: Record<string, unknown>
+    }
+    const displayConfig = addPortlet.parameters.properties.displayConfig as {
+      properties: Record<string, { additionalProperties?: { properties?: Record<string, { enum?: string[] }> } }>
+    }
+
+    expect(Object.keys(chartConfig.properties)).toEqual(
+      expect.arrayContaining(['columns', 'hiddenColumns'])
+    )
+    expect(Object.keys(displayConfig.properties)).toEqual(
+      expect.arrayContaining(['columnFormats', 'rowLink', 'pageSize'])
+    )
+    expect(displayConfig.properties.columnFormats.additionalProperties?.properties?.kind?.enum)
+      .toEqual(['text', 'number', 'date', 'badge', 'progress'])
+  })
+
+  it('should tell the model that recordsTable needs an ungrouped query', () => {
+    const tools = getToolDefinitions()
+    const addPortlet = tools.find((t) => t.name === 'add_portlet')!
+
+    expect(addPortlet.description).toContain('recordsTable')
+    expect(addPortlet.description).toContain('"ungrouped": true')
+    // Chart descriptions are i18n keys on the registry entry — the agent must
+    // be given the resolved text, not "chart.recordsTable.description".
+    expect(addPortlet.description).not.toContain('chart.recordsTable.description')
   })
 
   it('should require [member, operator] on execute_query filter items', () => {
@@ -472,6 +506,38 @@ describe('createToolExecutor', () => {
       })
     })
 
+    // Validation and inference run against the normalised query, so the portlet
+    // has to carry that one — otherwise the notebook renders something that was
+    // never checked.
+    it('should give the portlet the normalised query, not the raw string', async () => {
+      semanticLayer.validateQuery.mockReturnValue({ isValid: true, errors: [] })
+
+      const executor = createToolExecutor({
+        semanticLayer,
+        securityContext: mockSecurityContext,
+      })
+      const fn = executor.get('add_portlet')!
+      const result = await fn({
+        title: 'Headcount',
+        // Double-prefixed field and an order key naming a field the query does
+        // not select: both are corrected by normalisation.
+        query: JSON.stringify({
+          measures: ['Employees.Employees.count'],
+          dimensions: ['Employees.department'],
+          order: { 'Employees.salary': 'desc' },
+        }),
+        chartType: 'bar',
+      })
+
+      const data = result.sideEffect!.data as Record<string, unknown>
+      const shipped = JSON.parse(data.query as string)
+
+      expect(shipped.measures).toEqual(['Employees.count'])
+      // The invalid order key is replaced by the documented fallback — and it
+      // names the *corrected* measure, which the raw string could not.
+      expect(shipped.order).toEqual({ 'Employees.count': 'desc' })
+    })
+
     it('should skip chart config inference for funnel queries', async () => {
       semanticLayer.validateQuery.mockReturnValue({ isValid: true, errors: [] })
 
@@ -623,6 +689,64 @@ describe('createToolExecutor', () => {
       expect(result2.sideEffect!.data).toMatchObject({
         content: 'Just text',
       })
+    })
+  })
+
+  describe('save_as_dashboard', () => {
+    const recordsPortlet = (query: Record<string, unknown>) => ({
+      id: 'portlet-1',
+      title: 'Employee list',
+      chartType: 'recordsTable',
+      query: JSON.stringify(query),
+      w: 12,
+      h: 5,
+      x: 0,
+      y: 0,
+    })
+
+    // A dashboard must not be saveable with a portlet add_portlet would reject.
+    it('rejects a records-table portlet over a grouped query', async () => {
+      semanticLayer.validateQuery.mockReturnValue({ isValid: true, errors: [] })
+
+      const executor = createToolExecutor({
+        semanticLayer,
+        securityContext: mockSecurityContext,
+      })
+      const fn = executor.get('save_as_dashboard')!
+      const result = await fn({
+        title: 'People',
+        portlets: [recordsPortlet({ dimensions: ['Employees.name'], measures: ['Employees.salary'] })],
+      })
+
+      expect(result.isError).toBe(true)
+      expect(result.result).toContain('"ungrouped": true')
+    })
+
+    it('saves an ungrouped records-table portlet with inferred columns', async () => {
+      semanticLayer.validateQuery.mockReturnValue({ isValid: true, errors: [] })
+
+      const executor = createToolExecutor({
+        semanticLayer,
+        securityContext: mockSecurityContext,
+      })
+      const fn = executor.get('save_as_dashboard')!
+      const result = await fn({
+        title: 'People',
+        portlets: [
+          recordsPortlet({
+            dimensions: ['Employees.name'],
+            measures: ['Employees.salary'],
+            ungrouped: true,
+          }),
+        ],
+      })
+
+      expect(result.isError).toBeUndefined()
+      const data = result.sideEffect!.data as Record<string, any>
+      const chart = data.dashboardConfig.portlets[0].analysisConfig.charts.query
+
+      expect(chart.chartType).toBe('recordsTable')
+      expect(chart.chartConfig.columns).toEqual(['Employees.name', 'Employees.salary'])
     })
   })
 })

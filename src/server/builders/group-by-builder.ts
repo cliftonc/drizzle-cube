@@ -109,7 +109,39 @@ export class GroupByBuilder {
     // Join keys are only needed for the JOIN condition, not for grouping
     // The GROUP BY should only contain columns that are actually selected or used for aggregation
 
+    this.addCorrelationKeys(query, cubeMap, groupFields)
+
     return groupFields
+  }
+
+  /**
+   * Add the correlation key of any selected dimension that declares one.
+   *
+   * A dimension built from a correlated subquery (`buildAttributeDimensions`)
+   * references the record key inside its SQL. Grouping by the subquery alone is
+   * rejected by Postgres ("subquery uses ungrouped column … from outer query")
+   * and by MySQL under `only_full_group_by`, so the key it correlates on is
+   * grouped too.
+   *
+   * This only ever fires for queries that are invalid on those engines today, so
+   * nothing that currently works changes shape. The key is the record's primary
+   * key, so adding it makes the grouping per-record — which is the grain such a
+   * dimension can be read at in the first place.
+   */
+  private addCorrelationKeys(
+    query: SemanticQuery,
+    cubeMap: Map<string, Cube>,
+    groupFields: (SQL | AnyColumn)[]
+  ): void {
+    const seen = new Set<AnyColumn>()
+
+    for (const dimensionName of query.dimensions || []) {
+      const [cubeName, fieldName] = dimensionName.split('.')
+      const key = cubeMap.get(cubeName)?.dimensions?.[fieldName]?.correlatesOn
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      groupFields.push(key)
+    }
   }
 
   /**
