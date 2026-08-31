@@ -45,6 +45,7 @@ const chartImportMap: Record<BuiltInChartType, () => Promise<{ default: LazyChar
   treemap: () => import('../components/charts/TreeMapChart.js'),
   bubble: () => import('../components/charts/BubbleChart.js'),
   table: () => import('../components/charts/DataTable.js'),
+  recordsTable: () => import('../components/charts/RecordsTable.js'),
   activityGrid: () => import('../components/charts/ActivityGridChart.js'),
   kpiNumber: () => import('../components/charts/KpiNumber.js'),
   kpiDelta: () => import('../components/charts/KpiDelta.js'),

@@ -169,6 +169,13 @@ export const chartRegistry: Record<BuiltInChartType, ChartRegistryEntry> = {
     useCase: 'chart.table.useCase',
     config: async () => (await import('../components/charts/DataTable.config.js')).dataTableConfig,
   },
+  recordsTable: {
+    label: 'chart.recordsTable.label',
+    icon: 'chartRecordsTable',
+    description: 'chart.recordsTable.description',
+    useCase: 'chart.recordsTable.useCase',
+    config: async () => (await import('../components/charts/RecordsTable.config.js')).recordsTableConfig,
+  },
   activityGrid: {
     label: 'chart.activityGrid.label',
     icon: 'chartActivityGrid',

@@ -135,19 +135,23 @@ export function useAnalysisEffects(options: UseAnalysisEffectsOptions) {
       setChartConfig(newConfig)
       actions.setUserManuallySelectedChart(false)
     } else if (combinedMetrics.length > 0 || combinedBreakdowns.length > 0) {
-      if (chartType === 'table') {
+      if (chartType === 'table' || chartType === 'recordsTable') {
         // Table columns should reflect all selected fields — append any
-        // missing ones to preserve existing column ordering.
+        // missing ones to preserve existing column ordering. The records table
+        // holds its columns under `columns`; the aggregate table uses `xAxis`.
+        const columnKey = chartType === 'recordsTable' ? 'columns' : 'xAxis'
         const allFields = [
           ...combinedBreakdowns.map((b) => b.field),
           ...combinedMetrics.map((m) => m.field),
         ]
-        const currentXAxis = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis : []
-        const missingFields = allFields.filter((f) => !currentXAxis.includes(f))
+        const currentColumns = Array.isArray(chartConfig[columnKey]) ? chartConfig[columnKey] : []
+        // A field parked in Hidden fields is deliberately not a column.
+        const hidden = new Set(chartConfig.hiddenColumns ?? [])
+        const missingFields = allFields.filter((f) => !currentColumns.includes(f) && !hidden.has(f))
         if (missingFields.length > 0) {
           setChartConfig({
             ...chartConfig,
-            xAxis: [...currentXAxis, ...missingFields],
+            [columnKey]: [...currentColumns, ...missingFields],
           })
         }
       } else {

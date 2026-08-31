@@ -94,6 +94,16 @@ describe('generateCacheKey', () => {
 
     expect(generateCacheKey(queryA, ctx)).not.toBe(generateCacheKey(queryB, ctx))
   })
+
+  it('separates grouped from ungrouped runs of the same query', () => {
+    // `ungrouped` was omitted from normalizeQuery, so an aggregated result
+    // could be served for a raw row-level query and vice versa.
+    const ctx: SecurityContext = { organisationId: 'org-a' }
+    const grouped: SemanticQuery = { measures: ['Sales.amount'], dimensions: ['Sales.region'] }
+    const ungrouped: SemanticQuery = { ...grouped, ungrouped: true }
+
+    expect(generateCacheKey(grouped, ctx)).not.toBe(generateCacheKey(ungrouped, ctx))
+  })
 })
 
 describe('MemoryCacheProvider isolation (issue #849)', () => {

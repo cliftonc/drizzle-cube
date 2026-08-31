@@ -19,7 +19,13 @@ export function buildCubeQuery(
   filters: Filter[],
   order?: Record<string, 'asc' | 'desc'>,
   preserveComparisonFilters: boolean = false,
-  limit?: number
+  limit?: number,
+  /**
+   * Record-grain charts list rows rather than aggregates — see
+   * `ChartTypeConfig.recordGrain`. Without this, editing a records-table
+   * portlet in the builder silently rebuilds its query as a grouped one.
+   */
+  ungrouped: boolean = false
 ): CubeQuery {
   // Find time dimensions with comparison enabled
   const comparisonFields = breakdowns
@@ -66,7 +72,10 @@ export function buildCubeQuery(
       }),
     filters: filteredFilters.length > 0 ? filteredFilters : undefined,
     order: order && Object.keys(order).length > 0 ? order : undefined,
-    limit: limit ?? undefined
+    limit: limit ?? undefined,
+    // Set only when true: an explicit `false` is a distinct cache key from an
+    // absent flag, and every other chart wants it absent.
+    ungrouped: ungrouped || undefined
   }
 
   // Clean up empty arrays

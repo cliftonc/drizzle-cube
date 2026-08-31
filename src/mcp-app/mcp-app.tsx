@@ -16,6 +16,7 @@ import KpiNumber from '../client/components/charts/KpiNumber.js'
 import KpiDelta from '../client/components/charts/KpiDelta.js'
 import KpiText from '../client/components/charts/KpiText.js'
 import DataTable from '../client/components/charts/DataTable.js'
+import RecordsTable from '../client/components/charts/RecordsTable.js'
 import RadarChart from '../client/components/charts/RadarChart.js'
 import RadialBarChart from '../client/components/charts/RadialBarChart.js'
 import BubbleChart from '../client/components/charts/BubbleChart.js'
@@ -56,6 +57,7 @@ const chartComponentMap: Record<string, React.ComponentType<ChartProps>> = {
   kpiDelta: KpiDelta,
   kpiText: KpiText,
   table: DataTable,
+  recordsTable: RecordsTable,
   radar: RadarChart,
   radialBar: RadialBarChart,
   bubble: BubbleChart,

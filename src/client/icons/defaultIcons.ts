@@ -71,6 +71,7 @@ import chartBubble from '@iconify-icons/tabler/chart-bubble'
 import chartRadar from '@iconify-icons/tabler/chart-radar'
 import radar2 from '@iconify-icons/tabler/radar-2'
 import chartTreemap from '@iconify-icons/tabler/chart-treemap'
+import listDetails from '@iconify-icons/tabler/list-details'
 import layoutDistributeHorizontal from '@iconify-icons/tabler/layout-distribute-horizontal'
 // Custom icons - better represents flow/funnel/retention visualizations
 import { flowIcon, funnelIcon, retentionIcon } from './customIcons.js'
@@ -152,6 +153,7 @@ export const DEFAULT_ICONS: IconRegistry = {
   chartRadialBar: { icon: radar2, category: 'chart' },
   chartTreemap: { icon: chartTreemap, category: 'chart' },
   chartTable: { icon: table, category: 'chart' },
+  chartRecordsTable: { icon: listDetails, category: 'chart' },
   chartActivityGrid: { icon: calendarStats, category: 'chart' },
   chartKpiNumber: { icon: number, category: 'chart' },
   chartKpiDelta: { icon: trendingUp, category: 'chart' },

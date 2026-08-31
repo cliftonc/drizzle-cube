@@ -14,7 +14,9 @@ import { createCubeApp } from '../../src/adapters/hono/index.js'
 import type { SecurityContext, DrizzleDatabase } from '../../src/server/index.js'
 import { MemoryCacheProvider, SemanticLayerCompiler } from '../../src/server/index.js'
 import { schema } from './schema.js'
+import { createDatabase, isNeonUrl } from './database.js'
 import { allCubes } from './cubes.js'
+import { resolveOrganisationId } from './organisation.js'
 import { registerAttributeCubeSets } from './attribute-cubes.js'
 import type { Schema } from './schema.js'
 import analyticsApp from './analytics-routes.js'
@@ -52,22 +54,6 @@ function getEnvVar(key: string, fallback: string = ''): string {
 }
 
 // Auto-detect Neon vs local PostgreSQL based on connection string
-function isNeonUrl(url: string): boolean {
-  return url.includes('.neon.tech') || url.includes('neon.database')
-}
-
-// Create database connection factory
-function createDatabase(databaseUrl: string) {
-  if (isNeonUrl(databaseUrl)) {
-    console.log('🚀 Connecting to Neon serverless database')
-    const sql = neon(databaseUrl)
-    return drizzleNeon(sql, { schema })
-  } else {
-    console.log('🐘 Connecting to local PostgreSQL database')
-    const client = postgres(databaseUrl)
-    return drizzle(client, { schema })
-  }
-}
 
 // Default database connection for Node.js environment
 const defaultConnectionString = 'postgresql://drizzle_user:drizzle_pass123@localhost:54821/drizzle_cube_db'
@@ -77,41 +63,17 @@ const db = createDatabase(getEnvVar('DATABASE_URL', defaultConnectionString))
 // This function is called for EVERY API request to extract user permissions
 async function extractSecurityContext(c: any): Promise<SecurityContext> {
   const locale = c.req.header('X-DC-Locale') || c.req.header('x-dc-locale') || 'en-GB'
-  // Example: Extract from JWT token or session
-  const authHeader = c.req.header('Authorization')
-  
-  // For development/demo purposes, allow requests without auth
-  if (!authHeader) {
-    console.log('⚠️  No authorization header - using default demo user (organisation: 1)')
-    return {
-      organisationId: 1, // Default demo organisation
-      userId: 1,         // Default demo user
-      locale,
-      // Add other security context fields as needed
-    }
-  }
-  
-  // In production, decode JWT and extract user info
-  // For this example, we'll use a simple approach
-  try {
-    // Mock JWT decode - replace with your actual JWT library
-    authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, assume organisationId is in the token
-    // In real implementation, decode JWT and extract user context
-    return {
-      organisationId: 1, // Extract from token
-      userId: 1,         // Extract from token
-      locale,
-      // Add other security context fields as needed
-    }
-  } catch {
-    console.log('⚠️  Invalid authorization token - using default demo user (organisation: 1)')
-    return {
-      organisationId: 1, // Fallback to demo organisation
-      userId: 1,         // Fallback to demo user
-      locale,
-    }
+
+  // The demo has no real auth. In production this is where you would decode a
+  // JWT or read a session; here the tenant comes from an explicit override so
+  // the dev client can switch between the two seeded organisations and see
+  // their different cube sets. See `organisation.ts`.
+  const organisationId = resolveOrganisationId(c)
+
+  return {
+    organisationId,
+    userId: 1,
+    locale
   }
 }
 
@@ -358,6 +320,25 @@ app.use('/api/ai/*', async (c, next) => {
   await next()
 })
 app.route('/api/ai', aiApp)
+
+/**
+ * Re-read the attribute tables and re-register every tenant's cube set.
+ *
+ * Cube sets are registered once at boot (deliberately — resolution stays
+ * synchronous, see docs/per-tenant-cube-sets.md), so re-running the seed leaves
+ * a running server holding attribute ids that no longer exist and every
+ * generated column fails validation. A production deployment would broadcast
+ * its own "attributes changed" event; the dev server exposes this instead so a
+ * reseed does not mean a restart.
+ */
+app.post('/api/dev/reload-cube-sets', async (c) => {
+  try {
+    await registerAttributeCubeSets(semanticLayer, db)
+    return c.json({ ok: true, ...semanticLayer.getCubeSetStats() })
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : 'Reload failed' }, 500)
+  }
+})
 
 // Example protected endpoint showing how to use the same security context
 app.get('/api/user-info', async (c) => {

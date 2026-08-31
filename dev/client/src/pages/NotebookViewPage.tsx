@@ -1,7 +1,7 @@
-import { useParams } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import { AgenticNotebook } from '@drizzle-cube/client'
 import type { NotebookConfig } from '@drizzle-cube/client'
-import { useNotebook } from '../hooks/useNotebooks'
+import { isNotFound, useNotebook } from '../hooks/useNotebooks'
 import { useNotebookViewState } from './useNotebookViewState'
 import { NotebookHeader, NotebookLoadingState, NotebookErrorState } from './notebookViewParts'
 
@@ -34,6 +34,12 @@ export default function NotebookViewPage() {
 
   if (isLoading) {
     return <NotebookLoadingState />
+  }
+
+  // Notebooks are tenant-scoped too, so switching organisations leaves this URL
+  // pointing at someone else's — navigate rather than report a failure.
+  if (isNotFound(error)) {
+    return <Navigate to="/notebooks" replace />
   }
 
   if (error || !notebook) {

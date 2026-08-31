@@ -119,6 +119,7 @@ export type BuiltInChartType =
   | 'proportionBar'
   | 'measureProfile'
   | 'gauge'
+  | 'recordsTable'
 
 // Chart type identifier — includes all built-in types plus any string for custom chart plugins.
 // Use BuiltInChartType when you need to narrow to built-ins only.
@@ -132,6 +133,7 @@ export interface AxisFormatConfig {
   decimals?: number           // Decimal places (0-4, undefined = auto)
   customPrefix?: string       // Prefix for 'custom' unit type
   customSuffix?: string       // Suffix for 'custom' unit type
+  currencyCode?: string       // ISO 4217 code for 'currency' unit (default: derived from viewer locale)
 }
 
 // Chart configuration
@@ -148,6 +150,10 @@ export interface ChartAxisConfig {
   // Activity grid chart specific fields
   dateField?: string[] // Time dimension field for activity grid
   valueField?: string[] // Measure field for activity intensity
+
+  // Records table specific fields
+  columns?: string[] // Ordered fields rendered as table columns
+  hiddenColumns?: string[] // Fields fetched for row context (ids, link tokens) but never rendered
   
   // Legacy format (for backward compatibility)
   x?: string // Single dimension field for X axis
@@ -156,6 +162,43 @@ export interface ChartAxisConfig {
   // Dual Y-axis support: per-measure axis assignment (left or right)
   // Default: 'left' for all measures (backward compatible)
   yAxisAssignment?: Record<string, 'left' | 'right'>
+}
+
+/**
+ * How a records-table column renders its value. Chosen per column in the chart
+ * editor — never inferred from the data, so the same field can be a badge in one
+ * dashboard and plain text in another.
+ */
+export type ColumnFormatKind = 'text' | 'number' | 'date' | 'badge' | 'progress'
+
+export interface ColumnFormatConfig {
+  kind: ColumnFormatKind
+  /** Numeric formatting for `kind: 'number'` — reuses the shared axis formatter. */
+  numberFormat?: AxisFormatConfig
+  /** Granularity for `kind: 'date'`. */
+  dateGranularity?: TimeGranularity
+  /**
+   * Value → palette colour index for `kind: 'badge'`. Values with no mapping
+   * render neutral rather than being assigned a guessed colour.
+   */
+  badgeColors?: Array<{ value: string; colorIndex: number }>
+  /** Bounds for `kind: 'progress'` (default 0-100). Values are clamped. */
+  progressMin?: number
+  progressMax?: number
+  /** How a `kind: 'progress'` cell draws: a full-width bar, or a compact ring for narrow columns. */
+  progressStyle?: 'bar' | 'circle'
+  /** Header override; falls back to the field's metadata title. */
+  label?: string
+  align?: 'left' | 'right'
+}
+
+/**
+ * Row-level click-through for the records table. Tokens of the form
+ * `{Cube.field}` are substituted from the row, including hidden columns.
+ */
+export interface RowLinkConfig {
+  urlTemplate: string
+  target?: 'self' | 'blank'
 }
 
 export interface ThresholdBand {
@@ -195,6 +238,12 @@ export interface ChartDisplayConfig {
 
   // DataTable specific display options
   pivotTimeDimension?: boolean // Pivot time dimension as columns (default: true when time dimension present)
+
+  // Records table specific display options
+  columnFormats?: Record<string, ColumnFormatConfig> // Per-column rendering, keyed by field name
+  columnWidths?: Record<string, number> // Authored column widths in px; viewers may override locally
+  rowLink?: RowLinkConfig // Row click-through template
+  pageSize?: number // Rows per page (25 | 50 | 100)
 
   // Target functionality
   target?: string // Target values as string (single value or comma-separated for spread)
@@ -509,6 +558,12 @@ export interface CubeQuery {
   segments?: string[]
   /** When true, returns raw row-level data without GROUP BY or aggregation */
   ungrouped?: boolean
+  /**
+   * Ask the server for the number of rows the query would return with no
+   * limit/offset, read back via `CubeResultSet.totalCount()`. Costs a second
+   * round trip, so only paginated views set it.
+   */
+  total?: boolean
 }
 
 /**
@@ -560,6 +615,18 @@ export interface CubeApiOptions {
 }
 
 // Result set types
+/**
+ * An unknown member the server rejected, mirroring the server's
+ * `QueryValidationIssue`. `source` is what decides the response: a projected
+ * member can be dropped and the query re-run, whereas dropping a filter would
+ * widen the result set and must stay an error.
+ */
+export interface CubeValidationIssue {
+  source: 'measure' | 'dimension' | 'timeDimension' | 'filter'
+  member: string
+  message: string
+}
+
 export interface CubeResultSet {
   rawData(): any[]
   tablePivot(): any[]
@@ -567,6 +634,8 @@ export interface CubeResultSet {
   annotation(): any
   loadResponse?: any
   cacheInfo?(): { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | undefined
+  /** Rows the query would return without limit/offset — only when `total: true` was asked for. */
+  totalCount?(): number | undefined
 }
 
 // Component props
@@ -631,6 +700,33 @@ export interface ChartProps {
   onDataPointClick?: (event: import('./types/drill.js').ChartDataPointClickEvent) => void
   /** Whether drill-down is enabled (shows pointer cursor on clickable elements) */
   drillEnabled?: boolean
+
+  /**
+   * Server-side pagination, supplied by hosts that can re-query (the dashboard
+   * portlet). Absent in the AnalysisBuilder preview, the notebook and plugin
+   * hosts, where a chart pages and sorts over the rows it already has.
+   */
+  pagination?: ChartPagination
+}
+
+/**
+ * Paging and sorting state a host drives on the chart's behalf.
+ *
+ * Sort lives here rather than in the chart because with server-side paging a
+ * header click has to re-order the whole result set: sorting only the loaded
+ * page would put the wrong rows on page 1.
+ */
+export interface ChartPagination {
+  page: number
+  pageSize: number
+  pageSizeOptions: number[]
+  /** Total matching rows, once the server has reported one. */
+  total?: number
+  sort?: { column: string; direction: 'asc' | 'desc' }
+  setPage: (page: number) => void
+  setPageSize: (pageSize: number) => void
+  /** Cycles the column asc → desc → unsorted, resetting to the first page. */
+  toggleSort: (column: string) => void
 }
 
 // Thumbnail feature configuration

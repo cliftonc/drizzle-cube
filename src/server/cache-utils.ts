@@ -86,6 +86,13 @@ export function normalizeQuery(query: SemanticQuery): SemanticQuery {
     offset: query.offset,
     order: query.order ? sortObject(query.order) : undefined,
     fillMissingDatesValue: query.fillMissingDatesValue,
+    // Grouped and ungrouped runs of otherwise-identical queries return
+    // structurally different data (aggregates vs raw rows), so they must not
+    // share a cache entry.
+    ungrouped: query.ungrouped,
+    // The cached QueryResult carries `total` (or not), so the two shapes are
+    // distinct entries rather than one served for both.
+    total: query.total,
     // Include funnel config in cache key for proper cache invalidation
     funnel: query.funnel ? normalizeFunnelConfig(query.funnel) : undefined,
     // Include flow config in cache key for proper cache invalidation

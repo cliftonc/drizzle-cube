@@ -609,6 +609,7 @@ export function QueryPanelTabContent(props: TabContentProps) {
         chartType={chartType}
         displayConfig={displayConfig}
         colorPalette={colorPalette}
+        chartConfig={chartConfig}
         onDisplayConfigChange={onDisplayConfigChange}
       />
     )

@@ -653,3 +653,91 @@ export const productivityDashboardConfig = {
     ]
   }
 }
+
+/**
+ * Records-table dashboard over the EAV attributes.
+ *
+ * Built from the *seeded* attribute rows rather than hardcoded, because a
+ * generated dimension's member name derives from the attribute's id
+ * (`attr_<id>`) — the id is stable across renames, but not across a reseed.
+ *
+ * Colour indices refer to the dashboard palette (0 blue, 1 green, 2 yellow,
+ * 3 red), so badges follow the theme rather than pinning a hex value.
+ */
+export function buildRecordsDashboardConfig(
+  seededAttributes: Array<{ id: number; name: string; valueType: string }>
+) {
+  const member = (name: string) => {
+    const attribute = seededAttributes.find(a => a.name === name)
+    return attribute ? `Employees.attr_${attribute.id}` : null
+  }
+
+  const health = member('Health')
+  const completion = member('Completion')
+  const owner = member('Owner')
+
+  const attributeColumns = [health, completion, owner].filter((m): m is string => m !== null)
+
+  const columnFormats: Record<string, unknown> = {}
+  if (health) {
+    columnFormats[health] = {
+      kind: 'badge',
+      badgeColors: [
+        { value: 'On track', colorIndex: 1 },
+        { value: 'At risk', colorIndex: 2 },
+        { value: 'Blocked', colorIndex: 3 }
+      ]
+    }
+  }
+  if (completion) {
+    columnFormats[completion] = { kind: 'progress', progressMin: 0, progressMax: 100 }
+  }
+  if (owner) {
+    columnFormats[owner] = { kind: 'text' }
+  }
+
+  return {
+    name: 'Employee Records',
+    description:
+      'Record-level listing with per-column formats over user-defined (EAV) attributes. ' +
+      'The attribute columns differ per organisation — switch tenants to see the cube set change.',
+    order: 1,
+    config: {
+      portlets: [
+        {
+          id: 'employee-records',
+          title: 'Employees with custom attributes',
+          // Record-grain, so `ungrouped`. Only Employees fields: an ungrouped
+          // query cannot cross a hasMany relationship, and Departments →
+          // Employees is one.
+          query: JSON.stringify({
+            dimensions: [
+              'Employees.id',
+              'Employees.name',
+              'Employees.email',
+              ...attributeColumns
+            ],
+            ungrouped: true,
+            order: { 'Employees.name': 'asc' },
+            limit: 25
+          }, null, 2),
+          chartType: 'recordsTable' as const,
+          chartConfig: {
+            columns: ['Employees.name', 'Employees.email', ...attributeColumns],
+            // Fetched for the row link, never rendered.
+            hiddenColumns: ['Employees.id']
+          },
+          displayConfig: {
+            columnFormats,
+            pageSize: 25,
+            rowLink: { urlTemplate: '/data-browser?employee={Employees.id}' }
+          },
+          w: 12,
+          h: 10,
+          x: 0,
+          y: 0
+        }
+      ]
+    }
+  }
+}

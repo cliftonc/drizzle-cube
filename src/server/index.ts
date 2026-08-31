@@ -6,6 +6,8 @@
 // Export main classes with Drizzle integration
 export { SemanticLayerCompiler, BASE_CUBE_SET_ID, SINGLE_TENANT_CONTEXT } from './compiler.js'
 export type { CubeSetRegistrationInfo, CubeSetStats } from './compiler.js'
+export { QueryValidationError } from './query-validator.js'
+export type { QueryValidationIssue, QueryValidationResult } from './query-validator.js'
 export { buildAttributeDimensions } from './attribute-dimensions.js'
 export type {
   AttributeDefinition,

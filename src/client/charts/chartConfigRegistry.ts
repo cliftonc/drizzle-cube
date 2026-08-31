@@ -8,6 +8,7 @@ import { radarChartConfig } from '../components/charts/RadarChart.config.js'
 import { radialBarChartConfig } from '../components/charts/RadialBarChart.config.js'
 import { treemapChartConfig } from '../components/charts/TreeMapChart.config.js'
 import { dataTableConfig } from '../components/charts/DataTable.config.js'
+import { recordsTableConfig } from '../components/charts/RecordsTable.config.js'
 import { activityGridChartConfig } from '../components/charts/ActivityGridChart.config.js'
 import { kpiNumberConfig } from '../components/charts/KpiNumber.config.js'
 import { kpiDeltaConfig } from '../components/charts/KpiDelta.config.js'
@@ -48,6 +49,7 @@ const baseConfigs: Record<BuiltInChartType, ChartTypeConfig> = {
   radialBar: radialBarChartConfig,
   treemap: treemapChartConfig,
   table: dataTableConfig,
+  recordsTable: recordsTableConfig,
   activityGrid: activityGridChartConfig,
   kpiNumber: kpiNumberConfig,
   kpiDelta: kpiDeltaConfig,
@@ -80,6 +82,16 @@ export const chartConfigRegistry: ChartConfigRegistry = Object.fromEntries(
     composeChartConfig(chartRegistry[type], baseConfigs[type]),
   ])
 )
+
+/**
+ * Whether a chart lists records rather than aggregates, and so needs an
+ * `ungrouped` query.
+ *
+ * Reads the eager registry so the query builders need no chart-type switch.
+ */
+export function isRecordGrainChart(chartType: string): boolean {
+  return chartConfigRegistry[chartType]?.recordGrain === true
+}
 
 /**
  * Register a custom chart config into the registry.

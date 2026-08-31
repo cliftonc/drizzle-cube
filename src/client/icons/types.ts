@@ -96,6 +96,7 @@ export interface IconRegistry {
   chartRadialBar: IconDefinition
   chartTreemap: IconDefinition
   chartTable: IconDefinition
+  chartRecordsTable: IconDefinition
   chartActivityGrid: IconDefinition
   chartKpiNumber: IconDefinition
   chartKpiDelta: IconDefinition

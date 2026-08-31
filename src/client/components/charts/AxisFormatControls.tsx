@@ -10,6 +10,7 @@ import { useTranslation } from '../../hooks/useTranslation.js'
 import SectionHeading from '../AnalysisBuilder/SectionHeading.js'
 import type { AxisFormatConfig } from '../../types.js'
 import { formatAxisValue } from '../../utils/chartUtils.js'
+import { getCurrencyCodeForLocale } from '../../utils/axisValueFormatting.js'
 
 interface AxisFormatControlsProps {
   value: AxisFormatConfig
@@ -32,24 +33,6 @@ function getLocaleCurrencySymbol(): string {
   }).format(0)
   // Extract the currency symbol (remove digits, spaces, and common separators)
   return formatted.replace(/[\d.,\s]/g, '').trim() || '$'
-}
-
-/**
- * Get the currency code for a given locale (duplicated from chartUtils for component isolation)
- */
-function getCurrencyCodeForLocale(locale: string): string {
-  const parts = locale.split('-')
-  const region = parts[1]?.toUpperCase()
-  const currencyMap: Record<string, string> = {
-    'US': 'USD', 'CA': 'CAD', 'GB': 'GBP', 'UK': 'GBP', 'AU': 'AUD', 'NZ': 'NZD',
-    'EU': 'EUR', 'DE': 'EUR', 'FR': 'EUR', 'IT': 'EUR', 'ES': 'EUR', 'NL': 'EUR',
-    'BE': 'EUR', 'AT': 'EUR', 'IE': 'EUR', 'PT': 'EUR', 'FI': 'EUR',
-    'JP': 'JPY', 'CN': 'CNY', 'KR': 'KRW', 'IN': 'INR', 'BR': 'BRL', 'MX': 'MXN',
-    'CH': 'CHF', 'SE': 'SEK', 'NO': 'NOK', 'DK': 'DKK', 'PL': 'PLN', 'RU': 'RUB',
-    'ZA': 'ZAR', 'SG': 'SGD', 'HK': 'HKD', 'TW': 'TWD', 'TH': 'THB', 'MY': 'MYR',
-    'PH': 'PHP', 'ID': 'IDR', 'VN': 'VND', 'AE': 'AED', 'SA': 'SAR', 'IL': 'ILS', 'TR': 'TRY',
-  }
-  return currencyMap[region] || 'USD'
 }
 
 /**
@@ -120,6 +103,23 @@ export function AxisFormatControls({
           ))}
         </div>
       </div>
+
+      {/* Currency code (only when Currency is selected) — without it the symbol
+          follows the viewer's locale, so a GBP column renders $ to a US viewer. */}
+      {config.unit === 'currency' && (
+        <div className="dc:space-y-1">
+          <label className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.axisFormat.currencyCode')}</label>
+          <input
+            type="text"
+            value={config.currencyCode || ''}
+            onChange={(e) => handleChange({ currencyCode: e.target.value.trim().toUpperCase() || undefined })}
+            placeholder={getCurrencyCodeForLocale(typeof navigator !== 'undefined' ? navigator.language : 'en-US')}
+            maxLength={3}
+            className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+          />
+          <p className="dc:text-xs text-dc-text-muted">{t('chart.runtime.axisFormat.currencyCodeHint')}</p>
+        </div>
+      )}
 
       {/* Custom Prefix/Suffix (only when Custom is selected) */}
       {config.unit === 'custom' && (

@@ -84,7 +84,8 @@ export function createCubeHttpHandler(options: CubeHttpHandlerOptions): CubeHttp
     if (!validation.isValid) {
       return port.send(400, formatErrorResponse(
         `Query validation failed: ${validation.errors.join(', ')}`,
-        400
+        400,
+        validation.issues
       ))
     }
 

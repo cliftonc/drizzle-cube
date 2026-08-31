@@ -1,9 +1,11 @@
 # Records Table — spec
 
 **Discussion:** [#1007](https://github.com/cliftonc/drizzle-cube/discussions/1007) — _Custom Records Table_ (andrew-hu368)
-**Status:** 🚧 Foundation built; the Records Table widget itself is still to do.
-**Revision:** v3 — supersedes v2's "attributes are global to the deployment" premise. Attribute dimensions are
-now generated **per tenant** via cube sets. See _Revision history_ at the end.
+**Status:** ✅ Complete. The foundation shipped in 0.8.0; the widget and the remaining spec items followed in
+[#1197](https://github.com/cliftonc/drizzle-cube/issues/1197).
+**Revision:** v4 — records what was actually built, including where reality differed from the plan. v3 superseded
+v2's "attributes are global to the deployment" premise; attribute dimensions are generated **per tenant** via cube
+sets. See _Revision history_ at the end.
 
 ---
 
@@ -126,8 +128,8 @@ either errors (Postgres: `text > integer`) or compares lexicographically, where 
 
 ## Core changes required
 
-**Status:** items 1, 2, 3 and 5 are **done**, together with the per-tenant cube sets they turned out to need.
-Items 4 and 6 remain, alongside the whole of _The Records Table itself_ below.
+**Status:** all six are done. Items 1, 2, 3 and 5 shipped in 0.8.0 with the per-tenant cube sets they turned out to
+need; items 4 and 6 followed with the widget.
 
 | # | Change | Why | Where |
 |---|---|---|---|
@@ -138,10 +140,23 @@ Items 4 and 6 remain, alongside the whole of _The Records Table itself_ below.
 | 5 | `buildAttributeDimensions()` helper + docs | Encodes the subquery, security scoping, id/title split, `LIMIT 1` and type resolution so adopters don't re-derive them | `server/` + docs |
 | 6 | EAV case in `perf/` + escalation ladder | Filter/sort are O(rows); guidance must be measured, not asserted | `perf/` |
 
-**Performance ladder to document:** correlated scalar subquery (no DDL, fine at the discussion's scale) → app-side
-pivoted view `MAX(CASE WHEN …)` (attributes become indexable columns; fast filter/sort at any size) → materialized
-view with refresh. Projection is cheap (25 rows × N attributes = indexed lookups); `ORDER BY (SELECT …)` and
-`WHERE (SELECT …) = …` are O(rows in the base table) because no index can serve them.
+**Performance ladder:** correlated scalar subquery (no DDL, fine at the discussion's scale) → app-side pivoted view
+`MAX(CASE WHEN …)` (attributes become indexable columns; fast filter/sort at any size) → materialized view with
+refresh.
+
+Measured rather than asserted — the `eav` category in `perf/` runs 2 attributes over a 100k-row base table on
+Postgres (`npm run perf -- --filter=eav`), and the shape is clearer than "filter and sort are O(n)":
+
+| Shape | Median | Why |
+|---|---|---|
+| Project 2 attributes over a 25-row page | ~1.5ms | one indexed lookup per returned row |
+| …plus `total: true` | ~9ms | the extra `COUNT(*)` round trip over the base table |
+| Filter on a **common** value | ~1.3ms | `LIMIT` is satisfied before the scan gets far |
+| Filter on a **selective** value | ~195ms | nothing to stop early on, so the whole base table goes through the subquery |
+| `ORDER BY` an attribute | ~244ms | ordering cannot stop early; ~16× the same sort on a real column (~15ms) |
+
+So the honest guidance is: **projection is cheap at any size, ordering by an attribute always costs a full scan, and
+filtering costs one only when the predicate is selective.** Pivot into real columns when you need either at scale.
 
 ---
 
@@ -219,14 +234,28 @@ same-origin relative paths (rejecting `//` and `\`) or absolute `http:`/`https:`
 (`rel="noopener noreferrer"` when `target: 'blank'`) so modifier-clicks work. Hostile inputs are unit-tested.
 Precedence: `rowLink` wins; otherwise the existing drill path.
 
-## Staging
+## What was built, and where it differed from this plan
+
+| Planned | Built |
+|---|---|
+| Column widths in `displayConfig` | **localStorage, keyed by column set.** `ChartProps` has no write path back to `displayConfig` and a chart has no portlet id, so an authored `columnWidths` is the default a viewer's own drags layer over — the same shape the data browser already uses. |
+| Sort in the table component | **Sort lives with paging in `usePortletPagination`.** With server-side paging, re-ordering the loaded page alone would put the wrong rows on page 1. The component still sorts locally when no host supplies pagination. |
+| Badge colours as hex | **Palette indices**, so badges follow the dashboard theme. |
+| Locale-derived currency | `currencyCode` added to `AxisFormatConfig`, so a column can be pinned to GBP. Shared by every chart. |
+| Client prunes dead members | Needed **structured validation issues** first: the joined error string could not be split back apart, and pruning against `/meta` would have dropped `shown: false` dimensions, which are absent from metadata yet queryable. |
+| — | **Drag-to-reorder headers**, persisted next to the widths. |
+
+Also required, and not in the plan: the MCP app and the MCP tool schema enumerate chart types separately from
+`chartRegistry`, so a new type is invisible to the AI path until those are updated too.
+
+## Staging (as shipped)
 
 | Stage | Content |
 |---|---|
-| 1 | `recordsTable` + hand-rolled table: columns, hidden columns, sort headers, all five `columnFormats` kinds, `ColumnFormatsEditor`. Client-side paging. |
-| 2 | Server `total` + `usePortletPagination` + `ChartProps.pagination`; `normalizeQuery` cache-key fix. |
+| 1 | `recordsTable` + hand-rolled table: columns, hidden columns, sort headers, column resize and reorder, all five `columnFormats` kinds, `ColumnFormatsEditor`. Client-side paging. |
+| 2 | Server `total` + `usePortletPagination` (page, size **and** sort) + `ChartProps.pagination`; `normalizeQuery` cache-key fix. |
 | 3 | `rowLink` + `rowLinkUtils` with security tests. |
-| 4 | Attribute dimensions: `cast` on `QueryContext`, `tryCastToType`, `buildAttributeDimensions`, `shown`, client pruning of dead members, perf case + docs. Independently useful — not Records-Table-specific. |
+| 4 | Attribute dimensions: `cast` on `QueryContext`, `tryCastToType`, `buildAttributeDimensions`, `shown`, structured validation issues + client pruning of dead members, perf case + docs. Independently useful — not Records-Table-specific. |
 
 ## Files
 
@@ -253,8 +282,10 @@ Precedence: `rowLink` wins; otherwise the existing drill path.
 - `total` and `tryCastToType` emit new SQL, so engines matter: `npm run test:setup` then `test:postgres` /
   `test:mysql` locally; DuckDB / Databend / Snowflake left to CI and stated as such.
 - Perf: add an EAV case to `perf/` measuring projection, filter and sort at 10k and 100k rows to ground the ladder.
-- Manual: `npm run dev:setup && npm run dev`; needs an EAV example in `dev/server/schema.ts` (`attributes` +
-  `employee_attribute_values`, seeded), which does not exist today.
+- Manual: `npm run dev:setup && npm run dev`, then open the seeded **Employee Records** dashboard. The dev site has
+  the EAV tables (`attributes` + `employee_attribute_values`), two seeded tenants with *different* attributes, and
+  an org switcher in the header — switching changes the cube set and therefore the table's columns. Cube sets are
+  registered at boot, so restart the dev server after seeding.
 - `/quality-gate` before the PR.
 
 ## Revision history
@@ -281,11 +312,16 @@ moment the sets diverged. v3 makes cube definitions resolvable per tenant:
 
 Full design and the boot loop: [`docs/per-tenant-cube-sets.md`](../per-tenant-cube-sets.md).
 
-## Open questions for the requester
+**v3 → v4.** Records what shipped. See _What was built, and where it differed from this plan_ above; the
+performance ladder now carries measurements from the `eav` benchmarks rather than an asserted complexity claim.
 
-1. Does your `attributes` table carry a data type, or should the helper take an override map / sample values?
-2. Badge colours: theme swatches or free hex? And is locale-derived currency enough, or do you need a fixed
-   per-column currency code?
-3. Page sizes: 25 / 50 / 100 fixed, or author-configurable?
-4. Click-through: row-level only, or per-cell links too?
-5. Column resize with persisted widths in v1, or later?
+## Answers to the open questions
+
+Decided by the maintainer rather than left blocking:
+
+1. **Attribute types** — the helper takes `attributes[].valueType` or a `types` override map, defaulting to string.
+2. **Badge colours** — theme palette only, stored as an index. Currency **is** configurable: `currencyCode` was
+   added to `AxisFormatConfig`.
+3. **Page sizes** — fixed at 25 / 50 / 100.
+4. **Click-through** — row-level only; per-cell links were not built.
+5. **Column resize** — in v1, with persisted widths, plus drag-to-reorder.

@@ -9,12 +9,14 @@ import type {
   SecurityContext,
   QueryAnalysis,
   QuerySuggestion,
-  AIValidationResult
+  AIValidationResult,
+  QueryValidationIssue
 } from '../server/index.js'
 import {
   suggestQuery,
   aiValidateQuery,
-  getActiveQueryModes
+  getActiveQueryModes,
+  QueryValidationError
 } from '../server/index.js'
 // Query handlers + SQL formatting live in the server layer so the in-process
 // agent can use them without a server→adapters import cycle. Re-exported here
@@ -416,6 +418,7 @@ export function formatCubeResponse(
     annotation?: any
     cache?: { hit: boolean; cachedAt?: string; ttlMs?: number; ttlRemainingMs?: number }
     warnings?: Array<{ code: string; message: string; severity: string; cubes?: string[]; measures?: string[]; suggestion?: string }>
+    total?: number
   },
   semanticLayer: SemanticLayerCompiler
 ) {
@@ -442,7 +445,9 @@ export function formatCubeResponse(
       // Include cache metadata if present (indicates cache hit with TTL info)
       ...(result.cache && { cache: result.cache }),
       // Include warnings if present (e.g., fan-out without dimensions)
-      ...(result.warnings?.length && { warnings: result.warnings })
+      ...(result.warnings?.length && { warnings: result.warnings }),
+      // Rows the query would return without limit/offset — only when asked for
+      ...(result.total !== undefined && { total: result.total })
     }],
     pivotQuery: {
       ...query,
@@ -520,12 +525,23 @@ export function formatMetaResponse(metadata: any) {
 }
 
 /**
- * Standard error response format
+ * Standard error response format.
+ *
+ * `issues` is additive: the `error` string keeps its exact shape for existing
+ * clients, while a caller that needs to act on a *particular* unknown member —
+ * a dashboard dropping the column for a deleted attribute, say — has something
+ * structured to read. Splitting the joined string back apart is not reliable,
+ * since the per-field hints contain the same separator.
  */
-export function formatErrorResponse(error: string | Error, status: number = 500) {
+export function formatErrorResponse(
+  error: string | Error,
+  status: number = 500,
+  issues?: QueryValidationIssue[]
+) {
   return {
     error: error instanceof Error ? error.message : error,
-    status
+    status,
+    ...(issues?.length && { issues })
   }
 }
 
@@ -581,11 +597,15 @@ export async function handleBatchRequest(
       }
     } else {
       // Query failed - return error information
+      const reason = settledResult.reason
       return {
         success: false,
-        error: settledResult.reason instanceof Error
-          ? settledResult.reason.message
-          : String(settledResult.reason),
+        error: reason instanceof Error ? reason.message : String(reason),
+        // Structured unknown-member detail, so a caller can drop a dead column
+        // rather than only report the whole batch item as broken. Always
+        // present as a key so both branches share a shape and callers can read
+        // `.error` without narrowing the union first.
+        issues: reason instanceof QueryValidationError ? reason.issues : undefined,
         query: queries[index] // Include the query that failed for debugging
       }
     }

@@ -1,6 +1,6 @@
-import { useParams } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import { AnalyticsDashboard, DashboardEditModal } from '@drizzle-cube/client'
-import { useAnalyticsPage } from '../hooks/useAnalyticsPages'
+import { isNotFound, useAnalyticsPage } from '../hooks/useAnalyticsPages'
 import { useDashboardViewState } from './useDashboardViewState'
 import {
   DashboardLoadingState,
@@ -40,6 +40,14 @@ export default function DashboardViewPage() {
 
   if (isLoading) {
     return <DashboardLoadingState />
+  }
+
+  // Dashboards are tenant-scoped, so switching organisations leaves you on a
+  // URL that is simply not yours any more. That is navigation, not an error —
+  // go back to the list rather than showing a failure for a dashboard that
+  // exists perfectly well for someone else.
+  if (isNotFound(error)) {
+    return <Navigate to="/dashboards" replace />
   }
 
   if (error || !page) {

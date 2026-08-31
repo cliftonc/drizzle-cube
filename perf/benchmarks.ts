@@ -437,6 +437,100 @@ export const BENCHMARKS: BenchmarkDef[] = [
   },
 
   // --- cache: result-cache effectiveness on a mid-size group-by ---
+  // --- EAV: generated attribute dimensions (correlated scalar subqueries) ---
+  // Grounds the escalation ladder in docs/plans/1007-records-table.md. No index
+  // can serve a correlated subquery, so: projection is cheap (one lookup per
+  // returned row), ordering always costs a full scan, and filtering costs a
+  // full scan only when the predicate is selective enough that LIMIT cannot be
+  // satisfied early — which is why both filter shapes are measured.
+  {
+    id: 'eav.project-page',
+    name: 'Project 2 EAV attributes over a 25-row page',
+    category: 'eav',
+    mode: 'execute',
+    query: {
+      dimensions: ['Events.id', 'Events.attr_1', 'Events.attr_2'],
+      ungrouped: true,
+      order: { 'Events.id': 'asc' },
+      limit: 25
+    }
+  },
+  {
+    id: 'eav.project-page-total',
+    name: 'Same page, plus the total row count',
+    category: 'eav',
+    mode: 'execute',
+    query: {
+      dimensions: ['Events.id', 'Events.attr_1', 'Events.attr_2'],
+      ungrouped: true,
+      order: { 'Events.id': 'asc' },
+      limit: 25,
+      total: true
+    }
+  },
+  {
+    id: 'eav.filter-string',
+    name: 'Filter on a common string value (LIMIT satisfied early)',
+    category: 'eav',
+    mode: 'execute',
+    query: {
+      dimensions: ['Events.id', 'Events.attr_1'],
+      ungrouped: true,
+      filters: [{ member: 'Events.attr_1', operator: 'equals', values: ['At risk'] }],
+      limit: 25
+    }
+  },
+  {
+    id: 'eav.filter-numeric',
+    name: 'Filter on a numeric attribute, incl. the tolerant cast',
+    category: 'eav',
+    mode: 'execute',
+    query: {
+      dimensions: ['Events.id', 'Events.attr_2'],
+      ungrouped: true,
+      filters: [{ member: 'Events.attr_2', operator: 'gt', values: ['50'] }],
+      limit: 25
+    }
+  },
+  {
+    id: 'eav.filter-selective',
+    name: 'Filter matching almost nothing — the full-scan case',
+    category: 'eav',
+    mode: 'execute',
+    query: {
+      // A common value satisfies `limit` early, so it never shows the real
+      // cost. A value that matches almost nothing forces the whole base table
+      // through the correlated subquery, which is the case worth knowing about.
+      dimensions: ['Events.id', 'Events.attr_1'],
+      ungrouped: true,
+      filters: [{ member: 'Events.attr_1', operator: 'equals', values: ['Retired'] }],
+      limit: 25
+    }
+  },
+  {
+    id: 'eav.sort',
+    name: 'Order by a numeric EAV attribute (always a full scan)',
+    category: 'eav',
+    mode: 'execute',
+    query: {
+      dimensions: ['Events.id', 'Events.attr_2'],
+      ungrouped: true,
+      order: { 'Events.attr_2': 'desc' },
+      limit: 25
+    }
+  },
+  {
+    id: 'eav.baseline-sort',
+    name: 'Same shape ordering by a real column, for comparison',
+    category: 'eav',
+    mode: 'execute',
+    query: {
+      dimensions: ['Events.id', 'Events.linesOfCode'],
+      ungrouped: true,
+      order: { 'Events.linesOfCode': 'desc' },
+      limit: 25
+    }
+  },
   {
     id: 'cache.miss',
     name: 'Cache-enabled executor, cache bypassed',

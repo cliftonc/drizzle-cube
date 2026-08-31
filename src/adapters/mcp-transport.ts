@@ -592,8 +592,8 @@ Use "load" for data retrieval. Use "chart" to visualise results with an interact
 Same query format as "load", but renders results in the MCP App chart UI.
 Include a "chart" object to control the visualization.
 
-Chart types: bar, line, area, pie, scatter, bubble, radar, treemap, kpiNumber, kpiDelta, table, heatmap, funnel, sankey, sunburst, waterfall, activityGrid, boxPlot
-Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, part-of-whole -> pie, correlation -> scatter/bubble, distribution -> boxPlot`,
+Chart types: bar, line, area, pie, scatter, bubble, radar, treemap, kpiNumber, kpiDelta, table, recordsTable, heatmap, funnel, sankey, sunburst, waterfall, activityGrid, boxPlot
+Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, part-of-whole -> pie, correlation -> scatter/bubble, distribution -> boxPlot, record-level listing -> recordsTable`,
       inputSchema: {
         type: 'object',
         required: ['query'],
@@ -613,7 +613,7 @@ Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, p
                   'bar', 'line', 'area', 'pie', 'scatter', 'bubble', 'radar', 'radialBar',
                   'treemap', 'table', 'kpiNumber', 'kpiDelta', 'heatmap', 'boxPlot',
                   'funnel', 'sankey', 'sunburst', 'retentionHeatmap', 'retentionCombined',
-                  'waterfall', 'activityGrid'
+                  'waterfall', 'activityGrid', 'recordsTable'
                 ],
                 description: 'Chart type to render'
               },

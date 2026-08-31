@@ -8,6 +8,7 @@
  *   employeeTeams  ~2,500   (1-4 teams per employee)
  *   productivity   ~335k    (org1 employees x Sep 2023 - Dec 2024, ~2% day gaps)
  *   timeEntries    ~1M      (all employees x 2024 workdays x 2-6 entries/day)
+ *   attributeValues 200k    (2 EAV attributes over the first 100k productivity rows)
  *
  * All randomness flows from a fixed-seed mulberry32 RNG so the dataset is
  * byte-identical across reseeds — benchmark results stay comparable over time.
@@ -23,8 +24,9 @@ import {
   timeEntries
 } from '../tests/helpers/databases/postgres/schema'
 import type { PerfConnection } from './database'
+import { createEavTables, seedEavData } from './perf-eav'
 
-export const PERF_DATA_VERSION = 1
+export const PERF_DATA_VERSION = 2
 
 const RNG_SEED = 0xDC2026
 const BATCH_SIZE = 5000 // ~10 cols x 5000 rows = 50k bound params, under postgres-js 65,534 limit
@@ -258,6 +260,10 @@ export async function seedPerfData(db: PerfConnection['db']): Promise<Record<str
     timeEntryCount += await batchInsert(insert, [], buffer, true)
   }
   counts.timeEntries = timeEntryCount
+
+  // --- EAV attribute values over a slice of productivity ---
+  await createEavTables(db)
+  counts.attributeValues = await seedEavData(db, BATCH_SIZE)
 
   const seconds = ((Date.now() - startedAt) / 1000).toFixed(1)
   console.log(`Perf seed complete in ${seconds}s:`, counts)
