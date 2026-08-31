@@ -141,7 +141,7 @@ npm run test:teardown # Stop and remove test database containers
 > [!TIP]
 > The dev server and test databases use completely separate Docker containers and ports, so you can run `npm run dev` and `npm test` at the same time. This is useful for observing your changes in the browser while verifying they pass tests.
 
-**No Docker available?** If you're working in a container, a sandbox, or any environment where you can't start Docker, run the DB-free suites instead of `npm test` — `npm run test:sqlite`, `npm run test:client`, `npm run test:cli`, plus `npm run lint` and `npm run typecheck`. `test:sqlite` runs the same server suite against in-process SQLite, so it's a real verification signal rather than a subset. See [CLAUDE.md → Testing in a constrained environment](CLAUDE.md#testing-in-a-constrained-environment-ci-sandboxes-agents-containers).
+**No Docker available?** If you're working in a container, a sandbox, or any environment where you can't start Docker, run the DB-free suites instead of `npm test` — `npm run test:sqlite`, `npm run test:client`, `npm run test:cli`, plus `npm run lint` and `npm run typecheck`. `test:sqlite` runs the same server suite against in-process SQLite, so it's a real verification signal rather than a subset. See [CLAUDE.md → Testing in a constrained environment](https://github.com/cliftonc/drizzle-cube/blob/main/CLAUDE.md#testing-in-a-constrained-environment-ci-sandboxes-agents-containers).
 
 ## <a name="commit-message-guidelines"></a> Commit message guidelines
 
