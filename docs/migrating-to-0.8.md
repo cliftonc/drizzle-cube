@@ -1,14 +1,45 @@
-# Migrating to 0.8
+# Release 0.8 — per-tenant cube definitions
 
-0.8 makes cube definitions resolvable **per tenant**. The mechanism is described in
-[`per-tenant-cube-sets.md`](./per-tenant-cube-sets.md); this page is only the
-breaking changes and what to do about them.
+0.8 makes cube definitions resolvable **per tenant**. This page is both the
+release summary and the upgrade guide.
 
 **If you have a single-tenant deployment, nothing behaves differently.** With no
 `contextToCubeSetId` configured, every security context resolves to the base set
-exactly as before. Only signatures moved.
+exactly as before. Only signatures moved — see [Breaking
+changes](#breaking-changes) for the mechanical edits your compiler will point at.
 
-## 1. `securityContext` is required on every cube-resolving method
+## What's new
+
+**Per-tenant cube sets.** One `SemanticLayerCompiler` can now serve different
+cube definitions to different tenants — drizzle-cube's equivalent of Cube's
+`COMPILE_CONTEXT`. Map a security context to a set with `contextToCubeSetId`,
+and register one set per tenant at boot with `registerCubeSet`. Sets are merged
+over the shared base set at registration time, so requests read a precomputed
+map. Full guide: [Per-Tenant Cube
+Sets](https://www.drizzle-cube.dev/semantic-layer/cube-sets/).
+
+**Generated dimensions for user-defined attributes (EAV).**
+`buildAttributeDimensions()` turns rows in an attribute/value junction table
+into ordinary dimensions, so filtering, sorting, drill-down and export all work
+through paths that already exist. Member names derive from the attribute **id**,
+so renaming an attribute updates every header without breaking saved dashboards.
+
+**Tolerant casts across all 7 engines.** `tryCastToType` — and `ctx.tryCast` on
+`QueryContext` — yield `NULL` for unparseable input instead of failing the whole
+query on Postgres or silently returning `0` on MySQL/SQLite. Essential when a
+free-text column holds numbers for some rows and `n/a` for others.
+
+**`shown: false` is honoured.** Previously declared and read nowhere. It now
+omits a dimension or measure from `/meta`, the client field picker and AI
+prompts, while leaving it fully queryable — matching Cube.js semantics.
+
+**Safer defaults.** Every REST response now sets `Cache-Control: private,
+no-store`, and query cache keys carry a cube-set component so results can
+neither cross tenants nor survive a definition change.
+
+## Breaking changes
+
+### 1. `securityContext` is required on every cube-resolving method
 
 Because cube contents can now differ per tenant, these methods take a required
 `SecurityContext`:
@@ -51,7 +82,7 @@ Registration is unaffected: `registerCube`, `registerCubeSet`,
 `unregisterCubeSet` and `getCubeSetStats` take no context, because registration
 defines tenancy rather than operating within it.
 
-## 2. `/meta` is tenant-scoped
+### 2. `/meta` is tenant-scoped
 
 **Users of the Hono, Express, Fastify and Next.js adapters need no code change** —
 `extractSecurityContext` is already in your options and the adapter now passes it
@@ -65,7 +96,7 @@ to `/meta` as it always has to every other route. Two things change anyway:
   for every caller. A shared cache or CDN keyed on URL alone would now
   cross-serve one tenant's cube list to another.
 
-## 3. Every REST response sets `Cache-Control: private, no-store`
+### 3. Every REST response sets `Cache-Control: private, no-store`
 
 `/meta`, `/load`, `/sql`, `/dry-run`, `/batch` and `/explain` previously carried
 no `Cache-Control` at all, which permits heuristic caching of tenant data by a
@@ -74,13 +105,13 @@ shared cache. They now set `private, no-store`.
 Client-side caching is unaffected: the drizzle-cube React client caches through
 TanStack Query's `staleTime`, not the HTTP cache.
 
-## 4. `HttpPort.setHeader` is required — third-party adapters only
+### 4. `HttpPort.setHeader` is required — third-party adapters only
 
 If you have written your own framework adapter, `setHeader(name, value)` moved
 from `McpHttpPort` to the base `HttpPort` and is now required, so REST responses
 can carry the cache header. All four first-party adapters already implemented it.
 
-## 5. Changed handler signatures
+### 5. Changed handler signatures
 
 Only relevant if you call these directly rather than through an adapter. Each
 takes the security context as its second argument, matching `handleLoad`:
@@ -97,7 +128,7 @@ resolvable security context now return an error result rather than answering
 from the base set, and MCP resources are resolved per request instead of being
 built once at handler construction.
 
-## 6. `QueryContext` gains `cast` and `tryCast`
+### 6. `QueryContext` gains `cast` and `tryCast`
 
 Cube `sql` functions now receive engine-portable cast helpers:
 
@@ -110,7 +141,7 @@ the query (Postgres) or silently returning `0` (MySQL/SQLite). Both are required
 fields, so if you construct a `QueryContext` by hand — typically in tests — you
 must supply them.
 
-## 7. `shown: false` is now honoured
+### 7. `shown: false` is now honoured
 
 `shown: false` on a dimension or measure previously did nothing. It now omits
 the member from `/meta`, the client field picker and AI prompts. The member

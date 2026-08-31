@@ -13,7 +13,7 @@ The motivating case is user-defined attributes (EAV): an admin adds a "Health"
 attribute for their organisation, it becomes a dimension, and no other tenant
 should see it.
 
-Upgrading an existing deployment? See [`migrating-to-0.8.md`](./migrating-to-0.8.md).
+Upgrading an existing deployment? See [Release 0.8](https://www.drizzle-cube.dev/guides/migrating-to-0-8/).
 
 ## The boot loop
 
