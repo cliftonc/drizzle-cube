@@ -55,6 +55,8 @@ export interface PortletGroupCardProps {
   onChildDragEnd: () => void
   /** Snap bands rendered inside each child; supplied by the row layout. */
   renderSnapBands?: (portletId: string) => ReactNode
+  /** Set inside a section card, which draws the only frame for the whole band. */
+  frameless?: boolean
 }
 
 export default function PortletGroupCard({
@@ -67,7 +69,8 @@ export default function PortletGroupCard({
   onDelete,
   onChildDragStart,
   onChildDragEnd,
-  renderSnapBands
+  renderSnapBands,
+  frameless = false
 }: PortletGroupCardProps) {
   const { t } = useTranslation()
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -142,8 +145,8 @@ export default function PortletGroupCard({
 
   return (
     <div
-      className="dc-portlet-group bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:flex dc:flex-col dc:h-full dc:min-h-0 dc:relative"
-      style={{ boxShadow: 'var(--dc-shadow-sm)' }}
+      className={`dc-portlet-group${frameless ? ' dc-portlet-group-frameless' : ' bg-dc-surface dc:border border-dc-border dc:rounded-lg'} dc:flex dc:flex-col dc:h-full dc:min-h-0 dc:relative`}
+      style={{ boxShadow: frameless ? 'none' : 'var(--dc-shadow-sm)' }}
       data-group-id={group.id}
     >
       {(hasTitle || isEditingTitle) && (

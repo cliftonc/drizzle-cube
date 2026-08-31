@@ -6,8 +6,12 @@
 import type { CSSProperties } from 'react'
 import type { ChartType, ChartDisplayConfig } from '../../types.js'
 
-/** How much chrome a card draws. Group children are frameless and headerless. */
-export type PortletCardVariant = 'standalone' | 'groupChild'
+/**
+ * How much chrome a card draws. Group children are frameless and headerless;
+ * section children are frameless but otherwise behave like standalone cards,
+ * because the section card around them supplies the only frame.
+ */
+export type PortletCardVariant = 'standalone' | 'groupChild' | 'sectionChild'
 
 export interface PortletDisplayModes {
   isMarkdownAutoHeight: boolean
@@ -47,12 +51,26 @@ export function resolveDisplayModes(params: {
   // isTransparent gated on !isEditMode so chrome is visible for editing
   const markdownAutoHeightRequested = isMarkdown && (renderDisplayConfig?.autoHeight ?? true)
   const isMarkdownAutoHeight = layoutMode !== 'grid' && markdownAutoHeightRequested
-  const isTransparentContent = isMarkdown && !!renderDisplayConfig?.transparentBackground
-  const isTransparent = isTransparentContent && !isEditMode
   // Hide header when: explicitly set to hide, OR markdown with no title
   const shouldHideHeader = isMarkdown
     ? (renderDisplayConfig?.hideHeader ?? true) || !!renderDisplayConfig?.transparentBackground || !portletTitle
     : (renderDisplayConfig?.hideHeader ?? false)
+
+  // Inside a section the two transparency flags come apart. The frame always
+  // goes - the section card draws it once for the whole band - but the content
+  // padding stays, or a `transparentBackground` header (which drops both its
+  // own padding and the card's) would sit flush against the section's edge.
+  if (variant === 'sectionChild') {
+    return {
+      isMarkdownAutoHeight,
+      isTransparentContent: false,
+      isTransparent: true,
+      shouldHideHeader
+    }
+  }
+
+  const isTransparentContent = isMarkdown && !!renderDisplayConfig?.transparentBackground
+  const isTransparent = isTransparentContent && !isEditMode
 
   return { isMarkdownAutoHeight, isTransparentContent, isTransparent, shouldHideHeader }
 }
@@ -79,6 +97,9 @@ export function buildContainerClassName(params: {
   }
 
   return [
+    // A section child is frameless for the same reason a group child is: the
+    // card around it owns the border, background and shadow.
+    variant === 'sectionChild' ? 'dc-portlet-section-child' : '',
     isTransparent
       ? 'dc:flex dc:flex-col dc:transition-all'
       : 'bg-dc-surface dc:border dc:rounded-lg dc:flex dc:flex-col dc:transition-all',
@@ -90,9 +111,24 @@ export function buildContainerClassName(params: {
     .join(' ')
 }
 
-export function buildHeaderClassName(isEditMode: boolean, extraClassName?: string): string {
+export function buildHeaderClassName(
+  isEditMode: boolean,
+  extraClassName?: string,
+  variant?: PortletCardVariant
+): string {
+  // Inside a section the header sits mid-card, so a standalone card's grey fill,
+  // rounded top corners and underline all read as clutter. The section draws one
+  // set of rules *between* portlets instead, so the title needs none of its own.
+  const inSection = variant === 'sectionChild'
+
   return [
-    'dc:flex dc:items-center dc:justify-between dc:px-3 dc:py-1.5 dc:md:px-4 dc:md:py-1 dc:border-b border-dc-border dc:shrink-0 bg-dc-surface-secondary dc:rounded-t-lg portlet-drag-handle',
+    'dc:flex dc:items-center dc:justify-between dc:px-3 dc:md:px-4 dc:shrink-0 portlet-drag-handle',
+    // A standalone card's header is a tight bar against its own top edge. In a
+    // section the title sits just under a divider with nothing else marking the
+    // boundary, so it needs room to breathe.
+    inSection
+      ? 'dc:py-3 dc:md:py-3'
+      : 'dc:py-1.5 dc:md:py-1 dc:border-b border-dc-border bg-dc-surface-secondary dc:rounded-t-lg',
     isEditMode ? 'dc:cursor-move' : 'dc:cursor-default',
     extraClassName
   ]
@@ -112,6 +148,18 @@ export function buildContainerStyle(params: {
 
   if (variant === 'groupChild') {
     // Borderless, so filter selection is signalled with an inset ring instead.
+    return {
+      boxShadow: selected ? 'inset 0 0 0 2px var(--dc-primary)' : 'none',
+      borderWidth: 0,
+      backgroundColor: selected ? 'color-mix(in srgb, var(--dc-primary) 5%, transparent)' : 'transparent',
+      opacity: isInSelectionMode && !hasSelectedFilter ? '0.5' : '1',
+      ...containerStyle
+    }
+  }
+
+  if (variant === 'sectionChild') {
+    // Borderless like a group child, so filter selection is signalled with an
+    // inset ring rather than by recolouring a border that isn't drawn.
     return {
       boxShadow: selected ? 'inset 0 0 0 2px var(--dc-primary)' : 'none',
       borderWidth: 0,

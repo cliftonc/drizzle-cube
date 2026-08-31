@@ -290,3 +290,78 @@ describe('buildHeaderClassName', () => {
     expect(buildHeaderClassName(false, 'extra')).toContain('extra')
   })
 })
+
+describe('sectionChild variant', () => {
+  it('drops the frame but keeps the content padding', () => {
+    // The section card draws the only frame; keeping isTransparentContent false
+    // is what stops a transparent markdown header sitting flush to its edge.
+    const modes = resolveDisplayModes({
+      renderChartType: 'markdown',
+      renderDisplayConfig: { transparentBackground: true },
+      layoutMode: 'rows',
+      isEditMode: false,
+      variant: 'sectionChild'
+    })
+
+    expect(modes.isTransparent).toBe(true)
+    expect(modes.isTransparentContent).toBe(false)
+  })
+
+  it('still auto-heights markdown outside grid mode', () => {
+    const modes = resolveDisplayModes({
+      renderChartType: 'markdown',
+      layoutMode: 'rows',
+      isEditMode: false,
+      variant: 'sectionChild'
+    })
+
+    expect(modes.isMarkdownAutoHeight).toBe(true)
+  })
+
+  it('is marked in the container class name', () => {
+    const className = buildContainerClassName({
+      isTransparent: true,
+      isMarkdownAutoHeight: false,
+      isInSelectionMode: false,
+      variant: 'sectionChild'
+    })
+
+    expect(className).toContain('dc-portlet-section-child')
+    expect(className).not.toContain('dc:border')
+  })
+
+  it('drops border, background and shadow from the container style', () => {
+    const style = buildContainerStyle({
+      isTransparent: true,
+      isInSelectionMode: false,
+      hasSelectedFilter: false,
+      variant: 'sectionChild'
+    })
+
+    expect(style.borderWidth).toBe(0)
+    expect(style.boxShadow).toBe('none')
+    expect(style.backgroundColor).toBe('transparent')
+  })
+
+  it('signals filter selection with an inset ring, having no border to recolour', () => {
+    const style = buildContainerStyle({
+      isTransparent: true,
+      isInSelectionMode: true,
+      hasSelectedFilter: true,
+      variant: 'sectionChild'
+    })
+
+    expect(style.boxShadow).toBe('inset 0 0 0 2px var(--dc-primary)')
+  })
+
+  it('drops the header fill, rounding and underline', () => {
+    const inSection = buildHeaderClassName(false, undefined, 'sectionChild')
+    const standalone = buildHeaderClassName(false, undefined, 'standalone')
+
+    expect(inSection).not.toContain('bg-dc-surface-secondary')
+    expect(inSection).not.toContain('dc:rounded-t-lg')
+    expect(inSection).not.toContain('dc:border-b')
+    expect(standalone).toContain('bg-dc-surface-secondary')
+    expect(standalone).toContain('dc:border-b')
+  })
+})

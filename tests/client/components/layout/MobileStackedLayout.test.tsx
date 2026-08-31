@@ -654,4 +654,56 @@ describe('MobileStackedLayout', () => {
       expect(container.querySelector('[data-portlet-id="solo"]')).toBeInTheDocument()
     })
   })
+
+  describe('section banding', () => {
+    const header = createTestPortlet({
+      id: 'header-1',
+      title: 'Header',
+      chartType: 'markdown',
+      displayConfig: { autoHeight: true, content: '# Header' },
+      y: 0, x: 0, w: 12
+    })
+    const body = createTestPortlet({ id: 'p1', title: 'Body', y: 4, x: 0, w: 12 })
+
+    it('bands a header and the portlets beneath it in rows mode', () => {
+      const { container } = render(
+        <MobileStackedLayout config={{ portlets: [header, body], layoutMode: 'rows' }} />
+      )
+
+      const sections = container.querySelectorAll('.dc-dashboard-section')
+      expect(sections).toHaveLength(1)
+      expect(sections[0].children).toHaveLength(2)
+    })
+
+    it('does not band in grid mode, which has no row concept', () => {
+      const { container } = render(
+        <MobileStackedLayout config={{ portlets: [header, body], layoutMode: 'grid' }} />
+      )
+
+      expect(container.querySelector('.dc-dashboard-section')).toBeNull()
+    })
+
+    it('does not band a header that shares its row with another portlet', () => {
+      const sibling = createTestPortlet({ id: 'p2', y: 0, x: 6, w: 6 })
+      const { container } = render(
+        <MobileStackedLayout
+          config={{ portlets: [header, sibling, body], layoutMode: 'rows' }}
+        />
+      )
+
+      expect(container.querySelector('.dc-dashboard-section')).toBeNull()
+    })
+
+    it('marks the section ruled when the header draws its own bottom border', () => {
+      const ruled = {
+        ...header,
+        displayConfig: { autoHeight: true, content: '# Header', accentBorder: 'bottom' as const }
+      }
+      const { container } = render(
+        <MobileStackedLayout config={{ portlets: [ruled, body], layoutMode: 'rows' }} />
+      )
+
+      expect(container.querySelector('.dc-dashboard-section-ruled')).not.toBeNull()
+    })
+  })
 })

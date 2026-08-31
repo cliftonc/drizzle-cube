@@ -982,12 +982,14 @@ export default function DashboardCoordinator({
 
   const renderGroupCard = useCallback((
     group: PortletGroup,
-    renderSnapBands: (portletId: string) => ReactNode
+    renderSnapBands: (portletId: string) => ReactNode,
+    frameless?: boolean
   ): ReactNode => (
     <PortletGroupCard
       group={group}
       portlets={portletsById}
       canEdit={canEdit}
+      frameless={frameless}
       renderChild={(portlet, wrapperProps) => renderPortletCard(portlet, wrapperProps, undefined, 'groupChild')}
       onRename={(groupId, title) => { void actionsRef.current.renameGroup(groupId, title) }}
       onUngroup={(groupId) => { void actionsRef.current.ungroupGroup(groupId) }}

@@ -55,6 +55,137 @@
   padding-bottom: var(--dc-row-gap, 24px);
 }
 
+/* A section: a full-width markdown header row plus the rows it introduces,
+   drawn as one card so the header visibly owns the block beneath it. Applied
+   in view mode only - in edit mode the row-resize handle and the boundary drop
+   zones live inside the very gap this collapses. */
+.dc-dashboard-section {
+  background-color: var(--dc-surface);
+  border: 1px solid var(--dc-border);
+  border-radius: var(--dc-radius-lg);
+  box-shadow: var(--dc-shadow-sm);
+  overflow: hidden;
+  margin-bottom: var(--dc-section-gap, 32px);
+}
+
+.dc-dashboard-section:last-child {
+  margin-bottom: 0;
+}
+
+/* Rows inside a section butt up against each other; the hairline does the
+   separating that the 24px gap used to. */
+/* Every row carries the same inset - the header included, or its text sits a
+   card's-worth of padding further left than the portlet titles below it. The
+   dividers stay full-bleed, since padding sits inside the border. */
+.dc-dashboard-section .dc-row-layout-row-wrapper {
+  padding-bottom: 0;
+  padding-left: var(--dc-section-inset, 16px);
+  padding-right: var(--dc-section-inset, 16px);
+}
+
+/* Drawn as an inset pseudo-element rather than a border on the wrapper: a
+   border runs the section's full width and butts into its left and right edges,
+   which reads as a different kind of line from the vertical rules floating in
+   the column gaps. Inset to the same margin, the two meet as one grid. */
+.dc-dashboard-section .dc-row-layout-row-wrapper + .dc-row-layout-row-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--dc-section-inset, 16px);
+  right: var(--dc-section-inset, 16px);
+  height: 1px;
+  background-color: var(--dc-border);
+  pointer-events: none;
+}
+
+/* A group inside a section is a band, not a nested box: drop the title bar's
+   fill, rounding and underline for the same reason the portlet headers lose
+   theirs. */
+.dc-dashboard-section .dc-portlet-group-frameless > .dc-portlet-group-title {
+  background-color: transparent;
+  border-bottom: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* Rules run *between* portlets, never under their titles. Drawn as a
+   pseudo-element centred in the gap rather than a border on the column, which
+   would hug the right-hand card and read as belonging to it. The column wrapper
+   is already `position: relative`, and the line sits inside the row's box, so
+   the row's `overflow: hidden` does not clip it. */
+.dc-dashboard-section .dc-row-layout-column-wrapper + .dc-row-layout-column-wrapper::before,
+.dc-dashboard-section .dc-portlet-group-cell + .dc-portlet-group-cell::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--dc-border);
+  pointer-events: none;
+}
+
+.dc-dashboard-section .dc-row-layout-column-wrapper + .dc-row-layout-column-wrapper::before {
+  left: calc(-1 * var(--dc-column-gap, 16px) / 2);
+}
+
+/* The header draws its own bottom line, so the section skips the divider it
+   would otherwise draw beneath it. */
+.dc-dashboard-section-ruled > *:nth-child(2)::after {
+  display: none;
+}
+
+/* Pin the section child's body padding to one value at every breakpoint. The
+   Tailwind default is responsive (px-2 -> md:px-4), which would leave the
+   full-bleed offset below unknowable. */
+.dc-dashboard-section .dc-portlet-card-body {
+  padding-left: var(--dc-section-card-inset, 16px);
+  padding-right: var(--dc-section-card-inset, 16px);
+}
+
+/* That bottom line stands in for the section's divider, so it has to reach the
+   section's edges. Widen the header's content box by exactly the padding
+   between it and them, then give the padding straight back - the border moves
+   out, the text does not. */
+.dc-dashboard-section-ruled > *:first-child .dc-markdown-content {
+  --dc-section-bleed: calc(var(--dc-section-inset, 16px) + var(--dc-section-card-inset, 16px));
+  /* The chart sets `width: 100%`, which pins the box to its container and lets
+     the negative margins shift it left without widening it - flush on one edge,
+     short on the other. `auto` lets both margins do their job. */
+  width: auto;
+  margin-left: calc(-1 * var(--dc-section-bleed));
+  margin-right: calc(-1 * var(--dc-section-bleed));
+  padding-left: var(--dc-section-bleed);
+  padding-right: var(--dc-section-bleed);
+}
+
+/* Rows clip their content, which would trim the bleed back off again. */
+.dc-dashboard-section-ruled > .dc-row-layout-row-wrapper:first-child .dc-row-layout-row {
+  overflow: visible;
+}
+
+.dc-dashboard-section .dc-portlet-group-cell + .dc-portlet-group-cell::before {
+  left: calc(-1 * var(--dc-group-gap, 4px) / 2);
+}
+
+/* The mobile stack has no row wrappers - its section children are the blocks
+   themselves - but they take the same inset and the same inset divider. */
+.mobile-stacked-layout .dc-dashboard-section > * {
+  position: relative;
+  padding-left: var(--dc-section-inset, 16px);
+  padding-right: var(--dc-section-inset, 16px);
+}
+
+.mobile-stacked-layout .dc-dashboard-section > * + *::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--dc-section-inset, 16px);
+  right: var(--dc-section-inset, 16px);
+  height: 1px;
+  background-color: var(--dc-border);
+  pointer-events: none;
+}
+
 .dc-row-layout-row {
   display: flex;
   width: 100%;

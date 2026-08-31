@@ -1428,4 +1428,110 @@ describe('RowManagedLayout - groups and snap bands', () => {
       expect(active.classList.contains('dc-drop-zone-active')).toBe(true)
     })
   })
+
+  describe('section banding', () => {
+    const headerPortlet = (overrides = {}) =>
+      createMarkdownPortlet({ id: 'header-1', ...overrides })
+
+    const sectionRows = (): RowLayout[] => [
+      createTestRow({ id: 'row-header', h: 3, columns: [{ portletId: 'header-1', w: 12 }] }),
+      createTestRow({ id: 'row-body', h: 4, columns: [{ portletId: 'p1', w: 12 }] })
+    ]
+
+    const bodyPortlet = createTestPortlet({ id: 'p1' })
+
+    it('wraps a header and the rows beneath it in one section in view mode', () => {
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          canEdit={false}
+          rows={sectionRows()}
+          portlets={[headerPortlet(), bodyPortlet]}
+        />
+      )
+
+      const sections = container.querySelectorAll('.dc-dashboard-section')
+      expect(sections).toHaveLength(1)
+      expect(sections[0].querySelectorAll('.dc-row-layout-row-wrapper')).toHaveLength(2)
+    })
+
+    it('renders no section in edit mode, so the drop and resize handles keep their gap', () => {
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          canEdit
+          rows={sectionRows()}
+          portlets={[headerPortlet(), bodyPortlet]}
+        />
+      )
+
+      expect(container.querySelector('.dc-dashboard-section')).toBeNull()
+      expect(container.querySelectorAll('.dc-row-layout-row-wrapper')).toHaveLength(2)
+    })
+
+    it('renders the portlets inside a section with the sectionChild variant', () => {
+      const renderPortlet = vi.fn((portlet: PortletConfig) => (
+        <div data-testid={`portlet-${portlet.id}`}>{portlet.title}</div>
+      ))
+
+      render(
+        <RowManagedLayout
+          {...defaultProps}
+          canEdit={false}
+          rows={sectionRows()}
+          portlets={[headerPortlet(), bodyPortlet]}
+          renderPortlet={renderPortlet}
+        />
+      )
+
+      expect(renderPortlet).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'p1' }), undefined, undefined, 'sectionChild'
+      )
+    })
+
+    it('marks the section as ruled when the header draws its own bottom border', () => {
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          canEdit={false}
+          rows={sectionRows()}
+          portlets={[
+            headerPortlet({ displayConfig: { autoHeight: true, accentBorder: 'bottom' } }),
+            bodyPortlet
+          ]}
+        />
+      )
+
+      expect(container.querySelector('.dc-dashboard-section-ruled')).not.toBeNull()
+    })
+
+    it('leaves a header with no rows beneath it loose', () => {
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          canEdit={false}
+          rows={[createTestRow({ id: 'row-header', h: 3, columns: [{ portletId: 'header-1', w: 12 }] })]}
+          portlets={[headerPortlet()]}
+        />
+      )
+
+      expect(container.querySelector('.dc-dashboard-section')).toBeNull()
+    })
+
+    it('does not band a half-width markdown row', () => {
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          canEdit={false}
+          rows={[
+            createTestRow({ id: 'r1', h: 3, columns: [{ portletId: 'header-1', w: 6 }, { portletId: 'p2', w: 6 }] }),
+            createTestRow({ id: 'r2', h: 4, columns: [{ portletId: 'p1', w: 12 }] })
+          ]}
+          portlets={[headerPortlet(), createMarkdownPortlet({ id: 'p2' }), bodyPortlet]}
+        />
+      )
+
+      expect(container.querySelector('.dc-dashboard-section')).toBeNull()
+    })
+  })
 })

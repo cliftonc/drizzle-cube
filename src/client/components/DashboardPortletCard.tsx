@@ -51,7 +51,7 @@ const PortletChartBody = React.memo(function PortletChartBody({
   return (
     <div
       ref={setChartContainerRef}
-      className={`dc:flex-1 dc:min-h-0 dc:flex dc:flex-col${isTransparent ? '' : ' dc:px-2 dc:py-3 dc:md:px-4 dc:md:py-4'}`}
+      className={`dc-portlet-card-body dc:flex-1 dc:min-h-0 dc:flex dc:flex-col${isTransparent ? '' : ' dc:px-2 dc:py-3 dc:md:px-4 dc:md:py-4'}`}
     >
       <AnalyticsPortlet
         ref={setPortletComponentRef}
@@ -154,7 +154,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
     variant
   })
 
-  const mergedHeaderClassName = buildHeaderClassName(isEditMode, headerProps?.className)
+  const mergedHeaderClassName = buildHeaderClassName(isEditMode, headerProps?.className, variant)
 
   const {
     onClick: containerOnClick,
