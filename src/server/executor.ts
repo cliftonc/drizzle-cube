@@ -4,6 +4,7 @@
  * Uses DrizzleSqlBuilder for SQL generation and LogicalPlanner for query planning
  */
 
+import { sql } from 'drizzle-orm'
 import type {
   SecurityContext,
   SemanticQuery,
@@ -567,11 +568,51 @@ export class QueryExecutor {
       data: filledData,
       annotation,
       // Include warnings from query planning (e.g., fan-out without dimensions)
-      warnings: optimisedPlan.warnings?.length ? optimisedPlan.warnings : undefined
+      warnings: optimisedPlan.warnings?.length ? optimisedPlan.warnings : undefined,
+      total: query.total ? await this.executeTotalCount(physicalPlan, planQuery, context) : undefined
     }
 
     await this.resultCache.store(cacheKey, result)
     return result
+  }
+
+  /**
+   * Count the rows the query would return with no limit or offset — Cube's
+   * `total`.
+   *
+   * Rebuilds the *same* physical plan with pagination and ordering stripped and
+   * counts over it as a subquery. The wrapper is what makes a grouped query
+   * count groups rather than base rows, and rebuilding from `planQuery` rather
+   * than reading the paginated query's effective values matters because
+   * `applyLimitAndOffset` injects a default limit when an offset arrives
+   * without one.
+   *
+   * Runs inside the caller's RLS context, so the count sees exactly the rows
+   * the page did.
+   */
+  private async executeTotalCount(
+    physicalPlan: PhysicalQueryPlan,
+    planQuery: SemanticQuery,
+    context: QueryContext
+  ): Promise<number> {
+    const unpaginated = this.drizzlePlanBuilder.build(
+      physicalPlan,
+      { ...planQuery, limit: undefined, offset: undefined, order: undefined },
+      context
+    )
+
+    const countQuery = context.db
+      .select({ total: sql<number>`count(*)`.as('total') })
+      .from(unpaginated.as('dc_total'))
+
+    debugSql('total', countQuery)
+
+    const rows = await this.dbExecutor.execute<Record<string, unknown>[]>(countQuery)
+    // Read positionally rather than by key: Snowflake upper-cases column names,
+    // and Postgres returns bigint counts as strings.
+    const value = rows?.[0] ? Object.values(rows[0])[0] : undefined
+    const total = Number(value)
+    return Number.isFinite(total) ? total : 0
   }
 
   /**

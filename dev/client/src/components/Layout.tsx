@@ -4,7 +4,7 @@ import { getIcon } from '@drizzle-cube/client'
 import DrizzleCubeIcon from './DrizzleCubeIcon'
 import ThemeToggle from './ThemeToggle'
 import { getSourcePath } from './layoutNav'
-import { GitHubIcon, DesktopNavLinks, MobileNavLinks, LanguageSelect } from './LayoutNavParts'
+import { GitHubIcon, DesktopNavLinks, MobileNavLinks, LanguageSelect, OrganisationSelect } from './LayoutNavParts'
 
 const DocumentTextIcon = getIcon('documentText')
 const Bars3Icon = getIcon('menu')
@@ -94,6 +94,10 @@ export default function Layout({ children, locale, onLocaleChange }: LayoutProps
             {/* Desktop external links */}
             <div className="hidden md:flex md:items-center md:space-x-3">
               <label className="inline-flex items-center gap-2 text-sm text-dc-text-muted">
+                <span className="hidden xl:inline">Org</span>
+                <OrganisationSelect className="rounded-md border border-dc-border bg-dc-surface text-dc-text px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-dc-primary" />
+              </label>
+              <label className="inline-flex items-center gap-2 text-sm text-dc-text-muted">
                 <span className="hidden xl:inline">Language</span>
                 <LanguageSelect
                   locale={locale}
@@ -149,6 +153,10 @@ export default function Layout({ children, locale, onLocaleChange }: LayoutProps
               {/* Mobile external links */}
               <div className="border-t border-dc-border pt-4 pb-3">
                 <div className="space-y-1">
+                  <label className="block px-3 py-2 text-sm font-medium text-dc-text-muted">
+                    Organisation
+                    <OrganisationSelect className="mt-2 block w-full rounded-md border border-dc-border bg-dc-surface text-dc-text px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-dc-primary" />
+                  </label>
                   <label className="block px-3 py-2 text-sm font-medium text-dc-text-muted">
                     Language
                     <LanguageSelect

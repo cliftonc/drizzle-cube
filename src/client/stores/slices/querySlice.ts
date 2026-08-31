@@ -29,6 +29,7 @@ import {
   buildCubeQuery,
 } from '../../components/AnalysisBuilder/utils/index.js'
 import { convertDateRangeTypeToValue } from '../../shared/utils.js'
+import { isRecordGrainChart } from '../../charts/chartConfigRegistry.js'
 
 // ============================================================================
 // Types
@@ -571,19 +572,22 @@ export const createQuerySlice: StateCreator<
   buildCurrentQuery: () => {
     const state = get()
     const current = state.queryStates[state.activeQueryIndex] || createInitialState()
-    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order, false, current.limit)
+    // Records-style charts list rows, so their query must stay ungrouped.
+    const ungrouped = isRecordGrainChart(state.charts[state.analysisType]?.chartType ?? '')
+    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order, false, current.limit, ungrouped)
   },
 
   buildAllQueries: () => {
     const state = get()
     const q1Breakdowns = state.queryStates[0]?.breakdowns || []
+    const ungrouped = isRecordGrainChart(state.charts[state.analysisType]?.chartType ?? '')
 
     return state.queryStates.map((qs, index) => {
       // In merge mode, Q2+ inherit Q1's breakdowns
       const breakdowns =
         state.mergeStrategy === 'merge' && index > 0 ? q1Breakdowns : qs.breakdowns
 
-      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order, false, qs.limit)
+      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order, false, qs.limit, ungrouped)
     })
   },
 

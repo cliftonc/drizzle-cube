@@ -29,6 +29,7 @@ import {
   buildHierarchyMetadata
 } from './compiler-metadata.js'
 import { validateQueryAgainstCubes } from './query-validator.js'
+import type { QueryValidationResult } from './query-validator.js'
 import type { PlanOptimiser } from './logical-plan/index.js'
 import { t } from '../i18n/runtime.js'
 
@@ -36,6 +37,7 @@ import { t } from '../i18n/runtime.js'
 // query-validator.ts so the executor can import it without depending on the
 // compiler (breaks the compiler ↔ executor cycle).
 export { validateQueryAgainstCubes } from './query-validator.js'
+export type { QueryValidationIssue, QueryValidationResult } from './query-validator.js'
 
 /**
  * Identifier of the base cube set — the cubes registered with {@link
@@ -854,7 +856,7 @@ export class SemanticLayerCompiler {
    * Validate a query against registered cubes
    * Ensures all referenced cubes and fields exist
    */
-  validateQuery(query: SemanticQuery, securityContext: SecurityContext): { isValid: boolean; errors: string[] } {
+  validateQuery(query: SemanticQuery, securityContext: SecurityContext): QueryValidationResult {
     return validateQueryAgainstCubes(this.resolveCubes(securityContext), query)
   }
 

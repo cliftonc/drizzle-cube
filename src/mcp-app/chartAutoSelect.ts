@@ -18,6 +18,8 @@ export interface ChartSelection {
   series: string[]
   /** Measure field for charts that separate the value from the axes (e.g. heatmap). */
   valueField?: string[]
+  /** Ordered columns for the records table, which does not use x/y axes. */
+  columns?: string[]
 }
 
 interface LoadQuery {
@@ -39,6 +41,7 @@ export const SUPPORTED_CHARTS: McpChartType[] = [
   'radar', 'radialBar', 'bubble', 'funnel', 'waterfall', 'gauge',
   'heatmap', 'sankey', 'sunburst', 'boxPlot', 'activityGrid',
   'kpiDelta', 'kpiText', 'candlestick', 'measureProfile', 'markdown',
+  'recordsTable',
 ]
 
 function getMeasures(query: LoadQuery): string[] {
@@ -185,6 +188,17 @@ export function deriveChartConfig(query: LoadQuery, data: any[], chartType: McpC
     return {
       chartType,
       xAxis: getTableColumns(query, data),
+      yAxis: [],
+      series: [],
+    }
+  }
+
+  if (chartType === 'recordsTable') {
+    // Same column derivation as `table`, under the records table's own key.
+    return {
+      chartType,
+      columns: getTableColumns(query, data),
+      xAxis: [],
       yAxis: [],
       series: [],
     }

@@ -66,6 +66,11 @@ export interface QueryResult {
   }
   /** Warnings about potential query issues (e.g., fan-out without dimensions) */
   warnings?: QueryWarning[]
+  /**
+   * Total rows the query would return with no limit/offset, present only when
+   * the query asked for it with `total: true`.
+   */
+  total?: number
 }
 
 /**

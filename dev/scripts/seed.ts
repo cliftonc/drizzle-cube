@@ -2,35 +2,55 @@
  * Database seeding script with sample data
  */
 
+import { sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http'
 import postgres from 'postgres'
 import { neon } from '@neondatabase/serverless'
 import { employees, departments, productivity, prEvents, teams, employeeTeams, analyticsPages, settings, attributes, employeeAttributeValues, schema } from '../server/schema'
-import { productivityDashboardConfig } from '../server/dashboard-config'
+import { productivityDashboardConfig, buildRecordsDashboardConfig } from '../server/dashboard-config'
+import { createDatabase, isNeonUrl } from '../server/database'
+
+/**
+ * Tell a running dev server to re-register its cube sets.
+ *
+ * Best-effort: no server running is the normal case when seeding, so a failed
+ * request is not an error.
+ */
+async function notifyRunningDevServer(): Promise<void> {
+  const url = process.env.DEV_SERVER_URL || 'http://localhost:3001'
+  try {
+    const response = await fetch(`${url}/api/dev/reload-cube-sets`, { method: 'POST' })
+    if (response.ok) {
+      console.log('🔄 Told the running dev server to reload its cube sets')
+    }
+  } catch {
+    // Not running — it will read the new attributes when it starts.
+  }
+}
 
 // Default connection string for CLI usage
 const defaultConnectionString = process.env.DATABASE_URL || 'postgresql://drizzle_user:drizzle_pass123@localhost:54821/drizzle_cube_db'
 
 // Auto-detect Neon vs local PostgreSQL based on connection string
-function isNeonUrl(url: string): boolean {
-  return url.includes('.neon.tech') || url.includes('neon.database')
-}
-
-// Create database connection factory
-function createDatabase(databaseUrl: string) {
-  if (isNeonUrl(databaseUrl)) {
-    console.log('🚀 Connecting to Neon serverless database')
-    const sql = neon(databaseUrl)
-    return drizzleNeon(sql, { schema })
-  } else {
-    console.log('🐘 Connecting to local PostgreSQL database')
-    const client = postgres(databaseUrl)
-    return drizzle(client, { schema })
-  }
-}
 
 // Sample data
+/**
+ * Organisation 2 — a deliberately small second tenant. Its only purpose is to
+ * make the per-tenant cube set visible: it defines a different attribute, so
+ * `/cubejs-api/v1/meta` and the records table differ from organisation 1's.
+ */
+const ORG2_EMPLOYEES = [
+  { name: 'Priya Raman', email: 'priya.raman@globex.example', active: true, salary: 82000 },
+  { name: 'Tomas Novak', email: 'tomas.novak@globex.example', active: true, salary: 76000 },
+  { name: 'Amara Osei', email: 'amara.osei@globex.example', active: true, salary: 91000 },
+  { name: 'Ben Whitfield', email: 'ben.whitfield@globex.example', active: false, salary: 68000 },
+  { name: 'Sofia Marin', email: 'sofia.marin@globex.example', active: true, salary: 88000 },
+  { name: 'Kenji Aoki', email: 'kenji.aoki@globex.example', active: true, salary: 79000 }
+]
+
+const ORG2_OWNERS = ['Dana', 'Kim', 'Alex']
+
 const sampleDepartments = [
   { name: 'Engineering', organisationId: 1, budget: 500000 },
   { name: 'Marketing', organisationId: 1, budget: 250000 },
@@ -785,6 +805,15 @@ export async function executeSeed(db?: any, connectionString?: string) {
   try {
     // Clear existing data (in reverse dependency order)
     console.log('🧹 Clearing existing data...')
+    // TRUNCATE ... RESTART IDENTITY rather than DELETE, so attribute ids start
+    // at 1 on every reseed. A generated dimension is named after the attribute
+    // id (`attr_1`), so ids that climb each time would silently invalidate the
+    // seeded dashboards, any bookmarked share link, and any dashboard you built
+    // by hand. Leaving these tables uncleared would also duplicate the
+    // attributes and strand values against deleted employees.
+    await database.execute(
+      sql`TRUNCATE TABLE employee_attribute_values, attributes RESTART IDENTITY`
+    )
     await database.delete(employeeTeams)
     await database.delete(teams)
     await database.delete(prEvents)
@@ -915,11 +944,14 @@ export async function executeSeed(db?: any, connectionString?: string) {
       ])
       .returning()
 
-    type SeededAttribute = { id: number; name: string; organisationId: number }
-    const org1Attributes: SeededAttribute[] = insertedAttributes
-      .filter((a: SeededAttribute) => a.organisationId === 1)
-    const healthAttribute = org1Attributes.find((a: SeededAttribute) => a.name === 'Health')
-    const completionAttribute = org1Attributes.find((a: SeededAttribute) => a.name === 'Completion')
+    type SeededAttribute = { id: number; name: string; valueType: string; organisationId: number }
+    const attributeByName = (organisationId: number, name: string) =>
+      (insertedAttributes as SeededAttribute[])
+        .find(a => a.organisationId === organisationId && a.name === name)
+
+    const healthAttribute = attributeByName(1, 'Health')
+    const completionAttribute = attributeByName(1, 'Completion')
+    const ownerAttribute = attributeByName(2, 'Owner')
 
     const attributeValues: Array<{
       employeeId: number
@@ -948,13 +980,70 @@ export async function executeSeed(db?: any, connectionString?: string) {
       })
     }
 
+    // A second tenant, so the per-tenant cube set is something you can actually
+    // see: organisation 2 defines 'Owner' and nothing else, so its /meta and
+    // its records table carry a different column than organisation 1's.
+    console.log('🏢 Inserting organisation 2 (second demo tenant)...')
+    const [org2Department] = await database.insert(departments)
+      .values([{ name: 'Operations', organisationId: 2, budget: 120000 }])
+      .returning()
+
+    const org2Employees = await database.insert(employees)
+      .values(ORG2_EMPLOYEES.map(employee => ({
+        ...employee,
+        departmentId: org2Department.id,
+        organisationId: 2
+      })))
+      .returning()
+
+    if (ownerAttribute) {
+      org2Employees.forEach((employee: { id: number }, index: number) => {
+        attributeValues.push({
+          employeeId: employee.id,
+          attributeId: ownerAttribute.id,
+          value: ORG2_OWNERS[index % ORG2_OWNERS.length],
+          organisationId: 2
+        })
+      })
+    }
+
     if (attributeValues.length > 0) {
       await database.insert(employeeAttributeValues).values(attributeValues)
     }
 
     console.log(
-      `✅ Inserted ${insertedAttributes.length} attributes and ${attributeValues.length} attribute values`
+      `✅ Inserted ${insertedAttributes.length} attributes, ${attributeValues.length} attribute values ` +
+      `and ${org2Employees.length} organisation-2 employees`
     )
+
+    // A records-table dashboard per tenant, built from the attribute ids just
+    // inserted — the generated member name is `attr_<id>`, so it cannot be
+    // written into a static config.
+    console.log('📊 Inserting records-table dashboards...')
+    const recordsDashboards = await database.insert(analyticsPages)
+      .values([
+        {
+          ...buildRecordsDashboardConfig(
+            (insertedAttributes as SeededAttribute[]).filter(a => a.organisationId === 1)
+          ),
+          organisationId: 1
+        },
+        {
+          ...buildRecordsDashboardConfig(
+            (insertedAttributes as SeededAttribute[]).filter(a => a.organisationId === 2)
+          ),
+          organisationId: 2
+        }
+      ])
+      .returning()
+
+    console.log(`✅ Inserted ${recordsDashboards.length} records-table dashboard(s)`)
+
+    // Cube sets are registered at boot, so a server that was already running
+    // still holds the previous attribute ids — and every generated column in
+    // the dashboards above would fail validation against it. Nudge it if it is
+    // there; a fresh boot picks them up anyway.
+    await notifyRunningDevServer()
 
     // Insert initial settings (including Gemini AI call counter)
     console.log('⚙️ Inserting initial settings...')

@@ -39,7 +39,7 @@ export interface DisplayOptionConfig {
   label: string
   
   /** Type of input control to render */
-  type: 'boolean' | 'string' | 'number' | 'select' | 'color' | 'paletteColor' | 'axisFormat' | 'stringArray' | 'buttonGroup' | 'thresholdBands'
+  type: 'boolean' | 'string' | 'number' | 'select' | 'color' | 'paletteColor' | 'axisFormat' | 'stringArray' | 'buttonGroup' | 'thresholdBands' | 'columnFormats' | 'rowLink'
   
   /** Default value for the option */
   defaultValue?: any
@@ -150,6 +150,16 @@ export interface ChartTypeConfig {
    * Omit to mean "always available".
    */
   isAvailable?: (ctx: ChartAvailabilityContext) => ChartAvailability
+
+  /**
+   * This chart lists individual records rather than aggregates, so the query
+   * built for it must be `ungrouped`.
+   *
+   * Declared here rather than switched on a chart type inside the query
+   * builders, and read from the eager registry so those stay data-driven — and
+   * so a custom chart can opt in through the same flag.
+   */
+  recordGrain?: boolean
 }
 
 /**

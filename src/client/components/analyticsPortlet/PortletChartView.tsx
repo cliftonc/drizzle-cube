@@ -9,7 +9,8 @@ import { DrillMenu } from '../DrillMenu.js'
 import { DrillBreadcrumb } from '../DrillBreadcrumb.js'
 import { PortletChart } from './PortletChart.js'
 import { hasIntrinsicChartHeight } from './intrinsicChartHeight.js'
-import type { ChartAxisConfig, ChartDisplayConfig, ChartType, CubeQuery } from '../../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
+import type { ChartAxisConfig, ChartDisplayConfig, ChartPagination, ChartType, CubeQuery } from '../../types.js'
 import type { FlowChartData } from '../../types/flow.js'
 import type { RetentionChartData } from '../../types/retention.js'
 import type { ColorPalette } from '../../utils/colorPalettes.js'
@@ -40,6 +41,9 @@ export interface PortletChartViewProps {
   flowChartData: FlowChartData | null
   retentionChartData: RetentionChartData | null
   activeQuery: CubeQuery | null
+  pagination?: ChartPagination
+  /** Members dropped because the model no longer has them; surfaced as a note. */
+  droppedMembers?: string[]
   drill: DrillInteraction
   isDrillEnabled: boolean
   onNavigateBack: () => void
@@ -47,6 +51,7 @@ export interface PortletChartViewProps {
 }
 
 export function PortletChartView(props: PortletChartViewProps) {
+  const { t } = useTranslation()
   const {
     title,
     query,
@@ -65,6 +70,8 @@ export function PortletChartView(props: PortletChartViewProps) {
     flowChartData,
     retentionChartData,
     activeQuery,
+    pagination,
+    droppedMembers,
     drill,
     isDrillEnabled,
     onNavigateBack,
@@ -92,6 +99,15 @@ export function PortletChartView(props: PortletChartViewProps) {
             </div>
           )}
 
+          {/* Columns the model no longer has. Muted rather than an error: the
+              rest of the widget is still correct, and a deleted attribute
+              should not take the dashboard down. */}
+          {droppedMembers && droppedMembers.length > 0 && (
+            <div className="dc:mb-1 dc:flex-shrink-0 dc:text-xs text-dc-text-muted dc:truncate" title={droppedMembers.join(', ')}>
+              {t('portlet.droppedMembers', { members: droppedMembers.join(', ') })}
+            </div>
+          )}
+
           {/* Chart content */}
           <div className="dc:flex-1 dc:min-h-0">
             <PortletChart
@@ -109,6 +125,7 @@ export function PortletChartView(props: PortletChartViewProps) {
               chartConfig={chartConfig}
               displayConfig={displayConfig}
               activeQuery={activeQuery}
+              pagination={pagination}
               colorPalette={colorPalette}
               drillEnabled={isDrillEnabled}
               currentChartConfig={drill.currentChartConfig}

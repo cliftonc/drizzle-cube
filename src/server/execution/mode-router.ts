@@ -8,7 +8,7 @@
 
 import type { Cube, SemanticQuery } from '../types/index.js'
 import { safeKey } from '../cube-utils.js'
-import { validateQueryAgainstCubes } from '../query-validator.js'
+import { validateQueryAgainstCubes, QueryValidationError } from '../query-validator.js'
 import type { ComparisonQueryBuilder } from '../builders/comparison-query-builder.js'
 import type { FunnelQueryBuilder } from '../builders/funnel-query-builder.js'
 import type { FlowQueryBuilder } from '../builders/flow-query-builder.js'
@@ -69,7 +69,10 @@ export class ModeRouter {
     const validateStandard = () => {
       const validation = validateQueryAgainstCubes(cubes, query)
       if (!validation.isValid) {
-        throw new Error(t('server.errors.queryValidationFailed', { errors: validation.errors.join(', ') }))
+        throw new QueryValidationError(
+          t('server.errors.queryValidationFailed', { errors: validation.errors.join(', ') }),
+          validation.issues
+        )
       }
     }
 

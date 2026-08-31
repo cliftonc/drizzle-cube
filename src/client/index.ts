@@ -92,7 +92,7 @@ export {
 export { ScrollContainerProvider, useScrollContainer } from './providers/ScrollContainerContext.js'
 export { useCubeFieldLabel } from './hooks/useCubeFieldLabel.js'
 export { createCubeClient } from './client/CubeClient.js'
-export { CubeClient } from './client/CubeClient.js'
+export { CubeClient, CubeQueryError } from './client/CubeClient.js'
 
 // TanStack Query hooks for data fetching
 export {
@@ -261,6 +261,11 @@ export type {
   CubeQuery,
   CubeQueryOptions,
   CubeApiOptions,
+  CubeValidationIssue,
+  ChartPagination,
+  ColumnFormatConfig,
+  ColumnFormatKind,
+  RowLinkConfig,
   DashboardConfig,
   PortletGroup,
   PortletGroupCell,

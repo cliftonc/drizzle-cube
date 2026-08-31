@@ -12,6 +12,7 @@ const MCP_CHART_TYPES: McpChartType[] = [
   'waterfall', 'gauge', 'boxPlot', 'candlestick',
   'activityGrid', 'measureProfile',
   'sankey', 'sunburst', 'heatmap', 'markdown',
+  'recordsTable',
 ]
 
 interface McpChartSwitcherProps {

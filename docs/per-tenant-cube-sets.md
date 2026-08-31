@@ -13,6 +13,12 @@ The motivating case is user-defined attributes (EAV): an admin adds a "Health"
 attribute for their organisation, it becomes a dimension, and no other tenant
 should see it.
 
+**A working example lives in `dev/`**: `dev/server/attribute-cubes.ts` is the
+boot loop below against real tables, the seed gives two organisations
+*different* attributes, and the dev site's header has an org switcher so you can
+watch `/meta` and the Employee Records dashboard change shape between them.
+Run `npm run dev:setup && npm run dev`.
+
 Upgrading an existing deployment? See [Release 0.8](https://www.drizzle-cube.dev/guides/migrating-to-0-8/).
 
 ## The boot loop

@@ -9,12 +9,21 @@
  */
 
 import type { ReactElement } from 'react'
-import type { ChartDisplayConfig, ColorPalette, AxisFormatConfig, ThresholdBand } from '../../types.js'
+import type {
+  AxisFormatConfig,
+  ChartAxisConfig,
+  ChartDisplayConfig,
+  ColorPalette,
+  ColumnFormatConfig,
+  RowLinkConfig,
+  ThresholdBand
+} from '../../types.js'
 import type { DisplayOptionConfig } from '../../charts/chartConfigs.js'
 import { AxisFormatControls } from '../charts/AxisFormatControls.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
 import StringArrayInput from './StringArrayInput.js'
 import { parseThresholds } from '../charts/gaugeChartHelpers.js'
+import ColumnFormatsEditor from './ColumnFormatsEditor.js'
 
 /** Neutral starting colour for a newly added threshold band. */
 const DEFAULT_BAND_COLOUR = '#22c55e'
@@ -25,8 +34,14 @@ interface OptionRenderProps {
   option: DisplayOptionConfig
   displayConfig: ChartDisplayConfig
   colorPalette?: ColorPalette
+  /**
+   * The chart's axis config. Only needed by options that are keyed by field —
+   * `columnFormats` renders one row per assigned column — so it is optional and
+   * the mount points that configure fieldless charts may omit it.
+   */
+  chartConfig?: ChartAxisConfig
   setValue: SetValue
-  t: (key: string) => string
+  t: (key: string, params?: Record<string, string | number>) => string
 }
 
 function OptionDescription({ description, t }: { description?: string; t: (key: string) => string }) {
@@ -329,6 +344,72 @@ function ThresholdBandsOption({ option, displayConfig, setValue, t }: OptionRend
   )
 }
 
+/**
+ * Per-column rendering for the records table. Delegates to `ColumnFormatsEditor`
+ * so this file stays a dispatcher; like `ThresholdBandsOption` it always writes
+ * the complete `Record` back rather than a partial patch.
+ */
+function ColumnFormatsOption({ option, displayConfig, chartConfig, colorPalette, setValue, t }: OptionRenderProps) {
+  const key = option.key as keyof ChartDisplayConfig
+  return (
+    <div className="dc:space-y-1">
+      <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
+      <ColumnFormatsEditor
+        value={(displayConfig[key] as Record<string, ColumnFormatConfig>) ?? {}}
+        chartConfig={chartConfig}
+        colorPalette={colorPalette}
+        onChange={setValue}
+        t={t}
+      />
+      <OptionDescription description={option.description} t={t} />
+    </div>
+  )
+}
+
+/**
+ * Row click-through template for the records table. `{Cube.field}` tokens are
+ * filled per row, including from hidden columns; the URL is validated at render
+ * time, so an unsafe template simply produces no link.
+ */
+function RowLinkOption({ option, displayConfig, setValue, t }: OptionRenderProps) {
+  const key = option.key as keyof ChartDisplayConfig
+  const value = (displayConfig[key] as RowLinkConfig | undefined) ?? { urlTemplate: '' }
+
+  const commit = (next: RowLinkConfig) =>
+    setValue(next.urlTemplate.trim() ? next : undefined)
+
+  return (
+    <div className="dc:space-y-1">
+      <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
+      <input
+        type="text"
+        value={value.urlTemplate}
+        onChange={(e) => commit({ ...value, urlTemplate: e.target.value })}
+        placeholder={t('chart.recordsTable.rowLink.placeholder')}
+        aria-label={t('chart.recordsTable.rowLink.urlTemplate')}
+        className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+      />
+      <div className="dc:flex dc:border border-dc-border dc:rounded-sm dc:overflow-hidden">
+        {(['self', 'blank'] as const).map(target => (
+          <button
+            key={target}
+            type="button"
+            onClick={() => commit({ ...value, target })}
+            className={`dc:flex-1 dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:cursor-pointer ${
+              (value.target ?? 'self') === target
+                ? 'bg-dc-primary text-white'
+                : 'bg-dc-surface text-dc-text hover:bg-dc-border'
+            }`}
+          >
+            {t(`chart.recordsTable.rowLink.target.${target}`)}
+          </button>
+        ))}
+      </div>
+      <OptionDescription description={option.description} t={t} />
+    </div>
+  )
+}
+
 // Dispatch table — keyed by option.type. Keeps the control's render flat.
 const OPTION_RENDERERS: Record<string, (props: OptionRenderProps) => ReactElement | null> = {
   boolean: BooleanOption,
@@ -340,13 +421,16 @@ const OPTION_RENDERERS: Record<string, (props: OptionRenderProps) => ReactElemen
   axisFormat: AxisFormatOption,
   stringArray: StringArrayOption,
   buttonGroup: ButtonGroupOption,
-  thresholdBands: ThresholdBandsOption
+  thresholdBands: ThresholdBandsOption,
+  columnFormats: ColumnFormatsOption,
+  rowLink: RowLinkOption
 }
 
 interface DisplayOptionControlProps {
   option: DisplayOptionConfig
   displayConfig: ChartDisplayConfig
   colorPalette?: ColorPalette
+  chartConfig?: ChartAxisConfig
   onDisplayConfigChange: (config: ChartDisplayConfig) => void
 }
 
@@ -354,6 +438,7 @@ export default function DisplayOptionControl({
   option,
   displayConfig,
   colorPalette,
+  chartConfig,
   onDisplayConfigChange,
 }: DisplayOptionControlProps) {
   const { t } = useTranslation()
@@ -362,5 +447,5 @@ export default function DisplayOptionControl({
 
   const Renderer = OPTION_RENDERERS[option.type]
   if (!Renderer) return null
-  return <Renderer option={option} displayConfig={displayConfig} colorPalette={colorPalette} setValue={setValue} t={t} />
+  return <Renderer option={option} displayConfig={displayConfig} colorPalette={colorPalette} chartConfig={chartConfig} setValue={setValue} t={t} />
 }

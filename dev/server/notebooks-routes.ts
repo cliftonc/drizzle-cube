@@ -8,6 +8,7 @@ import { eq, and, asc } from 'drizzle-orm'
 import type { DrizzleDatabase } from '../../src/server/index.js'
 import { notebooks } from './schema.js'
 import type { Schema } from './schema.js'
+import { resolveOrganisationId } from './organisation.js'
 
 interface Variables {
   db: DrizzleDatabase<Schema>
@@ -18,7 +19,7 @@ const notebooksApp = new Hono<{ Variables: Variables }>()
 
 // Middleware to ensure organisationId is set
 notebooksApp.use('*', async (c, next) => {
-  c.set('organisationId', 1)
+  c.set('organisationId', resolveOrganisationId(c))
   await next()
 })
 

@@ -27,6 +27,9 @@
   "chart.option.showCentreLabel.description": "Display current value and field name in the center of the gauge",
   "chart.option.accentBorder.description": "Add an accent-colored border on one side of the content",
 
+  "chart.recordsTable.columnFormats.badgeColours": "Value colors",
+  "chart.recordsTable.columnFormats.badgeColour": "Color",
+
   "chart.scatter.dropZone.series.empty": "Drop a dimension to color points",
   "chart.bubble.dropZone.colorField.empty": "Drop a field for bubble color (optional)",
   "chart.treemap.dropZone.series.empty": "Drop a dimension for color grouping"

@@ -297,4 +297,68 @@ describe('Query Validation', () => {
       expect(result.errors).toContain("Cube 'NonExistentCube' not found (referenced in measure 'NonExistentCube.count')")
     })
   })
+
+  describe('structured issues', () => {
+    // The prose errors are joined with ', ' and the per-field hints contain the
+    // same separator, so a caller reacting to one specific missing member needs
+    // these rather than the string.
+    it('names an unknown dimension and where it was referenced', () => {
+      const result = compiler.validateQuery(
+        { dimensions: ['Employees.name', 'Employees.attr_999'] },
+        SINGLE_TENANT_CONTEXT
+      )
+
+      expect(result.issues).toEqual([
+        expect.objectContaining({ source: 'dimension', member: 'Employees.attr_999' })
+      ])
+    })
+
+    it('distinguishes a projected member from a filtered one', () => {
+      const result = compiler.validateQuery(
+        {
+          dimensions: ['Employees.attr_999'],
+          filters: [{ member: 'Employees.attr_998', operator: 'equals', values: ['x'] }]
+        },
+        SINGLE_TENANT_CONTEXT
+      )
+
+      expect(result.issues.map(i => [i.source, i.member])).toEqual([
+        ['dimension', 'Employees.attr_999'],
+        ['filter', 'Employees.attr_998']
+      ])
+    })
+
+    it('reports unknown measures and time dimensions too', () => {
+      const result = compiler.validateQuery(
+        {
+          measures: ['Employees.nope'],
+          timeDimensions: [{ dimension: 'Employees.notATime', granularity: 'day' }]
+        },
+        SINGLE_TENANT_CONTEXT
+      )
+
+      expect(result.issues.map(i => i.source).sort()).toEqual(['measure', 'timeDimension'])
+    })
+
+    it('reports an unknown cube against the member that referenced it', () => {
+      const result = compiler.validateQuery(
+        { dimensions: ['Ghost.name'] },
+        SINGLE_TENANT_CONTEXT
+      )
+
+      expect(result.issues).toEqual([
+        expect.objectContaining({ source: 'dimension', member: 'Ghost.name' })
+      ])
+    })
+
+    it('is empty for a valid query', () => {
+      const result = compiler.validateQuery(
+        { measures: ['Employees.count'], dimensions: ['Employees.name'] },
+        SINGLE_TENANT_CONTEXT
+      )
+
+      expect(result.isValid).toBe(true)
+      expect(result.issues).toEqual([])
+    })
+  })
 })
