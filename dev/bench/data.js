@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788137609486,
+  "lastUpdate": 1788154508004,
   "repoUrl": "https://github.com/cliftonc/drizzle-cube",
   "entries": {
     "drizzle-cube": [
@@ -77472,6 +77472,275 @@ window.BENCHMARK_DATA = {
             "range": "± 0.1ms p95",
             "unit": "ms",
             "extra": "Cache-enabled executor, warm cache · p95 0.5ms · 700 rows"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "clifton.cunningham@gmail.com",
+            "name": "Clifton Cunningham",
+            "username": "cliftonc"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f4529ef0e1e53b1da8ea7c7891b234ac6c01b685",
+          "message": "feat(server): per-tenant cube definitions (cube sets) (#1192)\n\n* feat(server): per-tenant cube definitions (cube sets)\n\nCube definitions can now differ per tenant. `SemanticLayerCompiler` resolves\nwhich cubes a caller sees from their security context via\n`contextToCubeSetId`, with one set registered per tenant at application boot\nthrough `registerCubeSet(setId, cubes)`. This is drizzle-cube's equivalent of\nCube's COMPILE_CONTEXT, and it is what discussion #1007 needs: user-defined\n(EAV) attributes are almost always per-organisation, so a single global model\nwould serve one tenant's columns to another the moment their attribute sets\ndiverged.\n\nSets are merged over the shared base set at registration time, so request\npaths read a precomputed map and never merge. Registration is synchronous:\n`getMetadata()` and `validateQuery()` keep their shape and no request pays a\nload cost.\n\nThe invariant: nothing resolves a cube list without a security context.\n`securityContext` is therefore required — not optional with a fallback — on\n`getMetadata`, `validateQuery`, `getCube`, `getAllCubes(Map)`, `getCubeNames`\nand `hasCube`. An optional parameter would leave the exact failure this\nprevents: a caller that forgets it still gets *a* cube list, and it is the\nwrong tenant's. Set lifecycle is the deliberate exception, since registration\ndefines tenancy rather than operating within it.\n\nTwo correctness issues this surfaced, fixed here:\n\n- Query cache keys now carry `setId:baseGen.setGen` unconditionally. The\n  security-context hash alone is not enough: `includeSecurityContext: false`\n  and a custom `securityContextSerializer` can each hash two tenants\n  identically. The generation is monotonic across the compiler so that\n  unregistering and re-registering a set cannot reproduce an earlier key.\n- Every REST response now sets `Cache-Control: private, no-store`. No REST\n  response previously set any `Cache-Control`, permitting heuristic caching of\n  tenant data by a shared cache — latent before, unsafe once `/meta` varies by\n  tenant.\n\nAlso included, useful independently of the Records Table:\n\n- `buildAttributeDimensions()` generates a dimension per EAV attribute over a\n  correlated subquery, with mandatory in-subquery security scoping, `LIMIT 1`,\n  and a stable member name derived from the attribute id so renames update\n  headers without breaking saved dashboards.\n- `tryCastToType` on all 7 engines: unparseable input yields NULL rather than\n  failing the query (Postgres) or silently becoming 0 (MySQL/SQLite).\n- `QueryContext` exposes `cast`/`tryCast` so cube authors can emit portable\n  SQL without reaching for the engine adapter.\n- `Dimension.shown` / `Measure.shown` are now honoured; they were read nowhere.\n- Express and Fastify accept a pre-built `semanticLayer`, without which they\n  could not use cube sets at all. `NextAdapterOptions.cubes` is now optional,\n  matching a runtime that already handled an injected compiler.\n\nBREAKING CHANGE: `securityContext` is required on the cube-resolving methods\nabove; `/meta` resolves the security context and is no longer publicly\ncacheable; `HttpPort.setHeader` is required; `handleDiscover`/`handleSuggest`/\n`handleValidate`/`buildMcpResources` take a security context. See\ndocs/migrating-to-0.8.md.\n\nVerified: typecheck, lint, build, check:exports, 2455 server (SQLite), 6255\nclient and 7 CLI tests. Engine-specific SQL is shape-asserted only and left to\nCI; the dev EAV example typechecks but was not run (no Docker).\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* fix(server): scope generated attribute dimensions to what strict engines allow\n\nCI on Postgres and MySQL rejected two of the alias-safety tests added in the\nprevious commit. The tests were wrong, not the engines: a generated attribute\ndimension is a correlated subquery keyed on the record's primary key, so a\ngrouped query must also group by that key. Postgres reports \"subquery uses\nungrouped column ... from outer query\" and MySQL the same under\nonly_full_group_by. SQLite is permissive, which is why a SQLite-only run\nmissed it — the exact caveat the spec said to verify rather than assume.\n\nRather than weaken the assertions, the tests now cover the real supported\nenvelope: ungrouped queries across a join (the record-grain listing this\nfeature exists for), and grouped queries that include the record key. A third\ntest pins the limitation itself, expecting rejection on strict engines and\nacceptance on SQLite, so the difference is recorded rather than discovered\nagain later.\n\nDocumented in the buildAttributeDimensions docblock and in\ndocs/per-tenant-cube-sets.md, including the pivoted-view escalation for\ndeployments that need to aggregate freely across an attribute.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* docs: use absolute doc links in adapter READMEs so they resolve on the docs site\n\nThese READMEs are synced verbatim into drizzle-cube.dev by the help site's\nsync-external-content script, where a repo-relative link to docs/ resolves to\nnothing. An absolute site URL works both on GitHub and once published.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-08-31T06:32:30+01:00",
+          "tree_id": "db87324b796d4cfb61ac76b94ae58e7176ffb945",
+          "url": "https://github.com/cliftonc/drizzle-cube/commit/f4529ef0e1e53b1da8ea7c7891b234ac6c01b685"
+        },
+        "date": 1788154506057,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "baseline.count-time-entries",
+            "value": 50.43,
+            "range": "± 0.7ms p95",
+            "unit": "ms",
+            "extra": "Count over ~730k time entries · p95 51.1ms · 1 rows"
+          },
+          {
+            "name": "baseline.sum-avg-productivity",
+            "value": 19.86,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Sum + avg over ~335k productivity rows · p95 20.1ms · 1 rows"
+          },
+          {
+            "name": "baseline.count-distinct",
+            "value": 152.77,
+            "range": "± 2.3ms p95",
+            "unit": "ms",
+            "extra": "Count distinct employees over time entries · p95 155.0ms · 1 rows"
+          },
+          {
+            "name": "baseline.min-max",
+            "value": 31.08,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Min + max lines of code · p95 31.5ms · 1 rows"
+          },
+          {
+            "name": "baseline.calculated-measure",
+            "value": 34.01,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Calculated measure (productivity score) · p95 34.5ms · 1 rows"
+          },
+          {
+            "name": "multi.six-measures",
+            "value": 79.9,
+            "range": "± 1.5ms p95",
+            "unit": "ms",
+            "extra": "Six measures on time entries · p95 81.4ms · 1 rows"
+          },
+          {
+            "name": "multi.mixed-types",
+            "value": 54.57,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Mixed aggregation types on productivity · p95 55.2ms · 1 rows"
+          },
+          {
+            "name": "groupby.low-cardinality",
+            "value": 95.92,
+            "range": "± 1.4ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type (6 groups) · p95 97.3ms · 6 rows"
+          },
+          {
+            "name": "groupby.mid-cardinality",
+            "value": 84.37,
+            "range": "± 2.3ms p95",
+            "unit": "ms",
+            "extra": "Group by department (~25 groups) · p95 86.6ms · 25 rows"
+          },
+          {
+            "name": "groupby.high-cardinality",
+            "value": 41.63,
+            "range": "± 7.1ms p95",
+            "unit": "ms",
+            "extra": "Group by employee (~700 groups) · p95 48.8ms · 700 rows"
+          },
+          {
+            "name": "groupby.two-dimensions",
+            "value": 109.99,
+            "range": "± 1.9ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type + department · p95 111.9ms · 150 rows"
+          },
+          {
+            "name": "filter.equals",
+            "value": 62.72,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Equals filter (development entries) · p95 63.1ms · 1 rows"
+          },
+          {
+            "name": "filter.numeric-range",
+            "value": 30.23,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Numeric range filter (linesOfCode > 100) · p95 30.5ms · 1 rows"
+          },
+          {
+            "name": "filter.string-contains",
+            "value": 1.36,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "String contains filter on employee name · p95 1.4ms · 1 rows"
+          },
+          {
+            "name": "filter.nested-and-or",
+            "value": 72.63,
+            "range": "± 2.3ms p95",
+            "unit": "ms",
+            "extra": "Nested AND/OR filter on time entries · p95 75.0ms · 1 rows"
+          },
+          {
+            "name": "filter.in-list-100",
+            "value": 62.75,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "IN-list filter with 100 employee ids · p95 63.4ms · 1 rows"
+          },
+          {
+            "name": "time.day-granularity-year",
+            "value": 125.9,
+            "range": "± 3.0ms p95",
+            "unit": "ms",
+            "extra": "Daily time series over 2024 (~366 buckets) · p95 128.9ms · 262 rows"
+          },
+          {
+            "name": "time.month-granularity",
+            "value": 127.16,
+            "range": "± 0.9ms p95",
+            "unit": "ms",
+            "extra": "Monthly time series over 2024 · p95 128.1ms · 12 rows"
+          },
+          {
+            "name": "time.week-with-dimension",
+            "value": 46.1,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Weekly series split by allocation type (H1 2024) · p95 46.5ms · 104 rows"
+          },
+          {
+            "name": "time.gap-fill",
+            "value": 61.31,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "Daily series with fillMissingDates over 16 months · p95 62.4ms · 488 rows"
+          },
+          {
+            "name": "time.compare-date-range",
+            "value": 121.25,
+            "range": "± 4.0ms p95",
+            "unit": "ms",
+            "extra": "Period comparison Q1 vs Q2 2024 by month · p95 125.3ms · 6 rows"
+          },
+          {
+            "name": "join.belongs-to",
+            "value": 2.22,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Employees joined to departments · p95 2.5ms · 25 rows"
+          },
+          {
+            "name": "join.has-many-fanout",
+            "value": 311.9,
+            "range": "± 3.5ms p95",
+            "unit": "ms",
+            "extra": "Employee count with time-entry fan-out (~730k child rows) · p95 315.4ms · 25 rows"
+          },
+          {
+            "name": "join.many-to-many",
+            "value": 2.92,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Employees by team via junction table · p95 3.0ms · 40 rows"
+          },
+          {
+            "name": "join.three-cubes",
+            "value": 277.86,
+            "range": "± 10.1ms p95",
+            "unit": "ms",
+            "extra": "Departments + employees + time entries · p95 287.9ms · 25 rows"
+          },
+          {
+            "name": "rows.ordered-700",
+            "value": 84.46,
+            "range": "± 25.2ms p95",
+            "unit": "ms",
+            "extra": "~700 ordered group rows · p95 109.7ms · 700 rows"
+          },
+          {
+            "name": "rows.deep-offset",
+            "value": 18.72,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped page at offset 100k (limit 1000) · p95 18.7ms · 1,000 rows"
+          },
+          {
+            "name": "rows.ungrouped-10k",
+            "value": 39.37,
+            "range": "± 3.1ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped raw rows (limit 10,000) · p95 42.4ms · 10,000 rows"
+          },
+          {
+            "name": "analysis.funnel",
+            "value": 129.27,
+            "range": "± 8.0ms p95",
+            "unit": "ms",
+            "extra": "Three-step funnel over ~335k events · p95 137.3ms · 3 rows"
+          },
+          {
+            "name": "analysis.flow",
+            "value": 53.58,
+            "range": "± 1.3ms p95",
+            "unit": "ms",
+            "extra": "Flow with 2 steps before/after · p95 54.9ms · 1 rows"
+          },
+          {
+            "name": "analysis.retention",
+            "value": 428.85,
+            "range": "± 7.1ms p95",
+            "unit": "ms",
+            "extra": "Monthly retention over 2024 (6 periods) · p95 435.9ms · 7 rows"
+          },
+          {
+            "name": "compile.simple",
+            "value": 0.12,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Compile simple aggregation query · p95 0.2ms · 0 rows"
+          },
+          {
+            "name": "compile.complex",
+            "value": 0.58,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Compile multi-cube query with filters + time dimension · p95 0.8ms · 0 rows"
+          },
+          {
+            "name": "cache.miss",
+            "value": 42.07,
+            "range": "± 0.9ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, cache bypassed · p95 43.0ms · 700 rows"
+          },
+          {
+            "name": "cache.hit",
+            "value": 0.5,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, warm cache · p95 0.6ms · 700 rows"
           }
         ]
       }
