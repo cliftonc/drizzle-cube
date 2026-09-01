@@ -148,6 +148,16 @@
         "types": "./dist/cjs/adapters/mcp-tools.d.ts",
         "default": "./dist/adapters/mcp-tools.cjs"
       }
+    },
+    "./mcp-app-html": {
+      "import": {
+        "types": "./dist/adapters/mcp-app-html.d.ts",
+        "default": "./dist/adapters/mcp-app-html.js"
+      },
+      "require": {
+        "types": "./dist/cjs/adapters/mcp-app-html.d.ts",
+        "default": "./dist/adapters/mcp-app-html.cjs"
+      }
     }
   },
   "files": [

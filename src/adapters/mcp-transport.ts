@@ -30,8 +30,6 @@ export { type MCPPrompt }
 export const MCP_APP_RESOURCE_URI = 'ui://drizzle-cube/visualization.html'
 export const MCP_APP_MIME_TYPE = 'text/html;profile=mcp-app'
 
-// MCP App HTML loaded from generated file (built by scripts/generate-mcp-app-html.ts)
-import { mcpAppHtml } from '../mcp-app/generated-html.js'
 import { MCP_APP_CHART_TYPES } from '../mcp-app/chartTypes.js'
 
 /**
@@ -46,16 +44,37 @@ const CHART_TOOL_TYPES: string[] = MCP_APP_CHART_TYPES.filter(
   type => type !== 'markdown'
 )
 
-/** Get the bundled MCP App HTML, optionally with locale config injected. Returns empty string if not yet built. */
-export function getMcpAppHtml(config?: McpAppConfig): string {
-  if (!mcpAppHtml || !config) return mcpAppHtml
+/**
+ * Inject the MCP App locale config into an MCP App HTML document. Pure: the
+ * HTML is passed in, so callers decide how (and whether) to load the blob.
+ * Returns `html` unchanged when it is empty (not yet built) or no config is given.
+ */
+export function injectMcpAppConfig(html: string, config?: McpAppConfig): string {
+  if (!html || !config) return html
   // Escape `</` → `<\/` so the JSON cannot break out of the script block
   const safeJson = JSON.stringify({
     defaultLocale: config.defaultLocale,
     detectBrowserLocale: config.detectBrowserLocale,
   }).replace(/<\//g, '<\\/')
   const script = `<script>window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ = ${safeJson}</script>`
-  return mcpAppHtml.replace('</head>', `${script}</head>`)
+  return html.replace('</head>', `${script}</head>`)
+}
+
+/**
+ * Get the bundled MCP App HTML, optionally with locale config injected.
+ * Returns an empty string if the app is not yet built.
+ *
+ * The ~2 MB HTML blob is loaded with a dynamic `import()` on first use, never at
+ * module load: it is only wanted when `mcp.app` is on and a client actually
+ * lists/reads the visualization resource. Every adapter imports this module, so
+ * a static import here would put the blob in every consumer's server bundle
+ * even with `mcp.enabled: false`. In the published build the specifier is
+ * rewritten to `drizzle-cube/mcp-app-html`, which consumers may alias to a stub
+ * — see `mcp-app-html.ts`.
+ */
+export async function getMcpAppHtml(config?: McpAppConfig): Promise<string> {
+  const { mcpAppHtml } = await import('./mcp-app-html.js')
+  return injectMcpAppConfig(mcpAppHtml, config)
 }
 
 export type JsonRpcId = string | number | null | undefined
@@ -450,7 +469,7 @@ export async function dispatchMcpMethod(
       const securityContext = await ctx.extractSecurityContext(ctx.rawRequest, ctx.rawResponse)
       const resources = buildMcpResources(ctx.semanticLayer, securityContext, baseResources)
       // Add MCP App visualization resource when app mode is enabled
-      return appEnabled ? [...resources, ...getMcpAppResource(appConfig)] : resources
+      return appEnabled ? [...resources, ...(await getMcpAppResource(appConfig))] : resources
     },
     instructions: ctx.instructions ?? getDefaultMcpInstructions()
   }
@@ -758,8 +777,8 @@ function wrapContent(result: unknown) {
 // MCP App visualization resource
 // ---------------------------------------------
 
-function getMcpAppResource(config?: McpAppConfig): MCPResource[] {
-  const html = getMcpAppHtml(config)
+async function getMcpAppResource(config?: McpAppConfig): Promise<MCPResource[]> {
+  const html = await getMcpAppHtml(config)
   if (!html) return []
   return [{
     uri: MCP_APP_RESOURCE_URI,

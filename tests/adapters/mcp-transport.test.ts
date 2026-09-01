@@ -26,6 +26,7 @@ import {
   resolveMcpResources,
   resolveMcpInstructions,
   getMcpAppHtml,
+  injectMcpAppConfig,
   SUPPORTED_MCP_PROTOCOLS,
   DEFAULT_MCP_PROTOCOL,
   MCP_SESSION_ID_HEADER,
@@ -1124,23 +1125,36 @@ describe('MCP Transport Layer', () => {
   })
 
   describe('getMcpAppHtml locale config injection', () => {
-    it('returns base html unchanged when no config is provided', () => {
+    it('returns base html unchanged when no config is provided', async () => {
       // No config → no injection; the built HTML is returned as-is.
       // Assert on the injection *assignment* (`window.X = ...`), not the bare
       // identifier: the app bundle itself reads `window.__DRIZZLE_CUBE_MCP_APP_CONFIG__`,
       // so the built HTML always contains the name — only the injected
       // <script> assigns to it.
-      const html = getMcpAppHtml()
+      const html = await getMcpAppHtml()
       expect(html).toContain('<!DOCTYPE html>')
       expect(html).not.toContain('window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ =')
     })
 
-    it('injects config script into html when config is provided', () => {
+    it('injects config script into html when config is provided', async () => {
       const config: McpAppConfig = { defaultLocale: 'nl-NL' }
-      const result = getMcpAppHtml(config)
+      const result = await getMcpAppHtml(config)
       expect(result).toContain('__DRIZZLE_CUBE_MCP_APP_CONFIG__')
       expect(result).toContain('"nl-NL"')
       expect(result).toContain('</head>')
+    })
+
+    it('injectMcpAppConfig is pure over the html it is given', () => {
+      const html = '<!DOCTYPE html><html><head><title>x</title></head><body></body></html>'
+      // Empty html (app not built) and missing config both pass through untouched
+      expect(injectMcpAppConfig('', { defaultLocale: 'nl-NL' })).toBe('')
+      expect(injectMcpAppConfig(html)).toBe(html)
+      const result = injectMcpAppConfig(html, { defaultLocale: 'nl-NL', detectBrowserLocale: false })
+      expect(result).toContain(
+        '<script>window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ = {"defaultLocale":"nl-NL","detectBrowserLocale":false}</script></head>'
+      )
+      // Injected exactly once, immediately before </head>
+      expect(result.split('__DRIZZLE_CUBE_MCP_APP_CONFIG__').length).toBe(2)
     })
 
     // The injection logic is tested via a thin wrapper that patches the module-level html.
