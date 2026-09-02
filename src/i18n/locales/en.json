@@ -778,6 +778,7 @@
   "server.errors.invalidFunnelConfig": "Query does not contain a valid funnel configuration",
   "server.errors.invalidFlowConfig": "Query does not contain a valid flow configuration",
   "server.errors.invalidRetentionConfig": "Query does not contain a valid retention configuration",
+  "server.errors.agentResponseTruncated": "The assistant ran out of response space and stopped part-way through. Ask it to continue, or raise maxTokens in the agent configuration.",
   "server.errors.llmInitFailed": "Failed to initialize LLM provider",
   "server.validation.ai.bindingKeyRequired.flow": "flow.bindingKey is required",
   "server.validation.ai.bindingKeyRequired.funnel": "funnel.bindingKey is required",

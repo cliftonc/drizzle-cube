@@ -36,9 +36,9 @@ const mockSecurityContext = { organisationId: 'org-test' }
 // ============================================================================
 
 describe('getToolDefinitions', () => {
-  it('should return exactly 6 tools', () => {
+  it('should return exactly 7 tools', () => {
     const tools = getToolDefinitions()
-    expect(tools).toHaveLength(6)
+    expect(tools).toHaveLength(7)
   })
 
   it('should return tools with correct names', () => {
@@ -49,6 +49,7 @@ describe('getToolDefinitions', () => {
       'get_cube_metadata',
       'execute_query',
       'add_portlet',
+      'update_portlet',
       'add_markdown',
       'save_as_dashboard',
     ])
@@ -182,6 +183,31 @@ describe('getToolDefinitions', () => {
     expect(retentionProp.properties).toHaveProperty('retentionType')
   })
 
+  it('should expose the field-zone and scale config the new chart types need', () => {
+    const tools = getToolDefinitions()
+    const addPortlet = tools.find((t) => t.name === 'add_portlet')!
+    const chartConfig = addPortlet.parameters.properties.chartConfig as { properties: Record<string, unknown> }
+    const displayConfig = addPortlet.parameters.properties.displayConfig as { properties: Record<string, unknown> }
+
+    // heatmap and activityGrid have mandatory zones that are not axes; without
+    // these the model cannot state them at all.
+    expect(chartConfig.properties).toHaveProperty('valueField')
+    expect(chartConfig.properties).toHaveProperty('dateField')
+    expect(displayConfig.properties).toHaveProperty('minValue')
+    expect(displayConfig.properties).toHaveProperty('maxValue')
+    expect(displayConfig.properties).toHaveProperty('template')
+  })
+
+  it('should offer every built-in chart type to the agent', () => {
+    const tools = getToolDefinitions()
+    const addPortlet = tools.find((t) => t.name === 'add_portlet')!
+    const chartTypeProp = addPortlet.parameters.properties.chartType as { enum: string[] }
+
+    for (const t of ['treemap', 'waterfall', 'dotStrip', 'gauge', 'proportionBar', 'measureProfile', 'activityGrid', 'radialBar', 'kpiText', 'candlestick']) {
+      expect(chartTypeProp.enum, `missing ${t}`).toContain(t)
+    }
+  })
+
   it('should mention funnel/flow/retention formats in add_portlet query description', () => {
     const tools = getToolDefinitions()
     const addPortlet = tools.find((t) => t.name === 'add_portlet')!
@@ -204,16 +230,17 @@ describe('createToolExecutor', () => {
     semanticLayer = createMockSemanticLayer()
   })
 
-  it('should return a Map with 6 entries matching tool names', () => {
+  it('should return a Map with 7 entries matching tool names', () => {
     const executor = createToolExecutor({
       semanticLayer,
       securityContext: mockSecurityContext,
     })
-    expect(executor.size).toBe(6)
+    expect(executor.size).toBe(7)
     expect(executor.has('discover_cubes')).toBe(true)
     expect(executor.has('get_cube_metadata')).toBe(true)
     expect(executor.has('execute_query')).toBe(true)
     expect(executor.has('add_portlet')).toBe(true)
+    expect(executor.has('update_portlet')).toBe(true)
     expect(executor.has('add_markdown')).toBe(true)
     expect(executor.has('save_as_dashboard')).toBe(true)
   })
@@ -652,6 +679,215 @@ describe('createToolExecutor', () => {
   // --------------------------------------------------------------------------
   // add_markdown
   // --------------------------------------------------------------------------
+
+
+  describe('execute_query result shaping', () => {
+    it('caps the rows handed back and says so', async () => {
+      const rows = Array.from({ length: 60 }, (_, i) => ({ 'E.name': `n${i}`, 'E.count': i }))
+      mockHandleLoad.mockResolvedValue({
+        data: rows,
+        annotation: { dimensions: { 'E.name': { type: 'string' } }, measures: { 'E.count': { type: 'number' } } },
+      } as any)
+
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const result = await executor.get('execute_query')!({ measures: ['E.count'], dimensions: ['E.name'] })
+      const payload = JSON.parse(result.result.split('\n[IMPORTANT')[0])
+
+      // The portlet re-runs the query itself, so the model never needed all 60.
+      expect(payload.rowCount).toBe(60)
+      expect(payload.data).toHaveLength(25)
+      expect(payload.truncated).toBe(true)
+    })
+
+    it('does not flag a small result as truncated', async () => {
+      mockHandleLoad.mockResolvedValue({
+        data: [{ 'E.count': 3 }],
+        annotation: { measures: { 'E.count': { type: 'number' } } },
+      } as any)
+
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const result = await executor.get('execute_query')!({ measures: ['E.count'] })
+      const payload = JSON.parse(result.result.split('\n[IMPORTANT')[0])
+
+      expect(payload.truncated).toBe(false)
+      expect(payload.data).toHaveLength(1)
+    })
+
+    it('summarises each field so the model can choose a chart without seeing the rows', async () => {
+      mockHandleLoad.mockResolvedValue({
+        data: [
+          { 'E.region': 'EU', 'E.total': 10 },
+          { 'E.region': 'US', 'E.total': 30 },
+          { 'E.region': 'EU', 'E.total': null },
+        ],
+        annotation: {
+          dimensions: { 'E.region': { type: 'string' } },
+          measures: { 'E.total': { type: 'number' } },
+        },
+      } as any)
+
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const result = await executor.get('execute_query')!({ measures: ['E.total'], dimensions: ['E.region'] })
+      const payload = JSON.parse(result.result.split('\n[IMPORTANT')[0])
+
+      const region = payload.dataShape.find((f: { field: string }) => f.field === 'E.region')
+      const total = payload.dataShape.find((f: { field: string }) => f.field === 'E.total')
+
+      expect(region).toMatchObject({ kind: 'dimension', distinctCount: 2, nullCount: 0 })
+      expect(total).toMatchObject({ kind: 'measure', nullCount: 1, min: 10, max: 30 })
+    })
+  })
+
+  describe('empty and unusable tool input', () => {
+    it('add_markdown adds nothing when the model sends no arguments at all', async () => {
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const result = await executor.get('add_markdown')!({})
+
+      // A side effect here would put a blank card titled "Markdown" on the
+      // canvas while telling the model it succeeded.
+      expect(result.isError).toBe(true)
+      expect(result.sideEffect).toBeUndefined()
+      expect(result.result).toContain('content')
+    })
+
+    it('add_markdown rejects whitespace-only content', async () => {
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const result = await executor.get('add_markdown')!({ content: '   \n  ' })
+
+      expect(result.isError).toBe(true)
+      expect(result.sideEffect).toBeUndefined()
+    })
+
+    it('add_markdown still accepts the `text` and `markdown` aliases', async () => {
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+
+      expect((await executor.get('add_markdown')!({ text: 'hi' })).sideEffect).toBeDefined()
+      expect((await executor.get('add_markdown')!({ markdown: 'hi' })).sideEffect).toBeDefined()
+    })
+  })
+
+  describe('bar chart fallback', () => {
+    beforeEach(() => {
+      semanticLayer.validateQuery.mockReturnValue({ isValid: true, errors: [] })
+    })
+
+    it('converts a multi-measure bar with no dimension into a table', async () => {
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const result = await executor.get('add_portlet')!({
+        title: 'Work item mix',
+        query: JSON.stringify({ measures: ['Issues.features', 'Issues.bugs', 'Issues.chores'] }),
+        chartType: 'bar',
+      })
+
+      expect(result.isError).toBeUndefined()
+      expect((result.sideEffect!.data as { chartType: string }).chartType).toBe('table')
+      expect(result.result).toContain('changed from "bar"')
+    })
+
+    it('converts a single-measure bar with no dimension into a KPI', async () => {
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const result = await executor.get('add_portlet')!({
+        title: 'Total',
+        query: JSON.stringify({ measures: ['Issues.count'] }),
+        chartType: 'bar',
+      })
+
+      expect((result.sideEffect!.data as { chartType: string }).chartType).toBe('kpiNumber')
+    })
+
+    it('leaves a bar with a dimension as a bar', async () => {
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const result = await executor.get('add_portlet')!({
+        title: 'By type',
+        query: JSON.stringify({ dimensions: ['Issues.type'], measures: ['Issues.count'] }),
+        chartType: 'bar',
+      })
+
+      expect((result.sideEffect!.data as { chartType: string }).chartType).toBe('bar')
+      expect(result.result).not.toContain('changed from')
+    })
+
+    it('echoes the attempted config and query when chart config is still invalid', async () => {
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const result = await executor.get('add_portlet')!({
+        title: 'Records',
+        query: JSON.stringify({ dimensions: ['Employees.name'], measures: ['Employees.salary'] }),
+        chartType: 'recordsTable',
+      })
+
+      expect(result.isError).toBe(true)
+      expect(result.result).toContain('chartType: recordsTable')
+      expect(result.result).toContain('Attempted chartConfig')
+      expect(result.result).toContain('Query:')
+    })
+  })
+
+  describe('update_portlet', () => {
+    beforeEach(() => {
+      semanticLayer.validateQuery.mockReturnValue({ isValid: true, errors: [] })
+    })
+
+    it('amends a portlet added earlier in the same conversation', async () => {
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const added = await executor.get('add_portlet')!({
+        title: 'By type',
+        query: JSON.stringify({ dimensions: ['Issues.type'], measures: ['Issues.count'] }),
+        chartType: 'bar',
+      })
+      const { id } = added.sideEffect!.data as { id: string }
+
+      const updated = await executor.get('update_portlet')!({ portletId: id, chartType: 'treemap', title: 'Mix' })
+
+      expect(updated.isError).toBeUndefined()
+      expect(updated.sideEffect!.type).toBe('update_portlet')
+      expect(updated.sideEffect!.data).toMatchObject({ id, title: 'Mix', chartType: 'treemap' })
+    })
+
+    it('keeps fields the update did not mention', async () => {
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const query = JSON.stringify({ dimensions: ['Issues.type'], measures: ['Issues.count'] })
+      const added = await executor.get('add_portlet')!({ title: 'By type', query, chartType: 'bar' })
+      const { id } = added.sideEffect!.data as { id: string }
+
+      const updated = await executor.get('update_portlet')!({ portletId: id, title: 'Renamed' })
+      const data = updated.sideEffect!.data as { title: string; chartType: string; query: string }
+
+      expect(data.title).toBe('Renamed')
+      expect(data.chartType).toBe('bar')
+      expect(JSON.parse(data.query)).toMatchObject({ dimensions: ['Issues.type'] })
+    })
+
+    it('refuses a partial change to an id it has never seen', async () => {
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const result = await executor.get('update_portlet')!({ portletId: 'portlet-from-last-turn', title: 'x' })
+
+      expect(result.isError).toBe(true)
+      expect(result.sideEffect).toBeUndefined()
+      expect(result.result).toContain('full `query` and `chartType`')
+    })
+
+    it('updates a portlet from an earlier turn when the full fields are restated', async () => {
+      // The executor is rebuilt per request, so a portlet the user asks to
+      // change in a follow-up message is never in this map. Requiring a
+      // restatement beats telling the model to add a duplicate chart.
+      const executor = createToolExecutor({ semanticLayer, securityContext: mockSecurityContext })
+      const result = await executor.get('update_portlet')!({
+        portletId: 'portlet-from-last-turn',
+        title: 'Work by type',
+        query: JSON.stringify({ dimensions: ['Issues.type'], measures: ['Issues.count'] }),
+        chartType: 'treemap',
+      })
+
+      expect(result.isError).toBeUndefined()
+      expect(result.sideEffect!.type).toBe('update_portlet')
+      expect(result.sideEffect!.data).toMatchObject({
+        id: 'portlet-from-last-turn',
+        title: 'Work by type',
+        chartType: 'treemap',
+      })
+    })
+  })
+
   describe('add_markdown', () => {
     it('should generate ID matching markdown-{timestamp}-{random} pattern', async () => {
       const executor = createToolExecutor({

@@ -122,6 +122,39 @@ export function validateChartConfig(
 }
 
 /**
+ * Pick a chart type that can actually render the query.
+ *
+ * A `bar` over a measures-only query has no category axis: `resolveChartAxisFields`
+ * reports `axisInvalid` and the portlet renders a config-error card. Rejecting it
+ * instead costs the model a full query+portlet rebuild, so swap to a type that
+ * shows the same numbers and tell it what happened.
+ *
+ * The note is model-facing, not user-facing, so it is deliberately not translated.
+ */
+export function resolveChartTypeFallback(
+  chartType: string,
+  chartConfig: Record<string, unknown> | undefined,
+  query: Record<string, unknown>
+): { chartType: string; note?: string } {
+  if (chartType !== 'bar') return { chartType }
+  if (hasConfigValue(chartConfig?.xAxis)) return { chartType }
+
+  const dimensions = (query.dimensions as string[] | undefined) ?? []
+  const timeDimensions = (query.timeDimensions as Array<{ dimension: string }> | undefined) ?? []
+  if (dimensions.length > 0 || timeDimensions.length > 0) return { chartType }
+
+  const measureCount = ((query.measures as string[] | undefined) ?? []).length
+  const replacement = measureCount === 1 ? 'kpiNumber' : 'table'
+  return {
+    chartType: replacement,
+    note: `Note: chartType was changed from "bar" to "${replacement}" because the query has `
+      + 'no dimension, so a bar chart would have no category axis to label its bars. '
+      + 'For a real bar chart, put the category in the query\'s dimensions and use a single '
+      + 'measure. To plot several measures as an ordered profile instead, use "measureProfile".',
+  }
+}
+
+/**
  * Auto-infer missing chartConfig fields from the query structure.
  * Fills in xAxis, yAxis, series, sizeField, etc. based on query measures/dimensions
  * and the chart type's drop zone acceptTypes.
@@ -158,6 +191,20 @@ function inferScalarField(
   }
 }
 
+/** Every field already assigned to a zone other than `exceptKey`. */
+function collectAssignedFields(result: Record<string, unknown>, exceptKey: string): Set<string> {
+  const used = new Set<string>()
+  for (const [key, value] of Object.entries(result)) {
+    if (key === exceptKey) continue
+    if (Array.isArray(value)) {
+      for (const v of value) if (typeof v === 'string') used.add(v)
+    } else if (typeof value === 'string') {
+      used.add(value)
+    }
+  }
+  return used
+}
+
 /** Infer an array field (xAxis/yAxis/series/...) from accepted candidate field types. */
 function inferArrayField(
   zone: DropZone,
@@ -172,17 +219,14 @@ function inferArrayField(
 
   if (candidates.length === 0) return
 
-  // For series zone, exclude fields already used in xAxis to prevent duplicates
-  let filtered = candidates
-  if (zone.key === 'series') {
-    const xAxisFields = new Set(
-      Array.isArray(result.xAxis)
-        ? (result.xAxis as string[])
-        : result.xAxis ? [result.xAxis as string] : []
-    )
-    filtered = candidates.filter(f => !xAxisFields.has(f))
-    if (filtered.length === 0) return
-  }
+  // Never hand the same field to two zones. `result` starts as a copy of the
+  // agent's own chartConfig, so this also stops inference filling xAxis with a
+  // field the agent put in series and then failing its own duplicate check —
+  // and stops heatmap getting one dimension on both axes, or scatter one
+  // measure on both.
+  const used = collectAssignedFields(result, zone.key)
+  const filtered = candidates.filter(f => !used.has(f))
+  if (filtered.length === 0) return
 
   const max = zone.maxItems ?? Infinity
   const sliced = filtered.slice(0, max)

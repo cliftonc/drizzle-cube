@@ -12,6 +12,41 @@
  * listing of unformatted strings.
  */
 
+/**
+ * `chartConfig` fields for the charts whose mandatory drop zones are not the
+ * usual axes. Without these the model cannot state them at all: `heatmap` needs
+ * a `valueField` to colour its cells, and `activityGrid` lays itself out from a
+ * date field plus a value field. Both were only ever filled by inference.
+ */
+export const FIELD_ZONE_CHART_CONFIG_SCHEMA = {
+  valueField: {
+    type: 'array',
+    items: { type: 'string' },
+    description: 'heatmap and activityGrid: single measure driving cell colour intensity. Required for both — the chart renders empty without it.'
+  },
+  dateField: {
+    type: 'array',
+    items: { type: 'string' },
+    description: 'activityGrid only: single time dimension laying out the grid. Query it with day granularity over several months, or the grid has nothing to show.'
+  }
+} as const
+
+/** `displayConfig` fields for charts that need an explicit scale or template. */
+export const SCALE_DISPLAY_CONFIG_SCHEMA = {
+  minValue: {
+    type: 'number',
+    description: 'gauge only: scale minimum (defaults to 0).'
+  },
+  maxValue: {
+    type: 'number',
+    description: 'gauge only: scale maximum. ALWAYS set this — without it the gauge scales to the data it was given, so a single value always reads as 100%.'
+  },
+  template: {
+    type: 'string',
+    description: 'kpiText only: sentence template around the value, e.g. "${fieldLabel}: ${value}". Defaults to that if omitted.'
+  }
+} as const
+
 /** `chartConfig` fields specific to the records table. */
 export const RECORDS_TABLE_CHART_CONFIG_SCHEMA = {
   columns: {

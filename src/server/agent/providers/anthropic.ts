@@ -144,6 +144,10 @@ export class AnthropicProvider implements LLMProvider {
     return stopReason === 'tool_use'
   }
 
+  isTruncated(stopReason: string): boolean {
+    return stopReason === 'max_tokens'
+  }
+
   formatError(error: unknown): string {
     if (!error || !(error instanceof Error)) {
       return 'Something went wrong. Please try again.'

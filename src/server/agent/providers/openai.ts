@@ -36,8 +36,11 @@ function* parseToolCallDelta(tc: any, activeToolCalls: ActiveToolCalls): Generat
 function* finishOpenAIToolCalls(finishReason: string, activeToolCalls: ActiveToolCalls): Generator<NormalizedEvent> {
   for (const [idx, entry] of activeToolCalls) {
     let parsedInput: Record<string, unknown> = {}
-    try { if (entry.arguments) parsedInput = JSON.parse(entry.arguments) } catch { /* ignore */ }
-    yield { type: 'tool_use_end', id: entry.id, input: parsedInput }
+    let parseError = false
+    // A swallowed parse failure used to reach the executor as `{}`, which looked
+    // like a successful call with no arguments.
+    try { if (entry.arguments) parsedInput = JSON.parse(entry.arguments) } catch { parseError = true }
+    yield { type: 'tool_use_end', id: entry.id, input: parsedInput, parseError }
     activeToolCalls.delete(idx)
   }
   yield { type: 'message_meta', stopReason: finishReason }
@@ -201,6 +204,10 @@ export class OpenAIProvider implements LLMProvider {
 
   shouldContinue(stopReason: string): boolean {
     return stopReason === 'tool_calls'
+  }
+
+  isTruncated(stopReason: string): boolean {
+    return stopReason === 'length'
   }
 
   formatError(error: unknown): string {

@@ -3,49 +3,15 @@
  *
  * Pure extraction: no behaviour change. Each piece renders one region of a
  * chat bubble (markdown body, error row, tool-call list, tool-call indicator).
+ *
+ * Assistant text is markdown and is rendered with markdown-to-jsx; user text is
+ * shown verbatim.
  */
 import React, { useState } from 'react'
 import type { ChatMessage as ChatMessageType, ToolCallRecord } from '../../stores/notebookStore.js'
+import Markdown from 'markdown-to-jsx'
 import LoadingIndicator from '../LoadingIndicator.js'
-
-/** Simple inline markdown parser for bold, italic, and code in chat text */
-export function renderInlineMarkdown(text: string): React.ReactNode[] {
-  const nodes: React.ReactNode[] = []
-  let remaining = text
-  let key = 0
-
-  while (remaining) {
-    // Code inline `text`
-    const codeMatch = remaining.match(/^(.*?)`([^`]+)`(.*)$/)
-    if (codeMatch) {
-      const [, before, code, after] = codeMatch
-      if (before) nodes.push(<span key={key++}>{before}</span>)
-      nodes.push(
-        <code key={key++} className="dc:px-1 dc:py-0.5 dc:rounded-sm dc:text-xs bg-dc-surface dc:font-mono">
-          {code}
-        </code>
-      )
-      remaining = after
-      continue
-    }
-
-    // Bold **text**
-    const boldMatch = remaining.match(/^(.*?)\*\*([^*]+)\*\*(.*)$/)
-    if (boldMatch) {
-      const [, before, bold, after] = boldMatch
-      if (before) nodes.push(<span key={key++}>{before}</span>)
-      nodes.push(<strong key={key++} className="dc:font-semibold">{bold}</strong>)
-      remaining = after
-      continue
-    }
-
-    // Plain text
-    nodes.push(<span key={key}>{remaining}</span>)
-    break
-  }
-
-  return nodes
-}
+import { CHAT_MARKDOWN_OPTIONS } from '../markdownOverrides.js'
 
 /** Tool call label mapping for user-friendly display */
 const TOOL_LABELS: Record<string, string> = {
@@ -184,11 +150,16 @@ export function ChatBubbleBody({
   return (
     <>
       {/* Message text */}
-      {hasContent && (
-        <div className="dc:whitespace-pre-wrap dc:break-words">
-          {isUser ? message.content : renderInlineMarkdown(message.content)}
-        </div>
-      )}
+      {hasContent &&
+        (isUser ? (
+          <div className="dc:whitespace-pre-wrap dc:break-words">{message.content}</div>
+        ) : (
+          // markdown-to-jsx emits real block elements, so pre-wrap would double
+          // every blank line — it stays on user messages only.
+          <div className="dc:break-words dc:min-w-0">
+            <Markdown options={CHAT_MARKDOWN_OPTIONS}>{message.content}</Markdown>
+          </div>
+        ))}
 
       {/* Error display */}
       {hasError && <MessageError error={message.error!} hasContent={hasContent} />}

@@ -10,10 +10,13 @@ import type { SecurityContext } from '../types/index.js'
 import type { AgentSSEEvent } from './types.js'
 import type { ToolDefinition } from './providers/types.js'
 import { handleDiscover, handleLoad, normalizeQueryFields } from '../query-handlers.js'
-import { validateChartConfig, inferChartConfig, buildChartRequirementsDescription } from './chart-validation.js'
+import { validateChartConfig, inferChartConfig, resolveChartTypeFallback, buildChartRequirementsDescription } from './chart-validation.js'
+import { summariseDataShape, AGENT_RESULT_ROW_LIMIT } from './data-shape.js'
 import {
   RECORDS_TABLE_CHART_CONFIG_SCHEMA,
-  RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA
+  RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA,
+  FIELD_ZONE_CHART_CONFIG_SCHEMA,
+  SCALE_DISPLAY_CONFIG_SCHEMA
 } from '../ai/chart-schema.js'
 import { QUERY_PARAMS_SCHEMA } from '../ai/query-schema.js'
 
@@ -30,21 +33,27 @@ export interface ToolExecutionResult {
 }
 
 /**
- * Chart types the dashboard agent may create — a deliberately curated subset of
- * `BuiltInChartType`, not a derived list. Every type here is one the agent can
- * configure well from a query alone; charts needing hand-tuned config that the
- * tool schema does not describe (candlestick OHLC fields, gauge thresholds) are
- * left out on purpose, so widening this is a product decision rather than an
- * oversight.
+ * Chart types the notebook agent may create — an explicit list, not a derived
+ * one, so widening it stays a product decision. It now covers every
+ * `BuiltInChartType`: the config each one needs is expressible through the
+ * `add_portlet` chartConfig/displayConfig schema below, and a narrower list was
+ * making the agent reach for `bar` and `table` for everything.
+ *
+ * Two carry caveats the system prompt spells out rather than the schema:
+ * `gauge` needs an explicit `maxValue` (it otherwise scales to the data and
+ * reads as 100%), and `candlestick` needs its measures in OHLC order, which
+ * JSON Schema cannot express.
  *
  * Typed against `BuiltInChartType` (type-only import — no runtime dependency on
  * the client graph) so a renamed or removed chart type fails `npm run typecheck`
  * here instead of silently offering the model a type that no longer renders.
  */
-const AGENT_ALLOWED_CHART_TYPES: BuiltInChartType[] = [
+export const AGENT_ALLOWED_CHART_TYPES: BuiltInChartType[] = [
   'bar', 'line', 'area', 'pie', 'scatter', 'radar', 'bubble', 'table',
-  'kpiNumber', 'kpiDelta', 'funnel', 'heatmap', 'sankey', 'sunburst',
-  'retentionHeatmap', 'retentionCombined', 'boxPlot', 'markdown', 'recordsTable'
+  'kpiNumber', 'kpiDelta', 'kpiText', 'funnel', 'heatmap', 'sankey', 'sunburst',
+  'retentionHeatmap', 'retentionCombined', 'boxPlot', 'markdown', 'recordsTable',
+  'treemap', 'radialBar', 'proportionBar', 'dotStrip', 'waterfall',
+  'measureProfile', 'activityGrid', 'gauge', 'candlestick'
 ]
 
 /**
@@ -123,7 +132,8 @@ export function getToolDefinitions(): ToolDefinition[] {
                 type: 'object',
                 description: 'Dual Y-axis: map measure fields to "left" or "right" axis. Only for bar, line, area charts with 2+ measures of different scales. Example: {"Sales.revenue": "left", "Sales.conversionRate": "right"}'
               },
-              ...RECORDS_TABLE_CHART_CONFIG_SCHEMA
+              ...RECORDS_TABLE_CHART_CONFIG_SCHEMA,
+              ...FIELD_ZONE_CHART_CONFIG_SCHEMA
             },
             description: 'Chart axis configuration'
           },
@@ -135,7 +145,8 @@ export function getToolDefinitions(): ToolDefinition[] {
               showTooltip: { type: 'boolean' },
               stacked: { type: 'boolean' },
               orientation: { type: 'string', enum: ['horizontal', 'vertical'] },
-              ...RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA
+              ...RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA,
+              ...SCALE_DISPLAY_CONFIG_SCHEMA
             },
             description: 'Chart display configuration'
           }
@@ -144,7 +155,34 @@ export function getToolDefinitions(): ToolDefinition[] {
       }
     },
 
-    // Tool 5: add_markdown
+    // Tool 5: update_portlet
+    {
+      name: 'update_portlet',
+      description:
+        'Amend a visualization you already added in this conversation, in place. '
+        + 'Use this instead of add_portlet when a chart came back wrong or the user asks to change one — '
+        + 'adding a second chart of the same data clutters the notebook. '
+        + 'Only the fields you pass are changed; the rest are kept. The same validation as add_portlet applies. '
+        + 'For a portlet added earlier in the conversation rather than this turn, pass the full `query` and `chartType` as well as the fields you are changing.',
+      parameters: {
+        type: 'object',
+        properties: {
+          portletId: { type: 'string', description: 'The id returned by add_portlet' },
+          title: { type: 'string', description: 'New title' },
+          query: { type: 'string', description: 'Replacement query, as a JSON string (same shape as add_portlet)' },
+          chartType: {
+            type: 'string',
+            enum: AGENT_ALLOWED_CHART_TYPES,
+            description: 'Replacement chart type'
+          },
+          chartConfig: { type: 'object', description: 'Replacement chart axis configuration (replaces, does not merge)' },
+          displayConfig: { type: 'object', description: 'Replacement chart display configuration (replaces, does not merge)' }
+        },
+        required: ['portletId']
+      }
+    },
+
+    // Tool 6: add_markdown
     {
       name: 'add_markdown',
       description:
@@ -159,7 +197,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       }
     },
 
-    // Tool 6: save_as_dashboard
+    // Tool 7: save_as_dashboard
     {
       name: 'save_as_dashboard',
       description:
@@ -195,14 +233,15 @@ export function getToolDefinitions(): ToolDefinition[] {
                     series: { type: 'array', items: { type: 'string' } },
                     sizeField: { type: 'string' },
                     colorField: { type: 'string' },
-                    ...RECORDS_TABLE_CHART_CONFIG_SCHEMA
+                    ...RECORDS_TABLE_CHART_CONFIG_SCHEMA,
+                    ...FIELD_ZONE_CHART_CONFIG_SCHEMA
                   },
                   description: 'Chart axis configuration'
                 },
                 displayConfig: {
                   type: 'object',
                   description: 'Chart display configuration (for markdown: { content, hideHeader, transparentBackground, autoHeight })',
-                  properties: RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA
+                  properties: { ...RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA, ...SCALE_DISPLAY_CONFIG_SCHEMA }
                 },
                 dashboardFilterMapping: {
                   type: 'array',
@@ -270,6 +309,14 @@ export function getToolDefinitions(): ToolDefinition[] {
  * Create a tool executor map that closes over the semantic layer and security context.
  * Returns a Map<toolName, handler> where each handler takes parsed input and returns a result.
  */
+/** A portlet's fields, as `add_portlet` and `update_portlet` both build them. */
+interface PreparedPortlet {
+  query: string
+  chartType: string
+  chartConfig: Record<string, unknown>
+  displayConfig?: Record<string, unknown>
+}
+
 export function createToolExecutor(options: {
   semanticLayer: SemanticLayerCompiler
   securityContext: SecurityContext
@@ -277,6 +324,9 @@ export function createToolExecutor(options: {
   const { semanticLayer, securityContext } = options
 
   const executors = new Map<string, (input: Record<string, unknown>) => Promise<ToolExecutionResult>>()
+
+  // Portlets added during this request, so `update_portlet` has a merge base.
+  const sessionPortlets = new Map<string, { id: string; title: string } & PreparedPortlet>()
 
   // discover_cubes
   executors.set('discover_cubes', async (input) => {
@@ -398,10 +448,16 @@ export function createToolExecutor(options: {
       }
 
       const result = await handleLoad(semanticLayer, securityContext, { query: query as any })
+      // Hand back a bounded sample plus a shape summary rather than the whole
+      // result set: the portlet re-runs the query itself, so the model never
+      // needed every row, and a large one crowded out its own output budget.
+      const rows = result.data.slice(0, AGENT_RESULT_ROW_LIMIT)
       return {
         result: JSON.stringify({
           rowCount: result.data.length,
-          data: result.data,
+          data: rows,
+          truncated: result.data.length > rows.length,
+          dataShape: summariseDataShape(rows, result.annotation),
           annotation: result.annotation
         }) + '\n[IMPORTANT: Your next response MUST start with a brief text message BEFORE any tool calls. Now call add_markdown and add_portlet to visualize these results.]'
       }
@@ -424,24 +480,28 @@ export function createToolExecutor(options: {
     }
   })
 
-  // add_portlet
-  executors.set('add_portlet', async (input) => {
+  /**
+   * Run the shared query + chart-config pipeline for a portlet.
+   * Returns the prepared fields, or the model-facing error to hand straight back.
+   */
+  function preparePortlet(fields: {
+    query: string
+    chartType: string
+    chartConfig?: Record<string, unknown>
+    displayConfig?: Record<string, unknown>
+  }): { portlet: PreparedPortlet; note?: string } | { error: string } {
     // Resolve chart type aliases (backwards compat for common LLM mistakes)
     const CHART_TYPE_ALIASES: Record<string, string> = {
       'number': 'kpiNumber',
       'retention': 'retentionHeatmap',
     }
-    const resolvedChartType = CHART_TYPE_ALIASES[input.chartType as string] ?? input.chartType as string
+    const resolvedChartType = CHART_TYPE_ALIASES[fields.chartType] ?? fields.chartType
 
-    // Validate the query before adding the portlet
     let parsedQuery: Record<string, unknown>
     try {
-      parsedQuery = JSON.parse(input.query as string)
+      parsedQuery = JSON.parse(fields.query)
     } catch {
-      return {
-        result: 'Invalid query: could not parse JSON string. Ensure `query` is a valid JSON string.',
-        isError: true
-      }
+      return { error: 'Invalid query: could not parse JSON string. Ensure `query` is a valid JSON string.' }
     }
 
     // Normalize before validation (fix double-prefixed fields, order keys, etc.)
@@ -449,56 +509,131 @@ export function createToolExecutor(options: {
 
     const validation = semanticLayer.validateQuery(parsedQuery as any, securityContext)
     if (!validation.isValid) {
-      return {
-        result: `Invalid query — fix these errors and retry:\n${validation.errors.join('\n')}\n\nAttempted query:\n${JSON.stringify(parsedQuery, null, 2)}`,
-        isError: true
-      }
+      return { error: `Invalid query — fix these errors and retry:\n${validation.errors.join('\n')}\n\nAttempted query:\n${JSON.stringify(parsedQuery, null, 2)}` }
     }
 
     // Chart config inference and validation — skip for analysis-mode queries
     // (funnel/sankey/sunburst/retention charts auto-configure from data)
     const isAnalysisMode = !!(parsedQuery.funnel || parsedQuery.flow || parsedQuery.retention)
     let finalChartConfig: Record<string, unknown>
+    let effectiveChartType = resolvedChartType
+    let fallbackNote: string | undefined
     if (isAnalysisMode) {
-      finalChartConfig = (input.chartConfig as Record<string, unknown>) ?? {}
+      finalChartConfig = fields.chartConfig ?? {}
     } else {
-      const inferredConfig = inferChartConfig(resolvedChartType, input.chartConfig as Record<string, unknown> | undefined, parsedQuery)
-      const configValidation = validateChartConfig(resolvedChartType, inferredConfig, parsedQuery)
+      // Resolve the fallback BEFORE inference: inference fills mandatory drop
+      // zones per chart type, so it has to see the type that will render.
+      const fallback = resolveChartTypeFallback(resolvedChartType, fields.chartConfig, parsedQuery)
+      effectiveChartType = fallback.chartType
+      fallbackNote = fallback.note
+      const inferredConfig = inferChartConfig(effectiveChartType, fields.chartConfig, parsedQuery)
+      const configValidation = validateChartConfig(effectiveChartType, inferredConfig, parsedQuery)
       if (!configValidation.isValid) {
         return {
-          result: `Chart config invalid — fix these errors and retry:\n${configValidation.errors.join('\n')}`,
-          isError: true
+          error: `Chart config invalid — fix these errors and retry:\n${configValidation.errors.join('\n')}\n\n`
+            + `chartType: ${effectiveChartType}\n`
+            + `Attempted chartConfig:\n${JSON.stringify(inferredConfig, null, 2)}\n\n`
+            + `Query:\n${JSON.stringify(parsedQuery, null, 2)}`
         }
       }
       finalChartConfig = inferredConfig
     }
 
-    const id = `portlet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-    const portletData = {
-      id,
-      title: input.title as string,
-      // The normalised query, not the raw string the model sent: validation and
-      // chart-config inference both ran against this one, so shipping the raw
-      // string would put a portlet on the notebook that was never the thing
-      // checked — a dropped bad order key or an uncorrected double-prefixed
-      // field would surface as a runtime error at render time instead.
-      query: JSON.stringify(parsedQuery),
-      chartType: resolvedChartType,
-      chartConfig: finalChartConfig,
-      displayConfig: input.displayConfig as Record<string, unknown> | undefined
+    return {
+      portlet: {
+        // The normalised query, not the raw string the model sent: validation and
+        // chart-config inference both ran against this one, so shipping the raw
+        // string would put a portlet on the notebook that was never the thing
+        // checked — a dropped bad order key or an uncorrected double-prefixed
+        // field would surface as a runtime error at render time instead.
+        query: JSON.stringify(parsedQuery),
+        chartType: effectiveChartType,
+        chartConfig: finalChartConfig,
+        displayConfig: fields.displayConfig,
+      },
+      ...(fallbackNote ? { note: fallbackNote } : {}),
     }
+  }
+
+  // add_portlet
+  executors.set('add_portlet', async (input) => {
+    const prepared = preparePortlet({
+      query: input.query as string,
+      chartType: input.chartType as string,
+      chartConfig: input.chartConfig as Record<string, unknown> | undefined,
+      displayConfig: input.displayConfig as Record<string, unknown> | undefined,
+    })
+    if ('error' in prepared) return { result: prepared.error, isError: true }
+
+    const id = `portlet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    const portletData = { id, title: input.title as string, ...prepared.portlet }
+    // Remembered so `update_portlet` can merge a partial change against it.
+    sessionPortlets.set(id, portletData)
 
     return {
-      result: `Portlet "${input.title}" added to notebook (id: ${id}, chart: ${resolvedChartType}). [Reminder: in your next response, start with a brief sentence about what you will do next BEFORE making any tool calls.]`,
+      result: `Portlet "${input.title}" added to notebook (id: ${id}, chart: ${portletData.chartType}).`
+        + (prepared.note ? `\n${prepared.note}` : '')
+        + ' [Reminder: in your next response, start with a brief sentence about what you will do next BEFORE making any tool calls.]',
       sideEffect: { type: 'add_portlet' as const, data: portletData as any }
+    }
+  })
+
+  // update_portlet
+  executors.set('update_portlet', async (input) => {
+    const portletId = input.portletId as string | undefined
+    // Portlets added in an earlier message are not in this request's map — the
+    // executor is built per request. That is the common case (the user asks for
+    // a change in a follow-up), so a full restatement is accepted instead of a
+    // merge. Replayed history carries real tool arguments now, so the model can
+    // see what it originally sent.
+    const existing = portletId ? sessionPortlets.get(portletId) : undefined
+    const query = (input.query as string | undefined) ?? existing?.query
+    const chartType = (input.chartType as string | undefined) ?? existing?.chartType
+    if (!portletId || !query || !chartType) {
+      return {
+        result: `Cannot update portlet "${portletId ?? ''}": it was not added in this conversation, so there is nothing to merge your change into. `
+          + 'Call update_portlet again with the same portletId plus the full `query` and `chartType` for the chart you want.',
+        isError: true
+      }
+    }
+
+    const prepared = preparePortlet({
+      query,
+      chartType,
+      // A supplied chartConfig replaces rather than merges: half-updated axes
+      // are harder to reason about than a restated set.
+      chartConfig: (input.chartConfig as Record<string, unknown> | undefined) ?? existing?.chartConfig,
+      displayConfig: (input.displayConfig as Record<string, unknown> | undefined) ?? existing?.displayConfig,
+    })
+    if ('error' in prepared) return { result: prepared.error, isError: true }
+
+    const title = (input.title as string | undefined) ?? existing?.title ?? 'Untitled'
+    const portletData = { id: portletId, title, ...prepared.portlet }
+    sessionPortlets.set(portletId, portletData)
+
+    return {
+      result: `Portlet "${title}" updated (id: ${portletId}, chart: ${portletData.chartType}).`
+        + (prepared.note ? `\n${prepared.note}` : '')
+        + ' [Reminder: in your next response, start with a brief sentence about what you will do next BEFORE making any tool calls.]',
+      sideEffect: { type: 'update_portlet' as const, data: portletData as any }
     }
   })
 
   // add_markdown
   executors.set('add_markdown', async (input) => {
-    const id = `markdown-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     // Normalize: some models send `text` or `markdown` instead of `content`
     const content = (input.content || input.text || input.markdown || '') as string
+    // Never emit a side effect for empty content: the block would render as a
+    // blank card titled "Markdown" while the model was told it succeeded, so it
+    // would never retry.
+    if (typeof content !== 'string' || content.trim() === '') {
+      return {
+        result: 'add_markdown was called with no content, so no block was added. '
+          + 'Call add_markdown again with the explanation text in the `content` field.',
+        isError: true
+      }
+    }
+    const id = `markdown-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const markdownData = {
       id,
       title: input.title as string | undefined,
@@ -524,9 +659,10 @@ export function createToolExecutor(options: {
       // Chart configs completed during validation, reused when the dashboard is
       // built so a saved portlet gets the same inference `add_portlet` applies.
       const inferredChartConfigs = new Map<Record<string, unknown>, Record<string, unknown>>()
+      const resolvedChartTypes = new Map<Record<string, unknown>, string>()
       for (const portlet of portlets) {
-        const chartType = portlet.chartType as string
-        if (chartType === 'markdown') continue
+        const declaredChartType = portlet.chartType as string
+        if (declaredChartType === 'markdown') continue
 
         const queryStr = portlet.query as string | undefined
         if (!queryStr) {
@@ -553,7 +689,14 @@ export function createToolExecutor(options: {
 
         // The same chart checks `add_portlet` runs, so a dashboard cannot be
         // saved with a portlet the notebook would have rejected — a records
-        // table over a grouped query would list aggregates, not records.
+        // table over a grouped query would list aggregates, not records. The
+        // same bar fallback applies too, so a portlet auto-switched in the
+        // notebook is not rejected on the way into a dashboard.
+        const chartType = resolveChartTypeFallback(
+          declaredChartType,
+          portlet.chartConfig as Record<string, unknown> | undefined,
+          parsedQuery
+        ).chartType
         const inferredConfig = inferChartConfig(
           chartType,
           portlet.chartConfig as Record<string, unknown> | undefined,
@@ -565,6 +708,7 @@ export function createToolExecutor(options: {
           continue
         }
         inferredChartConfigs.set(portlet, inferredConfig)
+        resolvedChartTypes.set(portlet, chartType)
       }
 
       if (errors.length > 0) {
@@ -577,7 +721,7 @@ export function createToolExecutor(options: {
       // Build DashboardConfig with proper analysisConfig for each portlet
       const dashboardConfig = {
         portlets: portlets.map((p) => {
-          const chartType = p.chartType as string
+          const chartType = resolvedChartTypes.get(p) ?? (p.chartType as string)
           const isMarkdown = chartType === 'markdown'
 
           // Build analysisConfig in the canonical format (avoids legacy migration path)

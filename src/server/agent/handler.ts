@@ -62,7 +62,7 @@ export async function* handleAgentChat(options: {
   const model = options.modelOverride || agentConfig.model || DEFAULT_MODELS[providerName] || 'claude-sonnet-4-6'
   const baseURL = options.baseURLOverride || agentConfig.baseURL
   const maxTurns = agentConfig.maxTurns || 25
-  const maxTokens = agentConfig.maxTokens || 4096
+  const maxTokens = agentConfig.maxTokens || 8192
 
   // Create the LLM provider
   let provider
@@ -143,6 +143,13 @@ export async function* handleAgentChat(options: {
 
       // Push the complete assistant message into conversation history
       messages.push({ role: 'assistant', content: contentBlocks })
+
+      // Cut off by the output token limit rather than finished. Without this the
+      // loop just breaks and the notebook stops mid-analysis with no explanation.
+      if (provider.isTruncated(stopReason)) {
+        yield { type: 'error', data: { message: t('server.errors.agentResponseTruncated') } }
+        break
+      }
 
       // If the model didn't request tool use, we're done
       if (!provider.shouldContinue(stopReason)) {

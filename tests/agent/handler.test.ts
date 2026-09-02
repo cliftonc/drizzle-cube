@@ -117,6 +117,33 @@ function createToolUseResponseStream(
 }
 
 /**
+ * Build a response cut off by the output token limit mid-way.
+ */
+function createTruncatedResponseStream(text: string) {
+  return createMockStream([
+    { type: 'content_block_start', content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', delta: { type: 'text_delta', text } },
+    { type: 'content_block_stop' },
+    { type: 'message_delta', delta: { stop_reason: 'max_tokens' } },
+  ])
+}
+
+/**
+ * Build a tool_use response whose accumulated arguments are not valid JSON.
+ */
+function createBrokenToolInputStream(toolName: string, toolId: string) {
+  return createMockStream([
+    { type: 'content_block_start', content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', delta: { type: 'text_delta', text: 'One moment.' } },
+    { type: 'content_block_stop' },
+    { type: 'content_block_start', content_block: { type: 'tool_use', id: toolId, name: toolName } },
+    { type: 'content_block_delta', delta: { type: 'input_json_delta', partial_json: '{"content": "half a sen' } },
+    { type: 'content_block_stop' },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' } },
+  ])
+}
+
+/**
  * Collect all events from the async generator
  */
 async function collectEvents(
@@ -285,6 +312,39 @@ describe('handleAgentChat', () => {
     expect(
       (toolResult!.data as { result: string }).result
     ).toContain('Unknown tool')
+  })
+
+  it('should tell the user when a response was cut off by the token limit', async () => {
+    // Before this the loop just broke: no error, no explanation, the notebook
+    // simply stopped part-way through.
+    mockMessagesCreate.mockResolvedValue(
+      createTruncatedResponseStream('Here are the headline points')
+    )
+
+    const events = await collectEvents(handleAgentChat(createBaseOptions()))
+
+    const errorEvent = events.find((e) => e.type === 'error')
+    expect(errorEvent).toBeDefined()
+    expect((errorEvent!.data as { message: string }).message).toContain('response space')
+    // The stream still closes cleanly so the session id survives.
+    expect(events.find((e) => e.type === 'done')).toBeDefined()
+  })
+
+  it('should not run a tool whose arguments failed to parse', async () => {
+    mockMessagesCreate
+      .mockResolvedValueOnce(createBrokenToolInputStream('add_markdown', 'tool-broken'))
+      .mockResolvedValueOnce(createTextResponseStream('OK'))
+
+    const events = await collectEvents(handleAgentChat(createBaseOptions()))
+
+    const toolResult = events.find(
+      (e) => e.type === 'tool_use_result' && (e.data as { name: string }).name === 'add_markdown'
+    )
+    expect(toolResult).toBeDefined()
+    expect((toolResult!.data as { isError?: boolean }).isError).toBe(true)
+    expect((toolResult!.data as { result: string }).result).toContain('not valid JSON')
+    // Running on `{}` is what used to create an empty markdown block.
+    expect(events.find((e) => e.type === 'add_markdown')).toBeUndefined()
   })
 
   it('should yield error event when API throws', async () => {

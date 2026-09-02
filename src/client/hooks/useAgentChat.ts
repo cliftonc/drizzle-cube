@@ -27,6 +27,7 @@ export interface UseAgentChatOptions {
   agentProviderEndpoint?: string
   /** Called when agent adds a portlet to the notebook */
   onAddPortlet: (data: PortletBlock) => void
+  onUpdatePortlet?: (data: PortletBlock) => void
   /** Called when agent adds a markdown block to the notebook */
   onAddMarkdown: (data: MarkdownBlock) => void
   /** Called when the agent saves a dashboard configuration */

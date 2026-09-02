@@ -36,18 +36,19 @@ export function formatUserFacingError(message: string): string {
 }
 
 export interface AgentSSEEvent {
-  type: 'text_delta' | 'tool_use_start' | 'tool_use_result' | 'add_portlet' | 'add_markdown' | 'dashboard_saved' | 'turn_complete' | 'done' | 'error'
+  type: 'text_delta' | 'tool_use_start' | 'tool_use_result' | 'add_portlet' | 'update_portlet' | 'add_markdown' | 'dashboard_saved' | 'turn_complete' | 'done' | 'error'
   data: any
 }
 
 /** Subset of the hook options that handleAgentEvent dispatches to. */
 export interface AgentEventCallbacks {
   onAddPortlet: (data: PortletBlock) => void
+  onUpdatePortlet?: (data: PortletBlock) => void
   onAddMarkdown: (data: MarkdownBlock) => void
   onDashboardSaved?: (data: { title: string; description?: string; dashboardConfig: any }) => void
   onTextDelta: (text: string) => void
   onToolStart: (id: string, name: string, input?: unknown) => void
-  onToolResult: (id: string, name: string, result?: unknown, isError?: boolean) => void
+  onToolResult: (id: string, name: string, result?: unknown, isError?: boolean, input?: unknown) => void
   onDone: (sessionId: string, traceId?: string) => void
   onTurnComplete?: () => void
   onError: (message: string) => void
@@ -63,10 +64,16 @@ export function handleAgentEvent(event: AgentSSEEvent, cb: AgentEventCallbacks):
       cb.onToolStart(event.data.id, event.data.name, event.data.input)
       break
     case 'tool_use_result':
-      cb.onToolResult(event.data.id, event.data.name, event.data.result, event.data.isError)
+      cb.onToolResult(event.data.id, event.data.name, event.data.result, event.data.isError, event.data.input)
       break
     case 'add_portlet':
       cb.onAddPortlet({
+        ...event.data,
+        type: 'portlet',
+      })
+      break
+    case 'update_portlet':
+      cb.onUpdatePortlet?.({
         ...event.data,
         type: 'portlet',
       })
