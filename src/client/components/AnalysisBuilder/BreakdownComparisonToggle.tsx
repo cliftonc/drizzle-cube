@@ -6,6 +6,7 @@
  */
 
 import { memo } from 'react'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface BreakdownComparisonToggleProps {
   enableComparison?: boolean
@@ -18,15 +19,16 @@ const BreakdownComparisonToggle = memo(function BreakdownComparisonToggle({
   comparisonDisabled,
   onComparisonToggle
 }: BreakdownComparisonToggleProps) {
+  const { t } = useTranslation()
   const isDisabled = comparisonDisabled && !enableComparison
 
   let title: string
   if (isDisabled) {
-    title = 'Another time dimension already has comparison enabled'
+    title = t('analysis.breakdownComparison.alreadyEnabled')
   } else if (enableComparison) {
-    title = 'Click to disable comparison'
+    title = t('analysis.breakdownComparison.clickToDisable')
   } else {
-    title = 'Compare with previous period'
+    title = t('analysis.breakdownComparison.compareWithPrevious')
   }
 
   return (
@@ -43,7 +45,7 @@ const BreakdownComparisonToggle = memo(function BreakdownComparisonToggle({
       } ${isDisabled ? 'dc:opacity-50 dc:cursor-not-allowed' : ''}`}
       title={title}
     >
-      vs prior
+      {t('analysis.breakdownComparison.vsPrior')}
     </button>
   )
 })

@@ -7,6 +7,7 @@
 import React, { useEffect, useRef } from 'react'
 import { getIcon } from '../../icons/index.js'
 import { XTD_OPTIONS, calculateDateRange, formatDateRangeDisplay } from '../shared/utils.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const CheckIcon = getIcon('check')
 
@@ -24,6 +25,7 @@ const XTDDropdown: React.FC<XTDDropdownProps> = ({
   onSelect,
   currentXTD
 }) => {
+  const { t } = useTranslation()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Handle click outside to close
@@ -103,7 +105,7 @@ const XTDDropdown: React.FC<XTDDropdownProps> = ({
             }}
           >
             <div className="dc:flex dc:flex-col">
-              <span className="dc:font-medium">{option.label}</span>
+              <span className="dc:font-medium">{t(option.label)}</span>
               {dateRangeText && (
                 <span
                   className="dc:text-xs dc:mt-0.5"
