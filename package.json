@@ -228,7 +228,8 @@
     "i18n:pull": "source .env 2>/dev/null; crowdin download",
     "preview": "npm run build:client && npm run preview:build && concurrently \"npm run dev:server\" \"npm run preview:serve\"",
     "preview:build": "cd dev/client && vite build --config vite.config.preview.ts",
-    "preview:serve": "cd dev/client && vite preview --config vite.config.preview.ts"
+    "preview:serve": "cd dev/client && vite preview --config vite.config.preview.ts",
+    "prepare": "node -e \"require('fs').existsSync('dist/client/index.js')||require('child_process').execSync('npm run build',{stdio:'inherit'})\""
   },
   "keywords": [
     "drizzle-orm",
