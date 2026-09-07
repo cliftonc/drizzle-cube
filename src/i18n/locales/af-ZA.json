@@ -848,6 +848,8 @@
   "dataBrowser.toolbar.filters": "crwdns4093:0crwdne4093:0",
   "dataBrowser.toolbar.columns": "crwdns4095:0crwdne4095:0",
   "dataBrowser.toolbar.rows": "crwdns4097:0{count}crwdne4097:0",
+  "dataBrowser.search.placeholder": "crwdns4104:0crwdne4104:0",
+  "dataBrowser.search.clear": "crwdns4106:0crwdne4106:0",
   "dataBrowser.sidebar.cubes": "crwdns4099:0crwdne4099:0",
   "dataBrowser.sidebar.searchPlaceholder": "crwdns4101:0crwdne4101:0",
   "dataBrowser.sidebar.noCubes": "crwdns4103:0crwdne4103:0",
