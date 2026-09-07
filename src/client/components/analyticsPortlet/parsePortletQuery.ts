@@ -24,7 +24,7 @@ import {
   getApplicableDashboardFilters,
   mergeDashboardAndPortletFilters,
   applyUniversalTimeFilters,
-  mappingIncludesFilter
+  applyUniversalTimeToDateFilters
 } from '../../utils/filterUtils.js'
 
 export interface ParsedPortletQuery {
@@ -72,12 +72,11 @@ function resolveFunnelTimeDimensionMember(
  */
 function applyUniversalTimeToFunnel(
   modifiedFunnel: ServerFunnelQuery,
-  dashboardFilters: DashboardFilter[] | undefined,
-  dashboardFilterMapping: DashboardFilterMapping | undefined
+  dashboardFilters: DashboardFilter[] | undefined
 ): void {
-  const universalTimeFilters = dashboardFilters?.filter(df =>
-    df.isUniversalTime && mappingIncludesFilter(dashboardFilterMapping, df.id)
-  )
+  // Universal time is dashboard-wide (see applyUniversalTimeFilters) — no
+  // mapping requirement.
+  const universalTimeFilters = dashboardFilters?.filter(df => df.isUniversalTime)
   if (!universalTimeFilters || universalTimeFilters.length === 0 || modifiedFunnel.funnel.steps.length === 0) {
     return
   }
@@ -110,8 +109,7 @@ function applyUniversalTimeToFunnel(
 function applyFiltersToFunnel(
   funnelQuery: ServerFunnelQuery,
   applicableFilters: Filter[],
-  dashboardFilters: DashboardFilter[] | undefined,
-  dashboardFilterMapping: DashboardFilterMapping | undefined
+  dashboardFilters: DashboardFilter[] | undefined
 ): ServerFunnelQuery {
   // Clone the funnel query to avoid mutating the original
   const modifiedFunnel = { ...funnelQuery, funnel: { ...funnelQuery.funnel, steps: [...funnelQuery.funnel.steps] } }
@@ -126,7 +124,7 @@ function applyFiltersToFunnel(
   }
 
   // Universal time filters → apply as inDateRange filter on step 0
-  applyUniversalTimeToFunnel(modifiedFunnel, dashboardFilters, dashboardFilterMapping)
+  applyUniversalTimeToFunnel(modifiedFunnel, dashboardFilters)
 
   return modifiedFunnel
 }
@@ -166,8 +164,7 @@ export function parsePortletQuery(params: ParsePortletQueryParams): ParsedPortle
       const modifiedFunnel = applyFiltersToFunnel(
         parsed as ServerFunnelQuery,
         applicableFilters,
-        dashboardFilters,
-        dashboardFilterMapping
+        dashboardFilters
       )
       return { ...EMPTY_RESULT, serverFunnelQuery: modifiedFunnel }
     }
@@ -178,7 +175,10 @@ export function parsePortletQuery(params: ParsePortletQueryParams): ParsedPortle
         ...parsed,
         queries: parsed.queries.map(q => ({
           ...q,
-          filters: mergeDashboardAndPortletFilters(applicableFilters, q.filters),
+          filters: applyUniversalTimeToDateFilters(
+            dashboardFilters,
+            mergeDashboardAndPortletFilters(applicableFilters, q.filters)
+          ),
           timeDimensions: applyUniversalTimeFilters(dashboardFilters, dashboardFilterMapping, q.timeDimensions)
         }))
       }
@@ -186,7 +186,10 @@ export function parsePortletQuery(params: ParsePortletQueryParams): ParsedPortle
     }
 
     // Single query: existing behavior
-    const mergedFilters = mergeDashboardAndPortletFilters(applicableFilters, parsed.filters)
+    const mergedFilters = applyUniversalTimeToDateFilters(
+      dashboardFilters,
+      mergeDashboardAndPortletFilters(applicableFilters, parsed.filters)
+    )
     const mergedTimeDimensions = applyUniversalTimeFilters(
       dashboardFilters,
       dashboardFilterMapping,

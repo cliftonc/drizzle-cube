@@ -366,6 +366,43 @@ function getDateRangeFromFilter(filter: SimpleFilter): string[] | string | undef
 }
 
 /**
+ * Apply the dashboard's universal time filter to a portlet's regular
+ * `filters`: every `inDateRange` filter has its value replaced by the
+ * universal date range. This is what lets portlets WITHOUT timeDimensions
+ * (e.g. total KPIs windowed via an inDateRange filter) follow the dashboard
+ * date filter — `applyUniversalTimeFilters` only rewrites timeDimensions.
+ */
+export function applyUniversalTimeToDateFilters(
+  dashboardFilters: DashboardFilter[] | undefined,
+  portletFilters: Filter[] | undefined
+): Filter[] | undefined {
+  if (!portletFilters || portletFilters.length === 0) return portletFilters
+
+  const universal = dashboardFilters?.find(df => {
+    if (!df.isUniversalTime || !('member' in df.filter)) return false
+    return getDateRangeFromFilter(df.filter as SimpleFilter) !== undefined
+  })
+  if (!universal) return portletFilters
+
+  const dateRange = getDateRangeFromFilter(universal.filter as SimpleFilter)!
+  const values = Array.isArray(dateRange) ? dateRange : [dateRange]
+
+  const apply = (filter: Filter): Filter => {
+    if ('filters' in filter && Array.isArray((filter as GroupFilter).filters)) {
+      const group = filter as GroupFilter
+      return { ...group, filters: group.filters.map(apply) }
+    }
+    const simple = filter as SimpleFilter
+    if (simple.operator === 'inDateRange' && simple.member) {
+      return { ...simple, values, dateRange }
+    }
+    return filter
+  }
+
+  return portletFilters.map(apply)
+}
+
+/**
  * Apply universal time filters to a portlet's timeDimensions
  * Universal time filters apply their dateRange to ALL time dimensions in the portlet
  *
@@ -376,7 +413,8 @@ function getDateRangeFromFilter(filter: SimpleFilter): string[] | string | undef
  */
 export function applyUniversalTimeFilters(
   dashboardFilters: DashboardFilter[] | undefined,
-  filterMapping: DashboardFilterMapping | undefined,
+  // kept for call-site compatibility; universal time no longer uses mapping
+  _filterMapping: DashboardFilterMapping | undefined,
   portletTimeDimensions: TimeDimension[] | undefined
 ): TimeDimension[] | undefined {
   // Return as-is if no time dimensions in portlet (skip silently)
@@ -384,14 +422,13 @@ export function applyUniversalTimeFilters(
     return portletTimeDimensions
   }
 
-  // If no mapping specified, no filters apply
-  if (!filterMapping || filterMapping.length === 0) {
-    return portletTimeDimensions
-  }
-
-  // Find applicable universal time filters that have valid date ranges
+  // Universal time filters are dashboard-wide: they apply to every portlet,
+  // regardless of dashboardFilterMapping. Mapping by filter id rots as soon as
+  // the filter is recreated (each one gets a fresh id), silently detaching
+  // every portlet — regular filters keep using the mapping, but the shared
+  // date range must not depend on it.
   const universalTimeFilters = dashboardFilters
-    ?.filter(df => df.isUniversalTime && mappingIncludesFilter(filterMapping, df.id))
+    ?.filter(df => df.isUniversalTime)
     ?.filter(df => {
       // Must be a SimpleFilter with a valid dateRange
       if (!('member' in df.filter)) return false
