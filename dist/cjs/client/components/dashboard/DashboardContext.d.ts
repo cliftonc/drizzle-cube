@@ -1,0 +1,117 @@
+import { ReactNode, HTMLAttributes, DragEvent, MouseEvent, MutableRefObject } from 'react';
+import { LayoutItem, Layout } from 'react-grid-layout';
+import { UseDashboardActions } from '../../hooks/useDashboardHook.js';
+import { DashboardDisplayMode } from '../../hooks/useResponsiveDashboard.js';
+import { ColorPalette } from '../../utils/colorPalettes.js';
+import { DashboardConfig, PortletConfig, DashboardFilter, DashboardFilterMapping, CubeMeta, DashboardLayoutMode, DashboardGridSettings, RowLayout, PortletGroup, FeaturesConfig } from '../../types.js';
+/**
+ * Props accepted by DashboardProvider (the public composable entry point).
+ * Mirrors the former DashboardGridProps plus `hideToolbar` and `children`.
+ */
+export interface DashboardProviderProps {
+    config: DashboardConfig;
+    editable?: boolean;
+    /** Dashboard-level filters to apply to portlets */
+    dashboardFilters?: DashboardFilter[];
+    /** Custom loading indicator for all portlets */
+    loadingComponent?: ReactNode;
+    onConfigChange?: (config: DashboardConfig) => void;
+    onPortletRefresh?: (portletId: string) => void;
+    onSave?: (config: DashboardConfig) => Promise<void> | void;
+    /** Callback to save thumbnail separately - called on edit mode exit when thumbnail feature is enabled */
+    onSaveThumbnail?: (thumbnailData: string) => Promise<string | void>;
+    /** Complete palette with both colors and gradient */
+    colorPalette?: ColorPalette;
+    /** Cube metadata for filter panel */
+    schema?: CubeMeta | null;
+    /** Handler for dashboard filter changes */
+    onDashboardFiltersChange?: (filters: DashboardFilter[]) => void;
+    dashboardModes?: DashboardLayoutMode[];
+    /** When true, DashboardToolbar renders nothing (both the top bar and floating toolbar) */
+    hideToolbar?: boolean;
+    children: ReactNode;
+}
+/**
+ * Everything the composable pieces need. Built fresh each render by the coordinator,
+ * matching the re-render cadence of the former monolithic DashboardGrid.
+ */
+export interface DashboardContextValue {
+    config: DashboardConfig;
+    editable: boolean;
+    dashboardFilters?: DashboardFilter[];
+    loadingComponent?: ReactNode;
+    colorPalette?: ColorPalette;
+    schema?: CubeMeta | null;
+    onSave?: (config: DashboardConfig) => Promise<void> | void;
+    onConfigChange?: (config: DashboardConfig) => void;
+    onDashboardFiltersChange?: (filters: DashboardFilter[]) => void;
+    hideToolbar?: boolean;
+    isEditMode: boolean;
+    selectedFilterId: string | null;
+    isPortletModalOpen: boolean;
+    editingPortlet: PortletConfig | null;
+    isTextModalOpen: boolean;
+    editingTextPortlet: PortletConfig | null;
+    isFilterConfigModalOpen: boolean;
+    filterConfigPortlet: PortletConfig | null;
+    deleteConfirmPortletId: string | null;
+    deleteConfirmGroupId: string | null;
+    draftRows: RowLayout[] | null;
+    isDraggingPortlet: boolean;
+    isInitialized: boolean;
+    canEdit: boolean;
+    canChangeLayoutMode: boolean;
+    selectedFilter: DashboardFilter | null;
+    resolvedRows: RowLayout[];
+    resolvedGroups: PortletGroup[];
+    layoutMode: DashboardLayoutMode;
+    allowedModes: DashboardLayoutMode[];
+    /** Modes the toggle should offer; a subset of allowedModes. */
+    selectableModes: DashboardLayoutMode[];
+    actions: UseDashboardActions;
+    displayMode: DashboardDisplayMode;
+    scaleFactor: number;
+    designWidth: number;
+    gridWidth: number;
+    isResponsiveEditable: boolean;
+    isScrolled: boolean;
+    isEditBarVisible: boolean;
+    scrollContainer: HTMLElement | null;
+    features: FeaturesConfig;
+    editBarRef: MutableRefObject<HTMLDivElement | null>;
+    gridContentRef: MutableRefObject<HTMLDivElement | null>;
+    gridSettings: DashboardGridSettings;
+    baseLayout: LayoutItem[];
+    renderPortletCard: (portlet: PortletConfig, containerProps?: HTMLAttributes<HTMLDivElement>, headerProps?: HTMLAttributes<HTMLDivElement>) => ReactNode;
+    /** Renders the active (grid or row) layout. A function so it's not evaluated in mobile/empty cases. */
+    renderActiveLayout: () => ReactNode;
+    handleAddPortlet: () => void;
+    handleAddText: () => void;
+    handlePaletteChange: (paletteName: string) => Promise<void>;
+    handleFilterSelect: (filterId: string) => void;
+    handleSelectAllForFilter: (filterId: string) => Promise<void>;
+    handleSaveFilterConfig: (mapping: DashboardFilterMapping) => Promise<void>;
+    handlePortletSave: (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => Promise<void>;
+    handlePortletRefresh: (portletId: string, options?: {
+        bustCache?: boolean;
+    }) => void;
+    handleLayoutChange: (layout: Layout) => void;
+    handleDragStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | null) => void;
+    handleResizeStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | null) => void;
+    startRowResize: (rowIndex: number, event: MouseEvent<HTMLDivElement>) => void;
+    startColumnResize: (rowIndex: number, columnIndex: number, event: MouseEvent<HTMLDivElement>) => void;
+    handlePortletDragStart: (rowIndex: number, colIndex: number, portletId: string, event: DragEvent<HTMLDivElement>) => void;
+    handlePortletDragEnd: () => void;
+    handleRowDrop: (rowIndex: number, insertIndex: number | null) => void;
+    handleNewRowDrop: (insertIndex: number) => void;
+}
+declare const DashboardContext: import('react').Context<DashboardContextValue | null>;
+/**
+ * Access the dashboard context published by DashboardProvider.
+ * Lets a host render its own toolbar/controls while drizzle-cube owns the
+ * edit/save state machine.
+ *
+ * @throws if used outside a DashboardProvider (or DashboardGrid).
+ */
+export declare function useDashboardContext(): DashboardContextValue;
+export default DashboardContext;

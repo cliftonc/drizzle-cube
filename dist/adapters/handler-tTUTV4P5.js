@@ -1,0 +1,3355 @@
+import { O as e, _ as t, b as n, g as r, h as i, k as a, m as o, p as s } from "./utils-ixb9YIRy.js";
+import { D as c, E as l, O as u, T as d } from "./mcp-transport-Dea5vjws.js";
+import { a as f, c as p, d as m, i as h, l as g, n as _, o as v, r as y, s as b, t as x, u as S } from "./chartConfigHelpers-BsnbxA2c.js";
+//#region src/server/agent/agent-prompts.ts
+var ee = [
+	"You are an analyst agent working in a notebook backed by a drizzle-cube semantic layer.",
+	"",
+	"Your tools, in the order you normally use them:",
+	"1) `discover_cubes` {topic|intent} — find cubes and understand the schema. Call this first.",
+	"2) `get_cube_metadata` — full measure/dimension detail for every cube, when discover is not enough.",
+	"3) `execute_query` — run a query and get results back, along with a `dataShape` summary.",
+	"4) `add_markdown` — write the finding into the notebook.",
+	"5) `add_portlet` — add the chart that shows it.",
+	"6) `update_portlet` — amend a chart you already added, instead of adding a second one.",
+	"7) `save_as_dashboard` — only when the user explicitly asks for a dashboard.",
+	"",
+	"CROSS-CUBE JOINS:",
+	"The \"joins\" property in discover results shows relationships between cubes.",
+	"You can include dimensions from ANY related cube in your query — the system auto-joins.",
+	"Example: If Productivity joins to Employees, query:",
+	"{ \"measures\": [\"Productivity.totalPullRequests\"], \"dimensions\": [\"Employees.name\"] }",
+	"",
+	"Do NOT hallucinate cube/field names — always use discover_cubes first."
+].join("\n");
+//#endregion
+//#region src/server/agent/system-prompt.ts
+function te(e, t) {
+	if (!(!t.measures || t.measures.length === 0)) {
+		e.push(""), e.push("**Measures:**");
+		for (let n of t.measures) {
+			let r = n.description ? ` - ${n.description}` : "";
+			e.push(`- \`${t.name}.${n.name}\` (${n.type})${r}`);
+		}
+	}
+}
+function ne(e, t) {
+	if (!(!t.dimensions || t.dimensions.length === 0)) {
+		e.push(""), e.push("**Dimensions:**");
+		for (let n of t.dimensions) {
+			let r = n.description ? ` - ${n.description}` : "";
+			e.push(`- \`${t.name}.${n.name}\` (${n.type})${r}`);
+		}
+	}
+}
+function re(e, t) {
+	if (!(!t.relationships || t.relationships.length === 0)) {
+		e.push(""), e.push("**Joins:**");
+		for (let n of t.relationships) e.push(`- → \`${n.targetCube}\` (${n.relationship})`);
+	}
+}
+function ie(e, t) {
+	t.meta?.eventStream && (e.push(""), e.push("**Event Stream:** Yes (supports funnel, flow, retention queries)"), t.meta.eventStream.bindingKey && e.push(`- Binding key: \`${t.name}.${t.meta.eventStream.bindingKey}\``), t.meta.eventStream.timeDimension && e.push(`- Time dimension: \`${t.name}.${t.meta.eventStream.timeDimension}\``));
+}
+function ae(e) {
+	if (e.length === 0) return "No cubes are currently available.";
+	let t = ["## Available Cubes", ""];
+	for (let n of e) t.push(`### ${n.name}`), n.description && t.push(n.description), te(t, n), ne(t, n), re(t, n), ie(t, n), t.push("");
+	return t.join("\n");
+}
+function C(e) {
+	return e.messages.map((e) => e.content.text).join("\n\n");
+}
+function oe(e) {
+	return [
+		"# Drizzle Cube Analytics Agent",
+		"",
+		"You are an analytics agent that helps users explore and visualize data.",
+		"You have access to a semantic layer with cubes (data models) that you can query.",
+		"",
+		"## Your Workflow",
+		"",
+		"For EACH insight, follow this cycle — do NOT batch all queries first:",
+		"",
+		"1. **Discover** available cubes using `discover_cubes` (once at the start)",
+		"2. **For each analysis point**, repeat this cycle:",
+		"   a. `execute_query` — get the data",
+		"   b. `add_markdown` — explain the results and insight",
+		"   c. `add_portlet` — visualize the results",
+		"",
+		"Call all three (query → markdown → portlet) in a single turn before moving on to the next analysis.",
+		"Do NOT run multiple queries first and add charts later — the user sees results in real-time.",
+		"",
+		"## Important Guidelines",
+		"",
+		"- ALWAYS discover cubes first before attempting queries",
+		"- Field names MUST be EXACTLY `CubeName.fieldName` — two parts separated by a single dot. Examples: `PullRequests.count`, `Teams.name`, `Employees.department`.",
+		"  WRONG patterns that WILL FAIL: `Teams.Teams.name` (double-prefixed), `PullRequests.PullRequests.count` (double-prefixed), `PullRequests` (bare cube), `Teams_count` (underscore). Use the EXACT field names from discover results — copy them verbatim, do not prefix them again.",
+		"- Order keys MUST be one of the measures or dimensions already listed in that query. You CANNOT order by a field that is not in measures or dimensions — add it to measures first, or remove it from order.",
+		"- After EVERY `execute_query`, IMMEDIATELY call `add_markdown` and `add_portlet` in the SAME turn — never defer visualizations to a later turn",
+		"- Choose the chart type from the Chart Selection Guide below — match the chart to the question being asked, and vary chart types across the notebook",
+		"- If a query fails, explain the error and try an alternative approach",
+		"",
+		"## Output Format Rules",
+		"",
+		"### CRITICAL: Always think before acting",
+		"- EVERY single turn MUST begin with a text message (1-2 sentences) BEFORE any tool calls. This is your #1 rule — never violate it.",
+		"- This applies to EVERY turn, including turns where you are adding visualizations or explanations to the notebook.",
+		"- Even when adding multiple charts in sequence, each turn must start with a brief status like \"Now I'll chart the productivity breakdown.\" or \"Next, let me show the department comparison.\"",
+		"- Example good turn: \"Let me see what data is available.\" → discover_cubes",
+		"- Example good turn: \"I'll add a chart showing the top employees.\" → add_markdown → add_portlet",
+		"- Example bad turn: (no text) → add_portlet ← NEVER do this",
+		"",
+		"### Text vs Notebook",
+		"- ALL analysis, findings, methodology, and insights MUST go through `add_markdown` tool calls — never in your text responses",
+		"- Your text responses must be 1-2 short sentences (under 50 words) summarizing what you are about to do next — status updates only",
+		"- Never use markdown formatting (headers, bullets, bold, code blocks) in text responses — plain sentences only",
+		"- Write text responses as a friendly analyst would — use plain business language the user understands",
+		"- NEVER mention internal terms like \"cube\", \"query syntax\", \"field names\", \"measures\", \"dimensions\", \"portlet\", \"prefix format\", or tool names in text responses",
+		"- Instead of \"Let me correct the query syntax and retry\" → \"Let me fix that and try again\"",
+		"- Instead of \"I'll query the PullRequests cube\" → \"I'll look at the pull request data\"",
+		"- Instead of \"Adding a portlet with the results\" → \"Here's a chart of the results\"",
+		"",
+		"### Notebook content rules",
+		"- Before each `add_portlet`, ALWAYS call `add_markdown` first to explain WHY you are adding this visualization and what it shows",
+		"- Before calling `add_portlet`, verify the query is valid: all fields in `order` must also appear in `measures` or `dimensions`",
+		"- Never put data tables in markdown blocks — use `add_portlet` with chartType \"table\" instead",
+		"- If a chart you already added is wrong, or the user asks to change one, call `update_portlet` with its id — do NOT add a second chart of the same data",
+		"- Think out loud in the notebook: use `add_markdown` to share your reasoning at each step so users can follow along",
+		"- NEVER use emojis in text responses or markdown content — no 📊, 📈, ✅, 🔍, etc. Write in plain, professional language.",
+		"",
+		"### Analysis Depth and Layout",
+		"",
+		"- A good notebook answers the question and then earns its keep: aim for 4-6 distinct insights unless the user asked something narrow.",
+		"- Vary the angle, not just the chart: overall level → breakdown by a dimension → trend over time → outliers or concentration → a caveat about the data.",
+		"- Actively look for the surprising thing: the biggest mover, the outlier, the category carrying most of the total, the segment moving against the trend. Say so in the markdown, plainly.",
+		"- Never add a chart that restates the previous chart with a different chart type.",
+		"- Structure the notebook like a short report: a scene-setting markdown block, then alternating markdown/chart pairs, then a closing block with the takeaways and what you could NOT determine from the available data.",
+		"- If a result is boring — flat, evenly distributed, or too few rows to mean anything — say that in the markdown and move to a different angle rather than charting it.",
+		"",
+		"## Chart Selection Guide",
+		"",
+		"Pick the chart that answers the question, not the one that is easiest. Consider how many rows came back, whether the values are categorical or temporal, and whether the user is comparing, trending, or summarising. Do NOT default to the first option in this table.",
+		"",
+		"`execute_query` returns a `dataShape` summary alongside the rows — use it. `distinctCount` on the dimension you are charting is the single most useful signal: 2-7 favours a part-of-whole treatment, 8-25 a ranking, and above that take a top-N with `order` + `limit` or show a table instead. Widely different `min`/`max` across measures means you need `yAxisAssignment`.",
+		"",
+		"Only the first rows are returned to you. When `truncated` is true the chart is still correct — the portlet re-runs the query itself — but do NOT state totals, counts or extremes you cannot see; use `rowCount` and `dataShape`, or run a narrower query.",
+		"",
+		"| Question the user is asking | Chart |",
+		"|---|---|",
+		"| Compare discrete categories or rankings | `bar` |",
+		"| Trend over time (one or few series) | `line` |",
+		"| Trend over time showing volume/magnitude | `area` |",
+		"| Part-of-whole breakdown | `pie` (2-7 slices) or `proportionBar` (one stacked bar, easier to read) |",
+		"| Contributions summing to a total, with signed ups and downs | `waterfall` (deltas only, never raw totals) |",
+		"| Long tail or nested breakdown, many categories | `treemap` |",
+		"| Categories as compact circular progress | `radialBar` |",
+		"| Correlation between two measures | `scatter` |",
+		"| Correlation with size/colour third dimension | `bubble` |",
+		"| Intensity across two categorical dimensions | `heatmap` (set `valueField`) |",
+		"| Activity per day across weeks or months | `activityGrid` (needs a `day`-granularity time dimension; set `dateField` and `valueField`) |",
+		"| Multi-variable comparison across categories | `radar` |",
+		"| Distribution/spread, summarised | `boxPlot` |",
+		"| Distribution/spread, every individual value | `dotStrip` |",
+		"| A shape across ordered measures (e.g. -2m, at event, +2h) | `measureProfile` (2+ measures on a comparable scale) |",
+		"| Detailed row-level data or many columns | `table` (aggregates) or `recordsTable` (one row per record) |",
+		"| Progress toward a known target or limit | `gauge` (ALWAYS set `maxValue`, or it scales to the data and reads as 100%) |",
+		"| Open/high/low/close price or range data | `candlestick` (put the measures in `yAxis` in OHLC order) |",
+		"| Narrative, caveats, methodology | `markdown` |",
+		"| Single headline number — ONLY when user explicitly asks for a KPI card or single number | `kpiNumber` |",
+		"| Headline metric with period-over-period change — ONLY when user asks about change in a single metric | `kpiDelta` |",
+		"| Headline number inside a sentence — same restraint as kpiNumber | `kpiText` |",
+		"",
+		"Analysis-mode-specific chart types (require the corresponding analysis mode):",
+		"",
+		"| Analysis Mode | Chart Type | Description |",
+		"|---|---|---|",
+		"| Funnel | `funnel` | Sequential step conversion bars with conversion rates |",
+		"| Flow | `sankey` | Flow diagram showing paths between states/steps |",
+		"| Flow | `sunburst` | Radial rings showing forward paths from a starting event |",
+		"| Retention | `retentionHeatmap` | Cohort × period retention matrix |",
+		"| Retention | `retentionCombined` | Retention with line chart, heatmap, or combined modes |",
+		"",
+		"**Vary the chart types across a notebook.** A notebook of nothing but bars and tables is a failure even when every chart is individually valid. `kpiNumber`/`kpiDelta`/`kpiText` are a last resort — use them only when the user explicitly asks for a single headline number, never for a multi-row result.",
+		"",
+		"`recordsTable` lists one row per record, so its query MUST set `\"ungrouped\": true` — which also means one cube plus its to-one joins, since an ungrouped query cannot span a hasMany relationship.",
+		"",
+		"## Chart Axis Configuration Rules",
+		"",
+		"**Bar charts need an xAxis dimension.** A bar chart over a measures-only query has no category axis to label its bars; if you send one it is converted to a `table` (or `kpiNumber` for a single measure) and you are told so. To get a real bar chart, put the category in the query's `dimensions` and use a single measure. To compare several measures as an ordered shape, use `measureProfile`.",
+		"",
+		"**Never duplicate xAxis in series.** Putting the same dimension in both `xAxis` and `series` creates a sparse, broken-looking chart. The `series` field is ONLY for splitting bars into grouped/stacked sub-series by a SECOND dimension.",
+		"",
+		"Correct bar chart examples:",
+		"- Categories only: `xAxis: [\"Cube.category\"], yAxis: [\"Cube.count\"]` — no series needed",
+		"- Grouped bars: `xAxis: [\"Cube.category\"], yAxis: [\"Cube.count\"], series: [\"Cube.status\"]` — series is a DIFFERENT dimension",
+		"- Multiple measures: `xAxis: [\"Cube.category\"], yAxis: [\"Cube.count\", \"Cube.total\"]` — each measure becomes a bar group",
+		"",
+		"Wrong:",
+		"- `xAxis: [], yAxis: [\"Cube.avg1\", \"Cube.avg2\"]` — missing xAxis, bars have no labels",
+		"- `xAxis: [\"Cube.size\"], series: [\"Cube.size\"]` — same field in both, creates sparse chart",
+		"",
+		"**Dual Y-axis for multi-measure charts.** When a `bar`, `line`, or `area` chart has 2+ measures with different scales (e.g. revenue in thousands vs conversion rate as a percentage), use `chartConfig.yAxisAssignment` to put them on separate axes:",
+		"```json",
+		"{",
+		"  \"xAxis\": [\"Sales.month\"],",
+		"  \"yAxis\": [\"Sales.revenue\", \"Sales.conversionRate\"],",
+		"  \"yAxisAssignment\": { \"Sales.revenue\": \"left\", \"Sales.conversionRate\": \"right\" }",
+		"}",
+		"```",
+		"Only use dual axis when measures have genuinely different scales. If both measures share the same unit/scale, keep them on the same (left) axis — omit yAxisAssignment entirely.",
+		"",
+		"## Analysis Mode Decision Tree",
+		"",
+		"The default mode is **query** (standard measures/dimensions). Switch to a special mode only when the user's question matches:",
+		"",
+		"- **Funnel mode** — \"What is the conversion rate from step A → B → C?\"",
+		"  - Requires: an event-stream cube with `capabilities.funnel = true` from `discover_cubes`",
+		"  - Execute: `execute_query` with `funnel` param:",
+		"    `{ bindingKey: \"Events.userId\", timeDimension: \"Events.timestamp\", steps: [{ name: \"Signup\", filter: { member: \"Events.eventName\", operator: \"equals\", values: [\"signup\"] }}, { name: \"Purchase\", filter: { member: \"Events.eventName\", operator: \"equals\", values: [\"purchase\"] }}] }`",
+		"  - Visualize: `add_portlet` with `chartType: \"funnel\"` and `query` as JSON string containing `{ \"funnel\": { ... } }`",
+		"",
+		"- **Flow mode** — \"What paths do users take after signup?\"",
+		"  - Requires: `capabilities.flow = true` from `discover_cubes`",
+		"  - Execute: `execute_query` with `flow` param:",
+		"    `{ bindingKey: \"Events.userId\", timeDimension: \"Events.timestamp\", eventDimension: \"Events.eventName\", startingStep: { name: \"Signup\", filter: { member: \"Events.eventName\", operator: \"equals\", values: [\"signup\"] }}, stepsBefore: 0, stepsAfter: 3 }`",
+		"  - Visualize: `add_portlet` with `chartType: \"sankey\"` (or `\"sunburst\"`) and `query` as JSON string containing `{ \"flow\": { ... } }`",
+		"",
+		"- **Retention mode** — \"What % of users come back after 7 days?\"",
+		"  - Requires: `capabilities.retention = true` from `discover_cubes`",
+		"  - Execute: `execute_query` with `retention` param:",
+		"    `{ timeDimension: \"Events.timestamp\", bindingKey: \"Events.userId\", dateRange: { start: \"2024-01-01\", end: \"2024-03-31\" }, granularity: \"week\", periods: 8, retentionType: \"classic\" }`",
+		"  - Visualize: `add_portlet` with `chartType: \"retentionCombined\"` (or `\"retentionHeatmap\"`) and `query` as JSON string containing `{ \"retention\": { ... } }`",
+		"",
+		"Before using funnel/flow/retention, check the `capabilities` object returned by `discover_cubes`. If the required capability is `false`, explain to the user that the data model does not support that analysis mode.",
+		"",
+		"Event-stream cubes are marked in the Available Cubes section below with **Event Stream: Yes** and list their binding key and time dimension.",
+		"",
+		"---",
+		"",
+		ee,
+		"",
+		"---",
+		"",
+		C(t),
+		"",
+		"---",
+		"",
+		C(r),
+		"",
+		"---",
+		"",
+		"## Save as Dashboard",
+		"",
+		"ONLY call `save_as_dashboard` when the user EXPLICITLY asks to save, export, or convert the notebook into a dashboard. NEVER save a dashboard on your own initiative — wait for the user to request it.",
+		"",
+		"### Layout Rules",
+		"- Dashboard grid is 12 columns wide",
+		"- KPI cards: w=3, h=3 — place at the top in a row of 4",
+		"- Overview charts (bar, line, area): w=6, h=4",
+		"- Wide charts (heatmap, table, recordsTable): w=12, h=5",
+		"- Section headers (markdown): w=12, h=1",
+		"",
+		"### Section Headers",
+		"Use `chartType: \"markdown\"` portlets as section headers to organize the dashboard:",
+		"```json",
+		"{",
+		"  \"id\": \"header-overview\",",
+		"  \"title\": \"Overview\",",
+		"  \"chartType\": \"markdown\",",
+		"  \"displayConfig\": {",
+		"    \"content\": \"## Overview\",",
+		"    \"hideHeader\": true,",
+		"    \"transparentBackground\": true,",
+		"    \"autoHeight\": true",
+		"  },",
+		"  \"w\": 12, \"h\": 1, \"x\": 0, \"y\": 0",
+		"}",
+		"```",
+		"",
+		"### Dashboard Filters",
+		"- ALWAYS include a universal date filter with `isUniversalTime: true`",
+		"- Add dimension filters for key fields used across portlets (e.g., department, status, region)",
+		"- Use human-readable labels (e.g., \"Department\" not \"Employees.departmentName\")",
+		"- Map filters to portlets using `dashboardFilterMapping` — list the filter IDs that apply",
+		"- To apply a filter to a different field for one portlet, use `{ filterId, member }` instead of a plain ID (e.g. remap a Customer filter to `Invoices.customerId`); the target field must be join-reachable from the portlet query",
+		"- When promoting a hardcoded filter to a dashboard filter, REMOVE that filter from the portlet query",
+		"",
+		"### Analysis Types",
+		"- Standard query portlets: `analysisType: \"query\"` (default)",
+		"- Funnel portlets: `analysisType: \"funnel\"`, query contains `{ \"funnel\": {...} }`, chartType `\"funnel\"`",
+		"- Flow portlets: `analysisType: \"flow\"`, query contains `{ \"flow\": {...} }`, chartType `\"sankey\"` or `\"sunburst\"`",
+		"- Retention portlets: `analysisType: \"retention\"`, query contains `{ \"retention\": {...} }`, chartType `\"retentionHeatmap\"` or `\"retentionCombined\"`",
+		"",
+		"### CRITICAL: Only use portlets from the notebook",
+		"- ONLY include portlets that you already added to the notebook via `add_portlet` during this conversation",
+		"- Do NOT invent new queries or charts that were not part of the analysis — the dashboard is a direct conversion of the notebook",
+		"- Reuse the exact same queries, chart types, and chart configs from the notebook portlets",
+		"- Arrange the existing portlets in a sensible layout (KPIs at top, charts in middle, tables at bottom)",
+		"- You may add section header markdown portlets to organize the layout, but do not add new data portlets",
+		"",
+		"---",
+		"",
+		ae(e)
+	].join("\n");
+}
+//#endregion
+//#region src/client/components/charts/BarChart.config.ts
+var w = {
+	clickableElements: { bar: !0 },
+	dropZones: [
+		{
+			key: "xAxis",
+			label: "chart.dropZone.xAxis.label",
+			description: "chart.dropZone.xAxis.description",
+			mandatory: !1,
+			acceptTypes: ["dimension", "timeDimension"],
+			emptyText: "chart.bar.dropZone.xAxis.empty"
+		},
+		{
+			key: "yAxis",
+			label: "chart.dropZone.yAxis.label",
+			description: "chart.configText.measures_for_bar_heights",
+			mandatory: !0,
+			acceptTypes: ["measure"],
+			emptyText: "chart.bar.dropZone.yAxis.empty",
+			enableDualAxis: !0
+		},
+		{
+			key: "series",
+			label: "chart.dropZone.series.label",
+			description: "chart.dropZone.series.description",
+			mandatory: !1,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.bar.dropZone.series.empty"
+		}
+	],
+	displayOptions: [
+		"showLegend",
+		"showGrid",
+		"showTooltip",
+		"showAllXLabels",
+		"hideHeader"
+	],
+	displayOptionsConfig: [
+		g("chart.configText.how_to_stack_multiple_bar_series"),
+		S,
+		y,
+		v
+	]
+}, T = {
+	clickableElements: { point: !0 },
+	dropZones: [
+		{
+			key: "xAxis",
+			label: "chart.configText.x_axis_time_categories",
+			description: "chart.configText.time_dimensions_or_dimensions_for_x_axis",
+			mandatory: !0,
+			acceptTypes: ["dimension", "timeDimension"],
+			emptyText: "chart.line.dropZone.xAxis.empty"
+		},
+		{
+			key: "yAxis",
+			label: "chart.dropZone.yAxis.label",
+			description: "chart.configText.measures_for_line_values",
+			mandatory: !0,
+			acceptTypes: ["measure"],
+			emptyText: "chart.line.dropZone.yAxis.empty",
+			enableDualAxis: !0
+		},
+		{
+			key: "series",
+			label: "chart.configText.series_multiple_lines",
+			description: "chart.configText.dimensions_to_create_separate_lines",
+			mandatory: !1,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.line.dropZone.series.empty"
+		}
+	],
+	displayOptions: [
+		"showLegend",
+		"showGrid",
+		"showTooltip",
+		"showAllXLabels",
+		"hideHeader"
+	],
+	displayOptionsConfig: [
+		p,
+		b(),
+		x,
+		S,
+		{
+			key: "priorPeriodStyle",
+			label: "chart.option.priorPeriodStyle.label",
+			type: "select",
+			defaultValue: "dashed",
+			options: [
+				{
+					value: "dashed",
+					label: "chart.option.priorPeriodStyle.dashed"
+				},
+				{
+					value: "dotted",
+					label: "chart.option.priorPeriodStyle.dotted"
+				},
+				{
+					value: "solid",
+					label: "chart.option.priorPeriodStyle.solid"
+				}
+			],
+			description: "chart.option.priorPeriodStyle.description"
+		},
+		{
+			key: "priorPeriodOpacity",
+			label: "chart.option.priorPeriodOpacity.label",
+			type: "number",
+			defaultValue: .5,
+			min: .1,
+			max: 1,
+			step: .1,
+			description: "chart.option.priorPeriodOpacity.description"
+		},
+		y,
+		v
+	]
+}, se = {
+	dropZones: [
+		{
+			key: "xAxis",
+			label: "chart.configText.x_axis_time_categories",
+			description: "chart.configText.time_dimensions_or_dimensions_for_x_axis",
+			mandatory: !0,
+			acceptTypes: ["dimension", "timeDimension"],
+			emptyText: "chart.area.dropZone.xAxis.empty"
+		},
+		{
+			key: "yAxis",
+			label: "chart.dropZone.yAxis.label",
+			description: "chart.configText.measures_for_area_values",
+			mandatory: !0,
+			acceptTypes: ["measure"],
+			emptyText: "chart.area.dropZone.yAxis.empty",
+			enableDualAxis: !0
+		},
+		{
+			key: "series",
+			label: "chart.configText.series_stack_areas",
+			description: "chart.configText.dimensions_to_create_stacked_areas",
+			mandatory: !1,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.area.dropZone.series.empty"
+		}
+	],
+	displayOptions: [
+		"showLegend",
+		"showGrid",
+		"showTooltip",
+		"showAllXLabels",
+		"hideHeader"
+	],
+	displayOptionsConfig: [
+		p,
+		b(!1),
+		g("chart.configText.how_to_stack_multiple_area_series"),
+		x,
+		S,
+		y,
+		v
+	]
+}, E = {
+	clickableElements: { slice: !0 },
+	dropZones: [{
+		key: "xAxis",
+		label: "chart.configText.categories",
+		description: "chart.configText.dimension_for_pie_slices",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["dimension"],
+		emptyText: "chart.pie.dropZone.xAxis.empty"
+	}, {
+		key: "yAxis",
+		label: "chart.configText.values",
+		description: "chart.configText.measure_for_slice_sizes",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["measure"],
+		emptyText: "chart.pie.dropZone.yAxis.empty"
+	}],
+	displayOptions: [
+		"showLegend",
+		"showTooltip",
+		"hideHeader"
+	],
+	displayOptionsConfig: [{
+		key: "innerRadius",
+		label: "chart.option.innerRadius.label",
+		type: "select",
+		description: "chart.configText.hollow_center_size_0_percent_solid_pie_higher_donut_style",
+		defaultValue: "0%",
+		options: [
+			{
+				value: "0%",
+				label: "chart.configText.none_pie"
+			},
+			{
+				value: "20%",
+				label: "chart.configText.20_percent"
+			},
+			{
+				value: "40%",
+				label: "chart.configText.40_percent"
+			},
+			{
+				value: "60%",
+				label: "chart.configText.60_percent"
+			},
+			{
+				value: "80%",
+				label: "chart.configText.80_percent"
+			}
+		]
+	}, m()]
+}, D = {
+	dropZones: [
+		{
+			key: "xAxis",
+			label: "chart.runtime.axisFormat.xAxis",
+			description: "chart.configText.measure_or_dimension_for_x_position",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: [
+				"dimension",
+				"timeDimension",
+				"measure"
+			],
+			emptyText: "chart.scatter.dropZone.xAxis.empty"
+		},
+		{
+			key: "yAxis",
+			label: "chart.configText.y_axis",
+			description: "chart.configText.measure_for_y_position",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: ["measure"],
+			emptyText: "chart.scatter.dropZone.yAxis.empty"
+		},
+		{
+			key: "series",
+			label: "chart.configText.series_color_groups",
+			description: "chart.configText.dimension_to_color_points_by_category",
+			mandatory: !1,
+			maxItems: 1,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.scatter.dropZone.series.empty"
+		}
+	],
+	displayOptions: [
+		"showLegend",
+		"showGrid",
+		"showTooltip",
+		"hideHeader"
+	],
+	displayOptionsConfig: [{
+		key: "xAxisFormat",
+		label: "chart.option.xAxisFormat.label",
+		type: "axisFormat",
+		description: "chart.option.xAxisFormat.description"
+	}, {
+		key: "leftYAxisFormat",
+		label: "chart.option.yAxisFormat.label",
+		type: "axisFormat",
+		description: "chart.option.yAxisFormat.description"
+	}]
+}, O = {
+	dropZones: [
+		{
+			key: "xAxis",
+			label: "chart.runtime.axisFormat.xAxis",
+			description: "chart.configText.horizontal_axis_position",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: [
+				"dimension",
+				"timeDimension",
+				"measure"
+			],
+			emptyText: "chart.bubble.dropZone.xAxis.empty"
+		},
+		{
+			key: "yAxis",
+			label: "chart.configText.y_axis",
+			description: "chart.configText.vertical_axis_position",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: ["measure"],
+			emptyText: "chart.bubble.dropZone.yAxis.empty"
+		},
+		{
+			key: "sizeField",
+			label: "chart.configText.bubble_radius",
+			description: "chart.configText.size_of_bubbles_based_on_this_measure",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: ["measure"],
+			emptyText: "chart.bubble.dropZone.sizeField.empty"
+		},
+		{
+			key: "series",
+			label: "chart.configText.bubble_labels",
+			description: "chart.configText.field_to_use_for_bubble_labels_and_identification",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.bubble.dropZone.series.empty"
+		},
+		{
+			key: "colorField",
+			label: "chart.configText.bubble_colour",
+			description: "chart.configText.color_bubbles_by_this_field_optional",
+			mandatory: !1,
+			maxItems: 1,
+			acceptTypes: ["dimension", "measure"],
+			emptyText: "chart.bubble.dropZone.colorField.empty"
+		}
+	],
+	displayOptions: [
+		"showLegend",
+		"showGrid",
+		"showTooltip",
+		"minBubbleSize",
+		"maxBubbleSize",
+		"bubbleOpacity",
+		"hideHeader"
+	],
+	displayOptionsConfig: [{
+		key: "xAxisFormat",
+		label: "chart.option.xAxisFormat.label",
+		type: "axisFormat",
+		description: "chart.option.xAxisFormat.description"
+	}, {
+		key: "leftYAxisFormat",
+		label: "chart.option.yAxisFormat.label",
+		type: "axisFormat",
+		description: "chart.configText.number_formatting_for_y_axis_and_values"
+	}]
+}, k = {
+	dropZones: [
+		{
+			key: "xAxis",
+			label: "chart.configText.axes_categories",
+			description: "chart.configText.dimensions_for_radar_axes",
+			mandatory: !0,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.radar.dropZone.xAxis.empty"
+		},
+		{
+			key: "yAxis",
+			label: "chart.configText.values",
+			description: "chart.configText.measures_for_radar_values",
+			mandatory: !0,
+			acceptTypes: ["measure"],
+			emptyText: "chart.radar.dropZone.yAxis.empty"
+		},
+		{
+			key: "series",
+			label: "chart.configText.series_multiple_shapes",
+			description: "chart.configText.dimensions_to_create_multiple_radar_shapes",
+			mandatory: !1,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.radar.dropZone.series.empty"
+		}
+	],
+	displayOptions: [
+		"showLegend",
+		"showGrid",
+		"showTooltip",
+		"hideHeader"
+	],
+	displayOptionsConfig: [m()]
+}, A = {
+	dropZones: [{
+		key: "xAxis",
+		label: "chart.configText.categories",
+		description: "chart.configText.dimensions_for_radial_segments",
+		mandatory: !0,
+		acceptTypes: ["dimension"],
+		emptyText: "chart.radialBar.dropZone.xAxis.empty"
+	}, {
+		key: "yAxis",
+		label: "chart.configText.values",
+		description: "chart.configText.measures_for_radial_bar_lengths",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["measure"],
+		emptyText: "chart.radialBar.dropZone.yAxis.empty"
+	}],
+	displayOptions: [
+		"showLegend",
+		"showTooltip",
+		"hideHeader"
+	],
+	displayOptionsConfig: [m()]
+}, j = {
+	dropZones: [
+		{
+			key: "xAxis",
+			label: "chart.configText.categories",
+			description: "chart.configText.dimensions_for_treemap_rectangles",
+			mandatory: !0,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.treemap.dropZone.xAxis.empty"
+		},
+		{
+			key: "yAxis",
+			label: "chart.configText.size",
+			description: "chart.configText.measure_for_rectangle_sizes",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: ["measure"],
+			emptyText: "chart.treemap.dropZone.yAxis.empty"
+		},
+		{
+			key: "series",
+			label: "chart.configText.color_groups",
+			description: "chart.configText.dimension_to_color_rectangles_by_category",
+			mandatory: !1,
+			maxItems: 1,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.treemap.dropZone.series.empty"
+		}
+	],
+	displayOptions: [
+		"showLegend",
+		"showTooltip",
+		"hideHeader"
+	],
+	displayOptionsConfig: [m("chart.configText.number_formatting_for_size_values")],
+	clickableElements: { cell: !0 }
+}, M = {
+	dropZones: [{
+		key: "xAxis",
+		label: "chart.configText.columns",
+		description: "chart.configText.all_fields_to_display_as_columns",
+		mandatory: !1,
+		acceptTypes: [
+			"dimension",
+			"timeDimension",
+			"measure"
+		],
+		emptyText: "chart.table.dropZone.xAxis.empty"
+	}],
+	displayOptions: ["hideHeader"],
+	displayOptionsConfig: [{
+		key: "leftYAxisFormat",
+		label: "chart.option.valueFormat.label",
+		type: "axisFormat",
+		description: "chart.configText.number_formatting_for_numeric_values"
+	}]
+}, N = {
+	dropZones: [{
+		key: "columns",
+		label: "chart.recordsTable.dropZone.columns.label",
+		description: "chart.recordsTable.dropZone.columns.description",
+		mandatory: !1,
+		acceptTypes: [
+			"dimension",
+			"timeDimension",
+			"measure"
+		],
+		emptyText: "chart.recordsTable.dropZone.columns.empty"
+	}, {
+		key: "hiddenColumns",
+		label: "chart.recordsTable.dropZone.hiddenColumns.label",
+		description: "chart.recordsTable.dropZone.hiddenColumns.description",
+		mandatory: !1,
+		acceptTypes: [
+			"dimension",
+			"timeDimension",
+			"measure"
+		],
+		emptyText: "chart.recordsTable.dropZone.hiddenColumns.empty",
+		excludeFromInference: !0
+	}],
+	displayOptions: ["hideHeader"],
+	displayOptionsConfig: [
+		{
+			key: "columnFormats",
+			label: "chart.recordsTable.option.columnFormats.label",
+			type: "columnFormats",
+			description: "chart.recordsTable.option.columnFormats.description"
+		},
+		{
+			key: "rowLink",
+			label: "chart.recordsTable.option.rowLink.label",
+			type: "rowLink",
+			description: "chart.recordsTable.option.rowLink.description"
+		},
+		{
+			key: "pageSize",
+			label: "chart.recordsTable.option.pageSize.label",
+			type: "select",
+			defaultValue: 25,
+			description: "chart.recordsTable.option.pageSize.description",
+			options: [
+				{
+					value: 25,
+					label: "chart.recordsTable.option.pageSize.option.25"
+				},
+				{
+					value: 50,
+					label: "chart.recordsTable.option.pageSize.option.50"
+				},
+				{
+					value: 100,
+					label: "chart.recordsTable.option.pageSize.option.100"
+				}
+			]
+		}
+	],
+	clickableElements: { row: !0 },
+	recordGrain: !0
+}, P = {
+	dropZones: [{
+		key: "dateField",
+		label: "chart.configText.time_dimension",
+		description: "chart.configText.time_field_that_determines_grid_structure_granularity_affects_layout",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["timeDimension"],
+		emptyText: "chart.activityGrid.dropZone.dateField.empty"
+	}, {
+		key: "valueField",
+		label: "chart.configText.activity_measure",
+		description: "chart.configText.measure_used_for_activity_intensity_color_coding",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["measure"],
+		emptyText: "chart.activityGrid.dropZone.valueField.empty"
+	}],
+	displayOptions: [
+		"showLabels",
+		"showTooltip",
+		"hideHeader"
+	],
+	displayOptionsConfig: [{
+		key: "fitToWidth",
+		label: "chart.option.fitToWidth.label",
+		type: "boolean",
+		defaultValue: !1,
+		description: "chart.option.fitToWidth.description"
+	}],
+	validate: (e) => {
+		let { dateField: t, valueField: n } = e;
+		return !t || Array.isArray(t) && t.length === 0 ? {
+			isValid: !1,
+			message: "chart.activityGrid.validation.timeDimensionRequired"
+		} : !n || Array.isArray(n) && n.length === 0 ? {
+			isValid: !1,
+			message: "chart.activityGrid.validation.measureRequired"
+		} : { isValid: !0 };
+	},
+	clickableElements: { cell: !0 }
+}, F = {
+	dropZones: [{
+		key: "yAxis",
+		label: "chart.configText.value",
+		description: "chart.configText.measure_to_display_as_kpi_number",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["measure"],
+		emptyText: "chart.kpiNumber.dropZone.yAxis.empty"
+	}],
+	displayOptionsConfig: [
+		_,
+		{
+			key: "target",
+			label: "chart.runtime.tooltip.targetValue",
+			type: "string",
+			placeholder: "e.g., 100",
+			description: "chart.configText.target_value_to_compare_against_first_value_used_if_multiple_provided"
+		},
+		{
+			key: "prefix",
+			label: "chart.option.prefix.label",
+			type: "string",
+			placeholder: "e.g., $, €, #",
+			description: "chart.option.prefix.description"
+		},
+		{
+			key: "suffix",
+			label: "chart.option.suffix.label",
+			type: "string",
+			placeholder: "e.g., %, units, items",
+			description: "chart.option.suffix.description"
+		},
+		{
+			key: "decimals",
+			label: "chart.option.decimals.label",
+			type: "number",
+			defaultValue: 0,
+			min: 0,
+			max: 10,
+			step: 1,
+			description: "chart.option.decimals.description"
+		},
+		{
+			key: "valueColorIndex",
+			label: "chart.configText.value_color",
+			type: "paletteColor",
+			defaultValue: 0,
+			description: "chart.configText.color_from_the_dashboard_palette_for_the_kpi_value_text"
+		},
+		{
+			key: "useLastCompletePeriod",
+			label: "chart.option.useLastCompletePeriod.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.configText.exclude_current_incomplete_period_from_aggregation_e_g_partial_week_mont"
+		},
+		{
+			key: "skipLastPeriod",
+			label: "chart.option.skipLastPeriod.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.skipLastPeriod.description"
+		}
+	],
+	displayOptions: ["hideHeader"]
+}, I = {
+	dropZones: [{
+		key: "yAxis",
+		label: "chart.configText.value",
+		description: "chart.configText.measure_to_track_changes_for",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["measure"],
+		emptyText: "chart.kpiDelta.dropZone.yAxis.empty"
+	}, {
+		key: "xAxis",
+		label: "chart.configText.dimension_optional",
+		description: "chart.configText.dimension_for_ordering_data_typically_time",
+		mandatory: !1,
+		maxItems: 1,
+		acceptTypes: ["dimension", "timeDimension"],
+		emptyText: "chart.kpiDelta.dropZone.xAxis.empty"
+	}],
+	displayOptionsConfig: [
+		_,
+		{
+			key: "showBaseline",
+			label: "chart.option.showBaseline.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.showBaseline.description"
+		},
+		{
+			key: "prefix",
+			label: "chart.option.prefix.label",
+			type: "string",
+			placeholder: "e.g., $, €, #",
+			description: "chart.option.prefix.description"
+		},
+		{
+			key: "suffix",
+			label: "chart.option.suffix.label",
+			type: "string",
+			placeholder: "e.g., %, units, items",
+			description: "chart.option.suffix.description"
+		},
+		{
+			key: "decimals",
+			label: "chart.option.decimals.label",
+			type: "number",
+			defaultValue: 1,
+			min: 0,
+			max: 10,
+			step: 1,
+			description: "chart.option.decimals.description"
+		},
+		{
+			key: "positiveColorIndex",
+			label: "chart.configText.positive_change_color",
+			type: "paletteColor",
+			defaultValue: 2,
+			description: "chart.configText.color_for_positive_changes_increases"
+		},
+		{
+			key: "negativeColorIndex",
+			label: "chart.configText.negative_change_color",
+			type: "paletteColor",
+			defaultValue: 3,
+			description: "chart.configText.color_for_negative_changes_decreases"
+		},
+		{
+			key: "showHistogram",
+			label: "chart.option.showHistogram.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showHistogram.description"
+		},
+		{
+			key: "useLastCompletePeriod",
+			label: "chart.option.useLastCompletePeriod.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.configText.exclude_current_incomplete_period_from_delta_calculation_e_g_partial_wee"
+		},
+		{
+			key: "skipLastPeriod",
+			label: "chart.option.skipLastPeriod.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.skipLastPeriod.description"
+		}
+	],
+	displayOptions: ["hideHeader"],
+	validate: (e) => !e.yAxis || Array.isArray(e.yAxis) && e.yAxis.length === 0 ? {
+		isValid: !1,
+		message: "chart.kpiDelta.validation.measureRequired"
+	} : { isValid: !0 }
+}, L = {
+	dropZones: [{
+		key: "yAxis",
+		label: "chart.configText.value",
+		description: "chart.configText.measure_to_display_in_the_kpi_text_template",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["measure"],
+		emptyText: "chart.kpiText.dropZone.yAxis.empty"
+	}],
+	displayOptionsConfig: [
+		{
+			key: "template",
+			label: "chart.configText.text_template",
+			type: "string",
+			placeholder: "e.g., Total Revenue: ${value}",
+			description: "chart.configText.template_for_displaying_the_text_use_value_to_insert_the_measure_value"
+		},
+		{
+			key: "decimals",
+			label: "chart.option.decimals.label",
+			type: "number",
+			defaultValue: 0,
+			min: 0,
+			max: 10,
+			step: 1,
+			description: "chart.configText.number_of_decimal_places_to_display_for_numeric_values"
+		},
+		{
+			key: "valueColorIndex",
+			label: "chart.configText.value_color",
+			type: "paletteColor",
+			defaultValue: 0,
+			description: "chart.configText.color_from_the_dashboard_palette_for_the_kpi_value_text"
+		}
+	],
+	displayOptions: ["hideHeader"]
+}, R = {
+	skipQuery: !0,
+	dropZones: [],
+	displayOptionsConfig: [
+		{
+			key: "content",
+			label: "chart.configText.markdown_content",
+			type: "string",
+			placeholder: "# Welcome\n\nAdd your **markdown** content here:\n\n- Lists with bullets\n- [Links](https://example.com)\n- *Italic* and **bold** text\n\n---\n\nUse --- for horizontal rules.",
+			description: "chart.configText.enter_markdown_text_supports_headers_bold_text_italic_text_links_text_ur"
+		},
+		{
+			key: "accentColorIndex",
+			label: "chart.configText.accent_color",
+			type: "paletteColor",
+			defaultValue: 0,
+			description: "chart.configText.color_from_the_dashboard_palette_for_headers_bullets_and_links"
+		},
+		{
+			key: "fontSize",
+			label: "chart.option.fontSize.label",
+			type: "select",
+			defaultValue: "medium",
+			options: [
+				{
+					value: "small",
+					label: "chart.option.fontSize.small"
+				},
+				{
+					value: "medium",
+					label: "chart.option.fontSize.medium"
+				},
+				{
+					value: "large",
+					label: "chart.option.fontSize.large"
+				}
+			],
+			description: "chart.configText.overall_text_size_for_the_markdown_content"
+		},
+		{
+			key: "alignment",
+			label: "chart.option.alignment.label",
+			type: "select",
+			defaultValue: "left",
+			options: [
+				{
+					value: "left",
+					label: "chart.option.accentBorder.left"
+				},
+				{
+					value: "center",
+					label: "chart.option.alignment.center"
+				},
+				{
+					value: "right",
+					label: "chart.option.alignment.right"
+				}
+			],
+			description: "chart.configText.horizontal_alignment_of_the_markdown_content"
+		},
+		{
+			key: "hideHeader",
+			label: "chart.option.hideHeader.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.hideHeader.description"
+		},
+		{
+			key: "transparentBackground",
+			label: "chart.option.transparentBackground.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.transparentBackground.description"
+		},
+		{
+			key: "autoHeight",
+			label: "chart.option.autoHeight.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.autoHeight.description"
+		},
+		{
+			key: "accentBorder",
+			label: "chart.option.accentBorder.label",
+			type: "select",
+			defaultValue: "none",
+			options: [
+				{
+					value: "none",
+					label: "chart.option.accentBorder.none"
+				},
+				{
+					value: "left",
+					label: "chart.option.accentBorder.left"
+				},
+				{
+					value: "top",
+					label: "chart.option.accentBorder.top"
+				},
+				{
+					value: "bottom",
+					label: "chart.option.accentBorder.bottom"
+				}
+			],
+			description: "chart.configText.add_an_accent_colored_border_on_one_side_of_the_content"
+		}
+	]
+}, z = {
+	dropZones: [{
+		key: "xAxis",
+		label: "chart.configText.step_name",
+		description: "chart.configText.step_names_auto_populated_from_funnel_steps",
+		mandatory: !1,
+		maxItems: 1,
+		acceptTypes: ["dimension"],
+		emptyText: "chart.funnel.dropZone.xAxis.empty"
+	}, {
+		key: "yAxis",
+		label: "chart.configText.step_count",
+		description: "chart.configText.count_at_each_step_auto_calculated",
+		mandatory: !1,
+		maxItems: 1,
+		acceptTypes: ["measure"],
+		emptyText: "chart.funnel.dropZone.yAxis.empty"
+	}],
+	displayOptions: ["hideHeader"],
+	displayOptionsConfig: [
+		{
+			key: "funnelStyle",
+			label: "chart.option.funnelStyle.label",
+			type: "buttonGroup",
+			defaultValue: "bars",
+			options: [{
+				value: "bars",
+				label: "chart.option.funnelStyle.bars"
+			}, {
+				value: "funnel",
+				label: "chart.option.funnelStyle.funnel"
+			}],
+			description: "chart.configText.visualization_style"
+		},
+		{
+			key: "funnelOrientation",
+			label: "chart.option.funnelOrientation.label",
+			type: "buttonGroup",
+			defaultValue: "horizontal",
+			options: [{
+				value: "horizontal",
+				label: "chart.option.funnelOrientation.horizontal"
+			}, {
+				value: "vertical",
+				label: "chart.option.funnelOrientation.vertical"
+			}]
+		},
+		{
+			key: "hideSummaryFooter",
+			label: "chart.option.hideSummaryFooter.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.hideSummaryFooter.description"
+		},
+		{
+			key: "showFunnelConversion",
+			label: "chart.option.showConversion.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showConversion.description"
+		},
+		{
+			key: "showFunnelAvgTime",
+			label: "chart.option.showAvgTime.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.showAvgTime.description"
+		},
+		{
+			key: "showFunnelMedianTime",
+			label: "chart.option.showMedianTime.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.showMedianTime.description"
+		},
+		{
+			key: "showFunnelP90Time",
+			label: "chart.option.showP90Time.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.showP90Time.description"
+		}
+	]
+}, B = {
+	dropZones: [{
+		key: "xAxis",
+		label: "chart.configText.event_type",
+		description: "chart.configText.event_dimension_that_categorizes_flow_nodes",
+		mandatory: !1,
+		maxItems: 1,
+		acceptTypes: ["dimension"],
+		emptyText: "chart.sankey.dropZone.xAxis.empty"
+	}, {
+		key: "yAxis",
+		label: "chart.configText.flow_count",
+		description: "chart.configText.count_of_entities_following_each_path",
+		mandatory: !1,
+		maxItems: 1,
+		acceptTypes: ["measure"],
+		emptyText: "chart.sankey.dropZone.yAxis.empty"
+	}],
+	displayOptions: ["hideHeader"],
+	displayOptionsConfig: [
+		{
+			key: "linkOpacity",
+			label: "chart.option.linkOpacity.label",
+			type: "buttonGroup",
+			defaultValue: "0.5",
+			options: [
+				{
+					value: "0.3",
+					label: "chart.option.linkOpacity.light"
+				},
+				{
+					value: "0.5",
+					label: "chart.option.fontSize.medium"
+				},
+				{
+					value: "0.7",
+					label: "chart.option.linkOpacity.dark"
+				}
+			],
+			description: "chart.configText.opacity_of_flow_links"
+		},
+		{
+			key: "showNodeLabels",
+			label: "chart.option.showNodeLabels.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showNodeLabels.description"
+		},
+		{
+			key: "hideSummaryFooter",
+			label: "chart.option.hideSummaryFooter.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.configText.hide_the_statistics_footer_below_the_chart"
+		}
+	]
+}, V = {
+	dropZones: [{
+		key: "xAxis",
+		label: "chart.configText.event_type",
+		description: "chart.configText.event_dimension_that_categorizes_flow_nodes",
+		mandatory: !1,
+		maxItems: 1,
+		acceptTypes: ["dimension"],
+		emptyText: "chart.sunburst.dropZone.xAxis.empty"
+	}, {
+		key: "yAxis",
+		label: "chart.configText.flow_count",
+		description: "chart.configText.count_of_entities_following_each_path",
+		mandatory: !1,
+		maxItems: 1,
+		acceptTypes: ["measure"],
+		emptyText: "chart.sunburst.dropZone.yAxis.empty"
+	}],
+	displayOptions: ["hideHeader"],
+	displayOptionsConfig: [{
+		key: "innerRadius",
+		label: "chart.option.innerRadius.label",
+		type: "number",
+		defaultValue: 40,
+		min: 0,
+		max: 100,
+		step: 10,
+		description: "chart.configText.size_of_the_center_hole_0_for_full_circle"
+	}, {
+		key: "hideSummaryFooter",
+		label: "chart.option.hideSummaryFooter.label",
+		type: "boolean",
+		defaultValue: !0,
+		description: "chart.configText.hide_the_statistics_footer_below_the_chart"
+	}]
+}, H = {
+	dropZones: [
+		{
+			key: "xAxis",
+			label: "chart.configText.columns_x_axis",
+			description: "chart.configText.dimension_for_column_categories",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.heatmap.dropZone.xAxis.empty"
+		},
+		{
+			key: "yAxis",
+			label: "chart.configText.rows_y_axis",
+			description: "chart.configText.dimension_for_row_categories",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.heatmap.dropZone.yAxis.empty"
+		},
+		{
+			key: "valueField",
+			label: "chart.configText.value_color_intensity",
+			description: "chart.configText.measure_that_determines_cell_color",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: ["measure"],
+			emptyText: "chart.heatmap.dropZone.valueField.empty"
+		}
+	],
+	displayOptions: ["showLegend", "showTooltip"],
+	displayOptionsConfig: [
+		{
+			key: "showLabels",
+			label: "chart.option.showLabels.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.showLabels.description"
+		},
+		{
+			key: "cellShape",
+			label: "chart.option.cellShape.label",
+			type: "select",
+			defaultValue: "rect",
+			options: [{
+				value: "rect",
+				label: "chart.option.cellShape.rectangle"
+			}, {
+				value: "circle",
+				label: "chart.option.cellShape.circle"
+			}]
+		},
+		{
+			key: "xAxisFormat",
+			label: "chart.option.xAxisFormat.label",
+			type: "axisFormat",
+			description: "chart.configText.number_formatting_for_x_axis_labels"
+		},
+		{
+			key: "yAxisFormat",
+			label: "chart.option.yAxisFormat.label",
+			type: "axisFormat",
+			description: "chart.configText.number_formatting_for_y_axis_labels"
+		},
+		{
+			key: "valueFormat",
+			label: "chart.option.valueFormat.label",
+			type: "axisFormat",
+			description: "chart.configText.number_formatting_for_cell_values_and_legend"
+		}
+	],
+	validate: (e) => e.xAxis?.length ? e.yAxis?.length ? e.valueField?.length ? { isValid: !0 } : {
+		isValid: !1,
+		message: "chart.heatmap.validation.valueRequired"
+	} : {
+		isValid: !1,
+		message: "chart.heatmap.validation.yAxisRequired"
+	} : {
+		isValid: !1,
+		message: "chart.heatmap.validation.xAxisRequired"
+	}
+}, U = {
+	dropZones: [],
+	displayOptionsConfig: [{
+		key: "showLegend",
+		label: "chart.option.showLegend.label",
+		type: "boolean",
+		defaultValue: !0,
+		description: "chart.configText.show_the_color_intensity_legend"
+	}, {
+		key: "showTooltip",
+		label: "chart.option.showTooltip.label",
+		type: "boolean",
+		defaultValue: !0,
+		description: "chart.option.showTooltip.description"
+	}]
+}, W = {
+	dropZones: [],
+	displayOptionsConfig: [
+		{
+			key: "retentionDisplayMode",
+			label: "chart.option.retentionDisplayMode.label",
+			type: "select",
+			defaultValue: "line",
+			options: [
+				{
+					value: "line",
+					label: "chart.option.retentionDisplayMode.lineChart"
+				},
+				{
+					value: "heatmap",
+					label: "chart.option.retentionDisplayMode.heatmapTable"
+				},
+				{
+					value: "combined",
+					label: "chart.option.retentionDisplayMode.combined"
+				}
+			],
+			description: "chart.configText.choose_how_to_visualize_retention_data"
+		},
+		{
+			key: "showLegend",
+			label: "chart.option.showLegend.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.configText.show_the_legend_for_breakdown_segments"
+		},
+		{
+			key: "showGrid",
+			label: "chart.option.showGrid.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showGrid.description"
+		},
+		{
+			key: "showTooltip",
+			label: "chart.option.showTooltip.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showTooltip.description"
+		}
+	]
+}, G = {
+	displayOptions: ["hideHeader"],
+	dropZones: [{
+		key: "xAxis",
+		label: "chart.configText.x_axis_groups",
+		description: "chart.configText.dimension_to_group_boxes_by_e_g_symbol_platform",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["dimension", "timeDimension"],
+		emptyText: "chart.boxPlot.dropZone.xAxis.empty"
+	}, {
+		key: "yAxis",
+		label: "chart.configText.y_axis_measures",
+		description: "chart.configText.drop_1_measure_for_auto_mode_3_for_avg_stddev_median_mode_or_5_for_min_q",
+		mandatory: !0,
+		maxItems: 5,
+		acceptTypes: ["measure"],
+		emptyText: "chart.boxPlot.dropZone.yAxis.empty"
+	}],
+	displayOptionsConfig: [{
+		key: "leftYAxisFormat",
+		label: "chart.option.yAxisFormat.label",
+		type: "axisFormat",
+		description: "chart.configText.number_formatting_for_the_value_axis"
+	}]
+}, K = {
+	displayOptions: [
+		"showGrid",
+		"showTooltip",
+		"hideHeader"
+	],
+	dropZones: [
+		{
+			key: "xAxis",
+			label: "chart.dotStrip.dropZone.xAxis.label",
+			description: "chart.dotStrip.dropZone.xAxis.description",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: ["dimension", "timeDimension"],
+			emptyText: "chart.dotStrip.dropZone.xAxis.empty"
+		},
+		{
+			key: "yAxis",
+			label: "chart.dotStrip.dropZone.yAxis.label",
+			description: "chart.dotStrip.dropZone.yAxis.description",
+			mandatory: !0,
+			maxItems: 1,
+			acceptTypes: ["measure"],
+			emptyText: "chart.dotStrip.dropZone.yAxis.empty"
+		},
+		{
+			key: "series",
+			label: "chart.dotStrip.dropZone.series.label",
+			description: "chart.dotStrip.dropZone.series.description",
+			mandatory: !1,
+			maxItems: 1,
+			acceptTypes: ["dimension"],
+			emptyText: "chart.dotStrip.dropZone.series.empty"
+		}
+	],
+	clickableElements: { point: !0 },
+	displayOptionsConfig: [
+		{
+			key: "showMedianMarker",
+			label: "chart.option.showMedianMarker.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showMedianMarker.description"
+		},
+		{
+			key: "showBandStats",
+			label: "chart.option.showBandStats.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showBandStats.description"
+		},
+		{
+			key: "showExtremeLabels",
+			label: "chart.option.showExtremeLabels.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.showExtremeLabels.description"
+		},
+		{
+			key: "dotSize",
+			label: "chart.option.dotSize.label",
+			type: "select",
+			defaultValue: "medium",
+			options: [
+				{
+					value: "small",
+					label: "chart.option.dotSize.small"
+				},
+				{
+					value: "medium",
+					label: "chart.option.dotSize.medium"
+				},
+				{
+					value: "large",
+					label: "chart.option.dotSize.large"
+				}
+			],
+			description: "chart.option.dotSize.description"
+		},
+		{
+			key: "bandSort",
+			label: "chart.option.bandSort.label",
+			type: "select",
+			defaultValue: "none",
+			options: [
+				{
+					value: "none",
+					label: "chart.option.bandSort.none"
+				},
+				{
+					value: "valueDesc",
+					label: "chart.option.bandSort.valueDesc"
+				},
+				{
+					value: "valueAsc",
+					label: "chart.option.bandSort.valueAsc"
+				},
+				{
+					value: "count",
+					label: "chart.option.bandSort.count"
+				}
+			],
+			description: "chart.option.bandSort.description"
+		},
+		{
+			key: "xAxisFormat",
+			label: "chart.option.xAxisFormat.label",
+			type: "axisFormat",
+			description: "chart.option.xAxisFormat.description"
+		}
+	]
+}, q = {
+	clickableElements: { bar: !0 },
+	displayOptions: ["showTooltip", "hideHeader"],
+	dropZones: [{
+		key: "xAxis",
+		label: "chart.dropZone.xAxis.label",
+		description: "chart.configText.dimension_labels_for_each_bar_segment_e_g_symbol_transaction_type",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["dimension", "timeDimension"],
+		emptyText: "chart.waterfall.dropZone.xAxis.empty"
+	}, {
+		key: "yAxis",
+		label: "chart.configText.y_axis_value",
+		description: "chart.configText.single_measure_whose_values_are_summed_cumulatively",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["measure"],
+		emptyText: "chart.waterfall.dropZone.yAxis.empty"
+	}],
+	displayOptionsConfig: [
+		{
+			key: "showTotal",
+			label: "chart.option.showTotal.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showTotal.description"
+		},
+		{
+			key: "showConnectorLine",
+			label: "chart.option.showConnectorLine.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showConnectorLine.description"
+		},
+		{
+			key: "showDataLabels",
+			label: "chart.option.showDataLabels.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.configText.display_the_value_above_each_bar_segment"
+		},
+		{
+			key: "leftYAxisFormat",
+			label: "chart.option.yAxisFormat.label",
+			type: "axisFormat",
+			description: "chart.configText.number_formatting_for_the_y_axis"
+		}
+	]
+}, ce = {
+	clickableElements: { bar: !0 },
+	displayOptions: ["hideHeader"],
+	dropZones: [{
+		key: "xAxis",
+		label: "chart.configText.x_axis_time_category",
+		description: "chart.configText.time_dimension_or_category_for_each_candle_e_g_date_symbol",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["timeDimension", "dimension"],
+		emptyText: "chart.candlestick.dropZone.xAxis.empty"
+	}, {
+		key: "yAxis",
+		label: "chart.configText.ohlc_measures_open_close_high_low",
+		description: "chart.configText.drop_2_4_measures_in_order_open_close_high_low_ohlc_mode_for_range_mode_",
+		mandatory: !0,
+		acceptTypes: ["measure"],
+		emptyText: "chart.candlestick.dropZone.yAxis.empty"
+	}],
+	displayOptionsConfig: [
+		{
+			key: "rangeMode",
+			label: "chart.option.rangeMode.label",
+			type: "select",
+			defaultValue: "ohlc",
+			options: [{
+				value: "ohlc",
+				label: "chart.option.rangeMode.ohlc"
+			}, {
+				value: "range",
+				label: "chart.option.rangeMode.range"
+			}],
+			description: "chart.option.rangeMode.description"
+		},
+		{
+			key: "bullColor",
+			label: "chart.option.bullColor.label",
+			type: "color",
+			defaultValue: "#22c55e",
+			description: "chart.option.bullColor.description"
+		},
+		{
+			key: "bearColor",
+			label: "chart.option.bearColor.label",
+			type: "color",
+			defaultValue: "#ef4444",
+			description: "chart.option.bearColor.description"
+		},
+		{
+			key: "showWicks",
+			label: "chart.option.showWicks.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showWicks.description"
+		},
+		{
+			key: "leftYAxisFormat",
+			label: "chart.option.yAxisFormat.label",
+			type: "axisFormat",
+			description: "chart.configText.number_formatting_for_the_price_axis"
+		}
+	]
+}, le = {
+	displayOptions: [
+		"showLegend",
+		"showTooltip",
+		"hideHeader"
+	],
+	dropZones: [{
+		key: "yAxis",
+		label: "chart.configText.measures_x_axis_order",
+		description: "chart.configText.add_2_or_more_measures_they_become_the_x_axis_categories_in_the_order_li",
+		mandatory: !0,
+		acceptTypes: ["measure"],
+		emptyText: "chart.measureProfile.dropZone.yAxis.empty"
+	}, {
+		key: "series",
+		label: "chart.configText.series_split_into_multiple_lines",
+		description: "chart.configText.dimension_to_split_data_into_separate_profile_lines_e_g_symbol_platform",
+		mandatory: !1,
+		maxItems: 1,
+		acceptTypes: ["dimension"],
+		emptyText: "chart.measureProfile.dropZone.series.empty"
+	}],
+	displayOptionsConfig: [
+		{
+			key: "showReferenceLineAtZero",
+			label: "chart.option.showReferenceLineAtZero.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showReferenceLineAtZero.description"
+		},
+		{
+			key: "showDataLabels",
+			label: "chart.option.showDataLabels.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.configText.display_value_at_each_data_point"
+		},
+		{
+			key: "showLegend",
+			label: "chart.option.showLegend.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.configText.show_series_legend_only_visible_with_a_series_dimension"
+		},
+		{
+			key: "lineType",
+			label: "chart.option.lineType.label",
+			type: "select",
+			defaultValue: "monotone",
+			options: [
+				{
+					value: "monotone",
+					label: "chart.option.lineType.smooth"
+				},
+				{
+					value: "linear",
+					label: "chart.option.lineType.linear"
+				},
+				{
+					value: "step",
+					label: "chart.option.lineType.step"
+				}
+			],
+			description: "chart.option.lineType.description"
+		},
+		{
+			key: "leftYAxisFormat",
+			label: "chart.option.yAxisFormat.label",
+			type: "axisFormat",
+			description: "chart.configText.number_formatting_for_the_y_axis"
+		}
+	]
+}, ue = {
+	dropZones: [{
+		key: "xAxis",
+		label: "chart.configText.category",
+		description: "chart.configText.dimension_to_split_the_bar_into_segments",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["dimension", "timeDimension"],
+		emptyText: "chart.proportionBar.dropZone.xAxis.empty"
+	}, {
+		key: "yAxis",
+		label: "chart.configText.value",
+		description: "chart.configText.measure_that_determines_each_segments_share",
+		mandatory: !0,
+		maxItems: 1,
+		acceptTypes: ["measure"],
+		emptyText: "chart.proportionBar.dropZone.yAxis.empty"
+	}],
+	displayOptions: ["hideHeader"],
+	displayOptionsConfig: [
+		{
+			key: "showLabels",
+			label: "chart.option.proportionBarLabels.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.proportionBarLabels.description"
+		},
+		{
+			key: "showPercentages",
+			label: "chart.option.showPercentages.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showPercentages.description"
+		},
+		{
+			key: "sortSegments",
+			label: "chart.option.sortSegments.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.sortSegments.description"
+		},
+		{
+			key: "decimals",
+			label: "chart.option.decimals.label",
+			type: "number",
+			defaultValue: 0,
+			min: 0,
+			max: 2,
+			description: "chart.option.proportionBarDecimals.description"
+		}
+	],
+	validate: (e) => !e?.xAxis || Array.isArray(e.xAxis) && e.xAxis.length === 0 ? {
+		isValid: !1,
+		message: "chart.proportionBar.validation.dimensionRequired"
+	} : !e?.yAxis || Array.isArray(e.yAxis) && e.yAxis.length === 0 ? {
+		isValid: !1,
+		message: "chart.proportionBar.validation.measureRequired"
+	} : { isValid: !0 }
+}, de = {
+	clickableElements: {},
+	displayOptions: ["hideHeader"],
+	dropZones: [{
+		key: "yAxis",
+		label: "chart.configText.value_measure",
+		description: "chart.configText.current_value_to_display_on_the_gauge_e_g_current_equity_margin_used",
+		mandatory: !0,
+		maxItems: 2,
+		acceptTypes: ["measure"],
+		emptyText: "chart.gauge.dropZone.yAxis.empty"
+	}],
+	displayOptionsConfig: [
+		{
+			key: "minValue",
+			label: "chart.option.minValue.label",
+			type: "number",
+			defaultValue: 0,
+			description: "chart.option.minValue.description"
+		},
+		{
+			key: "maxValue",
+			label: "chart.option.maxValue.label",
+			type: "number",
+			description: "chart.option.maxValue.description"
+		},
+		{
+			key: "thresholds",
+			label: "chart.configText.threshold_bands",
+			type: "thresholdBands",
+			description: "chart.gauge.thresholds.description"
+		},
+		{
+			key: "showCenterLabel",
+			label: "chart.option.showCentreLabel.label",
+			type: "boolean",
+			defaultValue: !0,
+			description: "chart.option.showCentreLabel.description"
+		},
+		{
+			key: "showPercentage",
+			label: "chart.option.showPercentage.label",
+			type: "boolean",
+			defaultValue: !1,
+			description: "chart.option.showPercentage.description"
+		},
+		{
+			key: "leftYAxisFormat",
+			label: "chart.option.valueFormat.label",
+			type: "axisFormat",
+			description: "chart.configText.number_formatting_for_the_displayed_value_and_axis_labels"
+		}
+	]
+}, J = {
+	packageName: "recharts",
+	installCommand: "npm install recharts"
+}, fe = {
+	bar: {
+		label: "chart.bar.label",
+		icon: "chartBar",
+		description: "chart.bar.description",
+		useCase: "chart.bar.useCase",
+		isAvailable: f,
+		dependencies: J,
+		config: async () => (await import("./BarChart.config-qI_aXtJy.js")).barChartConfig
+	},
+	line: {
+		label: "chart.line.label",
+		icon: "chartLine",
+		description: "chart.line.description",
+		useCase: "chart.line.useCase",
+		isAvailable: f,
+		dependencies: J,
+		config: async () => (await import("./LineChart.config-Ds1-VPfY.js")).lineChartConfig
+	},
+	area: {
+		label: "chart.area.label",
+		icon: "chartArea",
+		description: "chart.area.description",
+		useCase: "chart.area.useCase",
+		isAvailable: f,
+		dependencies: J,
+		config: async () => (await import("./AreaChart.config-Cwi2OII2.js")).areaChartConfig
+	},
+	pie: {
+		label: "chart.pie.label",
+		icon: "chartPie",
+		description: "chart.pie.description",
+		useCase: "chart.pie.useCase",
+		isAvailable: f,
+		dependencies: J,
+		config: async () => (await import("./PieChart.config-DQ8tcc1e.js")).pieChartConfig
+	},
+	scatter: {
+		label: "chart.scatter.label",
+		icon: "chartScatter",
+		description: "chart.scatter.description",
+		useCase: "chart.scatter.useCase",
+		isAvailable: ({ measureCount: e, dimensionCount: t }) => e < 1 ? {
+			available: !1,
+			reason: "chart.availability.requiresMeasure"
+		} : e < 2 && t < 1 ? {
+			available: !1,
+			reason: "chart.availability.scatter"
+		} : { available: !0 },
+		dependencies: J,
+		config: async () => (await import("./ScatterChart.config-0FLvQ9nX.js")).scatterChartConfig
+	},
+	bubble: {
+		label: "chart.bubble.label",
+		icon: "chartBubble",
+		description: "chart.bubble.description",
+		useCase: "chart.bubble.useCase",
+		isAvailable: ({ measureCount: e, dimensionCount: t }) => e < 2 ? {
+			available: !1,
+			reason: "chart.availability.requiresTwoMeasures"
+		} : t < 1 ? {
+			available: !1,
+			reason: "chart.availability.bubble"
+		} : { available: !0 },
+		dependencies: J,
+		config: async () => (await import("./BubbleChart.config-BJBhcA1q.js")).bubbleChartConfig
+	},
+	radar: {
+		label: "chart.radar.label",
+		icon: "chartRadar",
+		description: "chart.radar.description",
+		useCase: "chart.radar.useCase",
+		isAvailable: f,
+		dependencies: J,
+		config: async () => (await import("./RadarChart.config-DKpjBLUc.js")).radarChartConfig
+	},
+	radialBar: {
+		label: "chart.radialBar.label",
+		icon: "chartRadialBar",
+		description: "chart.radialBar.description",
+		useCase: "chart.radialBar.useCase",
+		isAvailable: f,
+		dependencies: J,
+		config: async () => (await import("./RadialBarChart.config-C9FXOxSF.js")).radialBarChartConfig
+	},
+	treemap: {
+		label: "chart.treemap.label",
+		icon: "chartTreemap",
+		description: "chart.treemap.description",
+		useCase: "chart.treemap.useCase",
+		isAvailable: f,
+		dependencies: J,
+		config: async () => (await import("./TreeMapChart.config-D07RVNcR.js")).treemapChartConfig
+	},
+	table: {
+		label: "chart.table.label",
+		icon: "chartTable",
+		description: "chart.table.description",
+		useCase: "chart.table.useCase",
+		config: async () => (await import("./DataTable.config-Bffci8Jl.js")).dataTableConfig
+	},
+	recordsTable: {
+		label: "chart.recordsTable.label",
+		icon: "chartRecordsTable",
+		description: "chart.recordsTable.description",
+		useCase: "chart.recordsTable.useCase",
+		config: async () => (await import("./RecordsTable.config-G9l9rLq4.js")).recordsTableConfig
+	},
+	activityGrid: {
+		label: "chart.activityGrid.label",
+		icon: "chartActivityGrid",
+		description: "chart.activityGrid.description",
+		useCase: "chart.activityGrid.useCase",
+		isAvailable: ({ measureCount: e, timeDimensionCount: t }) => e < 1 ? {
+			available: !1,
+			reason: "chart.availability.requiresMeasure"
+		} : t < 1 ? {
+			available: !1,
+			reason: "chart.availability.requiresTimeDimension"
+		} : { available: !0 },
+		config: async () => (await import("./ActivityGridChart.config-B1Xex5rm.js")).activityGridChartConfig
+	},
+	kpiNumber: {
+		label: "chart.kpiNumber.label",
+		icon: "chartKpiNumber",
+		description: "chart.kpiNumber.description",
+		useCase: "chart.kpiNumber.useCase",
+		isAvailable: h,
+		config: async () => (await import("./KpiNumber.config-CgTM453k.js")).kpiNumberConfig
+	},
+	kpiDelta: {
+		label: "chart.kpiDelta.label",
+		icon: "chartKpiDelta",
+		description: "chart.kpiDelta.description",
+		useCase: "chart.kpiDelta.useCase",
+		isAvailable: f,
+		config: async () => (await import("./KpiDelta.config-CavT6LsU.js")).kpiDeltaConfig
+	},
+	kpiText: {
+		label: "chart.kpiText.label",
+		icon: "chartKpiText",
+		description: "chart.kpiText.description",
+		useCase: "chart.kpiText.useCase",
+		isAvailable: h,
+		config: async () => (await import("./KpiText.config-Bz3fZCd1.js")).kpiTextConfig
+	},
+	markdown: {
+		label: "chart.markdown.label",
+		icon: "chartMarkdown",
+		description: "chart.markdown.description",
+		useCase: "chart.markdown.useCase",
+		config: async () => (await import("./MarkdownChart.config-DtFEmvpw.js")).markdownConfig
+	},
+	funnel: {
+		label: "chart.funnel.label",
+		icon: "chartFunnel",
+		description: "chart.funnel.description",
+		useCase: "chart.funnel.useCase",
+		dependencies: J,
+		config: async () => (await import("./FunnelChart.config-DLskARts.js")).funnelChartConfig
+	},
+	sankey: {
+		label: "chart.sankey.label",
+		icon: "chartSankey",
+		description: "chart.sankey.description",
+		useCase: "chart.sankey.useCase",
+		dependencies: J,
+		config: async () => (await import("./SankeyChart.config-CebE7Okk.js")).sankeyChartConfig
+	},
+	sunburst: {
+		label: "chart.sunburst.label",
+		icon: "chartSunburst",
+		description: "chart.sunburst.description",
+		useCase: "chart.sunburst.useCase",
+		dependencies: J,
+		config: async () => (await import("./SunburstChart.config-RGdLiIV6.js")).sunburstChartConfig
+	},
+	heatmap: {
+		label: "chart.heatmap.label",
+		icon: "chartHeatmap",
+		description: "chart.heatmap.description",
+		useCase: "chart.heatmap.useCase",
+		isAvailable: ({ measureCount: e, dimensionCount: t }) => e < 1 ? {
+			available: !1,
+			reason: "chart.availability.requiresMeasure"
+		} : t < 2 ? {
+			available: !1,
+			reason: "chart.availability.requiresTwoDimensions"
+		} : { available: !0 },
+		dependencies: {
+			packageName: "@nivo/heatmap",
+			installCommand: "npm install @nivo/heatmap"
+		},
+		config: async () => (await import("./HeatMapChart.config-DPOPs_0U.js")).heatmapChartConfig
+	},
+	retentionHeatmap: {
+		label: "chart.retentionHeatmap.label",
+		icon: "chartRetention",
+		description: "chart.retentionHeatmap.description",
+		useCase: "chart.retentionHeatmap.useCase",
+		config: async () => (await import("./RetentionHeatmap.config-CnzYIT32.js")).retentionHeatmapConfig
+	},
+	retentionCombined: {
+		label: "chart.retentionCombined.label",
+		icon: "chartRetention",
+		description: "chart.retentionCombined.description",
+		useCase: "chart.retentionCombined.useCase",
+		config: async () => (await import("./RetentionCombinedChart.config-DqvNm3Wr.js")).retentionCombinedConfig
+	},
+	boxPlot: {
+		label: "chart.boxPlot.label",
+		icon: "chartBoxPlot",
+		description: "chart.boxPlot.description",
+		useCase: "chart.boxPlot.useCase",
+		isAvailable: f,
+		config: async () => (await import("./BoxPlotChart.config-BTYIobm5.js")).boxPlotChartConfig
+	},
+	dotStrip: {
+		label: "chart.dotStrip.label",
+		icon: "chartDotStrip",
+		description: "chart.dotStrip.description",
+		useCase: "chart.dotStrip.useCase",
+		isAvailable: f,
+		config: async () => (await import("./DotStripChart.config-CtWHeZyS.js")).dotStripChartConfig
+	},
+	waterfall: {
+		label: "chart.waterfall.label",
+		icon: "chartWaterfall",
+		description: "chart.waterfall.description",
+		useCase: "chart.waterfall.useCase",
+		isAvailable: f,
+		dependencies: J,
+		config: async () => (await import("./WaterfallChart.config-xhF_eJpJ.js")).waterfallChartConfig
+	},
+	candlestick: {
+		label: "chart.candlestick.label",
+		icon: "chartCandlestick",
+		description: "chart.candlestick.description",
+		useCase: "chart.candlestick.useCase",
+		isAvailable: ({ measureCount: e, dimensionCount: t }) => e < 2 ? {
+			available: !1,
+			reason: "chart.availability.requiresTwoMeasures"
+		} : t < 1 ? {
+			available: !1,
+			reason: "chart.availability.requiresDimension"
+		} : { available: !0 },
+		config: async () => (await import("./CandlestickChart.config-Bz1RSfKG.js")).candlestickChartConfig
+	},
+	measureProfile: {
+		label: "chart.measureProfile.label",
+		icon: "chartMeasureProfile",
+		description: "chart.measureProfile.description",
+		useCase: "chart.measureProfile.useCase",
+		isAvailable: ({ measureCount: e }) => e < 2 ? {
+			available: !1,
+			reason: "chart.availability.requiresTwoMeasures"
+		} : { available: !0 },
+		dependencies: J,
+		config: async () => (await import("./MeasureProfileChart.config-DZp-E7Og.js")).measureProfileChartConfig
+	},
+	proportionBar: {
+		label: "chart.proportionBar.label",
+		icon: "chartProportionBar",
+		description: "chart.proportionBar.description",
+		useCase: "chart.proportionBar.useCase",
+		isAvailable: f,
+		config: async () => (await import("./ProportionBarChart.config-CiHlLoch.js")).proportionBarChartConfig
+	},
+	gauge: {
+		label: "chart.gauge.label",
+		icon: "chartGauge",
+		description: "chart.gauge.description",
+		useCase: "chart.gauge.useCase",
+		isAvailable: h,
+		dependencies: {
+			packageName: "d3-shape",
+			installCommand: "npm install d3-shape"
+		},
+		config: async () => (await import("./GaugeChart.config-CKiaDDBN.js")).gaugeChartConfig
+	}
+};
+function pe(e, t) {
+	return {
+		...t,
+		label: e.label,
+		description: e.description,
+		useCase: e.useCase,
+		isAvailable: e.isAvailable
+	};
+}
+//#endregion
+//#region src/client/charts/chartConfigRegistry.ts
+var me = {
+	bar: w,
+	line: T,
+	area: se,
+	pie: E,
+	scatter: D,
+	bubble: O,
+	radar: k,
+	radialBar: A,
+	treemap: j,
+	table: M,
+	recordsTable: N,
+	activityGrid: P,
+	kpiNumber: F,
+	kpiDelta: I,
+	kpiText: L,
+	markdown: R,
+	funnel: z,
+	sankey: B,
+	sunburst: V,
+	heatmap: H,
+	retentionHeatmap: U,
+	retentionCombined: W,
+	boxPlot: G,
+	dotStrip: K,
+	waterfall: q,
+	candlestick: ce,
+	measureProfile: le,
+	proportionBar: ue,
+	gauge: de
+}, Y = Object.fromEntries(Object.keys(fe).map((e) => [e, pe(fe[e], me[e])]));
+function he(e) {
+	return Y[e]?.recordGrain === !0;
+}
+//#endregion
+//#region src/server/agent/chart-validation.ts
+function X(e) {
+	return Array.isArray(e) ? e.length > 0 : !!e;
+}
+function ge(e, t, n, r) {
+	for (let i of e.dropZones) {
+		if (!i.mandatory || X(n?.[i.key])) continue;
+		let e = i.acceptTypes?.join("/") ?? "fields";
+		r.push(a("server.validation.chart.dropZoneRequired", {
+			key: i.key,
+			chartType: t,
+			label: i.label,
+			acceptDesc: e
+		}));
+	}
+}
+function _e(e, t, n) {
+	if (X(e?.xAxis)) return;
+	let r = t.dimensions ?? [], i = t.timeDimensions ?? [], o = r.length > 0 || i.length > 0;
+	n.push(a(o ? "server.validation.chart.barXAxisRequired" : "server.validation.chart.barNeedsDimension"));
+}
+function ve(e) {
+	return Array.isArray(e) ? e : [e];
+}
+function ye(e, t) {
+	if (!e?.xAxis || !e?.series) return;
+	let n = new Set(ve(e.xAxis)), r = ve(e.series).filter((e) => n.has(e));
+	r.length > 0 && t.push(a("server.validation.chart.seriesDuplicatesXAxis", { duplicates: r.join(", ") }));
+}
+function be(e, t, n) {
+	he(e) && t.ungrouped !== !0 && n.push(a("server.validation.chart.recordGrainNeedsUngrouped", { chartType: e }));
+}
+function xe(e, t, n) {
+	let r = Y[e];
+	if (!r || r.skipQuery) return {
+		isValid: !0,
+		errors: []
+	};
+	let i = [];
+	return ge(r, e, t, i), be(e, n, i), e === "bar" && _e(t, n, i), ye(t, i), {
+		isValid: i.length === 0,
+		errors: i
+	};
+}
+function Se(e, t, n) {
+	if (e !== "bar" || X(t?.xAxis)) return { chartType: e };
+	let r = n.dimensions ?? [], i = n.timeDimensions ?? [];
+	if (r.length > 0 || i.length > 0) return { chartType: e };
+	let a = (n.measures ?? []).length === 1 ? "kpiNumber" : "table";
+	return {
+		chartType: a,
+		note: `Note: chartType was changed from "bar" to "${a}" because the query has no dimension, so a bar chart would have no category axis to label its bars. For a real bar chart, put the category in the query's dimensions and use a single measure. To plot several measures as an ordered profile instead, use "measureProfile".`
+	};
+}
+function Ce(e, t, n, r) {
+	if (!(e.acceptTypes ?? []).includes("measure")) return;
+	let i = /* @__PURE__ */ new Set();
+	for (let r of t.dropZones) {
+		if (r.key === e.key) continue;
+		let t = n[r.key];
+		Array.isArray(t) ? t.forEach((e) => i.add(e)) : typeof t == "string" && i.add(t);
+	}
+	let a = r.filter((e) => !i.has(e));
+	a.length > 0 && (n[e.key] = a[0]);
+}
+function we(e, t) {
+	let n = /* @__PURE__ */ new Set();
+	for (let [r, i] of Object.entries(e)) if (r !== t) {
+		if (Array.isArray(i)) for (let e of i) typeof e == "string" && n.add(e);
+		else typeof i == "string" && n.add(i);
+	}
+	return n;
+}
+function Te(e, t, n) {
+	let r = e.acceptTypes ?? [], i = [];
+	if (r.includes("dimension") && i.push(...n.dimensions), r.includes("timeDimension") && i.push(...n.timeDimFields), r.includes("measure") && i.push(...n.measures), i.length === 0) return;
+	let a = we(t, e.key), o = i.filter((e) => !a.has(e));
+	if (o.length === 0) return;
+	let s = e.maxItems ?? Infinity, c = o.slice(0, s);
+	c.length > 0 && (t[e.key] = c);
+}
+function Ee(e, t, n) {
+	let r = Y[e];
+	if (!r) return t ?? {};
+	let i = { ...t }, a = n.timeDimensions ?? [], o = {
+		measures: n.measures ?? [],
+		dimensions: n.dimensions ?? [],
+		timeDimFields: a.map((e) => e.dimension)
+	};
+	for (let e of r.dropZones) e.excludeFromInference || X(i[e.key]) || (e.key === "sizeField" || e.key === "colorField" ? Ce(e, r, i, o.measures) : Te(e, i, o));
+	return i;
+}
+function De(t) {
+	return t ? e(t) ? a(t) : t : "";
+}
+function Oe(e) {
+	let t = ["\nChart config requirements by type:"];
+	for (let n of e) {
+		let e = Y[n];
+		if (!e) continue;
+		let r = [De(e.description), De(e.useCase)].filter(Boolean).join(". "), i = r ? ` — ${r}.` : "", a = he(n) ? " Query MUST set \"ungrouped\": true, which also means one cube plus its to-one joins — an ungrouped query cannot span a hasMany relationship." : "", o = e.dropZones.filter((e) => e.mandatory);
+		if (o.length === 0 && !e.skipQuery) {
+			t.push(`  ${n}${i}${a} chartConfig auto-inferred from query.`);
+			continue;
+		}
+		if (e.skipQuery) {
+			t.push(`  ${n}${i} No query needed.`);
+			continue;
+		}
+		let s = o.map((e) => {
+			let t = e.acceptTypes?.join("/") ?? "any", n = e.maxItems ? ` (max ${e.maxItems})` : "";
+			return `${e.key}=[${t}]${n}`;
+		});
+		t.push(`  ${n}${i}${a} Requires ${s.join(", ")}.`);
+	}
+	return t.join("\n");
+}
+//#endregion
+//#region src/server/agent/data-shape.ts
+function ke(e, t, n, r) {
+	let i = /* @__PURE__ */ new Set(), a = 0, o, s, c = !0;
+	for (let n of e) {
+		let e = n[t];
+		if (e == null) {
+			a++;
+			continue;
+		}
+		i.add(e);
+		let r = typeof e == "number" ? e : Number(e);
+		typeof e == "boolean" || Number.isNaN(r) ? c = !1 : (o = o === void 0 || r < o ? r : o, s = s === void 0 || r > s ? r : s);
+	}
+	return {
+		field: t,
+		kind: n,
+		...r ? { type: r } : {},
+		distinctCount: i.size,
+		nullCount: a,
+		...c && o !== void 0 ? {
+			min: o,
+			max: s
+		} : {}
+	};
+}
+function Ae(e, t) {
+	if (e.length === 0) return [];
+	let n = [], r = /* @__PURE__ */ new Set(), i = [
+		["dimension", t?.dimensions],
+		["timeDimension", t?.timeDimensions],
+		["measure", t?.measures]
+	];
+	for (let [t, a] of i) for (let [i, o] of Object.entries(a ?? {})) r.add(i), n.push(ke(e, i, t, o?.type));
+	for (let t of Object.keys(e[0])) r.has(t) || n.push(ke(e, t, "dimension", void 0));
+	return n;
+}
+//#endregion
+//#region src/server/agent/tools.ts
+var Z = /* @__PURE__ */ "bar.line.area.pie.scatter.radar.bubble.table.kpiNumber.kpiDelta.kpiText.funnel.heatmap.sankey.sunburst.retentionHeatmap.retentionCombined.boxPlot.markdown.recordsTable.treemap.radialBar.proportionBar.dotStrip.waterfall.measureProfile.activityGrid.gauge.candlestick".split(".");
+function je() {
+	return [
+		{
+			name: "discover_cubes",
+			description: "Search for available data cubes by topic or intent. Call this FIRST to understand what data is available. Returns cube names, measures, dimensions, and relationships.",
+			parameters: {
+				type: "object",
+				properties: {
+					topic: {
+						type: "string",
+						description: "Keyword to search (e.g., \"sales\", \"employees\")"
+					},
+					intent: {
+						type: "string",
+						description: "Natural language goal (e.g., \"analyze productivity trends\")"
+					},
+					limit: {
+						type: "number",
+						description: "Max results (default: 10)"
+					},
+					minScore: {
+						type: "number",
+						description: "Min relevance 0-1 (default: 0.1)"
+					}
+				}
+			}
+		},
+		{
+			name: "get_cube_metadata",
+			description: "Get full metadata for all registered cubes including all measures, dimensions, types, and relationships. Use this for detailed schema information.",
+			parameters: {
+				type: "object",
+				properties: {}
+			}
+		},
+		{
+			name: "execute_query",
+			description: "Execute a semantic query and return data results. Supports standard queries (measures/dimensions) and analysis modes (funnel/flow/retention). Only provide ONE mode per call.",
+			parameters: {
+				type: "object",
+				properties: n
+			}
+		},
+		{
+			name: "add_portlet",
+			description: "Add a chart visualization to the notebook.\n" + Oe(Z) + "\nThe query is validated before adding. The portlet fetches its own data.",
+			parameters: {
+				type: "object",
+				properties: {
+					title: {
+						type: "string",
+						description: "Title for the visualization"
+					},
+					query: {
+						type: "string",
+						description: "JSON string of the query. Standard: {\"measures\":[...],\"dimensions\":[...]}. Funnel: {\"funnel\":{\"bindingKey\":\"...\",\"timeDimension\":\"...\",\"steps\":[...]}}. Flow: {\"flow\":{\"bindingKey\":\"...\",\"timeDimension\":\"...\",\"eventDimension\":\"...\",\"startingStep\":{...}}}. Retention: {\"retention\":{\"timeDimension\":\"...\",\"bindingKey\":\"...\",\"dateRange\":{\"start\":\"...\",\"end\":\"...\"},\"granularity\":\"...\",\"periods\":N}}."
+					},
+					chartType: {
+						type: "string",
+						enum: Z,
+						description: "Chart type to render"
+					},
+					chartConfig: {
+						type: "object",
+						properties: {
+							xAxis: {
+								type: "array",
+								items: { type: "string" }
+							},
+							yAxis: {
+								type: "array",
+								items: { type: "string" }
+							},
+							series: {
+								type: "array",
+								items: { type: "string" }
+							},
+							sizeField: { type: "string" },
+							colorField: { type: "string" },
+							yAxisAssignment: {
+								type: "object",
+								description: "Dual Y-axis: map measure fields to \"left\" or \"right\" axis. Only for bar, line, area charts with 2+ measures of different scales. Example: {\"Sales.revenue\": \"left\", \"Sales.conversionRate\": \"right\"}"
+							},
+							...l,
+							...d
+						},
+						description: "Chart axis configuration"
+					},
+					displayConfig: {
+						type: "object",
+						properties: {
+							showLegend: { type: "boolean" },
+							showGrid: { type: "boolean" },
+							showTooltip: { type: "boolean" },
+							stacked: { type: "boolean" },
+							orientation: {
+								type: "string",
+								enum: ["horizontal", "vertical"]
+							},
+							...c,
+							...u
+						},
+						description: "Chart display configuration"
+					}
+				},
+				required: [
+					"title",
+					"query",
+					"chartType"
+				]
+			}
+		},
+		{
+			name: "update_portlet",
+			description: "Amend a visualization you already added in this conversation, in place. Use this instead of add_portlet when a chart came back wrong or the user asks to change one — adding a second chart of the same data clutters the notebook. Only the fields you pass are changed; the rest are kept. The same validation as add_portlet applies. For a portlet added earlier in the conversation rather than this turn, pass the full `query` and `chartType` as well as the fields you are changing.",
+			parameters: {
+				type: "object",
+				properties: {
+					portletId: {
+						type: "string",
+						description: "The id returned by add_portlet"
+					},
+					title: {
+						type: "string",
+						description: "New title"
+					},
+					query: {
+						type: "string",
+						description: "Replacement query, as a JSON string (same shape as add_portlet)"
+					},
+					chartType: {
+						type: "string",
+						enum: Z,
+						description: "Replacement chart type"
+					},
+					chartConfig: {
+						type: "object",
+						description: "Replacement chart axis configuration (replaces, does not merge)"
+					},
+					displayConfig: {
+						type: "object",
+						description: "Replacement chart display configuration (replaces, does not merge)"
+					}
+				},
+				required: ["portletId"]
+			}
+		},
+		{
+			name: "add_markdown",
+			description: "Add an explanation or analysis text block to the notebook. Use markdown formatting. Use this to explain findings, methodology, and insights alongside visualizations.",
+			parameters: {
+				type: "object",
+				properties: {
+					title: {
+						type: "string",
+						description: "Optional title for the text block"
+					},
+					content: {
+						type: "string",
+						description: "Markdown content to display"
+					}
+				},
+				required: ["content"]
+			}
+		},
+		{
+			name: "save_as_dashboard",
+			description: "Convert the current notebook analysis into a persistent dashboard. Constructs a professional DashboardConfig with proper grid layout, section headers (markdown portlets), and dashboard-level filters. Call this when the user asks to save/export the notebook as a dashboard.",
+			parameters: {
+				type: "object",
+				properties: {
+					title: {
+						type: "string",
+						description: "Dashboard title"
+					},
+					description: {
+						type: "string",
+						description: "Optional dashboard description"
+					},
+					portlets: {
+						type: "array",
+						items: {
+							type: "object",
+							properties: {
+								id: {
+									type: "string",
+									description: "Unique portlet ID"
+								},
+								title: {
+									type: "string",
+									description: "Portlet title"
+								},
+								chartType: {
+									type: "string",
+									enum: Z,
+									description: "Chart type. Use \"markdown\" for section headers."
+								},
+								query: {
+									type: "string",
+									description: "JSON string of the query. Omit or leave empty for markdown portlets."
+								},
+								chartConfig: {
+									type: "object",
+									properties: {
+										xAxis: {
+											type: "array",
+											items: { type: "string" }
+										},
+										yAxis: {
+											type: "array",
+											items: { type: "string" }
+										},
+										series: {
+											type: "array",
+											items: { type: "string" }
+										},
+										sizeField: { type: "string" },
+										colorField: { type: "string" },
+										...l,
+										...d
+									},
+									description: "Chart axis configuration"
+								},
+								displayConfig: {
+									type: "object",
+									description: "Chart display configuration (for markdown: { content, hideHeader, transparentBackground, autoHeight })",
+									properties: {
+										...c,
+										...u
+									}
+								},
+								dashboardFilterMapping: {
+									type: "array",
+									items: { anyOf: [{ type: "string" }, {
+										type: "object",
+										properties: {
+											filterId: {
+												type: "string",
+												description: "Dashboard filter ID"
+											},
+											member: {
+												type: "string",
+												description: "Optional field to remap the filter to for this portlet (e.g. \"Invoices.customerId\")"
+											}
+										},
+										required: ["filterId"]
+									}] },
+									description: "Dashboard filters that apply to this portlet: filter IDs, or { filterId, member } entries to remap a filter to a different field for this portlet"
+								},
+								analysisType: {
+									type: "string",
+									enum: [
+										"query",
+										"funnel",
+										"flow",
+										"retention"
+									],
+									description: "Analysis type (default: \"query\")"
+								},
+								w: {
+									type: "number",
+									description: "Grid width (1-12)"
+								},
+								h: {
+									type: "number",
+									description: "Grid height in row units"
+								},
+								x: {
+									type: "number",
+									description: "Grid x position (0-11)"
+								},
+								y: {
+									type: "number",
+									description: "Grid y position"
+								}
+							},
+							required: [
+								"id",
+								"title",
+								"chartType",
+								"w",
+								"h",
+								"x",
+								"y"
+							]
+						},
+						description: "Array of portlet configurations for the dashboard"
+					},
+					filters: {
+						type: "array",
+						items: {
+							type: "object",
+							properties: {
+								id: {
+									type: "string",
+									description: "Unique filter ID"
+								},
+								label: {
+									type: "string",
+									description: "Display label for the filter"
+								},
+								filter: {
+									type: "object",
+									properties: {
+										member: { type: "string" },
+										operator: { type: "string" },
+										values: {
+											type: "array",
+											items: {}
+										}
+									},
+									required: ["member", "operator"],
+									description: "The filter definition"
+								},
+								isUniversalTime: {
+									type: "boolean",
+									description: "When true, applies to all time dimensions in portlets"
+								}
+							},
+							required: [
+								"id",
+								"label",
+								"filter"
+							]
+						},
+						description: "Dashboard-level filters"
+					},
+					colorPalette: {
+						type: "string",
+						description: "Color palette name"
+					}
+				},
+				required: ["title", "portlets"]
+			}
+		}
+	];
+}
+function Me(e) {
+	let { semanticLayer: t, securityContext: n } = e, r = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Map();
+	r.set("discover_cubes", async (e) => {
+		let r = { cubes: (await s(t, n, {
+			topic: e.topic,
+			intent: e.intent,
+			limit: e.limit,
+			minScore: e.minScore
+		})).cubes.map((e) => ({
+			cube: e.cube,
+			title: e.title,
+			description: e.description,
+			relevanceScore: e.relevanceScore,
+			suggestedMeasures: e.suggestedMeasures,
+			suggestedDimensions: e.suggestedDimensions,
+			...e.fieldTitles ? { fieldTitles: e.fieldTitles } : {},
+			capabilities: e.capabilities,
+			...e.capabilities.funnel || e.capabilities.flow || e.capabilities.retention ? { analysisConfig: {
+				candidateBindingKeys: e.analysisConfig?.candidateBindingKeys?.map((e) => e.dimension) ?? [],
+				candidateTimeDimensions: e.analysisConfig?.candidateTimeDimensions?.map((e) => e.dimension) ?? [],
+				...e.analysisConfig?.candidateEventDimensions?.length ? { candidateEventDimensions: e.analysisConfig.candidateEventDimensions.map((e) => e.dimension) } : {}
+			} } : {}
+		})) };
+		return { result: JSON.stringify(r) + "\n[IMPORTANT: Your next response MUST start with a brief text message BEFORE any tool calls.]" };
+	}), r.set("get_cube_metadata", async () => {
+		let e = t.getMetadata(n);
+		return { result: JSON.stringify(e) };
+	});
+	let c = /* @__PURE__ */ new Map();
+	for (let e of t.getMetadata(n)) c.set(e.name, {
+		measures: (e.measures || []).map((e) => e.name),
+		dimensions: (e.dimensions || []).map((e) => e.name)
+	});
+	let l = (e, t) => {
+		let n = c.get(e), r = t === "measures" ? n?.measures : n?.dimensions;
+		return !r || r.length === 0 ? "" : ` Available ${t}: ${r.slice(0, 5).map((e) => `"${e}"`).join(", ")}`;
+	};
+	r.set("execute_query", async (e) => {
+		try {
+			let r = (e, t) => {
+				if (!Array.isArray(e)) return;
+				let n = [];
+				for (let r of e) {
+					if (typeof r != "string") continue;
+					let e = r.split(".");
+					e.length === 1 ? n.push(`"${r}" is not valid — must be "CubeName.fieldName".${l(r, t)}`) : e.length === 2 && e[0] === e[1] && n.push(`"${r}" is WRONG — "${e[0]}" is the cube name, not a ${t.replace(/s$/, "")}.${l(e[0], t)}`);
+				}
+				if (n.length > 0) throw Error(`Invalid ${t}:\n${n.join("\n")}`);
+			};
+			r(e.measures, "measures"), r(e.dimensions, "dimensions");
+			let i;
+			i = e.funnel ? { funnel: e.funnel } : e.flow ? { flow: e.flow } : e.retention ? { retention: e.retention } : {
+				measures: e.measures,
+				dimensions: e.dimensions,
+				filters: e.filters,
+				timeDimensions: e.timeDimensions,
+				order: e.order,
+				limit: e.limit,
+				offset: e.offset,
+				ungrouped: e.ungrouped
+			};
+			let a = await o(t, n, { query: i }), s = a.data.slice(0, 25);
+			return { result: JSON.stringify({
+				rowCount: a.data.length,
+				data: s,
+				truncated: a.data.length > s.length,
+				dataShape: Ae(s, a.annotation),
+				annotation: a.annotation
+			}) + "\n[IMPORTANT: Your next response MUST start with a brief text message BEFORE any tool calls. Now call add_markdown and add_portlet to visualize these results.]" };
+		} catch (t) {
+			let n = {
+				measures: e.measures,
+				dimensions: e.dimensions,
+				filters: e.filters,
+				timeDimensions: e.timeDimensions,
+				order: e.order,
+				limit: e.limit,
+				...e.funnel ? { funnel: e.funnel } : {},
+				...e.flow ? { flow: e.flow } : {},
+				...e.retention ? { retention: e.retention } : {}
+			};
+			return {
+				result: `Query execution failed: ${t instanceof Error ? t.message : "Unknown error"}\n\nAttempted query:\n${JSON.stringify(n, null, 2)}`,
+				isError: !0
+			};
+		}
+	});
+	function u(e) {
+		let r = {
+			number: "kpiNumber",
+			retention: "retentionHeatmap"
+		}[e.chartType] ?? e.chartType, a;
+		try {
+			a = JSON.parse(e.query);
+		} catch {
+			return { error: "Invalid query: could not parse JSON string. Ensure `query` is a valid JSON string." };
+		}
+		a = i(a);
+		let o = t.validateQuery(a, n);
+		if (!o.isValid) return { error: `Invalid query — fix these errors and retry:\n${o.errors.join("\n")}\n\nAttempted query:\n${JSON.stringify(a, null, 2)}` };
+		let s = !!(a.funnel || a.flow || a.retention), c, l = r, u;
+		if (s) c = e.chartConfig ?? {};
+		else {
+			let t = Se(r, e.chartConfig, a);
+			l = t.chartType, u = t.note;
+			let n = Ee(l, e.chartConfig, a), i = xe(l, n, a);
+			if (!i.isValid) return { error: `Chart config invalid — fix these errors and retry:\n${i.errors.join("\n")}\n\nchartType: ${l}\nAttempted chartConfig:\n${JSON.stringify(n, null, 2)}\n\nQuery:\n${JSON.stringify(a, null, 2)}` };
+			c = n;
+		}
+		return {
+			portlet: {
+				query: JSON.stringify(a),
+				chartType: l,
+				chartConfig: c,
+				displayConfig: e.displayConfig
+			},
+			...u ? { note: u } : {}
+		};
+	}
+	return r.set("add_portlet", async (e) => {
+		let t = u({
+			query: e.query,
+			chartType: e.chartType,
+			chartConfig: e.chartConfig,
+			displayConfig: e.displayConfig
+		});
+		if ("error" in t) return {
+			result: t.error,
+			isError: !0
+		};
+		let n = `portlet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, r = {
+			id: n,
+			title: e.title,
+			...t.portlet
+		};
+		return a.set(n, r), {
+			result: `Portlet "${e.title}" added to notebook (id: ${n}, chart: ${r.chartType}).` + (t.note ? `\n${t.note}` : "") + " [Reminder: in your next response, start with a brief sentence about what you will do next BEFORE making any tool calls.]",
+			sideEffect: {
+				type: "add_portlet",
+				data: r
+			}
+		};
+	}), r.set("update_portlet", async (e) => {
+		let t = e.portletId, n = t ? a.get(t) : void 0, r = e.query ?? n?.query, i = e.chartType ?? n?.chartType;
+		if (!t || !r || !i) return {
+			result: `Cannot update portlet "${t ?? ""}": it was not added in this conversation, so there is nothing to merge your change into. Call update_portlet again with the same portletId plus the full \`query\` and \`chartType\` for the chart you want.`,
+			isError: !0
+		};
+		let o = u({
+			query: r,
+			chartType: i,
+			chartConfig: e.chartConfig ?? n?.chartConfig,
+			displayConfig: e.displayConfig ?? n?.displayConfig
+		});
+		if ("error" in o) return {
+			result: o.error,
+			isError: !0
+		};
+		let s = e.title ?? n?.title ?? "Untitled", c = {
+			id: t,
+			title: s,
+			...o.portlet
+		};
+		return a.set(t, c), {
+			result: `Portlet "${s}" updated (id: ${t}, chart: ${c.chartType}).` + (o.note ? `\n${o.note}` : "") + " [Reminder: in your next response, start with a brief sentence about what you will do next BEFORE making any tool calls.]",
+			sideEffect: {
+				type: "update_portlet",
+				data: c
+			}
+		};
+	}), r.set("add_markdown", async (e) => {
+		let t = e.content || e.text || e.markdown || "";
+		if (typeof t != "string" || t.trim() === "") return {
+			result: "add_markdown was called with no content, so no block was added. Call add_markdown again with the explanation text in the `content` field.",
+			isError: !0
+		};
+		let n = `markdown-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, r = {
+			id: n,
+			title: e.title,
+			content: t
+		};
+		return {
+			result: `Markdown block added to notebook (id: ${n}). [Reminder: in your next response, start with a brief sentence about what you will do next BEFORE making any tool calls.]`,
+			sideEffect: {
+				type: "add_markdown",
+				data: r
+			}
+		};
+	}), r.set("save_as_dashboard", async (e) => {
+		try {
+			let r = e.portlets;
+			if (!r || r.length === 0) return {
+				result: "Dashboard must contain at least one portlet.",
+				isError: !0
+			};
+			let a = [], o = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Map();
+			for (let e of r) {
+				let r = e.chartType;
+				if (r === "markdown") continue;
+				let c = e.query;
+				if (!c) {
+					a.push(`Portlet "${e.title}": missing query`);
+					continue;
+				}
+				let l;
+				try {
+					l = JSON.parse(c);
+				} catch {
+					a.push(`Portlet "${e.title}": invalid JSON query`);
+					continue;
+				}
+				l = i(l);
+				let u = t.validateQuery(l, n);
+				if (!u.isValid) {
+					a.push(`Portlet "${e.title}": ${u.errors.join(", ")}`);
+					continue;
+				}
+				let d = Se(r, e.chartConfig, l).chartType, f = Ee(d, e.chartConfig, l), p = xe(d, f, l);
+				if (!p.isValid) {
+					a.push(`Portlet "${e.title}": ${p.errors.join(", ")}`);
+					continue;
+				}
+				o.set(e, f), s.set(e, d);
+			}
+			if (a.length > 0) return {
+				result: `Dashboard has invalid portlets — fix these errors and retry:\n${a.join("\n")}`,
+				isError: !0
+			};
+			let c = {
+				portlets: r.map((e) => {
+					let t = s.get(e) ?? e.chartType, n = t === "markdown", r = n ? "query" : e.analysisType || "query", i = r === "funnel" ? "funnel" : r === "flow" ? "flow" : r === "retention" ? "retention" : "query", a = e.query || "{}", c;
+					try {
+						c = JSON.parse(a);
+					} catch {
+						c = {};
+					}
+					let l = {
+						version: 1,
+						analysisType: i,
+						activeView: "chart",
+						charts: { [i]: {
+							chartType: t,
+							chartConfig: o.get(e) ?? e.chartConfig ?? {},
+							displayConfig: e.displayConfig || {}
+						} },
+						query: n ? {} : c
+					};
+					return {
+						id: e.id,
+						title: e.title,
+						analysisConfig: l,
+						dashboardFilterMapping: e.dashboardFilterMapping,
+						w: e.w,
+						h: e.h,
+						x: e.x,
+						y: e.y
+					};
+				}),
+				filters: e.filters,
+				colorPalette: e.colorPalette
+			}, l = e.title;
+			return {
+				result: `Dashboard "${l}" created with ${c.portlets.length} portlets and ${c.filters?.length || 0} filters.`,
+				sideEffect: {
+					type: "dashboard_saved",
+					data: {
+						title: l,
+						description: e.description,
+						dashboardConfig: c
+					}
+				}
+			};
+		} catch (e) {
+			return {
+				result: `Failed to save dashboard: ${e instanceof Error ? e.message : "Unknown error"}`,
+				isError: !0
+			};
+		}
+	}), r;
+}
+//#endregion
+//#region src/server/agent/providers/factory.ts
+async function Ne(e, t, n) {
+	switch (e) {
+		case "anthropic": {
+			let { AnthropicProvider: e } = await import("./anthropic-MQlafOZv.js");
+			return new e(t);
+		}
+		case "openai": {
+			let { OpenAIProvider: e } = await import("./openai-1sY2Lo_k.js");
+			return new e(t, n);
+		}
+		case "google": {
+			let { GoogleProvider: e } = await import("./google-BBBP1Dhs.js");
+			return new e(t);
+		}
+		default: throw Error(`Unknown LLM provider: "${e}". Supported providers: anthropic, openai, google`);
+	}
+}
+//#endregion
+//#region src/server/agent/handler-steps.ts
+function Pe(e, t) {
+	if (Array.isArray(t)) for (let n of t) e.push(n);
+	else e.push(t);
+}
+function Q(e) {
+	if (e) try {
+		e();
+	} catch {}
+}
+function Fe(e, t) {
+	let n = [];
+	if (!e || e.length === 0) return n;
+	for (let r of e) {
+		if (r.role === "user") {
+			n.push({
+				role: "user",
+				content: r.content
+			});
+			continue;
+		}
+		if (r.role !== "assistant") continue;
+		let e = [];
+		if (r.content && e.push({
+			type: "text",
+			text: r.content
+		}), r.toolCalls && r.toolCalls.length > 0) {
+			for (let t of r.toolCalls) e.push({
+				type: "tool_use",
+				id: t.id,
+				name: t.name,
+				input: t.input || {}
+			});
+			n.push({
+				role: "assistant",
+				content: e
+			});
+			let i = r.toolCalls.map((e) => ({
+				toolUseId: e.id,
+				toolName: e.name,
+				content: typeof e.result == "string" ? e.result : JSON.stringify(e.result ?? ""),
+				isError: e.status === "error"
+			}));
+			Pe(n, t.formatToolResults(i));
+		} else e.length > 0 && n.push({
+			role: "assistant",
+			content: r.content
+		});
+	}
+	return n;
+}
+function $(e, t) {
+	if (!(e?.type !== "tool_use" || !t)) try {
+		e.input = JSON.parse(t);
+	} catch {
+		e.input = {}, e.inputParseError = !0;
+	}
+}
+function Ie(e, t) {
+	let n = e.contentBlocks[e.contentBlocks.length - 1];
+	n && n.type === "text" ? n.text = (n.text || "") + t : e.contentBlocks.push({
+		type: "text",
+		text: t
+	});
+}
+function Le(e, t) {
+	e.currentBlockIsToolUse && e.currentToolInputJson && $(e.contentBlocks[e.contentBlocks.length - 1], e.currentToolInputJson), e.contentBlocks.push({
+		type: "tool_use",
+		id: t.id,
+		name: t.name,
+		input: {},
+		...t.metadata ? { metadata: t.metadata } : {}
+	}), e.currentToolInputJson = "", e.currentBlockIsToolUse = !0;
+}
+function Re(e, t) {
+	if (t.id && t.input) {
+		let n = e.contentBlocks.find((e) => e.type === "tool_use" && e.id === t.id);
+		n && (n.input = t.input, t.parseError && (n.inputParseError = !0));
+	} else if (e.currentBlockIsToolUse) {
+		let t = e.contentBlocks[e.contentBlocks.length - 1];
+		t?.type === "tool_use" && e.currentToolInputJson && ($(t, e.currentToolInputJson), e.currentToolInputJson = ""), e.currentBlockIsToolUse = !1;
+	}
+}
+async function* ze(e, t) {
+	let n = {
+		contentBlocks: [],
+		currentToolInputJson: "",
+		currentBlockIsToolUse: !1,
+		stopReason: ""
+	};
+	for await (let r of e.parseStreamEvents(t)) {
+		let e = r;
+		switch (e.type) {
+			case "text_delta":
+				Ie(n, e.text), yield {
+					type: "text_delta",
+					data: e.text
+				};
+				break;
+			case "tool_use_start":
+				Le(n, e), yield {
+					type: "tool_use_start",
+					data: {
+						id: e.id,
+						name: e.name,
+						input: void 0
+					}
+				};
+				break;
+			case "tool_input_delta":
+				n.currentToolInputJson += e.json;
+				break;
+			case "tool_use_end":
+				Re(n, e);
+				break;
+			case "message_meta": e.inputTokens != null && (n.inputTokens = e.inputTokens), e.outputTokens != null && (n.outputTokens = e.outputTokens), e.stopReason && (n.stopReason = e.stopReason);
+		}
+	}
+	return {
+		contentBlocks: n.contentBlocks,
+		stopReason: n.stopReason,
+		inputTokens: n.inputTokens,
+		outputTokens: n.outputTokens
+	};
+}
+async function* Be(e, t) {
+	let { executor: n, observability: r, traceId: i, turn: a } = t, o = e.name, s = e.input || {}, c = e.id;
+	if (e.inputParseError) {
+		let e = `Could not parse the arguments you sent for ${o} — they were not valid JSON, so the tool was not run. Call it again with well-formed JSON arguments.`;
+		return yield {
+			type: "tool_use_result",
+			data: {
+				id: c,
+				name: o,
+				result: e,
+				isError: !0
+			}
+		}, Q(() => r?.onToolEnd?.({
+			traceId: i,
+			turn: a,
+			toolName: o,
+			toolUseId: c,
+			isError: !0,
+			durationMs: 0
+		})), {
+			toolUseId: c,
+			toolName: o,
+			content: e,
+			isError: !0
+		};
+	}
+	let l = n.get(o);
+	if (!l) return yield {
+		type: "tool_use_result",
+		data: {
+			id: c,
+			name: o,
+			result: `Unknown tool: ${o}`,
+			isError: !0
+		}
+	}, {
+		toolUseId: c,
+		toolName: o,
+		content: `Unknown tool: ${o}`,
+		isError: !0
+	};
+	let u = Date.now();
+	try {
+		let e = await l(s);
+		return e.sideEffect && (yield e.sideEffect), yield {
+			type: "tool_use_result",
+			data: {
+				id: c,
+				name: o,
+				input: s,
+				result: e.result,
+				...e.isError ? { isError: !0 } : {}
+			}
+		}, Q(() => r?.onToolEnd?.({
+			traceId: i,
+			turn: a,
+			toolName: o,
+			toolUseId: c,
+			isError: !!e.isError,
+			durationMs: Date.now() - u
+		})), {
+			toolUseId: c,
+			toolName: o,
+			content: e.result,
+			...e.isError ? { isError: !0 } : {}
+		};
+	} catch (e) {
+		let t = e instanceof Error ? e.message : "Tool execution failed";
+		return yield {
+			type: "tool_use_result",
+			data: {
+				id: c,
+				name: o,
+				result: t,
+				isError: !0
+			}
+		}, Q(() => r?.onToolEnd?.({
+			traceId: i,
+			turn: a,
+			toolName: o,
+			toolUseId: c,
+			isError: !0,
+			durationMs: Date.now() - u
+		})), {
+			toolUseId: c,
+			toolName: o,
+			content: t,
+			isError: !0
+		};
+	}
+}
+async function* Ve(e, t) {
+	let n = [];
+	for (let r of e) {
+		if (r.type !== "tool_use") continue;
+		let e = yield* Be(r, t);
+		n.push(e);
+	}
+	return n;
+}
+//#endregion
+//#region src/server/agent/handler.ts
+var He = {
+	anthropic: "claude-sonnet-4-6",
+	openai: "gpt-4.1-mini",
+	google: "gemini-3-flash-preview"
+};
+async function* Ue(e) {
+	let { message: t, history: n, semanticLayer: r, securityContext: i, agentConfig: o, apiKey: s } = e, c = e.sessionId || crypto.randomUUID(), l = o.observability, u = crypto.randomUUID(), d = Date.now(), f = e.providerOverride || o.provider || "anthropic", p = e.modelOverride || o.model || He[f] || "claude-sonnet-4-6", m = e.baseURLOverride || o.baseURL, h = o.maxTurns || 25, g = o.maxTokens || 8192, _;
+	try {
+		_ = await Ne(f, s, { baseURL: m });
+	} catch (e) {
+		console.error("[agent] Failed to create %s provider: %s", String(f).replace(/\n|\r/g, ""), String(e instanceof Error ? e.message : e).replace(/\n|\r/g, "")), yield {
+			type: "error",
+			data: { message: e instanceof Error ? e.message : a("server.errors.llmInitFailed") }
+		};
+		return;
+	}
+	let v = je(), y = Me({
+		semanticLayer: r,
+		securityContext: i
+	}), b = oe(r.getMetadata(i));
+	e.systemContext && (b += `\n\n## User Context\n\n${e.systemContext}`), Q(() => l?.onChatStart?.({
+		traceId: u,
+		sessionId: c,
+		message: t,
+		model: p,
+		historyLength: n?.length ?? 0
+	}));
+	let x = Fe(n, _);
+	x.push({
+		role: "user",
+		content: t
+	});
+	let S = 0;
+	try {
+		for (let e = 0; e < h; e++) {
+			S = e + 1;
+			let t = await _.createStream({
+				model: p,
+				maxTokens: g,
+				system: b,
+				tools: v,
+				messages: x
+			}), n = Date.now(), { contentBlocks: r, stopReason: i, inputTokens: o, outputTokens: s } = yield* ze(_, t);
+			if (Q(() => l?.onGenerationEnd?.({
+				traceId: u,
+				turn: e,
+				model: p,
+				stopReason: i,
+				inputTokens: o,
+				outputTokens: s,
+				durationMs: Date.now() - n,
+				input: x,
+				output: r
+			})), x.push({
+				role: "assistant",
+				content: r
+			}), _.isTruncated(i)) {
+				yield {
+					type: "error",
+					data: { message: a("server.errors.agentResponseTruncated") }
+				};
+				break;
+			}
+			if (!_.shouldContinue(i)) break;
+			let c = yield* Ve(r, {
+				executor: y,
+				observability: l,
+				traceId: u,
+				turn: e
+			});
+			yield {
+				type: "turn_complete",
+				data: {}
+			}, Pe(x, _.formatToolResults(c));
+		}
+		Q(() => l?.onChatEnd?.({
+			traceId: u,
+			sessionId: c,
+			totalTurns: S,
+			durationMs: Date.now() - d
+		})), yield {
+			type: "done",
+			data: {
+				sessionId: c || "",
+				traceId: u
+			}
+		};
+	} catch (e) {
+		try {
+			l?.onChatEnd?.({
+				traceId: u,
+				sessionId: c,
+				totalTurns: 0,
+				durationMs: Date.now() - d,
+				error: e instanceof Error ? e.message : "Unknown error"
+			});
+		} catch {}
+		console.error("[agent] Chat error (provider=%s, model=%s): %s", String(f).replace(/\n|\r/g, ""), String(p).replace(/\n|\r/g, ""), String(e instanceof Error ? e.message : e).replace(/\n|\r/g, "")), yield {
+			type: "error",
+			data: { message: _.formatError(e) }
+		};
+	}
+}
+//#endregion
+export { k as C, se as D, E, T as O, A as S, D as T, F as _, q as a, M as b, W as c, V as d, B as f, I as g, L as h, Ue as handleAgentChat, ce as i, w as k, U as l, R as m, ue as n, K as o, z as p, le as r, G as s, de as t, H as u, P as v, O as w, j as x, N as y };

@@ -1,0 +1,177 @@
+import { SQL, AnyColumn } from 'drizzle-orm';
+import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { MySql2Database } from 'drizzle-orm/mysql2';
+import { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+/**
+ * Security context passed to cube SQL functions
+ * Contains user/tenant-specific data for filtering
+ */
+export interface SecurityContext {
+    [key: string]: unknown;
+}
+/**
+ * Severity level for query warnings
+ */
+export type QueryWarningSeverity = 'info' | 'warning' | 'error';
+/**
+ * Warning emitted during query planning or execution
+ * Provides user-facing feedback about potential query issues
+ */
+export interface QueryWarning {
+    /** Unique code for programmatic handling (e.g., 'FAN_OUT_NO_DIMENSIONS') */
+    code: string;
+    /** Human-readable warning message */
+    message: string;
+    /** Severity level for UI styling */
+    severity: QueryWarningSeverity;
+    /** Cubes involved in the warning (if applicable) */
+    cubes?: string[];
+    /** Measures involved in the warning (if applicable) */
+    measures?: string[];
+    /** Actionable suggestion for the user */
+    suggestion?: string;
+}
+/**
+ * Query execution result
+ */
+export interface QueryResult {
+    data: Record<string, unknown>[];
+    annotation: {
+        measures: Record<string, MeasureAnnotation>;
+        dimensions: Record<string, DimensionAnnotation>;
+        segments: Record<string, unknown>;
+        timeDimensions: Record<string, TimeDimensionAnnotation>;
+        /** Period comparison metadata (present when compareDateRange is used) */
+        periods?: PeriodComparisonMetadata;
+    };
+    /** Cache metadata - indicates whether result was served from cache */
+    cache?: {
+        /** True if result was served from cache, false if freshly computed */
+        hit: boolean;
+        /** ISO timestamp when the result was cached (only present on cache hit) */
+        cachedAt?: string;
+        /** Original TTL in milliseconds (only present on cache hit) */
+        ttlMs?: number;
+        /** Remaining TTL in milliseconds (only present on cache hit) */
+        ttlRemainingMs?: number;
+    };
+    /** Warnings about potential query issues (e.g., fan-out without dimensions) */
+    warnings?: QueryWarning[];
+    /**
+     * Total rows the query would return with no limit/offset, present only when
+     * the query asked for it with `total: true`.
+     */
+    total?: number;
+}
+/**
+ * Period comparison metadata for compareDateRange queries
+ * Provides information about the periods being compared
+ */
+export interface PeriodComparisonMetadata {
+    /** The date ranges being compared */
+    ranges: [string, string][];
+    /** Human-readable labels for each period */
+    labels: string[];
+    /** The time dimension used for comparison */
+    timeDimension: string;
+    /** Granularity used for the comparison */
+    granularity?: TimeGranularity;
+}
+/**
+ * SQL generation result
+ */
+export interface SqlResult {
+    sql: string;
+    params?: unknown[];
+}
+/**
+ * Options for query execution
+ */
+export interface ExecutionOptions {
+    /** Skip the cache lookup (but still cache the result for future requests) */
+    skipCache?: boolean;
+    /**
+     * Identifies the cube definitions that produced the result, as
+     * `setId:baseGeneration.setGeneration`. Appended unconditionally to the query
+     * cache key so results can never be shared between tenants whose cube sets
+     * differ, nor survive a re-registration that changed a definition.
+     * Set by SemanticLayerCompiler; callers do not supply it.
+     */
+    cubeSetKey?: string;
+}
+/**
+ * Core database interface that supports all Drizzle instances
+ * Uses flexible typing for maximum compatibility across different database drivers
+ */
+export interface DrizzleDatabase {
+    select: (fields?: any) => any;
+    insert: (table: any) => any;
+    update: (table: any) => any;
+    delete: (table: any) => any;
+    execute?: (query: SQL) => Promise<unknown[]>;
+    run?: (query: SQL) => unknown;
+    all?: (query: SQL) => unknown[];
+    get?: (query: SQL) => unknown;
+    $with: (alias: string) => {
+        as: (query: any) => any;
+    };
+    with: (...args: any[]) => any;
+    schema?: unknown;
+    transaction?: <T>(fn: (tx: any) => Promise<T>, ...args: any[]) => Promise<T>;
+}
+/**
+ * Transaction-scoped database instance passed to RLS setup.
+ * Structurally identical to DrizzleDatabase — the alias communicates
+ * that the value lives inside a transaction, not the root connection.
+ */
+export type DrizzleTransaction = DrizzleDatabase;
+/**
+ * Row-Level Security setup function.
+ * Called inside a transaction before query execution to configure
+ * database-level RLS (e.g., setting JWT claims and switching roles in Postgres).
+ *
+ * @param tx - The transaction-scoped Drizzle database instance
+ * @param securityContext - The security context extracted from the request
+ */
+export type RLSSetupFn = (tx: DrizzleTransaction, securityContext: SecurityContext) => Promise<void>;
+/**
+ * Type helpers for specific database types
+ */
+export type PostgresDatabase = PostgresJsDatabase<any>;
+export type MySQLDatabase = MySql2Database<any>;
+export type SQLiteDatabase = BetterSQLite3Database<any>;
+/**
+ * Drizzle column reference type
+ * Use native Drizzle AnyColumn type for better type safety
+ */
+export type DrizzleColumn = AnyColumn;
+/**
+ * Annotation interfaces for UI metadata
+ */
+export interface MeasureAnnotation {
+    title: string;
+    shortTitle: string;
+    type: MeasureType;
+    format?: MeasureFormat;
+}
+export interface DimensionAnnotation {
+    title: string;
+    shortTitle: string;
+    type: string;
+    format?: DimensionFormat;
+}
+export interface TimeDimensionAnnotation {
+    title: string;
+    shortTitle: string;
+    type: string;
+    granularity?: TimeGranularity;
+}
+/**
+ * Type enums and constants
+ */
+export type MeasureType = 'count' | 'countDistinct' | 'countDistinctApprox' | 'sum' | 'avg' | 'min' | 'max' | 'runningTotal' | 'number' | 'calculated' | 'stddev' | 'stddevSamp' | 'variance' | 'varianceSamp' | 'percentile' | 'median' | 'p95' | 'p99' | 'lag' | 'lead' | 'rank' | 'denseRank' | 'rowNumber' | 'ntile' | 'firstValue' | 'lastValue' | 'movingAvg' | 'movingSum';
+export type MeasureFormat = 'currency' | 'percent' | 'number' | 'integer';
+export type DimensionFormat = 'currency' | 'percent' | 'number' | 'date' | 'datetime' | 'id' | 'link';
+export type DimensionType = 'string' | 'number' | 'time' | 'boolean';
+export type JoinType = 'left' | 'right' | 'inner' | 'full';
+export type TimeGranularity = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year';

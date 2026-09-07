@@ -1,0 +1,1 @@
+const e=require("./handler-CZcPpgA_.cjs");exports.waterfallChartConfig=e.a;

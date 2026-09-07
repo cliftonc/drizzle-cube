@@ -1,0 +1,25 @@
+import { ChangeEvent } from 'react';
+import { FilterValueSelectorProps } from '../types.js';
+declare const COMBO_OPERATORS: string[];
+export declare function useFilterValueSelectorState({ fieldName, operator, values, onValuesChange, schema }: FilterValueSelectorProps): {
+    operatorMeta: import('../../../shared/types.js').FilterOperatorMeta;
+    isOpen: boolean;
+    searchText: string;
+    hasLoadedInitial: boolean;
+    dropdownRef: import('react').RefObject<HTMLDivElement>;
+    isTimeDimension: boolean;
+    shouldShowComboBox: boolean;
+    distinctValues: any[];
+    valuesLoading: boolean;
+    valuesError: string | null;
+    handleDropdownToggle: () => void;
+    handleSearchChange: (e: ChangeEvent<HTMLInputElement>) => void;
+    handleValueSelect: (value: any) => void;
+    handleValueRemove: (valueToRemove: any) => void;
+    handleDirectInput: (e: ChangeEvent<HTMLInputElement>) => void;
+    handleDateInput: (e: ChangeEvent<HTMLInputElement>) => void;
+    handleDateRangeEndInput: (e: ChangeEvent<HTMLInputElement>) => void;
+    handleBetweenStartInput: (e: ChangeEvent<HTMLInputElement>) => void;
+    handleBetweenEndInput: (e: ChangeEvent<HTMLInputElement>) => void;
+};
+export { COMBO_OPERATORS };

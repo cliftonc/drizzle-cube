@@ -1,0 +1,1 @@
+const e=require("./handler-CZcPpgA_.cjs");exports.recordsTableConfig=e.y;

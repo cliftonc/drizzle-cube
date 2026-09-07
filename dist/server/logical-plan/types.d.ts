@@ -1,0 +1,199 @@
+import { AnyColumn, Table } from 'drizzle-orm';
+import { Cube, CubeJoin, JoinKeyInfo, PropagatingFilter, IntermediateJoinInfo, DownstreamJoinKeyInfo } from '../types/cube.js';
+import { Filter } from '../types/query.js';
+import { QueryWarning, TimeGranularity } from '../types/core.js';
+/** Reference to a registered cube */
+export interface CubeRef {
+    /** Cube name (e.g. 'Employees') */
+    name: string;
+    /** Resolved cube object */
+    cube: Cube;
+}
+/** Reference to a measure on a specific cube */
+export interface MeasureRef {
+    /** Fully qualified name: CubeName.measureName */
+    name: string;
+    /** Cube that owns this measure */
+    cube: CubeRef;
+    /** Local measure name (without cube prefix) */
+    localName: string;
+}
+/** Reference to a dimension on a specific cube */
+export interface DimensionRef {
+    /** Fully qualified name: CubeName.dimensionName */
+    name: string;
+    /** Cube that owns this dimension */
+    cube: CubeRef;
+    /** Local dimension name (without cube prefix) */
+    localName: string;
+}
+/** Reference to a time dimension with granularity/dateRange */
+export interface TimeDimensionRef {
+    /** Fully qualified dimension name */
+    name: string;
+    cube: CubeRef;
+    localName: string;
+    granularity?: TimeGranularity;
+    dateRange?: string | string[];
+    fillMissingDates?: boolean;
+    compareDateRange?: (string | [string, string])[];
+}
+/** Reference to a column for join keys */
+export interface ColumnRef {
+    column: AnyColumn;
+    alias?: string;
+}
+/** Order-by specification */
+export interface OrderByRef {
+    /** Fully qualified field name */
+    name: string;
+    direction: 'asc' | 'desc';
+}
+export interface LogicalSchema {
+    measures: MeasureRef[];
+    dimensions: DimensionRef[];
+    timeDimensions: TimeDimensionRef[];
+}
+export interface JoinRef {
+    /** Target cube being joined */
+    target: CubeRef;
+    /** Table alias in the generated SQL */
+    alias: string;
+    /** SQL join type (already resolved from the effective relationship) */
+    joinType: 'inner' | 'left' | 'right' | 'full';
+    /**
+     * Symbolic join definition. The Drizzle join condition is materialized from
+     * this by DrizzlePlanBuilder — the logical plan itself holds no SQL and no
+     * baked security context.
+     */
+    joinDef: CubeJoin;
+    /** Relationship type from the join definition */
+    relationship?: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany';
+    /**
+     * Junction table for belongsToMany relationships (symbolic).
+     * The junction join condition and security WHERE are materialized from
+     * `joinDef.through` by DrizzlePlanBuilder at physical-plan time.
+     */
+    junctionTable?: {
+        table: Table;
+        alias: string;
+        joinType: 'inner' | 'left' | 'right' | 'full';
+        sourceCubeName?: string;
+    };
+}
+/** Discriminated union tag for all node types */
+export type LogicalNodeType = 'query' | 'simpleSource' | 'fullKeyAggregate' | 'ctePreAggregate' | 'keysDeduplication' | 'multiFactMerge';
+/** Base interface shared by all logical plan nodes */
+export interface LogicalNodeBase {
+    readonly type: LogicalNodeType;
+    readonly schema: LogicalSchema;
+}
+/**
+ * Root query node — represents the outermost SELECT.
+ * Wraps a source node with dimensions, measures, filters, ordering, etc.
+ */
+export interface QueryNode extends LogicalNodeBase {
+    readonly type: 'query';
+    /** Source of rows (SimpleSource, FullKeyAggregate, etc.) */
+    source: LogicalNode;
+    /** Dimensions to group by */
+    dimensions: DimensionRef[];
+    /** Measures to aggregate */
+    measures: MeasureRef[];
+    /** User-supplied filters */
+    filters: Filter[];
+    /** Time dimensions with granularity / date range */
+    timeDimensions: TimeDimensionRef[];
+    /** ORDER BY clauses */
+    orderBy: OrderByRef[];
+    limit?: number;
+    offset?: number;
+    /** When true, skip GROUP BY (raw rows) */
+    ungrouped?: boolean;
+    /** Planning warnings surfaced to the caller */
+    warnings: QueryWarning[];
+}
+/**
+ * Simple source: one primary cube optionally joined to other cubes.
+ * This is the runtime physical-source shape used by SQL generation today.
+ */
+export interface SimpleSource extends LogicalNodeBase {
+    readonly type: 'simpleSource';
+    /** Primary cube (FROM clause) */
+    primaryCube: CubeRef;
+    /** Cubes joined to the primary */
+    joins: JoinRef[];
+    /** Pre-aggregation CTEs attached to this source */
+    ctes: CTEPreAggregate[];
+}
+/**
+ * Full key aggregate: merges results from multiple subqueries
+ * that share the same dimension key set.
+ */
+export interface FullKeyAggregate extends LogicalNodeBase {
+    readonly type: 'fullKeyAggregate';
+    /** Subqueries whose results will be merged */
+    subqueries: LogicalNode[];
+    /** Shared dimensions used as the merge key */
+    dimensions: DimensionRef[];
+}
+/**
+ * CTE pre-aggregation node.
+ * Represents a WITH clause that pre-aggregates a hasMany cube
+ * to prevent fan-out in the outer query.
+ */
+export interface CTEPreAggregate extends LogicalNodeBase {
+    readonly type: 'ctePreAggregate';
+    /** The cube being pre-aggregated */
+    cube: CubeRef;
+    /** Table alias for the cube in the main query */
+    alias: string;
+    /** CTE alias (WITH clause name) */
+    cteAlias: string;
+    /** Keys connecting CTE back to the main query */
+    joinKeys: JoinKeyInfo[];
+    /** Measure names included in this CTE */
+    measures: string[];
+    /** Cross-cube filter propagation */
+    propagatingFilters?: PropagatingFilter[];
+    /** Downstream join keys for transitive joins through this CTE */
+    downstreamJoinKeys?: DownstreamJoinKeyInfo[];
+    /** Intermediate joins absorbed into this CTE for fan-out prevention */
+    intermediateJoins?: IntermediateJoinInfo[];
+    /** CTE type (currently only 'aggregate') */
+    cteType: 'aggregate';
+    /**
+     * Reason for creating this CTE:
+     * - 'hasMany': Direct hasMany target — outer query uses SUM
+     * - 'fanOutPrevention': Affected by hasMany elsewhere — outer query uses MAX
+     */
+    cteReason: 'hasMany' | 'fanOutPrevention';
+}
+/**
+ * Keys-based deduplication for multiplied measures.
+ */
+export interface KeysDeduplication extends LogicalNodeBase {
+    readonly type: 'keysDeduplication';
+    /** SELECT DISTINCT PKs + dims */
+    keysSource: LogicalNode;
+    /** Aggregated measures source */
+    measureSource: LogicalNode;
+    /** Primary key columns to join on */
+    joinOn: ColumnRef[];
+    /** Measure names NOT from the multiplied cube (pre-aggregated in keys CTE) */
+    regularMeasures?: string[];
+}
+/**
+ * Multi-fact merge: combines independent fact subqueries
+ * that share dimensions.
+ */
+export interface MultiFactMerge extends LogicalNodeBase {
+    readonly type: 'multiFactMerge';
+    /** Independent fact subqueries */
+    groups: LogicalNode[];
+    /** Shared dimensions for the merge */
+    sharedDimensions: DimensionRef[];
+    /** How to combine the groups */
+    mergeStrategy: 'fullJoin' | 'leftJoin' | 'innerJoin';
+}
+export type LogicalNode = QueryNode | SimpleSource | FullKeyAggregate | CTEPreAggregate | KeysDeduplication | MultiFactMerge;

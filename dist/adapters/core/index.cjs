@@ -1,0 +1,1 @@
+Object.defineProperty(exports,Symbol.toStringTag,{value:`Module`});const e=require("../core-DNwdf12v.cjs");exports.REST_CACHE_CONTROL=e.i,exports.createCubeHttpHandler=e.t,exports.resolveSecurityContext=e.n,exports.withLocaleFromHeaders=e.r,exports.withRestCacheHeaders=e.a;

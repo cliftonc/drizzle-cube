@@ -1,0 +1,143 @@
+//#region src/server/agent/providers/anthropic.ts
+var e = class {
+	client;
+	constructor(e) {
+		this.apiKey = e;
+	}
+	apiKey;
+	initialized = !1;
+	async ensureClient() {
+		if (this.initialized) return;
+		let e;
+		try {
+			let t = await import(
+				/* webpackIgnore: true */
+				"@anthropic-ai/sdk"
+);
+			e = t.default || t.Anthropic || t;
+		} catch {
+			throw Error("@anthropic-ai/sdk is required for the Anthropic provider. Install it with: npm install @anthropic-ai/sdk");
+		}
+		this.client = new e({ apiKey: this.apiKey }), this.initialized = !0;
+	}
+	async createStream(e) {
+		await this.ensureClient();
+		let { messages: t, system: n } = this.formatMessages(e.messages, e.system);
+		return this.client.messages.create({
+			model: e.model,
+			max_tokens: e.maxTokens,
+			system: n,
+			tools: this.formatTools(e.tools),
+			messages: t,
+			stream: !0
+		});
+	}
+	async *parseStreamEvents(e) {
+		for await (let t of e) {
+			let e = t;
+			switch (e.type) {
+				case "content_block_start": {
+					let t = e.content_block;
+					t.type === "tool_use" && (yield {
+						type: "tool_use_start",
+						id: t.id,
+						name: t.name
+					});
+					break;
+				}
+				case "content_block_delta": {
+					let t = e.delta;
+					t.type === "text_delta" && t.text ? yield {
+						type: "text_delta",
+						text: t.text
+					} : t.type === "input_json_delta" && t.partial_json && (yield {
+						type: "tool_input_delta",
+						json: t.partial_json
+					});
+					break;
+				}
+				case "content_block_stop":
+					yield { type: "tool_use_end" };
+					break;
+				case "message_start": {
+					let t = e.message;
+					t?.usage?.input_tokens != null && (yield {
+						type: "message_meta",
+						inputTokens: t.usage.input_tokens,
+						stopReason: ""
+					});
+					break;
+				}
+				case "message_delta": {
+					let t = e.usage, n = e.delta?.stop_reason || "";
+					yield {
+						type: "message_meta",
+						outputTokens: t?.output_tokens,
+						stopReason: n
+					};
+					break;
+				}
+			}
+		}
+	}
+	formatTools(e) {
+		return e.map((e) => ({
+			name: e.name,
+			description: e.description,
+			input_schema: e.parameters
+		}));
+	}
+	formatMessages(e, t) {
+		return {
+			messages: e.map((e) => e.role === "tool_result" ? {
+				role: "user",
+				content: e.content
+			} : {
+				role: e.role,
+				content: e.content
+			}),
+			system: t
+		};
+	}
+	formatToolResults(e) {
+		return {
+			role: "user",
+			content: e.map((e) => ({
+				type: "tool_result",
+				tool_use_id: e.toolUseId,
+				content: e.content,
+				...e.isError ? { is_error: !0 } : {}
+			}))
+		};
+	}
+	shouldContinue(e) {
+		return e === "tool_use";
+	}
+	isTruncated(e) {
+		return e === "max_tokens";
+	}
+	formatError(e) {
+		if (!e || !(e instanceof Error)) return "Something went wrong. Please try again.";
+		let t = e.message || "", n = {
+			overloaded_error: "The AI service is temporarily overloaded. Please try again in a moment.",
+			rate_limit_error: "Too many requests. Please wait a moment and try again.",
+			api_error: "The AI service encountered an error. Please try again.",
+			authentication_error: "Authentication failed. Please check your API key configuration.",
+			invalid_request_error: "There was a problem with the request. Please try again."
+		}, r = e;
+		if (r.status || r.type) {
+			let e = r.error?.type || r.type || "";
+			if (n[e]) return n[e];
+		}
+		if (t.startsWith("{") || t.startsWith("Error: {")) {
+			try {
+				let e = JSON.parse(t.replace(/^Error:\s*/, "")), r = e.error?.type || e.type || "";
+				if (n[r]) return n[r];
+			} catch {}
+			return "The AI service encountered an error. Please try again.";
+		}
+		return t;
+	}
+};
+//#endregion
+export { e as AnthropicProvider };

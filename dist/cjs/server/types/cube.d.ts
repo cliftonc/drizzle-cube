@@ -1,0 +1,581 @@
+import { SQL, AnyColumn, Table, Subquery, View } from 'drizzle-orm';
+import { SecurityContext, DrizzleDatabase, QueryResult, MeasureType, DimensionType, TimeGranularity } from './core.js';
+import { SemanticQuery } from './query.js';
+/**
+ * Filter SQL cache used for parameter deduplication across CTEs and the main
+ * query. Defined here (rather than imported from the runtime filter-cache
+ * module) so the types package has no dependency on runtime modules.
+ * Implemented by `FilterCacheManager`.
+ */
+export interface FilterCache {
+    getOrBuild(key: string, builder: () => SQL | null): SQL | null;
+    has(key: string): boolean;
+    get(key: string): SQL | undefined;
+    preload(entries: Array<{
+        key: string;
+        sql: SQL;
+    }>): void;
+    set(key: string, sql: SQL): void;
+    clear(): void;
+}
+/**
+ * Any queryable relation that can be used in FROM/JOIN clauses
+ * Supports tables, views, subqueries, and raw SQL expressions
+ */
+export type QueryableRelation = Table | View | Subquery | SQL;
+/**
+ * Base query definition that can be extended dynamically
+ * Returns just the FROM/JOIN/WHERE setup, not a complete SELECT
+ */
+export interface BaseQueryDefinition {
+    /** Main table to query from */
+    from: QueryableRelation;
+    /** Optional joins to other tables */
+    joins?: Array<{
+        table: QueryableRelation;
+        on: SQL;
+        type?: 'left' | 'right' | 'inner' | 'full';
+    }>;
+    /** Base WHERE conditions (typically security context filtering) */
+    where?: SQL;
+}
+/**
+ * Query context passed to cube SQL functions
+ * Provides access to database, schema, and security context
+ */
+export interface QueryContext {
+    /** Drizzle database instance */
+    db: DrizzleDatabase;
+    /** Database schema (tables, columns, etc.) */
+    schema?: any;
+    /** Security context for filtering */
+    securityContext: SecurityContext;
+    /** The semantic query being executed */
+    query?: SemanticQuery;
+    /** The compiled cube being queried */
+    cube?: Cube;
+    /**
+     * Filter cache for parameter deduplication across CTEs
+     * Created at query start and used throughout query building
+     */
+    filterCache?: FilterCache;
+    /**
+     * When true, measures should be rendered as raw column expressions
+     * without aggregation wrappers. Set from SemanticQuery.ungrouped.
+     */
+    ungrouped?: boolean;
+    /**
+     * Cast an expression to a type, in this engine's dialect (`::decimal` on
+     * Postgres, `CAST(... AS DECIMAL)` elsewhere). Strict: unparseable input
+     * fails the query on Postgres and silently yields `0` on MySQL/SQLite.
+     */
+    cast: (fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer') => SQL;
+    /**
+     * Cast an expression to a type, yielding NULL rather than failing when the
+     * input cannot be parsed. Use this over {@link QueryContext.cast} whenever
+     * the source column is free text — one dirty value should leave a row with a
+     * NULL cell, not fail the whole query.
+     */
+    tryCast: (fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer') => SQL;
+}
+/**
+ * Multi-cube query context for cross-cube operations
+ */
+export interface MultiCubeQueryContext extends QueryContext {
+    /** Available cubes for cross-cube operations */
+    cubes: Map<string, Cube>;
+    /** Current cube being processed */
+    currentCube: Cube;
+}
+/**
+ * Hierarchy definition for grouped drill-down paths
+ * Groups dimensions into ordered levels for structured navigation
+ */
+export interface Hierarchy {
+    /** Unique identifier for the hierarchy */
+    name: string;
+    /** Display title for the hierarchy */
+    title?: string;
+    /**
+     * Dimension names in order from least to most granular
+     * @example ['country', 'region', 'city'] for geographic hierarchy
+     * @example ['category', 'subcategory', 'product'] for product hierarchy
+     */
+    levels: string[];
+}
+/**
+ * Cube definition focused on Drizzle query building
+ */
+export interface Cube {
+    name: string;
+    title?: string;
+    description?: string;
+    /**
+     * Example questions that can be answered using this cube
+     * Used by AI agents to understand cube capabilities
+     * @example ['What was total revenue last month?', 'Show me sales by category']
+     */
+    exampleQuestions?: string[];
+    /**
+     * Base query setup - returns the foundation that can be extended
+     * Should return FROM/JOIN/WHERE setup, NOT a complete SELECT
+     */
+    sql: (ctx: QueryContext) => BaseQueryDefinition;
+    /** Cube dimensions using direct column references */
+    dimensions: Record<string, Dimension>;
+    /** Cube measures using direct column references */
+    measures: Record<string, Measure>;
+    /** Optional joins to other cubes for multi-cube queries */
+    joins?: Record<string, CubeJoin>;
+    /**
+     * Hierarchies for structured drill-down paths
+     * Groups dimensions into levels for navigation (e.g., country -> region -> city)
+     * A dimension can appear in multiple hierarchies
+     */
+    hierarchies?: Record<string, Hierarchy>;
+    /** Whether cube is publicly accessible */
+    public?: boolean;
+    /** SQL alias for the cube */
+    sqlAlias?: string;
+    /** Data source identifier */
+    dataSource?: string;
+    /** Additional metadata */
+    meta?: Record<string, any>;
+}
+/**
+ * Dimension definition
+ */
+export interface Dimension {
+    name: string;
+    title?: string;
+    description?: string;
+    /**
+     * Alternative names for this dimension
+     * Used by AI agents for natural language matching
+     * @example ['date', 'day', 'timestamp'] for a createdAt dimension
+     */
+    synonyms?: string[];
+    type: DimensionType;
+    /** Direct column reference or SQL expression */
+    sql: AnyColumn | SQL | ((ctx: QueryContext) => AnyColumn | SQL);
+    /** Whether this is a primary key */
+    primaryKey?: boolean;
+    /**
+     * The column this dimension's SQL correlates on, for dimensions built from a
+     * correlated subquery (see `buildAttributeDimensions`).
+     *
+     * A correlated subquery in the SELECT list is only legal under GROUP BY when
+     * the column it correlates on is itself grouped: Postgres otherwise rejects
+     * the query with "subquery uses ungrouped column … from outer query", and
+     * MySQL does the same under `only_full_group_by`. The planner cannot see
+     * inside an opaque `sql` function, so a dimension that needs this declares it
+     * and the GROUP BY builder adds the key.
+     */
+    correlatesOn?: AnyColumn;
+    /**
+     * Whether to include this dimension in generated cube metadata (`/meta`,
+     * the client field picker, AI prompts). Defaults to `true` (shown) when
+     * omitted. Setting `shown: false` hides the dimension from metadata/UI
+     * only — it remains fully usable in queries and filters, matching Cube.js
+     * semantics for `shown: false`.
+     */
+    shown?: boolean;
+    /** Display format */
+    format?: string;
+    /** Additional metadata */
+    meta?: Record<string, any>;
+    /**
+     * Supported granularities for time dimensions
+     * If not specified for time dimensions, defaults to ['year', 'quarter', 'month', 'week', 'day']
+     * Only applies when type is 'time'
+     * @example ['year', 'quarter', 'month', 'day'] for a custom subset
+     */
+    granularities?: TimeGranularity[];
+}
+/**
+ * Measure definition
+ */
+export interface Measure {
+    name: string;
+    title?: string;
+    description?: string;
+    /**
+     * Alternative names for this measure
+     * Used by AI agents for natural language matching
+     * @example ['revenue', 'sales', 'income'] for a totalRevenue measure
+     */
+    synonyms?: string[];
+    type: MeasureType;
+    /**
+     * Column to aggregate or SQL expression
+     * Optional for calculated measures (type: 'calculated') which use calculatedSql instead
+     */
+    sql?: AnyColumn | SQL | ((ctx: QueryContext) => AnyColumn | SQL);
+    /** Display format */
+    format?: string;
+    /**
+     * Whether to include this measure in generated cube metadata (`/meta`,
+     * the client field picker, AI prompts). Defaults to `true` (shown) when
+     * omitted. Setting `shown: false` hides the measure from metadata/UI
+     * only — it remains fully usable in queries and filters, matching Cube.js
+     * semantics for `shown: false`.
+     */
+    shown?: boolean;
+    /** Filters applied to this measure */
+    filters?: Array<(ctx: QueryContext) => SQL>;
+    /** Rolling window configuration */
+    rollingWindow?: {
+        trailing?: string;
+        leading?: string;
+        offset?: string;
+    };
+    /**
+     * Calculated measure template with {member} references
+     * Only used when type === 'calculated'
+     * Example: "1.0 * {completed} / NULLIF({total}, 0)"
+     */
+    calculatedSql?: string;
+    /**
+     * List of measure dependencies for calculated measures
+     * Auto-detected from calculatedSql if not provided
+     * Example: ['completed', 'total']
+     */
+    dependencies?: string[];
+    /** Additional metadata */
+    meta?: Record<string, any>;
+    /**
+     * Dimension names shown when drilling into this measure
+     * Can include cross-cube dimensions via joins (e.g., 'Products.name', 'Users.email')
+     * If not specified, drilling is disabled for this measure
+     * @example ['id', 'status', 'createdAt'] for same-cube dimensions
+     * @example ['Orders.id', 'Products.name', 'Users.city'] for cross-cube dimensions
+     */
+    drillMembers?: string[];
+    /**
+     * Statistical function configuration
+     * Used for percentile, stddev, variance measure types
+     */
+    statisticalConfig?: {
+        /** Percentile value (0-100) for percentile measures. Default: 50 for median */
+        percentile?: number;
+        /** Use sample vs population calculation for stddev/variance. Default: false (population) */
+        useSample?: boolean;
+    };
+    /**
+     * Window function configuration
+     * Used for lag, lead, rank, movingAvg, and other window function measure types
+     *
+     * Post-aggregation window functions:
+     * When `measure` is specified, the window function operates on AGGREGATED data.
+     * The base measure is first aggregated (grouped by query dimensions), then the
+     * window function is applied to the aggregated results.
+     *
+     * Example: Month-over-month revenue change
+     * ```typescript
+     * revenueChange: {
+     *   type: 'lag',
+     *   windowConfig: {
+     *     measure: 'totalRevenue',  // Reference to aggregate measure
+     *     operation: 'difference',   // current - previous
+     *     orderBy: [{ field: 'date', direction: 'asc' }]
+     *   }
+     * }
+     * ```
+     */
+    windowConfig?: {
+        /**
+         * Reference to the measure this window function operates on.
+         * The referenced measure will be aggregated first, then the window function applied.
+         * Can be a simple name ('totalRevenue') or fully qualified ('Sales.totalRevenue').
+         */
+        measure?: string;
+        /**
+         * Operation to perform after getting the window result:
+         * - 'raw': Return the window function result directly (default for rank, rowNumber, ntile)
+         * - 'difference': Subtract window result from current value (current - window)
+         * - 'ratio': Divide current value by window result (current / window)
+         * - 'percentChange': Calculate percentage change ((current - window) / window * 100)
+         *
+         * Default: 'difference' for lag/lead, 'raw' for rank/rowNumber/ntile/firstValue/lastValue
+         */
+        operation?: 'raw' | 'difference' | 'ratio' | 'percentChange';
+        /** Dimension references to partition by (e.g., ['employeeId']) */
+        partitionBy?: string[];
+        /** Columns to order by with direction */
+        orderBy?: Array<{
+            field: string;
+            direction: 'asc' | 'desc';
+        }>;
+        /** Number of rows to offset for lag/lead. Default: 1 */
+        offset?: number;
+        /** Default value when offset is out of bounds for lag/lead */
+        defaultValue?: any;
+        /** Number of buckets for ntile. Default: 4 */
+        nTile?: number;
+        /** Window frame specification for moving aggregates */
+        frame?: {
+            type: 'rows' | 'range';
+            start: number | 'unbounded';
+            end: number | 'current' | 'unbounded';
+        };
+    };
+}
+/**
+ * Relationship types supported by cube joins
+ */
+export type CubeRelationship = 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany';
+/**
+ * Type-safe cube join definition with lazy loading support
+ */
+export interface CubeJoin {
+    /** Target cube reference - lazy loaded to avoid circular dependencies, or string name resolved from registry */
+    targetCube: Cube | (() => Cube) | string;
+    /** Semantic relationship - determines join behavior */
+    relationship: CubeRelationship;
+    /** Array of join conditions - supports multi-column joins */
+    on: Array<{
+        /** Column from source cube */
+        source: AnyColumn;
+        /** Column from target cube */
+        target: AnyColumn;
+        /** Comparison operator - defaults to eq */
+        as?: (source: AnyColumn, target: AnyColumn) => SQL;
+    }>;
+    /** Override default SQL join type (derived from relationship) */
+    sqlJoinType?: 'inner' | 'left' | 'right' | 'full';
+    /**
+     * Preferred path targets - marks this join as the canonical route to reach specific cubes.
+     * When multiple paths exist to a target cube, paths using preferred joins are prioritized.
+     *
+     * Example: EmployeeTeams join with `preferredFor: ['Teams']` ensures employee-team
+     * queries use the junction table path rather than going through Departments.
+     */
+    preferredFor?: string[];
+    /**
+     * Many-to-many relationship configuration through a junction table
+     * Only used when relationship is 'belongsToMany'
+     */
+    through?: {
+        /** Junction/join table (Drizzle table reference) */
+        table: Table;
+        /** Join conditions from source cube to junction table */
+        sourceKey: Array<{
+            source: AnyColumn;
+            target: AnyColumn;
+            as?: (source: AnyColumn, target: AnyColumn) => SQL;
+        }>;
+        /** Join conditions from junction table to target cube */
+        targetKey: Array<{
+            source: AnyColumn;
+            target: AnyColumn;
+            as?: (source: AnyColumn, target: AnyColumn) => SQL;
+        }>;
+        /** Optional security context SQL for junction table */
+        securitySql?: (securityContext: SecurityContext) => SQL | SQL[];
+    };
+}
+/**
+ * Compiled cube with execution function
+ */
+export interface CompiledCube extends Cube {
+    /** Execute a query against this cube */
+    queryFn: (query: SemanticQuery, securityContext: SecurityContext) => Promise<QueryResult>;
+}
+/**
+ * Join key information for CTE joins
+ * Describes how a CTE should be joined to the main query
+ */
+export interface JoinKeyInfo {
+    /** Column name in the source table */
+    sourceColumn: string;
+    /** Column name in the target table (CTE) */
+    targetColumn: string;
+    /** Optional Drizzle column object for source */
+    sourceColumnObj?: AnyColumn;
+    /** Optional Drizzle column object for target */
+    targetColumnObj?: AnyColumn;
+}
+/**
+ * Single join key pair for composite key support
+ */
+export interface JoinKeyPair {
+    /** Primary key column on source cube */
+    source: AnyColumn;
+    /** Foreign key column on target cube (CTE cube) */
+    target: AnyColumn;
+}
+/**
+ * Propagating filter information for cross-cube filter propagation
+ * When cube A has filters and cube B (with hasMany from A) needs a CTE,
+ * A's filters should propagate into B's CTE via a subquery
+ */
+export interface PropagatingFilter {
+    /** The source cube whose filters need to propagate */
+    sourceCube: Cube;
+    /** Filters from the source cube to apply */
+    filters: import('./query.js').Filter[];
+    /** Join conditions linking source cube PK(s) to target cube FK(s) - supports composite keys */
+    joinConditions: JoinKeyPair[];
+    /** Pre-built filter SQL for parameter deduplication (optional, built during query planning) */
+    preBuiltFilterSQL?: SQL;
+}
+/**
+ * Intermediate join information for multi-hop CTE paths
+ * When a CTE cube joins to primary through intermediate tables that have hasMany,
+ * these intermediate tables are absorbed into the CTE to prevent fan-out.
+ */
+export interface IntermediateJoinInfo {
+    /** The intermediate cube that's being absorbed into the CTE */
+    cube: Cube;
+    /** The join definition from the intermediate cube to this CTE cube */
+    joinDef: CubeJoin;
+    /** The column on the intermediate table that connects to the primary cube */
+    primaryJoinColumn: AnyColumn;
+    /** The column on the intermediate table that connects to the CTE cube */
+    cteJoinColumn: AnyColumn;
+}
+/**
+ * Pre-aggregation CTE information
+ * Describes a Common Table Expression used for pre-aggregating hasMany relationships
+ */
+export interface PreAggregationCTEInfo {
+    /** The cube being pre-aggregated */
+    cube: Cube;
+    /** Table alias for this cube in the main query */
+    alias: string;
+    /** CTE alias (WITH clause name) */
+    cteAlias: string;
+    /** Join keys to connect CTE back to main query (e.g., employee_id for Employees → EmployeeTeams) */
+    joinKeys: JoinKeyInfo[];
+    /** List of measure names included in this CTE (aggregate measures + window base measures) */
+    measures: string[];
+    /** Propagating filters from related cubes (for cross-cube filter propagation) */
+    propagatingFilters?: PropagatingFilter[];
+    /**
+     * Downstream join keys for cubes that need to be joined through this CTE.
+     * When a query has dimensions from a cube (e.g., Teams) that should be joined
+     * through this CTE cube (e.g., EmployeeTeams), we include those join keys here
+     * so the CTE includes them in SELECT and GROUP BY, allowing downstream joins.
+     */
+    downstreamJoinKeys?: DownstreamJoinKeyInfo[];
+    /**
+     * Intermediate joins that need to be absorbed into this CTE.
+     * When the path from primary cube to CTE cube goes through intermediate tables
+     * with hasMany relationships, those joins are included IN the CTE rather than
+     * in the main query to prevent fan-out.
+     *
+     * Example: Departments → Employees → EmployeeTeams
+     * - Primary: Departments
+     * - CTE: EmployeeTeams
+     * - Intermediate: Employees (has hasMany to EmployeeTeams)
+     *
+     * The CTE will JOIN to employees and GROUP BY employees.department_id,
+     * then join directly to Departments.
+     */
+    intermediateJoins?: IntermediateJoinInfo[];
+    /**
+     * Type of CTE:
+     * - 'aggregate': Standard CTE with GROUP BY for count/sum/avg measures
+     *
+     * Note: Window function CTEs are no longer used. Post-aggregation window
+     * functions (lag, lead, rank, etc.) operate on aggregated data and are
+     * applied in the outer query SELECT clause, not in separate CTEs.
+     */
+    cteType?: 'aggregate';
+    /**
+     * Reason for creating this CTE:
+     * - 'hasMany': Direct hasMany relationship target - requires SUM in outer query
+     * - 'fanOutPrevention': Cube affected by hasMany elsewhere - requires MAX in outer query
+     *
+     * This determines how the outer query aggregates CTE values:
+     * - hasMany CTEs have multiple rows per join key, so SUM combines them
+     * - fanOutPrevention CTEs have one row per key, but get duplicated by joins,
+     *   so MAX retrieves the value without re-summing
+     */
+    cteReason?: 'hasMany' | 'fanOutPrevention';
+}
+/**
+ * Information about downstream join keys for CTE building.
+ * Used when a cube (e.g., Teams) needs to be joined through a CTE cube (e.g., EmployeeTeams)
+ */
+export interface DownstreamJoinKeyInfo {
+    /** The downstream cube name (e.g., 'Teams') */
+    targetCubeName: string;
+    /** Join keys from CTE cube to downstream cube */
+    joinKeys: JoinKeyInfo[];
+}
+/**
+ * Planned join entry used by runtime physical builders.
+ */
+export interface JoinCubePlanEntry {
+    cube: Cube;
+    alias: string;
+    joinType: 'inner' | 'left' | 'right' | 'full';
+    joinCondition: SQL;
+    /** Relationship type from the join definition that produced this entry */
+    relationship?: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany';
+    /** Junction table information for belongsToMany relationships */
+    junctionTable?: {
+        table: Table;
+        alias: string;
+        joinType: 'inner' | 'left' | 'right' | 'full';
+        joinCondition: SQL;
+        /** Optional security SQL function to apply to junction table */
+        securitySql?: (securityContext: SecurityContext) => SQL | SQL[];
+        /** Source cube name for the belongsToMany relationship (needed for CTE rewriting) */
+        sourceCubeName?: string;
+    };
+}
+/**
+ * Runtime physical-plan context used by query execution builders.
+ * This is the only runtime plan context consumed by SQL builders.
+ */
+export interface PhysicalQueryPlan {
+    /** Primary cube that drives the query */
+    primaryCube: Cube;
+    /** Additional cubes to join (empty for single-cube queries) */
+    joinCubes: JoinCubePlanEntry[];
+    /** Pre-aggregation CTEs for hasMany relationships to prevent fan-out */
+    preAggregationCTEs?: PreAggregationCTEInfo[];
+    /**
+     * Optional keys-based deduplication metadata.
+     * When present, physical builders may choose a keys+aggregate execution path.
+     */
+    keysDeduplication?: {
+        multipliedCubeName: string;
+        primaryKeyDimensions: string[];
+        /** Measure names NOT from the multiplied cube (pre-aggregated in keys CTE) */
+        regularMeasures?: string[];
+    };
+    /**
+     * Optional multi-fact merge metadata.
+     * When present, SQL builders execute independent grouped subqueries and
+     * merge them by shared dimension keys.
+     */
+    multiFactMerge?: {
+        mergeStrategy: 'fullJoin' | 'leftJoin' | 'innerJoin';
+        sharedDimensions: string[];
+        groups: Array<{
+            alias: string;
+            query: SemanticQuery;
+            queryPlan: PhysicalQueryPlan;
+            measures: string[];
+        }>;
+    };
+    /** Warnings about potential query issues (e.g., fan-out without dimensions) */
+    warnings?: import('./core.js').QueryWarning[];
+}
+/**
+ * Utility type for cube definition with schema inference
+ */
+export type CubeDefinition = Omit<Cube, 'name'> & {
+    name?: string;
+};
+/**
+ * Helper type for creating type-safe cubes
+ */
+export interface CubeDefiner {
+    <TName extends string>(name: TName, definition: CubeDefinition): Cube & {
+        name: TName;
+    };
+}

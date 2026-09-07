@@ -1,0 +1,161 @@
+import { TimeGranularity } from './core.js';
+import { FunnelQueryConfig } from './funnel.js';
+import { FlowQueryConfig } from './flow.js';
+import { RetentionQueryConfig } from './retention.js';
+/**
+ * Semantic query structure (Cube.js compatible)
+ */
+export interface SemanticQuery {
+    measures?: string[];
+    dimensions?: string[];
+    filters?: Array<Filter>;
+    timeDimensions?: Array<TimeDimension>;
+    limit?: number;
+    offset?: number;
+    order?: Record<string, 'asc' | 'desc'>;
+    /**
+     * Default value to fill missing time series gaps with.
+     * Used when fillMissingDates is enabled on time dimensions.
+     * Default: 0
+     */
+    fillMissingDatesValue?: number | null;
+    /**
+     * When true, returns raw row-level data without GROUP BY or aggregation.
+     * Measures are rendered as raw column expressions (no aggregation wrappers).
+     * Security context and joins still apply normally.
+     *
+     * Constraints:
+     * - Requires at least one dimension
+     * - Only compatible with sum, avg, min, max, and number measure types
+     * - Incompatible with count, countDistinct, calculated, and window function measures
+     * - Incompatible with measure filters, hasMany joins, funnel/flow/retention modes
+     * - Incompatible with compareDateRange and fillMissingDates
+     */
+    ungrouped?: boolean;
+    /**
+     * Return the number of rows the query would produce with no `limit` or
+     * `offset` applied, as `QueryResult.total`. Matches Cube's `total`.
+     *
+     * Costs a second round trip: the same plan is rebuilt without pagination and
+     * counted, wrapped so a grouped query counts groups rather than base rows.
+     */
+    total?: boolean;
+    /**
+     * Funnel analysis configuration for query-time funnel definition.
+     * When specified, the query executes as a funnel analysis instead of
+     * standard measures/dimensions aggregation.
+     *
+     * @example
+     * ```typescript
+     * {
+     *   funnel: {
+     *     bindingKey: 'Events.userId',
+     *     timeDimension: 'Events.timestamp',
+     *     steps: [
+     *       { name: 'Signup', filter: { member: 'Events.eventType', operator: 'equals', values: ['signup'] } },
+     *       { name: 'Activation', filter: { member: 'Events.eventType', operator: 'equals', values: ['activation'] }, timeToConvert: 'P7D' }
+     *     ]
+     *   }
+     * }
+     * ```
+     */
+    funnel?: FunnelQueryConfig;
+    /**
+     * Flow analysis configuration for bidirectional path exploration.
+     * When specified, the query executes as a flow analysis instead of
+     * standard measures/dimensions aggregation.
+     *
+     * Flow analysis explores paths BEFORE and AFTER a defined starting step,
+     * producing Sankey diagram data (nodes and links).
+     *
+     * @example
+     * ```typescript
+     * {
+     *   flow: {
+     *     bindingKey: 'Events.userId',
+     *     timeDimension: 'Events.timestamp',
+     *     eventDimension: 'Events.eventType',
+     *     startingStep: {
+     *       name: 'Purchase',
+     *       filter: { member: 'Events.eventType', operator: 'equals', values: ['purchase'] }
+     *     },
+     *     stepsBefore: 3,
+     *     stepsAfter: 2
+     *   }
+     * }
+     * ```
+     */
+    flow?: FlowQueryConfig;
+    /**
+     * Retention analysis configuration for cohort-based retention tracking.
+     * When specified, the query executes as a retention analysis instead of
+     * standard measures/dimensions aggregation.
+     *
+     * Retention analysis tracks what percentage of users from each cohort
+     * return in subsequent time periods.
+     *
+     * @example
+     * ```typescript
+     * {
+     *   retention: {
+     *     timeDimension: 'Events.timestamp',
+     *     bindingKey: 'Events.userId',
+     *     dateRange: { start: '2024-01-01', end: '2024-12-31' },
+     *     granularity: 'week',
+     *     periods: 12,
+     *     retentionType: 'classic',
+     *     breakdownDimensions: ['Events.country', 'Events.plan']
+     *   }
+     * }
+     * ```
+     */
+    retention?: RetentionQueryConfig;
+}
+/**
+ * Filter definitions with logical operators
+ */
+export type Filter = FilterCondition | LogicalFilter;
+export interface FilterCondition {
+    member: string;
+    operator: FilterOperator;
+    values: any[];
+    dateRange?: string | string[];
+}
+export interface LogicalFilter {
+    and?: Filter[];
+    or?: Filter[];
+}
+/**
+ * Time dimension with granularity
+ */
+export interface TimeDimension {
+    dimension: string;
+    granularity?: TimeGranularity;
+    dateRange?: string | string[];
+    /**
+     * Fill missing dates in time series with the fill value.
+     * Requires both granularity and dateRange to be set.
+     * Default: true (enabled)
+     */
+    fillMissingDates?: boolean;
+    /**
+     * Array of date ranges for period-over-period comparison.
+     * When specified, queries are executed for each period and results are merged
+     * with period metadata (__periodIndex, __periodDayIndex) for alignment.
+     *
+     * Each range can be:
+     * - A relative string: 'this week', 'last month', 'last 30 days'
+     * - A tuple: ['2024-01-01', '2024-01-31']
+     *
+     * @example
+     * compareDateRange: [
+     *   'last 30 days',                    // Current period
+     *   ['2024-01-01', '2024-01-30']       // Prior period to compare
+     * ]
+     */
+    compareDateRange?: (string | [string, string])[];
+}
+/**
+ * Supported filter operators
+ */
+export type FilterOperator = 'equals' | 'notEquals' | 'contains' | 'notContains' | 'startsWith' | 'notStartsWith' | 'endsWith' | 'notEndsWith' | 'gt' | 'gte' | 'lt' | 'lte' | 'set' | 'notSet' | 'inDateRange' | 'beforeDate' | 'afterDate' | 'between' | 'notBetween' | 'in' | 'notIn' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex' | 'isEmpty' | 'isNotEmpty' | 'arrayContains' | 'arrayOverlaps' | 'arrayContained';

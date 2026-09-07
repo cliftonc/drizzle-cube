@@ -1,0 +1,2728 @@
+import { n as e } from "./rolldown-runtime-DArdT4gl.js";
+import t, { createContext as n, useCallback as r, useContext as i, useEffect as a, useLayoutEffect as o, useMemo as s, useRef as c, useState as l } from "react";
+import { jsx as u, jsxs as d } from "react/jsx-runtime";
+import { max as f, min as p, scaleQuantize as m, select as h } from "d3";
+//#region src/client/providers/CubeMetaContext.tsx
+var g = n(null);
+function _() {
+	let e = i(g);
+	if (!e) throw Error("useCubeMeta must be used within CubeMetaProvider");
+	return e;
+}
+//#endregion
+//#region \0rolldown_dynamic_import_helper.js
+var v = (e, t, n) => {
+	let r = t.lastIndexOf("?"), i = e[r === -1 || r < t.lastIndexOf("/") ? t : t.slice(0, r)];
+	return i ? typeof i == "function" ? i() : Promise.resolve(i) : new Promise((e, r) => {
+		(typeof queueMicrotask == "function" ? queueMicrotask : setTimeout)(r.bind(null, /* @__PURE__ */ Error("Unknown variable dynamic import: " + t + (t.split("/").length === n ? "" : ". Note that variables only represent file names one level deep."))));
+	});
+}, y = /* @__PURE__ */ e({ default: () => b }), b = {
+	"analysis.modes.query.label": "Query",
+	"analysis.modes.query.description": "Standard analysis (single or multi-query)",
+	"analysis.modes.funnel.label": "Funnel",
+	"analysis.modes.funnel.description": "Sequential conversion analysis",
+	"analysis.modes.flow.label": "Flow",
+	"analysis.modes.flow.description": "Bidirectional path analysis with Sankey visualisation",
+	"analysis.modes.retention.label": "Retention",
+	"analysis.modes.retention.description": "Cohort-based retention analysis over time periods",
+	"analysis.ai.title": "AI Query Generator",
+	"analysis.ai.generating": "Generating...",
+	"analysis.ai.placeholder": "Describe your query in natural language... (e.g., 'Show total sales by month for the last year')",
+	"analysis.ai.shortcutHint": "Press Enter to generate, Shift+Enter for new line",
+	"analysis.ai.successMessage": "Query generated and loaded! Check the results below, then click Accept to keep or Cancel to revert.",
+	"analysis.ai.button.accept": "Accept",
+	"analysis.ai.button.cancel": "Cancel",
+	"analysis.ai.button.close": "Close",
+	"analysis.ai.button.generate": "Generate",
+	"analysis.ai.button.generating": "Generating...",
+	"analysis.sections.metrics": "Metrics",
+	"analysis.sections.breakdown": "Breakdown",
+	"analysis.sections.dimensions": "Dimensions",
+	"analysis.sections.filters": "Filter",
+	"analysis.sections.limit": "Limit",
+	"analysis.tabs.query": "Query",
+	"analysis.tabs.chart": "Chart",
+	"analysis.tabs.chartTitle": "Chart configuration",
+	"analysis.tabs.display": "Display",
+	"analysis.tabs.displayTitle": "Display options",
+	"analysis.multiQuery.removeQuery": "Remove query",
+	"analysis.multiQuery.addQuery": "Add new query",
+	"analysis.multiQuery.addAnother": "Add another query",
+	"analysis.multiQuery.mergeExplanation": "In merge mode, dimensions are shared from Q1.",
+	"analysis.multiQuery.switchToSeparate": "Switch to separate series",
+	"analysis.mergeStrategy.concat": "Separate series",
+	"analysis.mergeStrategy.merge": "Merge by dimension",
+	"analysis.mergeStrategy.funnel": "Funnel",
+	"analysis.placeholders.addMetrics": "Add metrics to generate SQL",
+	"analysis.placeholders.hoverField": "Hover over a field to see details",
+	"analysis.placeholders.noData": "No data available",
+	"common.actions.accept": "Accept",
+	"common.actions.cancel": "Cancel",
+	"common.actions.delete": "Delete",
+	"common.actions.close": "Close",
+	"common.actions.edit": "Edit",
+	"common.actions.save": "Save",
+	"common.actions.copy": "Copy",
+	"common.actions.duplicate": "Duplicate",
+	"common.actions.refresh": "Refresh",
+	"common.actions.confirm": "Confirm",
+	"common.actions.add": "Add",
+	"common.actions.clear": "Clear",
+	"common.actions.select": "Select",
+	"common.actions.navigate": "Navigate",
+	"common.actions.share": "Share",
+	"common.loading": "Loading...",
+	"common.modal.processing": "Processing...",
+	"common.modal.dashboardName": "Dashboard Name",
+	"common.modal.deleteConfirmation": "Are you sure? This action cannot be undone.",
+	"common.sorting.ascending": "Sorted ascending (click for descending)",
+	"common.sorting.descending": "Sorted descending (click to remove)",
+	"common.sorting.none": "Click to sort ascending",
+	"fieldTypes.count": "Count",
+	"fieldTypes.countDistinct": "Count Distinct",
+	"fieldTypes.countDistinctApprox": "Count Distinct (Approx)",
+	"fieldTypes.sum": "Sum",
+	"fieldTypes.avg": "Average",
+	"fieldTypes.min": "Minimum",
+	"fieldTypes.max": "Maximum",
+	"fieldTypes.runningTotal": "Running Total",
+	"fieldTypes.number": "Number",
+	"fieldTypes.string": "Text",
+	"fieldTypes.boolean": "Boolean",
+	"fieldTypes.time": "Time Dimension",
+	"fieldTypes.geo": "Geographic",
+	"fieldTypes.dimension": "Dimension",
+	"fieldPanel.emptyState": "Hover over a field to see details",
+	"fieldPanel.usageHint": "Press Enter or click to add this field to your query.",
+	"fieldPanel.labels.type": "Type",
+	"fieldPanel.labels.cube": "Cube",
+	"fieldPanel.labels.category": "Category",
+	"fieldCategory.measure": "Measure",
+	"fieldCategory.timeDimension": "Time Dimension",
+	"fieldCategory.dimension": "Dimension",
+	"fieldSearch.placeholder.metrics": "Search metrics...",
+	"fieldSearch.placeholder.filter": "Search fields to filter...",
+	"fieldSearch.placeholder.dimensions": "Search dimensions...",
+	"fieldSearch.modal.title.metrics": "Select a Metric",
+	"fieldSearch.modal.title.filter": "Select a Field to Filter",
+	"fieldSearch.modal.title.dimensions": "Select a Dimension",
+	"fieldSearch.filter.allCubes": "All Cubes",
+	"fieldSearch.categories.all": "All",
+	"fieldSearch.empty.heading": "No fields found",
+	"fieldSearch.empty.noMatchMetrics": "No metrics match \"{searchTerm}\"",
+	"fieldSearch.empty.noMatchDimensions": "No dimensions match \"{searchTerm}\"",
+	"fieldSearch.empty.noMetrics": "No metrics available",
+	"fieldSearch.empty.noDimensions": "No dimensions available",
+	"fieldSearch.section.recents": "Recents",
+	"fieldSearch.footer.metricsAvailable": "metrics available",
+	"fieldSearch.footer.fieldsAvailable": "fields available",
+	"fieldSearch.footer.dimensionsAvailable": "dimensions available",
+	"fieldSearch.shortcut.navigate": "Navigate",
+	"fieldSearch.shortcut.keyEnter": "Enter",
+	"fieldSearch.shortcut.keyShift": "Shift",
+	"fieldSearch.shortcut.keyEsc": "Esc",
+	"fieldSearch.shortcut.plusClick": "+Click",
+	"fieldSearch.shortcut.select": "Select",
+	"fieldSearch.shortcut.multiSelect": "Multi-select",
+	"fieldSearch.shortcut.close": "Close",
+	"filter.group.condition": "condition",
+	"filter.group.conditions": "conditions",
+	"filter.group.addFilter": "Add Filter",
+	"filter.group.addAndGroup": "Add AND Group",
+	"filter.group.addOrGroup": "Add OR Group",
+	"filter.group.removeGroup": "Remove group",
+	"filter.group.empty": "No conditions in this group",
+	"filter.group.addFilterLink": "Add a filter",
+	"filter.modal.title": "Edit Filter",
+	"filter.modal.fieldLabel": "Field",
+	"filter.modal.operatorLabel": "Operator",
+	"filter.modal.valueLabel": "Value",
+	"filter.modal.selectRange": "Select range",
+	"filter.modal.noValueRequired": "No value required",
+	"filter.modal.dateTo": "to",
+	"filter.modal.min": "Min",
+	"filter.modal.to": "to",
+	"filter.modal.max": "Max",
+	"filter.modal.enterNumber": "Enter number",
+	"filter.modal.loading": "Loading...",
+	"filter.modal.selectValue": "Select value...",
+	"filter.modal.search": "Search...",
+	"filter.modal.errorPrefix": "Error: ",
+	"filter.modal.noValues": "No values found",
+	"filter.modal.multiSelectHint": "Hold Shift to select multiple values",
+	"filter.modal.enterValue": "Enter value...",
+	"filter.removeButton.title": "Remove filter",
+	"filter.section.clearAll": "Clear all",
+	"filter.section.dropHint": "Drop to add filter",
+	"filter.section.empty": "No filters applied",
+	"filter.valueDisplay.empty": "(empty)",
+	"filter.valueDisplay.more": "more",
+	"filter.operator.equals.label": "equals",
+	"filter.operator.equals.description": "Exact match",
+	"filter.operator.notEquals.label": "not equals",
+	"filter.operator.notEquals.description": "Does not match",
+	"filter.operator.contains.label": "contains",
+	"filter.operator.contains.description": "Contains text (case insensitive)",
+	"filter.operator.notContains.label": "not contains",
+	"filter.operator.notContains.description": "Does not contain text",
+	"filter.operator.startsWith.label": "starts with",
+	"filter.operator.startsWith.description": "Starts with text",
+	"filter.operator.notStartsWith.label": "not starts with",
+	"filter.operator.notStartsWith.description": "Does not start with text",
+	"filter.operator.endsWith.label": "ends with",
+	"filter.operator.endsWith.description": "Ends with text",
+	"filter.operator.notEndsWith.label": "not ends with",
+	"filter.operator.notEndsWith.description": "Does not end with text",
+	"filter.operator.like.label": "like",
+	"filter.operator.like.description": "SQL LIKE pattern matching (case sensitive)",
+	"filter.operator.notLike.label": "not like",
+	"filter.operator.notLike.description": "SQL NOT LIKE pattern matching (case sensitive)",
+	"filter.operator.ilike.label": "ilike",
+	"filter.operator.ilike.description": "SQL ILIKE pattern matching (case insensitive)",
+	"filter.operator.gt.label": "greater than",
+	"filter.operator.gt.description": "Greater than value",
+	"filter.operator.gte.label": "greater than or equal",
+	"filter.operator.gte.description": "Greater than or equal to value",
+	"filter.operator.lt.label": "less than",
+	"filter.operator.lt.description": "Less than value",
+	"filter.operator.lte.label": "less than or equal",
+	"filter.operator.lte.description": "Less than or equal to value",
+	"filter.operator.between.label": "between",
+	"filter.operator.between.description": "Between two values (inclusive)",
+	"filter.operator.notBetween.label": "not between",
+	"filter.operator.notBetween.description": "Not between two values",
+	"filter.operator.in.label": "in",
+	"filter.operator.in.description": "Matches any of the provided values",
+	"filter.operator.notIn.label": "not in",
+	"filter.operator.notIn.description": "Does not match any of the provided values",
+	"filter.operator.set.label": "is set",
+	"filter.operator.set.description": "Is not null/empty",
+	"filter.operator.notSet.label": "is not set",
+	"filter.operator.notSet.description": "Is null/empty",
+	"filter.operator.isEmpty.label": "is empty",
+	"filter.operator.isEmpty.description": "Is empty string or null",
+	"filter.operator.isNotEmpty.label": "is not empty",
+	"filter.operator.isNotEmpty.description": "Is not empty string and not null",
+	"filter.operator.inDateRange.label": "in date range",
+	"filter.operator.inDateRange.description": "Between two dates",
+	"filter.operator.beforeDate.label": "before date",
+	"filter.operator.beforeDate.description": "Before specified date",
+	"filter.operator.afterDate.label": "after date",
+	"filter.operator.afterDate.description": "After specified date",
+	"filter.operator.regex.label": "matches regex",
+	"filter.operator.regex.description": "Matches regular expression pattern",
+	"filter.operator.notRegex.label": "not matches regex",
+	"filter.operator.notRegex.description": "Does not match regular expression pattern",
+	"filter.operator.arrayContains.label": "array contains all",
+	"filter.operator.arrayContains.description": "Array field contains all specified values (PostgreSQL only)",
+	"filter.operator.arrayOverlaps.label": "array contains any",
+	"filter.operator.arrayOverlaps.description": "Array field contains any of the specified values (PostgreSQL only)",
+	"filter.operator.arrayContained.label": "array values in",
+	"filter.operator.arrayContained.description": "All array field values are within specified values (PostgreSQL only)",
+	"dateRange.custom": "Custom",
+	"dateRange.today": "Today",
+	"dateRange.yesterday": "Yesterday",
+	"dateRange.thisWeek": "This week",
+	"dateRange.thisMonth": "This month",
+	"dateRange.thisQuarter": "This quarter",
+	"dateRange.thisYear": "This year",
+	"dateRange.last7Days": "Last 7 days",
+	"dateRange.last30Days": "Last 30 days",
+	"dateRange.lastNDays": "Last N days",
+	"dateRange.lastWeek": "Last week",
+	"dateRange.lastNWeeks": "Last N weeks",
+	"dateRange.lastMonth": "Last month",
+	"dateRange.last12Months": "Last 12 months",
+	"dateRange.lastNMonths": "Last N months",
+	"dateRange.lastQuarter": "Last quarter",
+	"dateRange.lastNQuarters": "Last N quarters",
+	"dateRange.lastYear": "Last year",
+	"dateRange.lastNYears": "Last N years",
+	"timeGranularity.hour": "Hour",
+	"timeGranularity.day": "Day",
+	"timeGranularity.week": "Week",
+	"timeGranularity.month": "Month",
+	"timeGranularity.quarter": "Quarter",
+	"timeGranularity.year": "Year",
+	"query.limit.label": "Limit",
+	"query.limit.clear": "Clear",
+	"chart.bar.label": "Bar Chart",
+	"chart.bar.description": "Compare values across categories",
+	"chart.bar.useCase": "Best for comparing discrete categories, showing rankings, or displaying changes over time",
+	"chart.line.label": "Line Chart",
+	"chart.line.description": "Show trends and changes over time",
+	"chart.line.useCase": "Best for continuous data, trends, time series, and showing relationships between multiple series",
+	"chart.area.label": "Area Chart",
+	"chart.area.description": "Emphasise magnitude of change over time",
+	"chart.area.useCase": "Best for showing cumulative totals, volume changes, or stacked comparisons over time",
+	"chart.pie.label": "Pie Chart",
+	"chart.pie.description": "Show proportions of a whole",
+	"chart.pie.useCase": "Best for showing percentage distribution or composition of a total (limit to 5-7 slices)",
+	"chart.scatter.label": "Scatter Plot",
+	"chart.scatter.description": "Reveal correlations between variables",
+	"chart.scatter.useCase": "Best for identifying patterns, correlations, outliers, and relationships between two measures",
+	"chart.bubble.label": "Bubble Chart",
+	"chart.bubble.description": "Compare three dimensions of data",
+	"chart.bubble.useCase": "Best for showing relationships between three variables (X, Y, and size), market analysis",
+	"chart.radar.label": "Radar Chart",
+	"chart.radar.description": "Compare multiple metrics across categories",
+	"chart.radar.useCase": "Best for multivariate comparisons, performance metrics, strengths/weaknesses analysis",
+	"chart.radialBar.label": "Radial Bar Chart",
+	"chart.radialBar.description": "Circular progress and KPI visualisation",
+	"chart.radialBar.useCase": "Best for showing progress toward goals, KPIs, or comparing percentages in a compact form",
+	"chart.treemap.label": "TreeMap",
+	"chart.treemap.description": "Visualise hierarchical data with nested rectangles",
+	"chart.treemap.useCase": "Best for showing part-to-whole relationships in hierarchical data, disk usage, budget allocation",
+	"chart.table.label": "Data Table",
+	"chart.table.description": "Display detailed tabular data",
+	"chart.table.useCase": "Best for precise values, detailed analysis, sortable/filterable data exploration",
+	"chart.recordsTable.label": "Records Table",
+	"chart.recordsTable.description": "List individual records with per-column formatting",
+	"chart.recordsTable.useCase": "Best for browsing record-level detail — badges, progress bars and links per column",
+	"chart.activityGrid.label": "Activity Grid",
+	"chart.activityGrid.description": "GitHub-style activity grid showing temporal patterns across different time scales",
+	"chart.activityGrid.useCase": "Best for visualising activity patterns over time. Supports hour (3hr blocks × days), day (days × weeks), week (weeks × months), month (months × quarters), and quarter (quarters × years) granularities",
+	"chart.kpiNumber.label": "KPI Number",
+	"chart.kpiNumber.description": "Display key performance indicators as large numbers",
+	"chart.kpiNumber.useCase": "Perfect for showing important metrics like revenue, user count, or other key business metrics in a prominent, easy-to-read format",
+	"chart.kpiDelta.label": "KPI Delta",
+	"chart.kpiDelta.description": "Display change between latest and previous values with trend indicators",
+	"chart.kpiDelta.useCase": "Perfect for showing performance changes over time, such as revenue growth, user acquisition changes, or other metrics where the trend and delta are more important than the absolute value",
+	"chart.kpiText.label": "KPI Text",
+	"chart.kpiText.description": "Display key performance indicators as customisable text",
+	"chart.kpiText.useCase": "Perfect for showing metrics with custom formatting, combining multiple values, or displaying contextual KPI information using templates",
+	"chart.markdown.label": "Markdown",
+	"chart.markdown.description": "Display custom markdown content with formatting",
+	"chart.markdown.useCase": "Perfect for adding documentation, notes, section headers, instructions, or formatted text to dashboards",
+	"chart.funnel.label": "Funnel Chart",
+	"chart.funnel.description": "Show conversion through sequential steps",
+	"chart.funnel.useCase": "Best for visualising user journey funnels, sales pipelines, or multi-step processes",
+	"chart.sankey.label": "Sankey Chart",
+	"chart.sankey.description": "Show flow between states or steps",
+	"chart.sankey.useCase": "Best for visualising user journey flows, path analysis, or state transitions",
+	"chart.sunburst.label": "Sunburst Chart",
+	"chart.sunburst.description": "Show hierarchical flow as radial rings",
+	"chart.sunburst.useCase": "Best for visualising forward paths from a starting event in a compact radial layout",
+	"chart.heatmap.label": "Heatmap",
+	"chart.heatmap.description": "Visualise intensity across two dimensions",
+	"chart.heatmap.useCase": "Best for showing patterns in matrix data like correlations, schedules, or category comparisons",
+	"chart.retentionHeatmap.label": "Retention Matrix",
+	"chart.retentionHeatmap.description": "Cohort retention matrix visualisation",
+	"chart.retentionHeatmap.useCase": "Visualise user retention over time by cohort",
+	"chart.retentionCombined.label": "Retention Chart",
+	"chart.retentionCombined.description": "Combined retention visualisation with line chart and heatmap modes",
+	"chart.retentionCombined.useCase": "Visualise user retention over time with optional breakdown segmentation",
+	"chart.boxPlot.label": "Box Plot",
+	"chart.boxPlot.description": "Show statistical distribution (median, IQR, whiskers) across categories",
+	"chart.boxPlot.useCase": "Best for P&L spread per symbol, trade size distribution, latency distribution across platforms",
+	"chart.dotStrip.label": "Dot Strip Plot",
+	"chart.dotStrip.description": "Show every individual value as a dot, grouped into category bands",
+	"chart.dotStrip.useCase": "Best for comparing individuals within a group — spread of output per team, salary per band, latency per endpoint",
+	"chart.waterfall.label": "Waterfall Chart",
+	"chart.waterfall.description": "Show cumulative effect of sequential positive and negative values",
+	"chart.waterfall.useCase": "Best for P&L decomposition, cash flow analysis, budget variance, or any sequential contribution breakdown",
+	"chart.candlestick.label": "Candlestick Chart",
+	"chart.candlestick.description": "Financial candlestick chart showing open/close body and high/low wicks",
+	"chart.candlestick.useCase": "Best for EOD quotes (bid/ask spread per date/symbol), markout distribution bands, or OHLC price data",
+	"chart.measureProfile.label": "Measure Profile",
+	"chart.measureProfile.description": "Plot N measures as sequential X-axis points to visualise a profile or shape across intervals",
+	"chart.measureProfile.useCase": "Best for markout interval analysis (e.g. avgMinus2m → avgAtEvent → avgPlus2h), metric profiles, or any pattern across ordered measures",
+	"chart.gauge.label": "Gauge Chart",
+	"chart.gauge.description": "Half-circle arc gauge for a single KPI value versus a maximum target",
+	"chart.gauge.useCase": "Best for high-water marks vs equity, margin utilisation, or any single value progress toward a goal",
+	"chart.config.chartType": "Chart Type",
+	"chart.config.loading": "Loading chart configuration...",
+	"chart.config.axisConfig": "Chart Configuration",
+	"chart.config.unassigned": "Unassigned Fields",
+	"chart.config.unassignedHint": "Drag fields to chart axes above",
+	"chart.config.noFields": "Add metrics and breakdowns in the Query tab to configure chart axes",
+	"chart.dropZone.xAxis.label": "X-Axis (Categories)",
+	"chart.dropZone.xAxis.description": "Dimensions and time dimensions for grouping",
+	"chart.dropZone.xAxis.empty": "Drop dimensions & time dimensions here",
+	"chart.dropZone.yAxis.label": "Y-Axis (Values)",
+	"chart.dropZone.yAxis.description": "Measures for values or dimensions for series",
+	"chart.dropZone.yAxis.empty": "Drop measures or dimensions here",
+	"chart.dropZone.series.label": "Series (Split into Multiple Series)",
+	"chart.dropZone.series.description": "Dimensions to create separate data series",
+	"chart.dropZone.series.empty": "Drop dimensions here to split data into series",
+	"chart.dropZone.maxReached": "Maximum items reached",
+	"chart.dropZone.default.empty": "Drop fields here",
+	"chart.bar.dropZone.xAxis.empty": "Drop dimensions & time dimensions here",
+	"chart.bar.dropZone.yAxis.empty": "Drop measures here",
+	"chart.bar.dropZone.series.empty": "Drop dimensions here to split data into series",
+	"chart.line.dropZone.xAxis.empty": "Drop time dimensions or dimensions here",
+	"chart.line.dropZone.yAxis.empty": "Drop measures here",
+	"chart.line.dropZone.series.empty": "Drop dimensions here for multiple lines",
+	"chart.area.dropZone.xAxis.empty": "Drop time dimensions or dimensions here",
+	"chart.area.dropZone.yAxis.empty": "Drop measures here",
+	"chart.area.dropZone.series.empty": "Drop dimensions here for stacked areas",
+	"chart.pie.dropZone.xAxis.empty": "Drop a dimension for categories",
+	"chart.pie.dropZone.yAxis.empty": "Drop a measure for values",
+	"chart.scatter.dropZone.xAxis.empty": "Drop a field for X-axis",
+	"chart.scatter.dropZone.yAxis.empty": "Drop a measure for Y-axis",
+	"chart.scatter.dropZone.series.empty": "Drop a dimension to colour points",
+	"chart.bubble.dropZone.xAxis.empty": "Drop a field for X-axis position",
+	"chart.bubble.dropZone.yAxis.empty": "Drop a measure for Y-axis position",
+	"chart.bubble.dropZone.sizeField.empty": "Drop a measure for bubble size",
+	"chart.bubble.dropZone.series.empty": "Drop a dimension for bubble labels",
+	"chart.bubble.dropZone.colorField.empty": "Drop a field for bubble colour (optional)",
+	"chart.radar.dropZone.xAxis.empty": "Drop dimensions for radar axes",
+	"chart.radar.dropZone.yAxis.empty": "Drop measures for values",
+	"chart.radar.dropZone.series.empty": "Drop dimensions for multiple shapes",
+	"chart.radialBar.dropZone.xAxis.empty": "Drop dimensions for categories",
+	"chart.radialBar.dropZone.yAxis.empty": "Drop a measure for values",
+	"chart.treemap.dropZone.xAxis.empty": "Drop dimensions for categories",
+	"chart.treemap.dropZone.yAxis.empty": "Drop a measure for size",
+	"chart.treemap.dropZone.series.empty": "Drop a dimension for colour grouping",
+	"chart.table.dropZone.xAxis.empty": "Drop fields to display as columns (or leave empty for all)",
+	"chart.recordsTable.dropZone.columns.label": "Columns",
+	"chart.recordsTable.dropZone.columns.description": "Fields rendered as columns, in this order",
+	"chart.recordsTable.dropZone.columns.empty": "Drop fields to display as columns (or leave empty for all)",
+	"chart.recordsTable.dropZone.hiddenColumns.label": "Hidden fields",
+	"chart.recordsTable.dropZone.hiddenColumns.description": "Fetched for row context and links, never displayed",
+	"chart.recordsTable.dropZone.hiddenColumns.empty": "Drop fields to fetch without showing them",
+	"chart.recordsTable.option.columnFormats.label": "Column formats",
+	"chart.recordsTable.option.columnFormats.description": "Choose how each column renders its value",
+	"chart.recordsTable.option.pageSize.label": "Rows per page",
+	"chart.recordsTable.option.pageSize.description": "How many records to show at a time",
+	"chart.recordsTable.option.pageSize.option.25": "25",
+	"chart.recordsTable.option.pageSize.option.50": "50",
+	"chart.recordsTable.option.pageSize.option.100": "100",
+	"chart.recordsTable.option.rowLink.label": "Row link",
+	"chart.recordsTable.option.rowLink.description": "Make each row a link. Use {Cube.field} tokens — hidden fields work too. Relative paths and http(s) URLs only.",
+	"chart.recordsTable.rowLink.urlTemplate": "URL template",
+	"chart.recordsTable.rowLink.placeholder": "/employees/{Employees.id}",
+	"chart.recordsTable.rowLink.target.self": "Same tab",
+	"chart.recordsTable.rowLink.target.blank": "New tab",
+	"chart.recordsTable.columnFormats.noColumns": "Assign columns first — each one can then be formatted here",
+	"chart.recordsTable.columnFormats.kind.text": "Text",
+	"chart.recordsTable.columnFormats.kind.number": "Number",
+	"chart.recordsTable.columnFormats.kind.date": "Date",
+	"chart.recordsTable.columnFormats.kind.badge": "Badge",
+	"chart.recordsTable.columnFormats.kind.progress": "Progress",
+	"chart.recordsTable.columnFormats.numberFormat": "Number format",
+	"chart.recordsTable.columnFormats.granularity": "Granularity",
+	"chart.recordsTable.columnFormats.badgeColours": "Value colours",
+	"chart.recordsTable.columnFormats.badgeColour": "Colour",
+	"chart.recordsTable.columnFormats.badgeValue": "Value",
+	"chart.recordsTable.columnFormats.badgeAdd": "Add value",
+	"chart.recordsTable.columnFormats.badgeRemove": "Remove value",
+	"chart.recordsTable.columnFormats.progressMin": "Minimum",
+	"chart.recordsTable.columnFormats.progressMax": "Maximum",
+	"chart.recordsTable.columnFormats.progressStyle": "Style",
+	"chart.recordsTable.columnFormats.progressStyle.bar": "Bar",
+	"chart.recordsTable.columnFormats.progressStyle.circle": "Circle",
+	"chart.recordsTable.columnFormats.header": "Header",
+	"chart.activityGrid.dropZone.dateField.empty": "Drop a time dimension (granularity affects grid structure)",
+	"chart.activityGrid.dropZone.valueField.empty": "Drop a measure for activity intensity",
+	"chart.kpiNumber.dropZone.yAxis.empty": "Drop a measure here",
+	"chart.kpiDelta.dropZone.yAxis.empty": "Drop a measure here",
+	"chart.kpiDelta.dropZone.xAxis.empty": "Drop a dimension for ordering",
+	"chart.kpiText.dropZone.yAxis.empty": "Drop a measure here",
+	"chart.funnel.dropZone.xAxis.empty": "Steps defined in funnel config",
+	"chart.funnel.dropZone.yAxis.empty": "Counts calculated from funnel execution",
+	"chart.sankey.dropZone.xAxis.empty": "Auto-populated from flow config",
+	"chart.sankey.dropZone.yAxis.empty": "Calculated from flow execution",
+	"chart.sunburst.dropZone.xAxis.empty": "Auto-populated from flow config",
+	"chart.sunburst.dropZone.yAxis.empty": "Calculated from flow execution",
+	"chart.heatmap.dropZone.xAxis.empty": "Drop one dimension here",
+	"chart.heatmap.dropZone.yAxis.empty": "Drop one dimension here",
+	"chart.heatmap.dropZone.valueField.empty": "Drop one measure here",
+	"chart.boxPlot.dropZone.xAxis.empty": "Drop a dimension here",
+	"chart.boxPlot.dropZone.yAxis.empty": "Drop 1, 3, or 5 measures here",
+	"chart.dotStrip.dropZone.xAxis.label": "Bands (rows)",
+	"chart.dotStrip.dropZone.xAxis.description": "Dimension that groups dots into rows, e.g. team, band, region",
+	"chart.dotStrip.dropZone.xAxis.empty": "Drop a dimension to band by",
+	"chart.dotStrip.dropZone.yAxis.label": "Value (horizontal position)",
+	"chart.dotStrip.dropZone.yAxis.description": "Measure that positions each dot along the horizontal axis",
+	"chart.dotStrip.dropZone.yAxis.empty": "Drop a measure here",
+	"chart.dotStrip.dropZone.series.label": "Dot identity",
+	"chart.dotStrip.dropZone.series.description": "Dimension that gives each dot its own row — one dot per value, named in the tooltip",
+	"chart.dotStrip.dropZone.series.empty": "Drop a dimension to split into individual dots",
+	"chart.waterfall.dropZone.xAxis.empty": "Drop a dimension here",
+	"chart.waterfall.dropZone.yAxis.empty": "Drop a measure here",
+	"chart.candlestick.dropZone.xAxis.empty": "Drop a time or dimension here",
+	"chart.candlestick.dropZone.yAxis.empty": "Drop 2+ measures here",
+	"chart.measureProfile.dropZone.yAxis.empty": "Drop 2+ measures here (displayed left → right)",
+	"chart.measureProfile.dropZone.series.empty": "Drop a dimension here to create multiple lines",
+	"chart.gauge.dropZone.yAxis.empty": "Drop 1 measure here (optional 2nd for dynamic max)",
+	"chart.activityGrid.validation.timeDimensionRequired": "Time dimension is required for activity grid",
+	"chart.activityGrid.validation.measureRequired": "Activity measure is required for intensity mapping",
+	"chart.kpiDelta.validation.measureRequired": "A measure is required for KPI Delta charts",
+	"chart.heatmap.validation.xAxisRequired": "X-axis dimension required",
+	"chart.heatmap.validation.yAxisRequired": "Y-axis dimension required",
+	"chart.heatmap.validation.valueRequired": "Value measure required",
+	"chart.option.stacking.label": "Stacking",
+	"chart.option.stacking.none": "None",
+	"chart.option.stacking.stacked": "Stacked",
+	"chart.option.stacking.percent": "Stacked 100%",
+	"chart.option.stacking.description": "How to stack multiple series",
+	"chart.option.target.label": "Target Values",
+	"chart.option.target.description": "Single value or comma-separated values to spread across X-axis",
+	"chart.option.connectNulls.label": "Connect Nulls",
+	"chart.option.connectNulls.description": "Draw continuous line through missing data points",
+	"chart.option.showAllXLabels.label": "Show All X Labels",
+	"chart.option.showAllXLabels.description": "Display every label on the X-axis instead of auto-hiding overlapping labels",
+	"chart.option.leftYAxisFormat.label": "Left Y-Axis Format",
+	"chart.option.leftYAxisFormat.description": "Number formatting for left Y-axis",
+	"chart.option.rightYAxisFormat.label": "Right Y-Axis Format",
+	"chart.option.rightYAxisFormat.description": "Number formatting for right Y-axis",
+	"chart.option.xAxisFormat.label": "X-Axis Format",
+	"chart.option.xAxisFormat.description": "Number formatting for X-axis",
+	"chart.option.yAxisFormat.label": "Y-Axis Format",
+	"chart.option.yAxisFormat.description": "Number formatting for Y-axis",
+	"chart.option.valueFormat.label": "Value Format",
+	"chart.option.valueFormat.description": "Number formatting for values",
+	"chart.option.innerRadius.label": "Inner Radius",
+	"chart.option.innerRadius.description": "Hollow centre size (0% = solid pie, higher = donut style)",
+	"chart.option.showLabels.label": "Show Cell Values",
+	"chart.option.showLabels.description": "Display values inside each cell",
+	"chart.option.cellShape.label": "Cell Shape",
+	"chart.option.cellShape.rectangle": "Rectangle",
+	"chart.option.cellShape.circle": "Circle",
+	"chart.option.funnelStyle.label": "Funnel Style",
+	"chart.option.funnelStyle.bars": "Bars",
+	"chart.option.funnelStyle.funnel": "Funnel",
+	"chart.option.funnelOrientation.label": "Orientation",
+	"chart.option.funnelOrientation.horizontal": "Horizontal",
+	"chart.option.funnelOrientation.vertical": "Vertical",
+	"chart.option.hideSummaryFooter.label": "Hide Summary Footer",
+	"chart.option.hideSummaryFooter.description": "Hide the summary footer showing steps count and overall conversion",
+	"chart.option.showConversion.label": "Show Conversion Rate",
+	"chart.option.showConversion.description": "Display step-to-step conversion percentage",
+	"chart.option.showAvgTime.label": "Show Avg Time",
+	"chart.option.showAvgTime.description": "Display average time to convert",
+	"chart.option.showMedianTime.label": "Show Median Time",
+	"chart.option.showMedianTime.description": "Display median time to convert",
+	"chart.option.showP90Time.label": "Show P90 Time",
+	"chart.option.showP90Time.description": "Display 90th percentile time to convert",
+	"chart.option.linkOpacity.label": "Link Opacity",
+	"chart.option.linkOpacity.light": "Light",
+	"chart.option.linkOpacity.medium": "Medium",
+	"chart.option.linkOpacity.dark": "Dark",
+	"chart.option.showNodeLabels.label": "Show Node Labels",
+	"chart.option.showNodeLabels.description": "Display labels on flow nodes",
+	"chart.option.prefix.label": "Prefix",
+	"chart.option.prefix.description": "Text to display before the number",
+	"chart.option.suffix.label": "Suffix",
+	"chart.option.suffix.description": "Text to display after the number",
+	"chart.option.decimals.label": "Decimal Places",
+	"chart.option.decimals.description": "Number of decimal places to display",
+	"chart.option.showHistogram.label": "Show Variance Histogram",
+	"chart.option.showHistogram.description": "Display historical variance chart below the delta",
+	"chart.option.useLastCompletePeriod.label": "Use Last Complete Period",
+	"chart.option.useLastCompletePeriod.description": "Exclude current incomplete period from calculation (e.g., partial week/month)",
+	"chart.option.skipLastPeriod.label": "Skip Last Period",
+	"chart.option.skipLastPeriod.description": "Always exclude the last period regardless of completeness",
+	"chart.option.retentionDisplayMode.label": "Display Mode",
+	"chart.option.retentionDisplayMode.lineChart": "Line Chart",
+	"chart.option.retentionDisplayMode.heatmapTable": "Heatmap Table",
+	"chart.option.retentionDisplayMode.combined": "Combined",
+	"chart.option.showLegend.label": "Show Legend",
+	"chart.option.showLegend.description": "Show the legend",
+	"chart.option.showGrid.label": "Show Grid",
+	"chart.option.showGrid.description": "Show grid lines on the chart",
+	"chart.option.showTooltip.label": "Show Tooltip",
+	"chart.option.showTooltip.description": "Show tooltip on hover with detailed stats",
+	"chart.option.priorPeriodStyle.label": "Prior Period Line Style",
+	"chart.option.priorPeriodStyle.dashed": "Dashed",
+	"chart.option.priorPeriodStyle.dotted": "Dotted",
+	"chart.option.priorPeriodStyle.solid": "Solid",
+	"chart.option.priorPeriodStyle.description": "Line style for prior period in comparison mode",
+	"chart.option.priorPeriodOpacity.label": "Prior Period Opacity",
+	"chart.option.priorPeriodOpacity.description": "Opacity for prior period lines (0.1 to 1)",
+	"chart.option.showTotal.label": "Show Total Bar",
+	"chart.option.showTotal.description": "Append a final bar showing the running total",
+	"chart.option.showConnectorLine.label": "Show Connector Line",
+	"chart.option.showConnectorLine.description": "Draw a dashed step-line connecting bar tops",
+	"chart.option.showDataLabels.label": "Show Data Labels",
+	"chart.option.showDataLabels.description": "Display the value at each data point",
+	"chart.option.showReferenceLineAtZero.label": "Show Zero Reference Line",
+	"chart.option.showReferenceLineAtZero.description": "Draw a dashed line at Y = 0",
+	"chart.option.showMedianMarker.label": "Show Median Marker",
+	"chart.option.showMedianMarker.description": "Draw a tick at each band's median value",
+	"chart.option.showBandStats.label": "Show Band Statistics",
+	"chart.option.showBandStats.description": "Show the dot count and spread beside each band name",
+	"chart.option.showExtremeLabels.label": "Label Extremes",
+	"chart.option.showExtremeLabels.description": "Name the lowest and highest dot in each band",
+	"chart.option.dotSize.label": "Dot Size",
+	"chart.option.dotSize.description": "Larger dots are easier to see but spread the swarm further",
+	"chart.option.dotSize.small": "Small",
+	"chart.option.dotSize.medium": "Medium",
+	"chart.option.dotSize.large": "Large",
+	"chart.option.bandSort.label": "Band Order",
+	"chart.option.bandSort.description": "How to order the bands from top to bottom",
+	"chart.option.bandSort.none": "Query order",
+	"chart.option.bandSort.valueDesc": "Highest median first",
+	"chart.option.bandSort.valueAsc": "Lowest median first",
+	"chart.option.bandSort.count": "Most dots first",
+	"chart.option.lineType.label": "Line Interpolation",
+	"chart.option.lineType.smooth": "Smooth (monotone)",
+	"chart.option.lineType.linear": "Linear",
+	"chart.option.lineType.step": "Step",
+	"chart.option.lineType.description": "How data points are connected",
+	"chart.option.rangeMode.label": "Chart Mode",
+	"chart.option.rangeMode.ohlc": "OHLC (open, close, high, low)",
+	"chart.option.rangeMode.range": "Range (high, low / bid, ask)",
+	"chart.option.rangeMode.description": "OHLC: 4 measures. Range: 2 measures (high + low).",
+	"chart.option.bullColor.label": "Bullish Colour",
+	"chart.option.bullColor.description": "Candle colour when close ≥ open",
+	"chart.option.bearColor.label": "Bearish Colour",
+	"chart.option.bearColor.description": "Candle colour when close < open",
+	"chart.option.showWicks.label": "Show Wicks",
+	"chart.option.showWicks.description": "Draw high/low wicks above and below the body",
+	"chart.option.minValue.label": "Minimum Value",
+	"chart.option.minValue.description": "Lower bound of the gauge arc (default 0)",
+	"chart.option.maxValue.label": "Maximum Value (static)",
+	"chart.option.maxValue.description": "Upper bound of the gauge. Leave empty to use yAxis[1] or default 100",
+	"chart.option.showCentreLabel.label": "Show Centre Label",
+	"chart.option.showCentreLabel.description": "Display current value and field name in the centre of the gauge",
+	"chart.option.showPercentage.label": "Show as Percentage",
+	"chart.option.showPercentage.description": "Display value as % of max instead of raw number",
+	"chart.option.fitToWidth.label": "Fit to Width",
+	"chart.option.fitToWidth.description": "Automatically size blocks to fill portlet width and height while maintaining aspect ratio",
+	"chart.option.fontSize.label": "Font Size",
+	"chart.option.fontSize.small": "Small",
+	"chart.option.fontSize.medium": "Medium",
+	"chart.option.fontSize.large": "Large",
+	"chart.option.alignment.label": "Text Alignment",
+	"chart.option.alignment.left": "Left",
+	"chart.option.alignment.center": "Center",
+	"chart.option.alignment.right": "Right",
+	"chart.option.hideHeader.label": "Hide Header",
+	"chart.option.hideHeader.description": "Hide the portlet header bar (title and action buttons)",
+	"chart.option.transparentBackground.label": "Transparent Background",
+	"chart.option.transparentBackground.description": "Remove card background, border, and shadow for seamless integration as section headers",
+	"chart.option.autoHeight.label": "Auto Height",
+	"chart.option.autoHeight.description": "In row and mobile layouts, size to markdown content instead of fixed row height",
+	"chart.option.accentBorder.label": "Accent Border",
+	"chart.option.accentBorder.none": "None",
+	"chart.option.accentBorder.left": "Left",
+	"chart.option.accentBorder.top": "Top",
+	"chart.option.accentBorder.bottom": "Bottom",
+	"chart.option.accentBorder.description": "Add an accent-coloured border on one side of the content",
+	"chart.configText.20_percent": "20%",
+	"chart.configText.40_percent": "40%",
+	"chart.configText.60_percent": "60%",
+	"chart.configText.80_percent": "80%",
+	"chart.configText.accent_color": "Accent Color",
+	"chart.configText.activity_measure": "Activity Measure",
+	"chart.configText.add_2_or_more_measures_they_become_the_x_axis_categories_in_the_order_li": "Add 2 or more measures — they become the X-axis categories in the order listed",
+	"chart.configText.add_an_accent_colored_border_on_one_side_of_the_content": "Add an accent-colored border on one side of the content",
+	"chart.configText.all_fields_to_display_as_columns": "All fields to display as columns",
+	"chart.gauge.thresholds.description": "Each band runs from its value up to the next one. Values are on the gauge’s own scale.",
+	"chart.configText.axes_categories": "Axes (Categories)",
+	"chart.configText.bubble_colour": "Bubble Colour",
+	"chart.configText.bubble_labels": "Bubble Labels",
+	"chart.configText.bubble_radius": "Bubble Radius",
+	"chart.configText.categories": "Categories",
+	"chart.configText.choose_how_to_visualize_retention_data": "Choose how to visualize retention data",
+	"chart.configText.color_bubbles_by_this_field_optional": "Color bubbles by this field (optional)",
+	"chart.configText.color_for_negative_changes_decreases": "Color for negative changes (decreases)",
+	"chart.configText.color_for_positive_changes_increases": "Color for positive changes (increases)",
+	"chart.configText.color_from_the_dashboard_palette_for_headers_bullets_and_links": "Color from the dashboard palette for headers, bullets, and links",
+	"chart.configText.color_from_the_dashboard_palette_for_the_kpi_value_text": "Color from the dashboard palette for the KPI value text",
+	"chart.configText.color_groups": "Color Groups",
+	"chart.configText.columns": "Columns",
+	"chart.configText.columns_x_axis": "Columns (X-Axis)",
+	"chart.configText.count_at_each_step_auto_calculated": "Count at each step (auto-calculated)",
+	"chart.configText.count_of_entities_following_each_path": "Count of entities following each path",
+	"chart.configText.current_value_to_display_on_the_gauge_e_g_current_equity_margin_used": "Current value to display on the gauge (e.g. current equity, margin used)",
+	"chart.configText.dimension_for_column_categories": "Dimension for column categories",
+	"chart.configText.dimension_for_ordering_data_typically_time": "Dimension for ordering data (typically time)",
+	"chart.configText.dimension_for_pie_slices": "Dimension for pie slices",
+	"chart.configText.dimension_for_row_categories": "Dimension for row categories",
+	"chart.configText.dimension_labels_for_each_bar_segment_e_g_symbol_transaction_type": "Dimension labels for each bar segment (e.g. symbol, transaction type)",
+	"chart.configText.dimension_optional": "Dimension (optional)",
+	"chart.configText.dimension_to_color_points_by_category": "Dimension to color points by category",
+	"chart.configText.dimension_to_color_rectangles_by_category": "Dimension to color rectangles by category",
+	"chart.configText.dimension_to_group_boxes_by_e_g_symbol_platform": "Dimension to group boxes by (e.g. symbol, platform)",
+	"chart.configText.dimension_to_split_data_into_separate_profile_lines_e_g_symbol_platform": "Dimension to split data into separate profile lines (e.g. symbol, platform)",
+	"chart.configText.dimensions_for_radar_axes": "Dimensions for radar axes",
+	"chart.configText.dimensions_for_radial_segments": "Dimensions for radial segments",
+	"chart.configText.dimensions_for_treemap_rectangles": "Dimensions for treemap rectangles",
+	"chart.configText.dimensions_to_create_multiple_radar_shapes": "Dimensions to create multiple radar shapes",
+	"chart.configText.dimensions_to_create_separate_lines": "Dimensions to create separate lines",
+	"chart.configText.dimensions_to_create_stacked_areas": "Dimensions to create stacked areas",
+	"chart.configText.display_the_value_above_each_bar_segment": "Display the value above each bar segment",
+	"chart.configText.display_value_at_each_data_point": "Display value at each data point",
+	"chart.configText.drop_1_measure_for_auto_mode_3_for_avg_stddev_median_mode_or_5_for_min_q": "Drop 1 measure for auto mode, 3 for avg/stddev/median mode, or 5 for min/q1/median/q3/max mode",
+	"chart.configText.drop_2_4_measures_in_order_open_close_high_low_ohlc_mode_for_range_mode_": "Drop 2–4 measures in order: open, close, high, low (OHLC mode). For range mode drop 2: high, low.",
+	"chart.configText.enter_markdown_text_supports_headers_bold_text_italic_text_links_text_ur": "Enter markdown text. Supports headers (#), bold (**text**), italic (*text*), links ([text](url)), lists (- item), and horizontal rules (---).",
+	"chart.configText.event_dimension_that_categorizes_flow_nodes": "Event dimension that categorizes flow nodes",
+	"chart.configText.event_type": "Event Type",
+	"chart.configText.exclude_current_incomplete_period_from_aggregation_e_g_partial_week_mont": "Exclude current incomplete period from aggregation (e.g., partial week/month)",
+	"chart.configText.exclude_current_incomplete_period_from_delta_calculation_e_g_partial_wee": "Exclude current incomplete period from delta calculation (e.g., partial week/month)",
+	"chart.configText.field_to_use_for_bubble_labels_and_identification": "Field to use for bubble labels and identification",
+	"chart.configText.flow_count": "Flow Count",
+	"chart.configText.hide_the_statistics_footer_below_the_chart": "Hide the statistics footer below the chart",
+	"chart.configText.hollow_center_size_0_percent_solid_pie_higher_donut_style": "Hollow center size (0% = solid pie, higher = donut style)",
+	"chart.configText.horizontal_alignment_of_the_markdown_content": "Horizontal alignment of the markdown content",
+	"chart.configText.horizontal_axis_position": "Horizontal axis position",
+	"chart.configText.how_to_stack_multiple_area_series": "How to stack multiple area series",
+	"chart.configText.how_to_stack_multiple_bar_series": "How to stack multiple bar series",
+	"chart.configText.markdown_content": "Markdown Content",
+	"chart.configText.measure_for_rectangle_sizes": "Measure for rectangle sizes",
+	"chart.configText.measure_for_slice_sizes": "Measure for slice sizes",
+	"chart.configText.measure_for_y_position": "Measure for Y position",
+	"chart.configText.measure_or_dimension_for_x_position": "Measure or dimension for X position",
+	"chart.configText.measure_that_determines_cell_color": "Measure that determines cell color",
+	"chart.configText.measure_to_display_as_kpi_number": "Measure to display as KPI number",
+	"chart.configText.measure_to_display_in_the_kpi_text_template": "Measure to display in the KPI text template",
+	"chart.configText.measure_to_track_changes_for": "Measure to track changes for",
+	"chart.configText.measure_used_for_activity_intensity_color_coding": "Measure used for activity intensity (color coding)",
+	"chart.configText.measures_for_area_values": "Measures for area values",
+	"chart.configText.measures_for_bar_heights": "Measures for bar heights",
+	"chart.configText.measures_for_line_values": "Measures for line values",
+	"chart.configText.measures_for_radar_values": "Measures for radar values",
+	"chart.configText.measures_for_radial_bar_lengths": "Measures for radial bar lengths",
+	"chart.configText.measures_x_axis_order": "Measures (X-Axis Order)",
+	"chart.configText.negative_change_color": "Negative Change Color",
+	"chart.configText.none_pie": "None (Pie)",
+	"chart.configText.number_formatting_for_cell_values_and_legend": "Number formatting for cell values and legend",
+	"chart.configText.number_formatting_for_numeric_values": "Number formatting for numeric values",
+	"chart.configText.number_formatting_for_size_values": "Number formatting for size values",
+	"chart.configText.number_formatting_for_the_displayed_value_and_axis_labels": "Number formatting for the displayed value and axis labels",
+	"chart.configText.number_formatting_for_the_price_axis": "Number formatting for the price axis",
+	"chart.configText.number_formatting_for_the_value_axis": "Number formatting for the value axis",
+	"chart.configText.number_formatting_for_the_y_axis": "Number formatting for the Y-axis",
+	"chart.configText.number_formatting_for_x_axis_labels": "Number formatting for X-axis labels",
+	"chart.configText.number_formatting_for_y_axis_and_values": "Number formatting for Y-axis and values",
+	"chart.configText.number_formatting_for_y_axis_labels": "Number formatting for Y-axis labels",
+	"chart.configText.number_of_decimal_places_to_display_for_numeric_values": "Number of decimal places to display for numeric values",
+	"chart.configText.ohlc_measures_open_close_high_low": "OHLC Measures (open, close, high, low)",
+	"chart.configText.opacity_of_flow_links": "Opacity of flow links",
+	"chart.configText.overall_text_size_for_the_markdown_content": "Overall text size for the markdown content",
+	"chart.configText.positive_change_color": "Positive Change Color",
+	"chart.configText.rows_y_axis": "Rows (Y-Axis)",
+	"chart.configText.series_color_groups": "Series (Color Groups)",
+	"chart.configText.series_multiple_lines": "Series (Multiple Lines)",
+	"chart.configText.series_multiple_shapes": "Series (Multiple Shapes)",
+	"chart.configText.series_split_into_multiple_lines": "Series (Split into Multiple Lines)",
+	"chart.configText.series_stack_areas": "Series (Stack Areas)",
+	"chart.configText.show_series_legend_only_visible_with_a_series_dimension": "Show series legend (only visible with a Series dimension)",
+	"chart.configText.show_the_color_intensity_legend": "Show the color intensity legend",
+	"chart.configText.show_the_legend_for_breakdown_segments": "Show the legend for breakdown segments",
+	"chart.configText.single_measure_whose_values_are_summed_cumulatively": "Single measure whose values are summed cumulatively",
+	"chart.configText.size": "Size",
+	"chart.configText.size_of_bubbles_based_on_this_measure": "Size of bubbles based on this measure",
+	"chart.configText.size_of_the_center_hole_0_for_full_circle": "Size of the center hole (0 for full circle)",
+	"chart.configText.step_count": "Step Count",
+	"chart.configText.step_name": "Step Name",
+	"chart.configText.step_names_auto_populated_from_funnel_steps": "Step names (auto-populated from funnel steps)",
+	"chart.configText.target_value_to_compare_against_first_value_used_if_multiple_provided": "Target value to compare against (first value used if multiple provided)",
+	"chart.configText.template_for_displaying_the_text_use_value_to_insert_the_measure_value": "Template for displaying the text. Use ${value} to insert the measure value.",
+	"chart.configText.text_template": "Text Template",
+	"chart.configText.threshold_bands": "Threshold Bands",
+	"chart.configText.time_dimension": "Time Dimension",
+	"chart.configText.time_dimension_or_category_for_each_candle_e_g_date_symbol": "Time dimension or category for each candle (e.g. date, symbol)",
+	"chart.configText.time_dimensions_or_dimensions_for_x_axis": "Time dimensions or dimensions for X-axis",
+	"chart.configText.time_field_that_determines_grid_structure_granularity_affects_layout": "Time field that determines grid structure (granularity affects layout)",
+	"chart.configText.value": "Value",
+	"chart.configText.value_color": "Value Color",
+	"chart.configText.value_color_intensity": "Value (Color Intensity)",
+	"chart.configText.value_measure": "Value Measure",
+	"chart.configText.values": "Values",
+	"chart.configText.vertical_axis_position": "Vertical axis position",
+	"chart.configText.visualization_style": "Visualization style",
+	"chart.configText.x_axis_groups": "X-Axis (Groups)",
+	"chart.configText.x_axis_time_categories": "X-Axis (Time/Categories)",
+	"chart.configText.x_axis_time_category": "X-Axis (Time / Category)",
+	"chart.configText.y_axis": "Y-Axis",
+	"chart.configText.y_axis_measures": "Y-Axis (Measures)",
+	"chart.configText.y_axis_value": "Y-Axis (Value)",
+	"display.loading": "Loading display options...",
+	"display.noOptions": "No display options available for this chart type.",
+	"display.heading": "Display Options",
+	"results.loading.title": "Executing Query...",
+	"results.loading.subtitle": "Running your query against the cube API",
+	"results.error.title": "Query Execution Failed",
+	"results.error.subtitle": "There was an error executing your query. Please check the query and try again.",
+	"results.waiting.title": "Preparing Query...",
+	"results.waiting.subtitle": "Your query will execute shortly",
+	"results.needsRefresh.title": "Ready to Execute",
+	"results.needsRefresh.subtitle": "Click refresh to run your query",
+	"results.needsRefresh.runButton": "Run Query",
+	"results.empty.query": "Add metrics or breakdowns from the panel on the right to see results",
+	"results.empty.retention": "Select a cube and configure retention settings to see results",
+	"results.empty.funnel": "Add funnel steps to see conversion analysis",
+	"results.empty.flow": "Configure flow analysis to see user journey paths",
+	"results.empty.title": "No Results Yet",
+	"results.ai.button": "Analyse with AI",
+	"results.noData.title": "Query Successful",
+	"results.noData.subtitle": "No data returned from the query",
+	"results.chart.noData": "No data to display",
+	"results.chart.noDataHint": "Run a query to see chart visualisation",
+	"results.chart.unsupported": "Unsupported chart type",
+	"results.refreshing": "Refreshing results...",
+	"results.header.rows": "rows",
+	"results.header.row": "row",
+	"results.header.stale": "Results may be outdated",
+	"results.header.failed": "Query failed",
+	"results.header.executing": "Executing...",
+	"results.header.noResults": "No results",
+	"results.view.chart": "Chart",
+	"results.view.merged": "Merged",
+	"results.warning.largeDataset": "Large dataset:",
+	"results.warning.configChanged": "Query configuration changed. Results may be outdated.",
+	"results.warning.refreshNow": "Refresh Now",
+	"results.share.copied": "Copied!",
+	"results.share.noChart": "(no chart)",
+	"server.errors.dbNotConfigured": "Database executor not configured",
+	"server.errors.cubeNotFound": "Cube '{cubeName}' not found",
+	"server.errors.noCubesInQuery": "No cubes found in query",
+	"server.errors.dbAdapterRequired": "DatabaseExecutor must have a databaseAdapter property",
+	"server.errors.rlsRequiresTransactions": "rlsSetup requires a database driver that supports transactions (db.transaction)",
+	"server.errors.queryExecutionFailed": "Query execution failed: {message}",
+	"server.errors.queryExecutionUnknown": "Query execution failed: Unknown error",
+	"server.errors.noCompareDateRange": "No compareDateRange found in query",
+	"server.errors.compareDateRangeInvalid": "compareDateRange requires at least 2 periods",
+	"server.errors.funnelValidationFailed": "Funnel validation failed: {errors}",
+	"server.errors.flowValidationFailed": "Flow validation failed: {errors}",
+	"server.errors.retentionValidationFailed": "Retention validation failed: {errors}",
+	"server.errors.cubeRefUnresolved": "{cubeName}.joins.{joinName}: target cube '{targetCube}' is not registered",
+	"server.errors.unresolvedCubeRefs": "Unresolved cube references:\n{details}",
+	"server.errors.cubeSetIdEmpty": "Cube set id must not be empty — the empty id is reserved for the base cube set",
+	"server.errors.cubeSetNotFound": "No cube set registered for '{setId}'",
+	"server.errors.attributeIdRequired": "Attribute definitions must have a non-empty id",
+	"server.errors.calculatedMeasureValidation": "Calculated measure validation failed for cube '{cubeName}':\n{details}",
+	"server.errors.queryValidationFailed": "Query validation failed: {errors}",
+	"server.errors.queryContainsMultipleModes": "Query contains multiple query modes: {modes}",
+	"server.errors.primaryCubeNotFound": "Primary cube '{cubeName}' not found",
+	"server.errors.noJoinPath": "No join path found from '{fromCube}' to '{toCube}'",
+	"server.errors.cubeNotFoundForMeasure": "Cube '{cubeName}' not found for measure '{measure}'",
+	"server.errors.cubeNotFoundForDimension": "Cube '{cubeName}' not found for dimension '{dimension}'",
+	"server.errors.cubeNotFoundForTimeDimension": "Cube '{cubeName}' not found for time dimension '{timeDimension}'",
+	"server.errors.invalidFunnelConfig": "Query does not contain a valid funnel configuration",
+	"server.errors.invalidFlowConfig": "Query does not contain a valid flow configuration",
+	"server.errors.invalidRetentionConfig": "Query does not contain a valid retention configuration",
+	"server.errors.agentResponseTruncated": "The assistant ran out of response space and stopped part-way through. Ask it to continue, or raise maxTokens in the agent configuration.",
+	"server.errors.llmInitFailed": "Failed to initialize LLM provider",
+	"server.validation.ai.bindingKeyRequired.flow": "flow.bindingKey is required",
+	"server.validation.ai.bindingKeyRequired.funnel": "funnel.bindingKey is required",
+	"server.validation.ai.bindingKeyRequired.retention": "retention.bindingKey is required",
+	"server.validation.ai.cubeNotFoundInFilter": "Cube '{cubeName}' not found in filter",
+	"server.validation.ai.cubeNotFoundWithAvailable": "Cube '{cubeName}' not found",
+	"server.validation.ai.cubeNotFoundWithSuggestion": "Cube '{cubeName}' not found",
+	"server.validation.ai.dimensionNotFoundWithAvailable": "Dimension '{dimensionName}' not found on cube '{cubeName}'",
+	"server.validation.ai.dimensionNotFoundWithSuggestion": "Dimension '{dimensionName}' not found on cube '{cubeName}'",
+	"server.validation.ai.dimensionNotTimeType": "Dimension '{dimension}' is not a time type (it's '{type}')",
+	"server.validation.ai.emptyQuery": "Query must have at least one measure or dimension",
+	"server.validation.ai.eventDimensionRequired": "flow.eventDimension is required",
+	"server.validation.ai.filterFieldNotFound": "Filter field '{fieldName}' not found on cube '{cubeName}'",
+	"server.validation.ai.filterFieldNotFoundWithSuggestion": "Filter field '{fieldName}' not found on cube '{cubeName}'",
+	"server.validation.ai.funnelRequiresSteps": "funnel requires at least 2 steps",
+	"server.validation.ai.funnelStepsRequired": "funnel.steps array is required",
+	"server.validation.ai.granularityNotSpecified": "retention.granularity not specified",
+	"server.validation.ai.invalidDimensionFormat": "Invalid dimension format: '{dimension}'. Expected 'CubeName.dimensionName'",
+	"server.validation.ai.invalidFilterMemberFormat": "Invalid filter member format: '{member}'",
+	"server.validation.ai.invalidMeasureFormat": "Invalid measure format: '{measure}'. Expected 'CubeName.measureName'",
+	"server.validation.ai.measureNotFoundWithAvailable": "Measure '{measureName}' not found on cube '{cubeName}'",
+	"server.validation.ai.measureNotFoundWithSuggestion": "Measure '{measureName}' not found on cube '{cubeName}'",
+	"server.validation.ai.performanceManyDimensions": "Query has {count} dimensions, which may produce many rows",
+	"server.validation.ai.performanceManyMeasures": "Query has {count} measures, which may impact performance",
+	"server.validation.ai.periodsNotSpecified": "retention.periods not specified",
+	"server.validation.ai.retentionTimeDimensionRequired": "retention.timeDimension is required",
+	"server.validation.ai.stepMissingName": "Step {step} is missing a name",
+	"server.validation.ai.stepsBothMissing": "Neither stepsBefore nor stepsAfter specified",
+	"server.validation.ai.suggestAddDimensionFilters": "Consider adding filters or reducing dimensions",
+	"server.validation.ai.suggestAddStepNames": "Add descriptive names to funnel steps",
+	"server.validation.ai.suggestSetSteps": "Set stepsBefore and/or stepsAfter to see event sequences",
+	"server.validation.ai.suggestSpecifyGranularity": "Specify granularity: \"day\", \"week\", or \"month\"",
+	"server.validation.ai.suggestSpecifyPeriods": "Specify number of periods to analyze",
+	"server.validation.ai.suggestSplitQueries": "Consider splitting into multiple queries",
+	"server.validation.ai.suggestUseTimeDimension": "Use a dimension with type \"time\" for timeDimensions",
+	"server.validation.ai.timeDimensionRequired.flow": "flow.timeDimension is required",
+	"server.validation.ai.timeDimensionRequired.funnel": "funnel.timeDimension is required",
+	"server.validation.chart.barNeedsDimension": "Bar charts need an xAxis dimension for category labels. Add a dimension to the query or use \"table\" chart type instead.",
+	"server.validation.chart.barXAxisRequired": "chartConfig.xAxis is required for bar charts. Put a dimension in xAxis so bars have category labels.",
+	"server.validation.chart.dropZoneRequired": "chartConfig.{key} is required for {chartType} chart ({label}). Accepts: {acceptDesc}.",
+	"server.validation.chart.recordGrainNeedsUngrouped": "{chartType} lists one row per record, so its query must set \"ungrouped\": true. Add it to the query, and remove count/countDistinct measures — they cannot be ungrouped. An ungrouped query also cannot span two cubes joined by hasMany, so keep it to one cube plus its to-one joins.",
+	"server.validation.chart.seriesDuplicatesXAxis": "chartConfig.series must not contain the same field as xAxis (found: {duplicates}). The series field is only for splitting into grouped/stacked sub-series by a DIFFERENT dimension. Remove the duplicate from series.",
+	"server.validation.flow.bindingKeyCubeNotFound": "Binding key cube not found: {cubeName}",
+	"server.validation.flow.bindingKeyDimNotFound": "Binding key dimension not found: {dimName} in cube {cubeName}",
+	"server.validation.flow.bindingKeyMappingCubeNotFound": "Binding key mapping cube not found: {cubeName}",
+	"server.validation.flow.eventDimCubeNotFound": "Event dimension cube not found: {cubeName}",
+	"server.validation.flow.eventDimNotFound": "Event dimension not found: {dimName} in cube {cubeName}",
+	"server.validation.flow.eventDimRequired": "Event dimension is required for flow analysis",
+	"server.validation.flow.highStepDepthWarning": "High step depth (4-5) may impact query performance on large datasets",
+	"server.validation.flow.invalidBindingKeyFormat": "Invalid binding key format: {bindingKey}. Expected 'CubeName.dimensionName'",
+	"server.validation.flow.invalidEventDimFormat": "Invalid event dimension format: {eventDimension}. Expected 'CubeName.dimensionName'",
+	"server.validation.flow.invalidJoinStrategy": "Invalid joinStrategy: {joinStrategy}",
+	"server.validation.flow.invalidTimeDimFormat": "Invalid time dimension format: {timeDimension}. Expected 'CubeName.dimensionName'",
+	"server.validation.flow.lateralNotSupported": "Lateral joins are not supported on this database",
+	"server.validation.flow.lateralNotSupportedExec": "Lateral joins with CTE references are not supported on this database",
+	"server.validation.flow.sqliteNotSupported": "Flow queries are not supported on SQLite. Use PostgreSQL or MySQL for flow analysis.",
+	"server.validation.flow.startingStepFilterRequired": "Starting step must have at least one filter",
+	"server.validation.flow.startingStepNameMissing": "Starting step has no name - using default",
+	"server.validation.flow.startingStepRequired": "Starting step is required for flow analysis",
+	"server.validation.flow.stepsBeforeRange": "stepsBefore must be between 0 and 5, got: {value}",
+	"server.validation.flow.stepsAfterRange": "stepsAfter must be between 0 and 5, got: {value}",
+	"server.validation.flow.timeDimCubeNotFound": "Time dimension cube not found: {cubeName}",
+	"server.validation.flow.timeDimNotFound": "Time dimension not found: {dimName} in cube {cubeName}",
+	"server.validation.funnel.bindingKeyCubeNotFound": "Binding key cube not found: {cubeName}",
+	"server.validation.funnel.bindingKeyDimNotFound": "Binding key dimension not found: {dimName} in cube {cubeName}",
+	"server.validation.funnel.bindingKeyMappingCubeNotFound": "Binding key mapping cube not found: {cubeName}",
+	"server.validation.funnel.invalidBindingKeyFormat": "Invalid binding key format: {bindingKey}. Expected 'CubeName.dimensionName'",
+	"server.validation.funnel.invalidTimeDimFormat": "Invalid time dimension format: {timeDimension}. Expected 'CubeName.dimensionName'",
+	"server.validation.funnel.minSteps": "Funnel must have at least 2 steps",
+	"server.validation.funnel.stepCubeNotFound": "Step {step} cube not found: {cube}",
+	"server.validation.funnel.stepFilterCubeNotFound": "Step {step} filter cube not found: {cubeName}",
+	"server.validation.funnel.stepFilterIsMeasure": "Step {step} filter '{member}' is a measure. Funnel step filters only support dimensions, not measures.",
+	"server.validation.funnel.stepFilterMemberNotFound": "Step {step} filter member not found: {field} in cube {cubeName}",
+	"server.validation.funnel.stepFilterNoJoinPath": "Step {step} filter '{member}' requires a join from '{stepCube}' but no join path was found. Define a join relationship between these cubes.",
+	"server.validation.funnel.stepMustHaveName": "Step {step} must have a name",
+	"server.validation.funnel.stepTimeToConvertFormat": "Step {step} timeToConvert must be ISO 8601 duration format: {value}",
+	"server.validation.funnel.timeDimCubeNotFound": "Time dimension cube not found: {cubeName}",
+	"server.validation.funnel.timeDimNotFound": "Time dimension not found: {dimName} in cube {cubeName}",
+	"server.validation.retention.bindingKeyCubeNotFound": "Binding key cube not found: {cubeName}",
+	"server.validation.retention.bindingKeyDimNotFound": "Binding key dimension not found: {dimName} in cube {cubeName}",
+	"server.validation.retention.bindingKeyMappingCubeNotFound": "Binding key mapping cube not found: {cubeName}",
+	"server.validation.retention.breakdownDimCubeNotFound": "Breakdown dimension cube not found: {cubeName}",
+	"server.validation.retention.breakdownDimNotFound": "Breakdown dimension not found: {dimName} in cube {cubeName}",
+	"server.validation.retention.cubeNotFound": "Cube not found: {cubeName}",
+	"server.validation.retention.dateRangeEndRequired": "Date range end is required",
+	"server.validation.retention.dateRangeInvalidEnd": "Invalid date range end format",
+	"server.validation.retention.dateRangeInvalidStart": "Invalid date range start format",
+	"server.validation.retention.dateRangeRequired": "Date range is required",
+	"server.validation.retention.dateRangeStartBeforeEnd": "Date range start must be before or equal to end",
+	"server.validation.retention.dateRangeStartRequired": "Date range start is required",
+	"server.validation.retention.engineNotSupported": "Retention queries are not supported on {engine}. Use PostgreSQL or DuckDB for retention analysis.",
+	"server.validation.retention.invalidBindingKeyFormat": "Invalid binding key format: {bindingKey}. Expected 'CubeName.dimensionName'",
+	"server.validation.retention.invalidBreakdownDimFormat": "Invalid breakdown dimension format: {dimension}. Expected 'CubeName.dimensionName'",
+	"server.validation.retention.invalidGranularity": "Invalid granularity: {granularity}",
+	"server.validation.retention.invalidRetentionType": "Invalid retention type: {retentionType}",
+	"server.validation.retention.invalidTimeDimFormat": "Invalid time dimension format: {timeDimension}",
+	"server.validation.retention.noBindingKeyMapping": "No binding key mapping found for cube: {cubeName}",
+	"server.validation.retention.periodsMax": "Periods cannot exceed 52 (performance limit)",
+	"server.validation.retention.periodsMin": "Periods must be at least 1",
+	"server.validation.retention.timeDimNotFound": "Time dimension not found: {dimName}",
+	"server.validation.calculatedMeasure.mustHaveCalculatedSql": "Calculated measure '{cubeName}.{fieldName}' must have calculatedSql property",
+	"server.validation.calculatedMeasure.invalidSyntax": "Invalid calculatedSql syntax in '{cubeName}.{fieldName}': {errors}",
+	"server.validation.calculatedMeasure.circularDependency": "Circular dependency detected in calculated measures: {cycle}",
+	"server.validation.query.multipleQueryModes": "Query contains multiple query modes: {modes}",
+	"server.validation.query.funnelBindingKeyCubeNotFound": "Funnel binding key cube not found: {cubeName}",
+	"server.validation.query.flowBindingKeyCubeNotFound": "Flow binding key cube not found: {cubeName}",
+	"server.validation.query.retentionCubeNotFound": "Retention cube not found: {cubeName}",
+	"server.validation.query.retentionBindingKeyCubeNotFound": "Retention binding key cube not found: {cubeName}",
+	"server.validation.query.retentionBreakdownCubeNotFound": "Retention breakdown cube not found: {cubeName}",
+	"server.validation.query.invalidMeasureFormat": "Invalid measure format: {measure}. Expected format: 'CubeName.fieldName'",
+	"server.validation.query.cubeNotFoundForMeasure": "Cube '{cubeName}' not found (referenced in measure '{measure}')",
+	"server.validation.query.measureNotFound": "Measure '{fieldName}' not found on cube '{cubeName}'{hint}",
+	"server.validation.query.invalidDimensionFormat": "Invalid dimension format: {dimension}. Expected format: 'CubeName.fieldName'",
+	"server.validation.query.cubeNotFoundForDimension": "Cube '{cubeName}' not found (referenced in dimension '{dimension}')",
+	"server.validation.query.dimensionNotFound": "Dimension '{fieldName}' not found on cube '{cubeName}'{hint}",
+	"server.validation.query.invalidTimeDimensionFormat": "Invalid timeDimension format: {dimension}. Expected format: 'CubeName.fieldName'",
+	"server.validation.query.cubeNotFoundForTimeDimension": "Cube '{cubeName}' not found (referenced in timeDimension '{dimension}')",
+	"server.validation.query.timeDimensionNotFound": "TimeDimension '{fieldName}' not found on cube '{cubeName}' (must be a dimension with time type)",
+	"server.validation.query.mustReferenceAtLeastOneCube": "Query must reference at least one cube through measures, dimensions, or filters",
+	"server.validation.query.ungroupedRequiresDimension": "Ungrouped queries require at least one dimension or time dimension",
+	"server.validation.query.ungroupedIncompatibleFunnel": "Ungrouped queries are incompatible with funnel analysis",
+	"server.validation.query.ungroupedIncompatibleFlow": "Ungrouped queries are incompatible with flow analysis",
+	"server.validation.query.ungroupedIncompatibleRetention": "Ungrouped queries are incompatible with retention analysis",
+	"server.validation.query.ungroupedIncompatibleCompareDateRange": "Ungrouped queries are incompatible with compareDateRange",
+	"server.validation.query.ungroupedIncompatibleFillMissingDates": "Ungrouped queries are incompatible with fillMissingDates",
+	"server.validation.query.filterMustHaveMember": "Filter must have a member field",
+	"server.validation.query.invalidFilterMemberFormat": "Invalid filter member format: {member}. Expected format: 'CubeName.fieldName'",
+	"server.validation.query.cubeNotFoundForFilter": "Cube '{cubeName}' not found (referenced in filter '{member}')",
+	"server.validation.query.filterFieldNotFound": "Filter field '{fieldName}' not found on cube '{cubeName}' (must be a dimension or measure){hint}",
+	"server.errors.funnel.cubeNotFoundForStep": "Cube not found for step: {cube}",
+	"server.errors.funnel.cubeNotFoundForBindingKey": "Cube not found for binding key: {bindingKey}",
+	"server.errors.funnel.cannotResolveCubeForStep": "Cannot resolve cube for step - multi-cube funnel requires cube specification in each step",
+	"server.errors.funnel.bindingKeyDimNotFound": "Binding key dimension not found: {bindingKey}",
+	"server.errors.funnel.noBindingKeyMapping": "No binding key mapping found for cube: {cubeName}",
+	"server.errors.funnel.bindingKeyMappingDimNotFound": "Binding key dimension not found: {dimension}",
+	"server.errors.funnel.timeDimNotFound": "Time dimension not found: {timeDimension}",
+	"server.errors.funnel.noTimeDimMapping": "No time dimension mapping found for cube: {cubeName}",
+	"server.errors.funnel.timeDimMappingNotFound": "Time dimension not found: {dimension}",
+	"server.errors.flow.cannotResolveCube": "Cannot resolve cube for flow query",
+	"server.errors.flow.cubeNotFound": "Cube not found: {cubeName}",
+	"server.errors.flow.bindingKeyDimNotFound": "Binding key dimension not found: {bindingKey}",
+	"server.errors.flow.noBindingKeyMapping": "No binding key mapping found for cube: {cubeName}",
+	"server.errors.flow.bindingKeyMappingDimNotFound": "Binding key dimension not found: {dimension}",
+	"server.errors.flow.timeDimNotFound": "Time dimension not found: {timeDimension}",
+	"server.errors.flow.noTimeDimMapping": "No time dimension mapping found for cube: {cubeName}",
+	"server.errors.flow.timeDimMappingNotFound": "Time dimension not found: {dimension}",
+	"server.errors.flow.eventDimNotFound": "Event dimension not found: {eventDimension}",
+	"server.validation.template.emptyReference": "Empty member reference {} found in template",
+	"server.validation.template.invalidMemberReference": "Invalid member reference {ref}: must start with letter or underscore, and contain only letters, numbers, underscores, and dots",
+	"server.validation.template.multipleDots": "Invalid member reference {ref}: only one dot allowed (Cube.measure format)",
+	"server.validation.template.nestedBraces": "Nested braces are not allowed in member references",
+	"server.validation.template.substituteTargetCubeNotFound": "Cannot substitute {ref}: cube '{cubeName}' not found",
+	"server.validation.template.substituteMeasureNotResolved": "Cannot substitute {ref}: measure '{measureName}' not resolved yet. Ensure measures are resolved in dependency order.",
+	"server.validation.template.unmatchedClosingBrace": "Unmatched closing brace at position {position}",
+	"server.validation.template.unmatchedOpeningBrace": "Unmatched opening brace in template",
+	"notebook.aiAssistant": "AI Assistant",
+	"notebook.saveAsDashboard": "Save as Dashboard",
+	"notebook.saveAsDashboardTitle": "Save notebook as a dashboard",
+	"notebook.clearTitle": "Clear notebook and chat",
+	"notebook.feedbackThanks": "Thanks for your feedback!",
+	"notebook.feedbackQuestion": "Was this helpful?",
+	"notebook.feedbackYes": "Yes",
+	"notebook.feedbackNo": "No",
+	"notebook.thinking": "Thinking...",
+	"notebook.emptyState.title": "Data Analysis Assistant",
+	"notebook.emptyState.description": "Ask me about your data and I'll create visualizations and insights.",
+	"notebook.emptyState.example1": "\"Show me employee productivity trends\"",
+	"notebook.emptyState.example2": "\"What are the top departments by headcount?\"",
+	"notebook.emptyState.example3": "\"Compare revenue across product categories\"",
+	"notebook.saveAsDashboardPrompt": "Save the current notebook as a dashboard with a professional layout, section headers, and appropriate filters.",
+	"notebook.chatInput.placeholder": "Ask about your data...",
+	"notebook.chatInput.stop": "Stop",
+	"notebook.chatInput.continue": "Continue",
+	"notebook.chatInput.send": "Send",
+	"notebook.canvas.emptyTitle": "Your notebook is empty",
+	"notebook.canvas.emptyDescription": "Ask the AI assistant a question about your data. Charts and insights will appear here as the assistant analyzes your data.",
+	"notebook.canvas.editVisualization": "Edit Visualization",
+	"notebook.canvas.update": "Update",
+	"notebook.collapsed.noBlocks": "No blocks",
+	"notebook.collapsed.expandNotebook": "Expand notebook",
+	"notebook.collapsed.expandChat": "Expand AI chat",
+	"notebook.collapsed.aiChat": "AI Chat",
+	"notebook.collapsed.markdown": "Markdown",
+	"schema.loading": "Loading cube schema...",
+	"schema.error": "Failed to load cube schema",
+	"schema.noCubes": "No cubes found",
+	"schema.noCubesHint": "Register some cubes to see the relationship diagram",
+	"schema.computingLayout": "Computing layout...",
+	"schema.searchPlaceholder": "Search cubes and fields...",
+	"schema.autoLayout": "Auto Layout",
+	"schema.missingDeps.title": "Schema Visualization requires additional packages",
+	"schema.missingDeps.description": "Install the required dependencies to enable the interactive schema diagram:",
+	"schema.loadingVisualization": "Loading schema visualization...",
+	"schema.measures": "Measures ({count})",
+	"schema.timeDimensions": "Time Dimensions ({count})",
+	"schema.dimensions": "Dimensions ({count})",
+	"schema.cubeInfo": "Cube info",
+	"dataBrowser.selectCube": "Select a cube",
+	"dataBrowser.selectCubeHint": "Choose a cube from the sidebar to browse its data",
+	"dataBrowser.loadingData": "Loading data...",
+	"dataBrowser.noData": "No data",
+	"dataBrowser.noRows": "No rows returned for this query",
+	"dataBrowser.toolbar.filters": "Filters",
+	"dataBrowser.toolbar.columns": "Columns",
+	"dataBrowser.toolbar.rows": "{count} rows",
+	"dataBrowser.sidebar.cubes": "Cubes",
+	"dataBrowser.sidebar.searchPlaceholder": "Search...",
+	"dataBrowser.sidebar.noCubes": "No cubes found",
+	"queryAnalysis.summary": "Query Summary",
+	"queryAnalysis.summary.type": "Type",
+	"queryAnalysis.summary.cubes": "Cubes",
+	"queryAnalysis.summary.joins": "Joins",
+	"queryAnalysis.summary.ctes": "CTEs",
+	"queryAnalysis.summary.strategy": "Strategy",
+	"queryAnalysis.primaryCube": "Primary Cube (FROM table)",
+	"queryAnalysis.primaryCube.showCandidates": "Show candidates ({count})",
+	"queryAnalysis.primaryCube.reachable": "reachable",
+	"queryAnalysis.primaryCube.cannotReachAll": "cannot reach all",
+	"queryAnalysis.joinPaths": "Join Paths",
+	"queryAnalysis.joinPaths.steps": "{count} step",
+	"queryAnalysis.joinPaths.stepsPlural": "{count} steps",
+	"queryAnalysis.joinPaths.noPath": "No path",
+	"queryAnalysis.joinPaths.selection": "Selection:",
+	"queryAnalysis.joinPaths.pathCandidates": "Path scoring candidates ({count})",
+	"queryAnalysis.joinPaths.visitedCubes": "Cubes visited during search ({count})",
+	"queryAnalysis.preAggregations": "Pre-Aggregation CTEs",
+	"queryAnalysis.preAggregations.measures": "Measures:",
+	"queryAnalysis.preAggregations.joinKeys": "Join keys:",
+	"queryAnalysis.warnings": "Warnings",
+	"queryAnalysis.cubesInvolved": "Cubes involved:",
+	"common.actions.copied": "Copied",
+	"common.actions.copyToClipboard": "Copy to clipboard",
+	"chart.availability.requiresMeasure": "Requires at least 1 measure",
+	"chart.availability.requiresTwoMeasures": "Requires at least 2 measures",
+	"chart.availability.requiresDimension": "Requires at least 1 dimension",
+	"chart.availability.requiresTwoDimensions": "Requires at least 2 dimensions",
+	"chart.availability.requiresTimeDimension": "Requires a time dimension",
+	"chart.availability.scatter": "Requires 2 measures, or 1 measure plus 1 dimension",
+	"chart.availability.bubble": "Requires at least 2 measures and 1 dimension",
+	"chart.runtime.noData": "No data available",
+	"chart.runtime.noDataHint.bar": "No data points to display in bar chart",
+	"chart.runtime.noDataHint.line": "No data points to display in line chart",
+	"chart.runtime.noDataHint.area": "No data points to display in area chart",
+	"chart.runtime.noDataHint.pie": "No data points to display in pie chart",
+	"chart.runtime.noDataHint.scatter": "No data points to display in scatter chart",
+	"chart.runtime.noDataHint.radar": "No data points to display in radar chart",
+	"chart.runtime.noDataHint.radialBar": "No data points to display in radial bar chart",
+	"chart.runtime.noDataHint.treemap": "No data points to display in treemap chart",
+	"chart.runtime.noDataHint.bubble": "No data points to display in bubble chart",
+	"chart.runtime.noDataHint.boxPlot": "No data points to display in box plot chart",
+	"chart.runtime.noDataHint.dotStrip": "No data points to display in dot strip plot",
+	"chart.runtime.noDataHint.waterfall": "No data points to display in waterfall chart",
+	"chart.runtime.noDataHint.candlestick": "No data points to display in candlestick chart",
+	"chart.runtime.noDataHint.gauge": "No data points to display in gauge chart",
+	"chart.runtime.noDataHint.measureProfile": "No data points to display in measure profile chart",
+	"chart.runtime.noDataHint.activityGrid": "No data points to display in activity grid",
+	"chart.runtime.noDataHint.heatmap": "Run a query to see heatmap visualization",
+	"chart.runtime.noDataHint.table": "No data to display in table",
+	"chart.runtime.noDataHint.kpi": "No data points to display",
+	"chart.runtime.noDataHint.funnel": "Configure a funnel with at least 2 steps and a binding key",
+	"chart.runtime.noDataHint.flow": "Configure a flow analysis with a starting step and event dimension",
+	"chart.runtime.noDataHint.retention": "Configure retention analysis to see results",
+	"chart.runtime.noValidData": "No valid data",
+	"chart.runtime.noValidDataHint.bar": "No valid data points for bar chart after transformation",
+	"chart.runtime.noValidDataHint.line": "No valid data points for line chart after transformation",
+	"chart.runtime.noValidDataHint.area": "No valid data points for area chart after transformation",
+	"chart.runtime.noValidDataHint.scatter": "No valid data points for scatter chart after transformation",
+	"chart.runtime.noValidDataHint.radar": "No valid data points for radar chart after transformation",
+	"chart.runtime.noValidDataHint.radialBar": "No valid data points for radial bar chart after transformation",
+	"chart.runtime.noValidDataHint.treemap": "No valid data points for treemap chart after transformation",
+	"chart.runtime.noValidDataHint.pie": "No data points to display in pie chart",
+	"chart.runtime.noValidDataHint.pieFiltered": "Filtered out {count} data points (zero or invalid values)",
+	"chart.runtime.noValidDataHint.boxPlot": "Could not compute box plot statistics from the provided data",
+	"chart.runtime.noValidDataHint.dotStrip": "No valid numeric values for the dot strip plot",
+	"chart.runtime.configErrorHint.dotStrip": "Dot strip plot needs a dimension to band by and one measure",
+	"chart.runtime.dotStrip.unlabelledBand": "(no value)",
+	"chart.runtime.dotStrip.count": "n={count}",
+	"chart.runtime.dotStrip.countTruncated": "n={count}+",
+	"chart.runtime.dotStrip.noDataRecorded": "no data recorded",
+	"chart.runtime.dotStrip.spread": "spread {spread}×",
+	"chart.runtime.dotStrip.truncated": "Showing the first {max} bands",
+	"chart.runtime.noValidDataHint.gauge": "Gauge value is not a valid number",
+	"chart.runtime.noValidDataHint.kpiText": "All values are null or invalid",
+	"chart.runtime.configError": "Configuration Error",
+	"chart.runtime.configErrorHint.axisInvalid": "Invalid or missing chart axis configuration",
+	"chart.runtime.configErrorHint.axisFields": "Missing required X-axis or Y-axis fields",
+	"chart.runtime.configErrorHint.pieAxis": "chartConfig.x/y or chartConfig.xAxis/yAxis required for pie chart",
+	"chart.runtime.configErrorHint.radarNumeric": "No numeric fields found for radar chart values",
+	"chart.runtime.configErrorHint.radialBarNumeric": "No numeric field found for radial bar chart values",
+	"chart.runtime.configErrorHint.treemapNumeric": "No numeric field found for treemap chart size",
+	"chart.runtime.configErrorHint.noMeasure": "No measure field configured",
+	"chart.runtime.configErrorHint.noMeasures": "No measure fields configured",
+	"chart.runtime.configErrorHint.bubbleRequired": "Bubble chart requires xAxis, yAxis, series, and sizeField dimensions",
+	"chart.runtime.configErrorHint.bubbleOptional": "Optional: colorField for bubble coloring",
+	"chart.runtime.configErrorHint.activityGridRequired": "Activity grid requires a time dimension and a measure",
+	"chart.runtime.chartError": "{chartType} Error",
+	"chart.runtime.unknownError": "Unknown rendering error",
+	"chart.runtime.checkConfig": "Check the data and configuration",
+	"chart.runtime.unableToRender": "Unable to render retention data",
+	"chart.runtime.dataFormatIncorrect": "Data format may be incorrect",
+	"chart.runtime.measuringDimensions": "Measuring chart dimensions...",
+	"chart.runtime.unableToDisplay": "Unable to display chart",
+	"chart.runtime.responsiveContainerError": "Failed to create responsive container",
+	"chart.runtime.noDataToDisplay": "No data to display",
+	"chart.runtime.table.invalidStructure": "Data structure is invalid",
+	"chart.runtime.recordsTable.noColumns": "No columns available",
+	"chart.runtime.recordsTable.rowRange": "{from}–{to} of {total}",
+	"chart.runtime.recordsTable.pageOf": "Page {page} of {pages}",
+	"chart.runtime.recordsTable.previousPage": "Previous page",
+	"chart.runtime.recordsTable.nextPage": "Next page",
+	"chart.runtime.heatmapNoResults": "The query returned no results for the heatmap",
+	"chart.runtime.heatmapConfigRequired": "Configuration required",
+	"chart.runtime.heatmapXRequired": "X-axis dimension required. ",
+	"chart.runtime.heatmapYRequired": "Y-axis dimension required. ",
+	"chart.runtime.heatmapValueRequired": "Value measure required.",
+	"chart.runtime.heatmapTruncated": "Data truncated to {maxRows}x{maxCols} cells (original: {originalRows}x{originalCols}). Add filters to reduce dimensions.",
+	"chart.runtime.activityGridGranularityTooHigh": "Granularity Too High",
+	"chart.runtime.activityGridGranularityHint": "Activity grids work best with hour, day, week, month, or quarter granularity",
+	"chart.runtime.activityGridGranularityAction": "Please choose a lower granularity for your time dimension",
+	"chart.runtime.activityGridConfigRequired": "Configuration Required",
+	"chart.runtime.retention.cohort": "Cohort",
+	"chart.runtime.retention.segment": "Segment",
+	"chart.runtime.retention.users": "Users",
+	"chart.runtime.retention.cohortSize": "Cohort Size: {count}",
+	"chart.runtime.retention.retained": "Retained: {count}",
+	"chart.runtime.retention.rate": "Rate: {rate}",
+	"chart.runtime.retention.retentionPercent": "Retention %",
+	"chart.runtime.retention.periodLabel": "{cohort} - Period {period}",
+	"chart.runtime.retention.noData": "No data",
+	"chart.runtime.retention.total": "Total",
+	"chart.runtime.retention.retention": "Retention",
+	"chart.runtime.funnel.noData": "No funnel data",
+	"chart.runtime.funnel.steps": "steps",
+	"chart.runtime.funnel.overall": "Overall:",
+	"chart.runtime.funnel.completed": "{completed} / {total} completed",
+	"chart.runtime.flow.noData": "No flow data",
+	"chart.runtime.flow.events": "events",
+	"chart.runtime.flow.eventsAfter": "events (after)",
+	"chart.runtime.flow.paths": "Paths:",
+	"chart.runtime.flow.startingEntities": "starting entities",
+	"chart.runtime.flow.entities": "entities",
+	"chart.runtime.kpiDelta.insufficientData": "Insufficient Data",
+	"chart.runtime.kpiDelta.requiresTwoPoints": "Delta calculation requires at least 2 data points",
+	"chart.runtime.kpiDelta.currentPoints": "Current data points: {count}",
+	"chart.runtime.kpiDelta.noVariance": "No variance data",
+	"chart.runtime.kpiNumber.noData": "No data",
+	"chart.runtime.markdown.noContent": "No content",
+	"chart.runtime.markdown.addContent": "Add markdown content in the chart configuration",
+	"chart.runtime.axisFormat.label": "Label",
+	"chart.runtime.axisFormat.autoLabel": "Auto-generated label",
+	"chart.runtime.axisFormat.unit": "Unit",
+	"chart.runtime.axisFormat.custom": "Custom",
+	"chart.runtime.axisFormat.prefix": "Prefix",
+	"chart.runtime.axisFormat.prefixExample": "e.g., $",
+	"chart.runtime.axisFormat.suffix": "Suffix",
+	"chart.runtime.axisFormat.suffixExample": "e.g., units",
+	"chart.runtime.axisFormat.currencyCode": "Currency code",
+	"chart.runtime.axisFormat.currencyCodeHint": "Leave blank to follow the viewer's locale",
+	"chart.runtime.axisFormat.abbreviation": "Abbreviation",
+	"chart.runtime.axisFormat.yes": "Yes",
+	"chart.runtime.axisFormat.no": "No",
+	"chart.runtime.axisFormat.decimals": "Decimals",
+	"chart.runtime.axisFormat.preview": "Preview",
+	"chart.runtime.axisFormat.leftYAxis": "Left Y-Axis",
+	"chart.runtime.axisFormat.rightYAxis": "Right Y-Axis",
+	"chart.runtime.axisFormat.xAxis": "X-Axis",
+	"chart.runtime.missingDep.title": "Missing Dependency",
+	"chart.runtime.missingDep.description": "The {chartType} chart requires the {packageName} package.",
+	"chart.runtime.missingDep.restartHint": "After installing, restart your development server.",
+	"chart.runtime.unknownChartType": "Unknown chart type",
+	"chart.runtime.unknownChartTypeHint": "\"{chartType}\" is not registered",
+	"chart.runtime.boxPlot.truncated": "Data truncated to {max} groups (original: {total})",
+	"chart.runtime.candlestick.truncated": "Showing first {max} candles (total: {total})",
+	"chart.runtime.bar.hiddenPoints": "{count} data point(s) with no values hidden",
+	"chart.runtime.waterfall.increase": "Increase",
+	"chart.runtime.waterfall.decrease": "Decrease",
+	"chart.runtime.waterfall.total": "Total",
+	"chart.runtime.tooltip.noData": "No data",
+	"chart.runtime.tooltip.targetValue": "Target Value",
+	"results.toolbar.refreshing": "Refreshing",
+	"results.toolbar.refresh": "Refresh",
+	"results.toolbar.refreshTitle": "Refresh data (Shift+click to bypass cache)",
+	"results.toolbar.refreshingTitle": "Refreshing...",
+	"results.toolbar.cacheBustTitle": "Click to refresh and bypass cache",
+	"results.toolbar.clear": "Clear",
+	"results.toolbar.clearFunnel": "Clear funnel",
+	"results.toolbar.clearQuery": "Clear all query data",
+	"results.toolbar.aiClose": "Close AI assistant",
+	"results.toolbar.aiOpen": "Analyse with AI",
+	"results.toolbar.shareTitle": "Share this analysis",
+	"results.toolbar.shareCopied": "Link copied!",
+	"results.toolbar.schemaHide": "Hide schema diagram",
+	"results.toolbar.schemaShow": "Show schema diagram",
+	"results.toolbar.debugHide": "Hide debug info",
+	"results.toolbar.debugShow": "Show debug info",
+	"results.toolbar.chartView": "Chart view",
+	"results.toolbar.chartDisabled": "Add metrics to enable chart view",
+	"results.toolbar.tableView": "Table view",
+	"results.toolbar.mergedTableView": "Merged table view",
+	"results.view.table": "Table",
+	"results.warning.filterHint": "Consider adding filters to improve performance.",
+	"results.debug.query": "Query:",
+	"results.debug.queryAnalysis": "Query Analysis",
+	"results.debug.copyMarkdownTitle": "Copy query, analysis, and SQL as markdown",
+	"results.debug.copyAsMarkdown": "Copy as Markdown",
+	"results.debug.analysisError": "Analysis unavailable due to error",
+	"results.debug.analysisEmpty": "Add metrics to see analysis",
+	"results.debug.cubeQuery": "Cube Query",
+	"results.debug.cubeQueryExecuted": "Executed Query (with funnel filters)",
+	"results.debug.funnelFilterHint": "This query includes an IN filter with binding key values from the previous step",
+	"results.debug.noQuery": "No query",
+	"results.debug.serverResponse": "Server Response",
+	"results.debug.noResults": "No results yet",
+	"results.debug.chartConfig": "Chart Config",
+	"results.debug.displayConfig": "Display Config",
+	"results.debug.generatedSql": "Generated SQL",
+	"results.debug.loadingSql": "Loading SQL...",
+	"results.debug.executionError": "Execution Error",
+	"results.confirm.clearFunnel": "Clear Funnel",
+	"results.confirm.clearQuery": "Clear Query",
+	"results.confirm.clearFunnelMessage": "Are you sure you want to clear this funnel? This action cannot be undone.",
+	"results.confirm.clearQueryMessage": "Are you sure you want to clear this query? This action cannot be undone.",
+	"results.table.noData": "No data to display",
+	"results.table.noDataHint": "Run a query to see table data",
+	"results.flow.noData": "No flow data to display",
+	"results.flow.noDataHint": "Configure flow analysis to see results",
+	"results.flow.nodes": "Nodes ({count})",
+	"results.flow.transitions": "Transitions ({count})",
+	"results.flow.layer": "Layer",
+	"results.flow.name": "Name",
+	"results.flow.count": "Count",
+	"results.flow.from": "From",
+	"results.flow.to": "To",
+	"results.debug.funnel.label": "Funnel Query",
+	"results.debug.funnel.steps": "{count} steps",
+	"results.debug.funnel.serverQuery": "Funnel Server Query",
+	"results.debug.funnel.noQuery": "No funnel query configured",
+	"results.debug.funnel.sqlPlaceholder": "Configure funnel binding key to generate SQL",
+	"results.debug.funnel.stepsTitle": "Funnel Steps",
+	"results.debug.flow.label": "Flow Query",
+	"results.debug.flow.badge": "{before} before, {after} after",
+	"results.debug.flow.serverQuery": "Flow Server Query",
+	"results.debug.flow.noQuery": "No flow query configured",
+	"results.debug.flow.sqlPlaceholder": "Configure flow to generate SQL",
+	"results.debug.flow.configTitle": "Flow Configuration",
+	"results.debug.flow.startingStep": "Starting Step:",
+	"results.debug.flow.eventDimension": "Event Dimension:",
+	"results.debug.flow.stepsBefore": "Steps Before:",
+	"results.debug.flow.stepsAfter": "Steps After:",
+	"results.debug.flow.notSet": "Not set",
+	"results.debug.flow.responseTitle": "Server Response (Sankey Data)",
+	"results.debug.retention.label": "Retention Query",
+	"results.debug.retention.badge": "{segments} segment(s), {users} users",
+	"results.debug.retention.serverQuery": "Retention Server Query",
+	"results.debug.retention.configIncomplete": "Configuration Incomplete",
+	"results.debug.retention.configHint": "Configure the retention analysis settings to generate a query.",
+	"results.debug.retention.sqlPlaceholder": "Configure retention to generate SQL",
+	"results.debug.retention.configTitle": "Retention Configuration",
+	"results.debug.retention.summaryTitle": "Retention Summary",
+	"results.debug.retention.retentionType": "Retention Type:",
+	"results.debug.retention.periods": "Periods:",
+	"results.debug.retention.granularity": "Granularity:",
+	"results.debug.retention.segments": "Segments:",
+	"results.debug.retention.avgPeriod1": "Avg Period 1:",
+	"results.debug.retention.maxPeriod1": "Max Period 1:",
+	"results.debug.retention.minPeriod1": "Min Period 1:",
+	"results.debug.standard.sqlPlaceholder": "Add metrics to generate SQL",
+	"flow.tabs.flow": "Flow",
+	"flow.tabs.display": "Display",
+	"flow.tabs.displayUnavailable": "Display options not available",
+	"flow.tabs.displayTitle": "Display options",
+	"flow.visualization.title": "Visualization",
+	"flow.visualization.description": "Choose how to visualize the flow data. This affects how data is aggregated.",
+	"flow.visualization.sankey": "Sankey",
+	"flow.visualization.sankeyHint": "Paths can converge",
+	"flow.visualization.sunburst": "Sunburst",
+	"flow.visualization.sunburstHint": "Unique paths only",
+	"flow.startingStep.title": "Starting Step",
+	"flow.startingStep.description": "Define the anchor event from which paths will be explored in both directions.",
+	"flow.startingStep.filterLabel": "Filter Conditions",
+	"flow.depth.title": "Exploration Depth",
+	"flow.depth.descriptionSankey": "How many steps to explore before and after the starting step.",
+	"flow.depth.descriptionSunburst": "How many steps to explore after the starting step.",
+	"flow.depth.stepsBefore": "Steps Before",
+	"flow.depth.stepsBeforeNA": "(N/A)",
+	"flow.depth.stepsAfter": "Steps After",
+	"flow.depth.performanceWarning": "High step depth (4-5) may impact query performance on large datasets.",
+	"flow.joinStrategy.title": "Join Strategy",
+	"flow.joinStrategy.description": "Control how before/after steps are fetched. Switch to window if lateral is slower on your DB.",
+	"flow.joinStrategy.auto": "Auto (prefer lateral if available)",
+	"flow.joinStrategy.lateral": "Lateral (index seeks)",
+	"flow.joinStrategy.window": "Window (ROW_NUMBER)",
+	"retention.tabs.retention": "Retention",
+	"retention.tabs.display": "Display",
+	"retention.tabs.displayUnavailable": "Display options not available",
+	"retention.tabs.displayTitle": "Display options",
+	"retention.dateRange.title": "Date Range",
+	"retention.dateRange.description": "Select the date range for cohort entry. Users who first appear within this range will be analyzed.",
+	"retention.dateRange.label": "Date Range",
+	"retention.dateRange.selectRange": "Select date range",
+	"retention.dateRange.customRange": "Custom Range",
+	"retention.dateRange.applyCustom": "Apply Custom Range",
+	"retention.cohortFilter.title": "Cohort Filter",
+	"retention.cohortFilter.description": "Define who enters the cohort. Users whose first event matches these filters within the date range are included.",
+	"retention.returnFilter.title": "Return Filter",
+	"retention.returnFilter.description": "Define what counts as a return. Events matching these filters in subsequent periods count as retention.",
+	"retention.breakdown.title": "Breakdown",
+	"retention.breakdown.description": "Optionally segment retention by dimensions (e.g., country, plan type).",
+	"retention.settings.title": "Settings",
+	"retention.settings.description": "Configure how retention is calculated and displayed.",
+	"retention.settings.granularityLabel": "Period Granularity",
+	"retention.settings.periodsLabel": "Number of Periods ({min}-{max})",
+	"retention.settings.periodsWarning": "High period count may impact query performance.",
+	"retention.settings.retentionTypeLabel": "Retention Type",
+	"debug.explainPlan": "Explain Plan",
+	"debug.explainRunning": "Running...",
+	"debug.explainIncludeTiming": "Include timing",
+	"debug.explainRunningAnalyze": "Running EXPLAIN ANALYZE...",
+	"debug.explainRunningBasic": "Running EXPLAIN...",
+	"debug.explainError": "Explain Error:",
+	"debug.sequentialScans": "Sequential Scans Detected",
+	"debug.indexesUsed": "{count} Index Used",
+	"debug.indexesUsedPlural": "{count} Indexes Used",
+	"debug.executionTime": "Execution: {time}ms",
+	"debug.planningTime": "Planning: {time}ms",
+	"debug.cost": "Cost: {cost}",
+	"debug.indexes": "Indexes:",
+	"debug.executionPlanTitle": "Execution Plan ({database})",
+	"debug.aiAnalyzing": "Analyzing...",
+	"debug.aiAnalysis": "AI Analysis",
+	"debug.aiAnalysisError": "AI Analysis Error:",
+	"explainAI.title": "AI Performance Analysis",
+	"explainAI.assessment.good": "Good",
+	"explainAI.assessment.warning": "Warning",
+	"explainAI.assessment.critical": "Critical",
+	"explainAI.summary": "Summary",
+	"explainAI.queryAnalysis": "Query Analysis",
+	"explainAI.issuesFound": "Issues Found ({count})",
+	"explainAI.recommendations": "Recommendations ({count})",
+	"explainAI.noRecommendations": "No specific recommendations. The query appears to be well-optimized.",
+	"explainAI.expectedImpact": "Expected impact:",
+	"explainAI.addToCube": "Add to {cubeName} cube:",
+	"explainAI.modelLabel": "Model:",
+	"explainAI.usingUserKey": "(using your API key)",
+	"explainAI.copied": "Copied!",
+	"explainAI.copy": "Copy",
+	"explainAI.type.index": "INDEX",
+	"explainAI.type.table": "TABLE",
+	"explainAI.type.cube": "CUBE",
+	"explainAI.type.general": "TIP",
+	"errorBoundary.modeError": "Mode Error",
+	"errorBoundary.modeErrorDescription": "There was a problem with the {mode} mode. This might be due to invalid configuration data.",
+	"errorBoundary.showDetails": "Show error details",
+	"errorBoundary.unknownError": "Unknown error",
+	"errorBoundary.tryAgain": "Try Again",
+	"errorBoundary.switchToQuery": "Switch to Query Mode",
+	"funnel.tabs.steps": "Steps",
+	"funnel.tabs.display": "Display",
+	"funnel.tabs.displayUnavailable": "Display options not available",
+	"funnel.tabs.displayTitle": "Display options",
+	"funnel.steps.title": "Funnel Steps",
+	"funnel.steps.emptyMessage": "No steps defined. Add at least 2 steps to create a funnel.",
+	"funnel.steps.addFirst": "Add First Step",
+	"funnel.steps.addStep": "Add Step",
+	"funnel.steps.validationHint": "Add at least one more step to create a valid funnel",
+	"funnel.step.removeTitle": "Remove step",
+	"funnel.step.editNameTitle": "Click to edit name",
+	"funnel.step.placeholder": "Step name",
+	"funnel.step.timeWindow": "Time Window",
+	"funnel.step.timeWindowHelp": "Max time from previous step to qualify",
+	"funnel.step.filters": "{count} filter",
+	"funnel.step.filtersPlural": "{count} filters",
+	"funnel.step.within": "within {time}",
+	"funnel.step.noFilters": "No filters configured",
+	"funnel.config.configuration": "Configuration",
+	"funnel.config.cube": "Cube",
+	"funnel.config.cubeHelp": "Select a cube configured for funnel analysis",
+	"funnel.config.cubePlaceholder": "Select event stream cube",
+	"funnel.config.bindingKey": "Binding Key",
+	"funnel.config.bindingKeyHelp": "Entity that connects steps (e.g., user ID, order ID)",
+	"funnel.config.bindingKeyPlaceholder": "Select binding key",
+	"funnel.config.selectCubeFirst": "Select cube first",
+	"funnel.config.timeDimension": "Time Dimension",
+	"funnel.config.timeDimensionHelp": "Timestamp field for step ordering",
+	"funnel.config.timeDimensionPlaceholder": "Select time dimension",
+	"funnel.config.noMatchingFields": "No matching fields found",
+	"funnel.bindingKey.searchPlaceholder": "Search dimensions...",
+	"funnel.bindingKey.noMatching": "No matching dimensions found",
+	"funnel.bindingKey.helpText": "Select a dimension that identifies entities across funnel steps (e.g., user ID, order ID)",
+	"funnel.bindingKey.clearTitle": "Clear binding key",
+	"flow.config.configuration": "Configuration",
+	"flow.config.cube": "Cube",
+	"flow.config.cubeHelp": "Select a cube configured for flow analysis",
+	"flow.config.cubePlaceholder": "Select event stream cube",
+	"flow.config.bindingKey": "Binding Key",
+	"flow.config.bindingKeyHelp": "Entity that links events together (e.g., user ID)",
+	"flow.config.bindingKeyPlaceholder": "Select binding key",
+	"flow.config.selectCubeFirst": "Select cube first",
+	"flow.config.timeDimension": "Time Dimension",
+	"flow.config.timeDimensionHelp": "Timestamp field for event ordering",
+	"flow.config.timeDimensionPlaceholder": "Select time dimension",
+	"flow.config.eventDimension": "Event Dimension",
+	"flow.config.eventDimensionHelp": "Dimension that categorizes events (node labels in Sankey)",
+	"flow.config.eventDimensionPlaceholder": "Select event dimension",
+	"flow.config.noMatchingFields": "No matching fields found",
+	"retention.config.configuration": "Configuration",
+	"retention.config.cube": "Cube",
+	"retention.config.cubeHelp": "Select the cube containing your user events",
+	"retention.config.cubePlaceholder": "Select cube",
+	"retention.config.bindingKey": "Binding Key",
+	"retention.config.bindingKeyHelp": "Dimension that identifies entities across events (e.g., user ID, customer ID)",
+	"retention.config.bindingKeyPlaceholder": "Select user identifier",
+	"retention.config.selectCubeFirst": "Select cube first",
+	"retention.config.timestamp": "Timestamp",
+	"retention.config.timestampHelp": "Timestamp field for cohort entry and activity",
+	"retention.config.timestampPlaceholder": "Select timestamp",
+	"retention.config.noMatchingFields": "No matching fields found",
+	"retention.config.searchPlaceholder": "Search...",
+	"display.showLegend": "Show Legend",
+	"display.showGrid": "Show Grid",
+	"display.showTooltip": "Show Tooltip",
+	"display.stacked": "Stacked",
+	"display.hideHeader": "Hide Header",
+	"fieldSearch.aria.closeDialog": "Close dialog",
+	"fieldSearch.aria.filterByCube": "Filter by cube",
+	"fieldSearch.aria.cubeCategories": "Cube categories",
+	"fieldSearch.aria.availableFields": "Available fields",
+	"chart.dropZone.required": "This field is required",
+	"common.actions.apply": "Apply",
+	"common.actions.done": "Done",
+	"common.actions.update": "Update",
+	"common.actions.retry": "Retry",
+	"common.actions.exit": "Exit",
+	"common.actions.selectAll": "Select All",
+	"common.saving": "Saving...",
+	"common.labels.title": "Title",
+	"dashboardFilter.editFilter": "Edit Filter",
+	"dashboardFilter.filterLabel": "Filter Label",
+	"dashboardFilter.enterFilterLabel": "Enter filter label",
+	"dashboardFilter.universalTimeFilter": "Universal Time Filter",
+	"dashboardFilter.universalTimeDescription": "This filter applies to all time dimensions in mapped portlets. Users can select the date range when viewing the dashboard.",
+	"dashboardFilter.field": "Field",
+	"dashboardFilter.showDashboardFields": "Show dashboard fields only",
+	"dashboardFilter.showAllFields": "Show all fields",
+	"dashboardFilter.dashboard": "Dashboard",
+	"dashboardFilter.all": "All",
+	"dashboardFilter.clickToSelectField": "Click to select a field",
+	"dashboardFilter.operator": "Operator",
+	"dashboardFilter.defaultValue": "Default Value",
+	"dashboardFilter.deleteFilter": "Delete Filter",
+	"dashboardFilter.noValueRequired": "No value required",
+	"dashboardFilter.to": "to",
+	"dashboardFilter.selectValue": "Select value...",
+	"dashboardFilter.search": "Search...",
+	"dashboardFilter.errorPrefix": "Error: ",
+	"dashboardFilter.noValuesFound": "No values found",
+	"dashboardFilter.enterValue": "Enter value...",
+	"dashboardFilter.enterNumber": "Enter number",
+	"dashboardFilter.min": "Min",
+	"dashboardFilter.max": "Max",
+	"dashboardFilter.filterLabelRequired": "Filter label is required",
+	"dashboardFilter.selectFieldRequired": "Please select a field for the filter",
+	"dashboardFilter.notSet": "(not set)",
+	"dashboardFilter.clickToConfigure": "Click to configure",
+	"dashboardFilter.customDate.startDate": "Start Date",
+	"dashboardFilter.customDate.endDate": "End Date",
+	"dashboardFilter.customDate.sinceDate": "Since Date",
+	"dashboardFilter.customDate.fromSelectedToToday": "From selected date to today",
+	"dashboardFilter.customDate.number": "Number",
+	"dashboardFilter.customDate.unit": "Unit",
+	"dashboardFilter.customDate.lastNPreview": "Last {number} {unit}",
+	"dashboardFilter.editMode.filters": "Filters",
+	"dashboardFilter.editMode.noFilters": "No filters configured. Click \"Add\" to create one.",
+	"dashboardFilter.editMode.dateRange": "Date Range",
+	"dashboardFilter.editMode.filter": "Filter",
+	"dashboardFilter.editMode.editFilter": "Edit filter",
+	"dashboardFilter.editMode.removeFilter": "Remove filter",
+	"dashboardFilter.filterValue.editValue": "Edit value",
+	"dashboardFilter.readOnly.filters": "Filters",
+	"filter.shared.fieldsInQuery": "Fields in Query ({count})",
+	"filter.shared.allAvailableFields": "All Available Fields ({count})",
+	"filter.shared.noFieldsMatch": "No fields found matching \"{searchTerm}\"",
+	"filter.shared.searchFields": "Search fields...",
+	"filter.shared.selectField": "Select field...",
+	"filter.shared.schemaNotLoaded": "Schema not loaded",
+	"filter.shared.group.addFilter": "Add Filter",
+	"filter.shared.group.addAndGroup": "Add AND Group",
+	"filter.shared.group.addOrGroup": "Add OR Group",
+	"filter.shared.group.addCondition": "Add condition",
+	"filter.shared.group.noConditions": "No conditions in this group.",
+	"filter.shared.group.addFilterLink": "Add a filter",
+	"filter.shared.builder.filters": "Filters ({count})",
+	"filter.shared.builder.clearAll": "Clear all",
+	"filter.shared.builder.addFilter": "Add Filter",
+	"filter.shared.dateRange.title": "Date Ranges ({count})",
+	"filter.shared.dateRange.clearAll": "Clear all",
+	"filter.shared.dateRange.addDateRange": "Add Date Range",
+	"filter.shared.dateRange.allHaveDateRanges": "All time dimensions already have date ranges",
+	"filter.shared.valueSelector.noValueRequired": "No value required",
+	"filter.shared.valueSelector.to": "to",
+	"filter.shared.valueSelector.min": "Min",
+	"filter.shared.valueSelector.max": "Max",
+	"filter.shared.valueSelector.enterNumber": "Enter number",
+	"filter.shared.valueSelector.loadingValues": "Loading values...",
+	"filter.shared.valueSelector.selectValue": "Select value...",
+	"filter.shared.valueSelector.searchValues": "Search values...",
+	"filter.shared.valueSelector.searching": "Searching...",
+	"filter.shared.valueSelector.errorLoading": "Error loading values: {error}",
+	"filter.shared.valueSelector.noMatchingValues": "No matching values",
+	"filter.shared.valueSelector.noValuesAvailable": "No values available",
+	"filter.shared.valueSelector.enterValue": "Enter {type} value",
+	"dashboard.noPortlets": "No Portlets",
+	"dashboard.noPortletsDescription": "Add your first portlet to start visualizing your data",
+	"dashboard.addText": "Add Text",
+	"dashboard.addPortlet": "Add Portlet",
+	"dashboard.finishEditing": "Finish Editing",
+	"dashboard.edit": "Edit",
+	"dashboard.grid": "Grid",
+	"dashboard.rows": "Rows",
+	"dashboard.desktopRequired": "Desktop view required for editing",
+	"dashboard.editModeHint": "Drag • Resize • Auto-save",
+	"dashboard.filterSelectionMode": "Filter Selection Mode - Click portlets to toggle '{filterLabel}'",
+	"dashboard.filterSelectionEscHint": "• Press Enter or Esc to save",
+	"dashboard.filterFieldChipHint": "Click to change which field this filter applies to for this portlet",
+	"dashboard.editPortlet": "Edit Portlet",
+	"dashboard.addNewPortlet": "Add New Portlet",
+	"dashboard.updatePortlet": "Update Portlet",
+	"dashboard.deletePortlet": "Delete Portlet",
+	"dashboard.deletePortletConfirm": "Are you sure you want to delete",
+	"dashboard.deletePortletSuffix": "? This action cannot be undone.",
+	"dashboard.thisPortlet": "this portlet",
+	"dashboard.portlet.action.edit": "Edit portlet",
+	"dashboard.portlet.action.duplicate": "Duplicate portlet",
+	"dashboard.portlet.action.delete": "Delete portlet",
+	"dashboard.portlet.action.refresh": "Refresh portlet",
+	"dashboard.portlet.action.drag": "Drag portlet",
+	"dashboard.portlet.action.filterConfig": "Configure dashboard filters",
+	"dashboard.portlet.action.filterConfigActive": "Configure dashboard filters ({count} active)",
+	"dashboard.group.rename": "Rename group",
+	"dashboard.group.drag": "Drag group",
+	"dashboard.group.titlePlaceholder": "Group title",
+	"dashboard.group.ungroup": "Ungroup",
+	"dashboard.group.delete": "Delete group",
+	"dashboard.group.deleteTitle": "Delete Group",
+	"dashboard.group.deleteConfirm": "Are you sure you want to delete this group and all {count} portlets inside it? This action cannot be undone.",
+	"dashboard.editModal.dashboardName": "Dashboard Name",
+	"dashboard.editModal.enterDashboardName": "Enter dashboard name...",
+	"dashboard.editModal.descriptionOptional": "Description (optional)",
+	"dashboard.editModal.enterDescription": "Enter description...",
+	"portlet.configRequired": "Configuration Required",
+	"portlet.copyToClipboard": "Copy chart to clipboard",
+	"portlet.copied": "Copied!",
+	"portlet.downloadXlsx": "Download data as XLSX",
+	"portlet.exporting": "Exporting...",
+	"portlet.configRequiredHint": "Please configure this chart",
+	"portlet.queryError": "Query Error",
+	"portlet.queryWithFilters": "Query (with filters applied)",
+	"portlet.chartConfig": "Chart Config",
+	"portlet.noDataAvailable": "No data available",
+	"portlet.noDataDrilled": "No data points to display for the current filter",
+	"portlet.invalidQuery": "Invalid query or no results",
+	"portlet.unsupportedChartType": "Unsupported chart type",
+	"portlet.unableToRender": "Unable to render chart",
+	"portlet.droppedMembers": "Hidden — no longer in the model: {members}",
+	"portlet.enterTitle": "Enter portlet title...",
+	"portlet.enterPortletTitle": "Please enter a title for the portlet.",
+	"portlet.configureQuery": "Please configure a query before saving.",
+	"portlet.configureFlow": "Please configure the flow analysis (binding key, time dimension, event dimension, and starting step filter).",
+	"portlet.configureRetention": "Please configure the retention analysis (binding key, time dimension, and date range).",
+	"portlet.configureFunnel": "Please add at least two funnel steps.",
+	"portlet.addMetricOrBreakdown": "Please add at least one metric or breakdown to your query.",
+	"portlet.filterConfig.title": "Configure Dashboard Filters",
+	"portlet.filterConfig.subtitle": "Choose which dashboard filters apply to \"{portletTitle}\"",
+	"portlet.filterConfig.noFilters": "No dashboard filters available",
+	"portlet.filterConfig.noFiltersHint": "Add filters at the dashboard level first",
+	"portlet.filterConfig.availableFilters": "Available Filters",
+	"portlet.filterConfig.selectedCount": "{selected} of {total} selected",
+	"portlet.filterConfig.applied": "Applied",
+	"portlet.filterConfig.noValue": "no value",
+	"portlet.filterConfig.complexFilter": "Complex filter",
+	"portlet.filterConfig.groupFilter": "{type} group with {count} filter",
+	"portlet.filterConfig.groupFilterPlural": "{type} group with {count} filters",
+	"portlet.filterConfig.applyFilters": "Apply Filters",
+	"portlet.filterConfig.applyToField": "Apply to field",
+	"portlet.filterConfig.applyToFieldDefault": "Default ({field})",
+	"portlet.filterConfig.mappedTo": "Mapped to {field}",
+	"portlet.filterConfig.mappedFieldMissing": "The mapped field \"{field}\" is no longer available in the schema",
+	"textPortlet.editText": "Edit Text",
+	"textPortlet.addText": "Add Text",
+	"textPortlet.markdownContent": "Markdown Content",
+	"textPortlet.markdownHint": "Supports headers (#), bold (**text**), italic (*text*), links ([text](url)), lists (- item), and horizontal rules (---).",
+	"textPortlet.preview": "Preview",
+	"debug.title": "Chart Debug Information",
+	"debug.chartType": "Chart Type",
+	"debug.fieldAnalysis": "Field Analysis",
+	"debug.chartConfig": "Chart Config",
+	"debug.displayConfig": "Display Config",
+	"debug.queryObject": "Query Object",
+	"debug.dataSample": "Data Sample (first 3 rows)",
+	"debug.cacheStatus": "Cache Status",
+	"debug.cacheHit": "Cache Hit",
+	"debug.cachedAt": "Cached At:",
+	"debug.ttl": "TTL:",
+	"debug.ttlRemaining": "TTL Remaining:",
+	"debug.freshQuery": "Fresh Query",
+	"debug.notFromCache": "Result not served from cache",
+	"debug.escToClose": "Press",
+	"debug.escKey": "ESC",
+	"debug.toClose": "to close",
+	"debug.tooltip": "Debug chart configuration",
+	"error.unableToRender": "Unable to render chart",
+	"error.unableToRenderNamed": "Unable to render {title}",
+	"error.renderDescription": "There was an error rendering this chart component. The error details are shown below.",
+	"error.errorLabel": "Error:",
+	"error.typeLabel": "Type:",
+	"error.portletConfig": "Portlet Configuration",
+	"error.cubeQuery": "Cube Query",
+	"error.componentStack": "Component Stack",
+	"error.tryAgain": "Try Again",
+	"drill.back": "Back",
+	"drill.goBackOneLevel": "Go back one level",
+	"drill.returnToTop": "Return to top level",
+	"drill.navigateTo": "Navigate to {label}",
+	"drill.empty": "(empty)",
+	"analyticsPage.title": "Analytics Page - Coming in Phase 4",
+	"dataHistogram.average": "Average of {count} values",
+	"dataHistogram.valuesInRange": "{count} values in this range",
+	"mcp.status.connecting": "Connecting...",
+	"mcp.status.loading": "Loading...",
+	"mcp.status.waiting": "Waiting for query results...",
+	"mcp.error.connectionLabel": "Connection error:",
+	"mcp.error.errorLabel": "Error:",
+	"mcp.error.noTextContent": "No text content in result",
+	"mcp.error.invalidResultFormat": "Invalid result format: missing data array",
+	"mcp.error.parseFailed": "Failed to parse result: {message}",
+	"mcp.error.queryFailed": "Query failed: {message}",
+	"mcp.footer.rows": "{count} row",
+	"mcp.footer.rowsPlural": "{count} rows",
+	"mcp.footer.measures": "{count} measure",
+	"mcp.footer.measuresPlural": "{count} measures",
+	"mcp.footer.dimensions": "{count} dimension",
+	"mcp.footer.dimensionsPlural": "{count} dimensions",
+	"chart.option.kpiLayout.label": "Layout",
+	"chart.option.kpiLayout.description": "Compact uses a fixed type size so several KPIs line up as a metric strip; auto scales the value to fill the portlet",
+	"chart.option.kpiLayout.auto": "Auto",
+	"chart.option.kpiLayout.compact": "Compact",
+	"chart.option.showBaseline.label": "Show baseline",
+	"chart.option.showBaseline.description": "Show the previous and current values as a before and after pair",
+	"chart.runtime.kpiVsTarget": "vs {target}",
+	"chart.runtime.kpiExcludesLastPeriod": "Excludes last {period}",
+	"chart.runtime.kpiExcludesIncompletePeriod": "Excludes current incomplete {period}",
+	"chart.runtime.kpiPeriodFallback": "period",
+	"chart.runtime.noDataShort": "No data",
+	"chart.option.showSummary.label": "Summary header",
+	"chart.option.showSummary.description": "Show each series' latest value above the chart, with its change since the start of the window on time-based charts",
+	"chart.runtime.summarySincePeriodStart": "since start of period",
+	"chart.proportionBar.label": "Proportion Bar",
+	"chart.proportionBar.description": "Show a part-to-whole breakdown as a single stacked horizontal bar",
+	"chart.proportionBar.useCase": "Perfect for work mix, budget splits or any share breakdown where comparing proportions matters more than exact values — flatter and easier to read than a pie chart",
+	"chart.proportionBar.dropZone.xAxis.empty": "Drop a dimension here",
+	"chart.proportionBar.dropZone.yAxis.empty": "Drop a measure here",
+	"chart.proportionBar.validation.dimensionRequired": "A dimension is required for proportion bar charts",
+	"chart.proportionBar.validation.measureRequired": "A measure is required for proportion bar charts",
+	"chart.configText.category": "Category",
+	"chart.configText.dimension_to_split_the_bar_into_segments": "Dimension to split the bar into segments",
+	"chart.configText.measure_that_determines_each_segments_share": "Measure that determines each segment's share",
+	"chart.option.showPercentages.label": "Show percentages",
+	"chart.option.showPercentages.description": "Show each segment's share as a percentage beneath the bar",
+	"chart.option.sortSegments.label": "Sort segments",
+	"chart.option.sortSegments.description": "Order segments largest first rather than keeping the query order",
+	"chart.option.proportionBarLabels.description": "Show the category name above each segment's share",
+	"chart.option.proportionBarDecimals.description": "Number of decimal places shown on each percentage",
+	"chart.runtime.noDataHint.proportionBar": "No data points to break down",
+	"chart.runtime.configErrorHint.proportionBar": "Add one dimension and one measure to show a breakdown",
+	"chart.runtime.noValidDataHint.proportionBar": "All values are zero, negative or invalid",
+	"chart.option.proportionBarLabels.label": "Show labels",
+	"chart.runtime.summarySince": "since {period}",
+	"chart.option.showPoints.label": "Show data points",
+	"chart.option.showPoints.description": "Draw a marker at every data point. Turn off for dense series, where the markers obscure the line",
+	"chart.gauge.thresholds.from": "Band starts at",
+	"chart.gauge.thresholds.colour": "Band colour",
+	"chart.gauge.thresholds.add": "Add band",
+	"chart.gauge.thresholds.remove": "Remove band",
+	"dashboardFilter.presets.today": "Today",
+	"dashboardFilter.presets.yesterday": "Yesterday",
+	"dashboardFilter.presets.7d": "7D",
+	"dashboardFilter.presets.30d": "30D",
+	"dashboardFilter.presets.3m": "3M",
+	"dashboardFilter.presets.6m": "6M",
+	"dashboardFilter.presets.12m": "12M",
+	"dashboardFilter.xtd.trigger": "XTD",
+	"dashboardFilter.xtd.wtd": "Week to Date",
+	"dashboardFilter.xtd.mtd": "Month to Date",
+	"dashboardFilter.xtd.qtd": "Quarter to Date",
+	"dashboardFilter.xtd.ytd": "Year to Date",
+	"dashboardFilter.customTabs.fixed": "Fixed",
+	"dashboardFilter.customTabs.since": "Since",
+	"dashboardFilter.customTabs.last": "Last",
+	"dashboardFilter.units.days": "Days",
+	"dashboardFilter.units.weeks": "Weeks",
+	"dashboardFilter.units.months": "Months",
+	"dashboardFilter.units.quarters": "Quarters",
+	"dashboardFilter.units.years": "Years",
+	"analysis.breakdownComparison.vsPrior": "vs prior",
+	"analysis.breakdownComparison.alreadyEnabled": "Another time dimension already has comparison enabled",
+	"analysis.breakdownComparison.clickToDisable": "Click to disable comparison",
+	"analysis.breakdownComparison.compareWithPrevious": "Compare with previous period"
+}, x = "en-GB", S = b, C = !1;
+function ee(e) {
+	C = e;
+}
+function w(e, t) {
+	let n = S[e];
+	return n ? t ? n.replace(/\{(\w+)\}/g, (e, n) => {
+		let r = t[n];
+		return r === void 0 ? `{${n}}` : String(r);
+	}) : n : (C && typeof console < "u" && console.warn(`[drizzle-cube i18n] Missing translation key: "${e}"`), e);
+}
+async function te(e) {
+	if (e === "nl" && (e = "nl-NL"), e === "pt" && (e = "pt-BR"), e === "en-GB" || e === "en") {
+		x = "en-GB", S = b;
+		return;
+	}
+	try {
+		let t = await v(/* #__PURE__ */ Object.assign({
+			"./locales/af-ZA.json": () => import("./af-ZA-C0dGb_53.js"),
+			"./locales/en-US.json": () => import("./en-US-HP6FHuNy.js"),
+			"./locales/en.json": () => Promise.resolve().then(() => y),
+			"./locales/nl-NL.json": () => import("./nl-NL-dk-kC0sL.js"),
+			"./locales/pt-BR.json": () => import("./pt-BR-C9QTTN05.js")
+		}), `./locales/${e}.json`, 3);
+		x = e, S = {
+			...b,
+			...t.default
+		};
+	} catch {
+		typeof console < "u" && console.warn(`[drizzle-cube] Failed to load locale "${e}", falling back to en-GB`), x = "en-GB", S = b;
+	}
+}
+function ne(e, t) {
+	x = e, S = {
+		...b,
+		...t
+	};
+}
+function T() {
+	return x;
+}
+function re() {
+	return S;
+}
+//#endregion
+//#region src/client/providers/I18nProvider.tsx
+var E = n({
+	t: w,
+	locale: "en-GB"
+});
+function ie({ locale: e = "en-GB", translations: t, children: n }) {
+	let [r, i] = l(!1), [o, s] = l(T());
+	return a(() => {
+		let n = !1;
+		return (async () => {
+			await te(e), t && !n && ne(e, {
+				...re(),
+				...t
+			}), n || (s(T()), i(!0));
+		})(), () => {
+			n = !0;
+		};
+	}, [e, t]), /* @__PURE__ */ u(E.Provider, {
+		value: {
+			t: w,
+			locale: r ? o : e
+		},
+		children: n
+	});
+}
+//#endregion
+//#region src/client/hooks/useTranslation.ts
+function D(e) {
+	let { t, locale: n } = i(E);
+	return {
+		t: r((n, r) => {
+			let i = e ? `${e}.${n}` : n;
+			return t(i, r);
+		}, [t, e]),
+		locale: n
+	};
+}
+//#endregion
+//#region src/client/utils/axisValueFormatting.ts
+function O(e) {
+	return {
+		US: "USD",
+		CA: "CAD",
+		GB: "GBP",
+		UK: "GBP",
+		AU: "AUD",
+		NZ: "NZD",
+		EU: "EUR",
+		DE: "EUR",
+		FR: "EUR",
+		IT: "EUR",
+		ES: "EUR",
+		NL: "EUR",
+		BE: "EUR",
+		AT: "EUR",
+		IE: "EUR",
+		PT: "EUR",
+		FI: "EUR",
+		JP: "JPY",
+		CN: "CNY",
+		KR: "KRW",
+		IN: "INR",
+		BR: "BRL",
+		MX: "MXN",
+		CH: "CHF",
+		SE: "SEK",
+		NO: "NOK",
+		DK: "DKK",
+		PL: "PLN",
+		RU: "RUB",
+		ZA: "ZAR",
+		SG: "SGD",
+		HK: "HKD",
+		TW: "TWD",
+		TH: "THB",
+		MY: "MYR",
+		PH: "PHP",
+		ID: "IDR",
+		VN: "VND",
+		AE: "AED",
+		SA: "SAR",
+		IL: "ILS",
+		TR: "TRY"
+	}[e.split("-")[1]?.toUpperCase()] || "USD";
+}
+function ae(e, t) {
+	if (!t) return {
+		displayValue: e,
+		abbreviationSuffix: ""
+	};
+	let n = Math.abs(e);
+	return n >= 1e9 ? {
+		displayValue: e / 1e9,
+		abbreviationSuffix: "B"
+	} : n >= 1e6 ? {
+		displayValue: e / 1e6,
+		abbreviationSuffix: "M"
+	} : n >= 1e3 ? {
+		displayValue: e / 1e3,
+		abbreviationSuffix: "K"
+	} : {
+		displayValue: e,
+		abbreviationSuffix: ""
+	};
+}
+function oe(e, t) {
+	return e && /^[A-Za-z]{3}$/.test(e) ? e.toUpperCase() : O(t);
+}
+function se(e) {
+	let { displayValue: t, abbreviate: n, abbreviationSuffix: r, decimals: i, locale: a } = e, o = oe(e.config.currencyCode, a);
+	if (n && r) {
+		let e = new Intl.NumberFormat(a, {
+			style: "currency",
+			currency: o,
+			minimumFractionDigits: i,
+			maximumFractionDigits: i
+		}).format(t), n = new Intl.NumberFormat(a, {
+			style: "currency",
+			currency: o
+		}).formatToParts(t);
+		return n[n.length - 1]?.type === "currency" ? e.replace(/(\s*[^\d\s]+)$/, r + "$1") : e + r;
+	}
+	return new Intl.NumberFormat(a, {
+		style: "currency",
+		currency: o,
+		minimumFractionDigits: i,
+		maximumFractionDigits: i
+	}).format(t);
+}
+function ce(e) {
+	let { displayValue: t, abbreviate: n, abbreviationSuffix: r, decimals: i, locale: a } = e, o = Math.abs(t) <= 1 && !n ? t * 100 : t;
+	return new Intl.NumberFormat(a, {
+		minimumFractionDigits: i,
+		maximumFractionDigits: i
+	}).format(o) + r + "%";
+}
+function le(e) {
+	let { displayValue: t, abbreviationSuffix: n, decimals: r, locale: i, config: a } = e, o = a.customPrefix || "", s = a.customSuffix || "";
+	return o + new Intl.NumberFormat(i, {
+		minimumFractionDigits: r,
+		maximumFractionDigits: r
+	}).format(t) + n + s;
+}
+function k(e) {
+	let { displayValue: t, abbreviationSuffix: n, decimals: r, locale: i } = e;
+	return new Intl.NumberFormat(i, {
+		minimumFractionDigits: r,
+		maximumFractionDigits: r
+	}).format(t) + n;
+}
+var ue = {
+	currency: se,
+	percent: ce,
+	custom: le,
+	number: k
+};
+function de(e) {
+	return ((e.config.unit ? ue[e.config.unit] : void 0) || k)(e);
+}
+//#endregion
+//#region src/client/utils/timeValueFormatting.ts
+function fe(e) {
+	if (!e.match(/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/)) return null;
+	let t = e;
+	e.includes(" ") && (t = e.replace(" ", "T").replace("+00", "Z").replace(/\+\d{2}:\d{2}$/, "Z")), !t.endsWith("Z") && !t.includes("+") && (t += "Z");
+	let n = new Date(t);
+	return isNaN(n.getTime()) ? null : {
+		date: n,
+		year: n.getUTCFullYear(),
+		month: String(n.getUTCMonth() + 1).padStart(2, "0"),
+		day: String(n.getUTCDate()).padStart(2, "0"),
+		hours: n.getUTCHours(),
+		minutes: n.getUTCMinutes()
+	};
+}
+function pe(e, t) {
+	let { date: n, year: r, month: i, day: a, hours: o, minutes: s } = e;
+	switch (t.toLowerCase()) {
+		case "year": return `${r}`;
+		case "quarter": return `${r}-Q${Math.floor(n.getUTCMonth() / 3) + 1}`;
+		case "month": return `${r}-${i}`;
+		case "week": return `${r}-${i}-${a}`;
+		case "day": return `${r}-${i}-${a}`;
+		case "hour": return `${r}-${i}-${a} ${String(o).padStart(2, "0")}:00`;
+		case "minute": return `${r}-${i}-${a} ${String(o).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+		default: return null;
+	}
+}
+function me(e) {
+	let { date: t, year: n, month: r, day: i, hours: a, minutes: o } = e, s = t.getUTCSeconds(), c = t.getUTCMilliseconds(), l = a === 0 && o === 0 && s === 0 && c === 0;
+	return i === "01" && l ? r === "01" || r === "04" || r === "07" || r === "10" ? `${n}-Q${Math.floor(t.getUTCMonth() / 3) + 1}` : `${n}-${r}` : l ? `${n}-${r}-${i}` : o === 0 && s === 0 && c === 0 ? `${n}-${r}-${i} ${String(a).padStart(2, "0")}:00` : `${n}-${r}-${i} ${String(a).padStart(2, "0")}:${String(o).padStart(2, "0")}`;
+}
+//#endregion
+//#region src/client/utils/chartUtils.ts
+function A(e) {
+	return e != null && !isNaN(Number(e));
+}
+function j(e) {
+	if (e == null) return null;
+	let t = typeof e == "string" ? parseFloat(e) : Number(e);
+	return isNaN(t) ? null : t;
+}
+function M(e) {
+	if (e == null) return "No data";
+	let t = typeof e == "number" ? e : parseFloat(e);
+	return isNaN(t) ? String(e) : Number.isInteger(t) ? t.toLocaleString() : parseFloat(t.toFixed(2)).toLocaleString();
+}
+function N(e, t, n) {
+	if (e == null) return "No data";
+	let r = typeof e == "number" ? e : parseFloat(String(e));
+	if (isNaN(r)) return String(e);
+	if (!isFinite(r)) return r > 0 ? "∞" : "-∞";
+	let i = n || (typeof navigator < "u" ? navigator.language : "en-US");
+	if (!t) return M(e);
+	let { abbreviate: a = !0, decimals: o } = t, { displayValue: s, abbreviationSuffix: c } = ae(r, a);
+	return de({
+		displayValue: s,
+		abbreviate: a,
+		abbreviationSuffix: c,
+		decimals: o === void 0 ? Number.isInteger(s) ? 0 : 2 : o,
+		locale: i,
+		config: t
+	});
+}
+function he(e) {
+	return (t) => N(t, e);
+}
+function P(e, t) {
+	return t[e] || e;
+}
+function ge(e, t) {
+	return e.map((e) => P(e, t));
+}
+function F(e, t) {
+	if (!e) return "Unknown";
+	let n = String(e), r = fe(n);
+	if (!r) return n;
+	if (t) {
+		let e = pe(r, t);
+		if (e !== null) return e;
+	}
+	return me(r);
+}
+function I(e, t) {
+	try {
+		if (e?.timeDimensions) {
+			let n = e.timeDimensions.find((e) => t === e.dimension || t.startsWith(e.dimension.replace(".", "_")) || t === `${e.dimension}_${e.granularity}`);
+			if (n?.granularity) return n.granularity;
+		}
+		let n = t.match(/_([a-z]+)$/);
+		if (n) {
+			let e = n[1];
+			if ([
+				"year",
+				"quarter",
+				"month",
+				"week",
+				"day",
+				"hour",
+				"minute",
+				"second"
+			].includes(e)) return e;
+		}
+		return;
+	} catch {
+		return;
+	}
+}
+function L(e, t, n, r, i = (e) => e) {
+	if (!e || e.length === 0) return [];
+	let a = I(r, t);
+	return e.map((e) => {
+		let r = { name: F(e[t], a) || e[t] || "Unknown" };
+		return n.forEach((t) => {
+			let n = i(t);
+			n !== "__proto__" && n !== "constructor" && n !== "prototype" && (r[n] = j(e[t]));
+		}), r;
+	});
+}
+function _e(e, t, n, r, i, a = (e) => e) {
+	if (!e || e.length === 0) return {
+		data: [],
+		seriesKeys: [],
+		hasDimensions: !1
+	};
+	let o = r || {}, s = [...o.dimensions || [], ...o.timeDimensions?.map((e) => e.dimension) || []], c = o.measures || [], l = n.filter((e) => c.includes(e)), u = (i || []).filter((e) => s.includes(e));
+	if (u.length > 0) {
+		let n = {};
+		return e.forEach((e) => {
+			let i = I(r, t), o = F(e[t], i) || e[t] || "Unknown";
+			o !== "__proto__" && o !== "constructor" && o !== "prototype" && (n[o] || (n[o] = { name: String(o) }), l.forEach((t) => {
+				let r = a(t);
+				if (r === "__proto__" || r === "constructor" || r === "prototype") return;
+				let i = j(e[t]);
+				if (i !== null) {
+					let e = n[o][r];
+					n[o][r] = e == null ? i : e + i;
+				} else r in n[o] || (n[o][r] = null);
+			}), u.forEach((t) => {
+				let r = e[t];
+				if (r != null) {
+					let t = String(r), i = l[0] || c.find((e) => e.includes("totalCost") || e.includes("count") || e.includes("sum")) || c[0];
+					if (i) {
+						if (t === "__proto__" || t === "constructor" || t === "prototype") return;
+						let r = j(e[i]);
+						if (r !== null) {
+							let e = n[o][t];
+							n[o][t] = e == null ? r : e + r;
+						} else t in n[o] || (n[o][t] = null);
+					}
+				}
+			}));
+		}), {
+			data: Object.values(n),
+			seriesKeys: Array.from(new Set(e.flatMap((e) => u.map((t) => {
+				let n = e[t];
+				return n == null ? null : String(n);
+			}).filter((e) => e !== null)))),
+			hasDimensions: !0
+		};
+	}
+	return {
+		data: L(e, t, n, r, a),
+		seriesKeys: n.map((e) => a(e)),
+		hasDimensions: !1
+	};
+}
+//#endregion
+//#region src/client/hooks/useCubeFieldLabel.ts
+function R() {
+	let e = i(g);
+	if (!e) throw Error("useCubeFieldLabel must be used within CubeProvider");
+	return s(() => e.getFieldLabel, [e.getFieldLabel]);
+}
+//#endregion
+//#region src/client/theme/index.ts
+function ve(e) {
+	return typeof window > "u" ? "" : getComputedStyle(document.documentElement).getPropertyValue(`--dc-${e}`).trim();
+}
+function z(e, t) {
+	typeof window > "u" || document.documentElement.style.setProperty(`--dc-${e}`, t);
+}
+function ye(e) {
+	typeof window > "u" || Object.entries(e.colors).forEach(([e, t]) => {
+		t && z(e.replace(/[A-Z]/g, (e) => `-${e.toLowerCase()}`), t);
+	});
+}
+function be() {
+	if (typeof window > "u") return;
+	let e = document.documentElement.style;
+	Array.from(e).forEach((t) => {
+		t.startsWith("--dc-") && e.removeProperty(t);
+	});
+}
+function B() {
+	if (typeof window > "u") return "light";
+	let e = localStorage.getItem("theme");
+	if (e === "dark" || e === "neon" || e === "light") return e;
+	let t = document.documentElement.getAttribute("data-theme");
+	return t === "dark" || t === "neon" ? t : document.documentElement.classList.contains("dark") || document.body.classList.contains("dark") ? "dark" : document.documentElement.classList.contains("neon") || document.body.classList.contains("neon") ? "neon" : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+function xe(e) {
+	typeof window > "u" || (document.documentElement.classList.remove("dark", "neon"), document.documentElement.setAttribute("data-theme", e), (e === "dark" || e === "neon") && document.documentElement.classList.add(e), localStorage.setItem("theme", e));
+}
+function Se() {
+	let e = B();
+	return e === "dark" || e === "neon";
+}
+function V(e) {
+	if (typeof window > "u") return () => {};
+	let t = new MutationObserver(() => {
+		e(B());
+	});
+	t.observe(document.documentElement, {
+		attributes: !0,
+		attributeFilter: ["class", "data-theme"]
+	});
+	let n = window.matchMedia("(prefers-color-scheme: dark)"), r = () => e(B());
+	return n.addEventListener("change", r), () => {
+		t.disconnect(), n.removeEventListener("change", r);
+	};
+}
+var Ce = {
+	light: {
+		name: "light",
+		colors: {
+			surface: "#ffffff",
+			surfaceSecondary: "#f9fafb",
+			text: "#111827",
+			textSecondary: "#374151",
+			textMuted: "#6b7280",
+			border: "#e5e7eb",
+			primary: "#3b82f6",
+			primaryHover: "#2563eb"
+		}
+	},
+	dark: {
+		name: "dark",
+		colors: {
+			surface: "#1e293b",
+			surfaceSecondary: "#334155",
+			text: "#f1f5f9",
+			textSecondary: "#e2e8f0",
+			textMuted: "#cbd5e1",
+			border: "#475569",
+			primary: "#60a5fa",
+			primaryHover: "#3b82f6"
+		}
+	},
+	neon: {
+		name: "neon",
+		colors: {
+			surface: "#0a0118",
+			surfaceSecondary: "#1a0f2e",
+			surfaceTertiary: "#2a1f3e",
+			text: "#ffffff",
+			textSecondary: "#e0e0ff",
+			textMuted: "#b0b0d0",
+			border: "#ff00ff",
+			borderSecondary: "#00ffff",
+			primary: "#00ffff",
+			primaryHover: "#00cccc",
+			primaryContent: "#000000",
+			success: "#00ff00",
+			warning: "#ffff00",
+			error: "#ff0066",
+			info: "#00ffff",
+			danger: "#ff1493"
+		}
+	}
+}, we = [
+	"#3b82f6",
+	"#10b981",
+	"#f59e0b",
+	"#ef4444",
+	"#8b5cf6",
+	"#f97316",
+	"#06b6d4",
+	"#84cc16"
+], H = [
+	"#440154",
+	"#414487",
+	"#2a788e",
+	"#22a884",
+	"#7ad151",
+	"#fde725"
+], Te = "#10b981", Ee = "#ef4444", U = {
+	top: 5,
+	right: 30,
+	left: 20,
+	bottom: 5
+}, De = {
+	top: 5,
+	right: 30,
+	left: 20,
+	bottom: 60
+};
+//#endregion
+//#region src/client/components/charts/useChartDimensions.ts
+function W() {
+	let e = c(null), [t, n] = l({
+		width: 0,
+		height: 0
+	}), [r, i] = l(!1);
+	return o(() => {
+		let t = 0, r, a, o = () => {
+			if (e.current) {
+				let { width: t, height: r } = e.current.getBoundingClientRect();
+				if (t > 0 && r > 0) return n({
+					width: t,
+					height: r
+				}), i(!0), !0;
+			}
+			return !1;
+		};
+		if (!o() && t < 10) {
+			let e = () => {
+				!o() && t < 10 && (t++, a = setTimeout(() => {
+					r = requestAnimationFrame(e);
+				}, 50 * t));
+			};
+			r = requestAnimationFrame(e);
+		}
+		return () => {
+			r && cancelAnimationFrame(r), a && clearTimeout(a);
+		};
+	}, []), a(() => {
+		let t = null, r = () => {
+			if (e.current) {
+				let { width: t, height: r } = e.current.getBoundingClientRect();
+				t > 0 && r > 0 && (n({
+					width: t,
+					height: r
+				}), i((e) => e || !0));
+			}
+		};
+		return e.current && (t = new ResizeObserver(() => r()), t.observe(e.current), r()), window.addEventListener("resize", r), () => {
+			t && t.disconnect(), window.removeEventListener("resize", r);
+		};
+	}, []), {
+		containerRef: e,
+		dimensions: t,
+		dimensionsReady: r
+	};
+}
+//#endregion
+//#region src/client/components/charts/BubbleChart.helpers.ts
+function Oe(e) {
+	return {
+		showLegend: e?.showLegend ?? !0,
+		showGrid: e?.showGrid ?? !0,
+		showTooltip: e?.showTooltip ?? !0,
+		minBubbleSize: e?.minBubbleSize ?? 5,
+		maxBubbleSize: e?.maxBubbleSize ?? 50,
+		bubbleOpacity: e?.bubbleOpacity ?? .7,
+		xAxisFormat: e?.xAxisFormat,
+		leftYAxisFormat: e?.leftYAxisFormat
+	};
+}
+function ke(e) {
+	if (!e?.xAxis || !e?.yAxis || !e?.series) return null;
+	let t = Array.isArray(e.xAxis) ? e.xAxis[0] : e.xAxis, n = Array.isArray(e.yAxis) ? e.yAxis[0] : e.yAxis, r = Array.isArray(e.series) ? e.series[0] : e.series, i = (Array.isArray(e.sizeField) ? e.sizeField[0] : e.sizeField) || n;
+	return !t || !n || !r || !i ? null : {
+		xAxisField: t,
+		yAxisField: n,
+		seriesField: r,
+		sizeFieldName: i,
+		colorFieldName: Array.isArray(e.colorField) ? e.colorField[0] : e.colorField
+	};
+}
+function Ae(e, t, n) {
+	if (t && e) {
+		let t = String(e), r;
+		if (t.match(/^\d{4}-\d{2}-\d{2}[T ]/)) {
+			let e = t;
+			t.includes(" ") && (e = t.replace(" ", "T").replace("+00", "Z").replace(/\+\d{2}:\d{2}$/, "Z")), !e.endsWith("Z") && !e.includes("+") && (e += "Z"), r = new Date(e);
+		} else r = new Date(t);
+		return {
+			xNum: isNaN(r.getTime()) ? parseFloat(t) : r.getTime(),
+			xLabel: F(e, n)
+		};
+	}
+	let r = F(e, n) || e;
+	return {
+		xNum: typeof r == "string" ? parseFloat(r) : r,
+		xLabel: String(r)
+	};
+}
+function je(e, t, n) {
+	let { xAxisField: r, yAxisField: i, sizeFieldName: a, seriesField: o, colorFieldName: s } = t, c = I(n, r), l = n?.timeDimensions?.some((e) => e.dimension === r) || !1;
+	return e.map((e) => {
+		let { xNum: t, xLabel: n } = Ae(e[r], l, c), u = j(e[i]), d = j(e[a]), f = e[o];
+		return {
+			x: t,
+			xLabel: n,
+			y: u,
+			size: d === null ? 0 : Math.abs(d),
+			color: s ? e[s] : f,
+			series: f,
+			label: `${f || "Unknown"}`,
+			isValid: A(t) && u !== null && d !== null && d > 0
+		};
+	}).filter((e) => e.isValid && e.size > 0).map(({ isValid: e, ...t }) => t);
+}
+function G(e, t) {
+	return getComputedStyle(document.documentElement).getPropertyValue(e).trim() || t;
+}
+function Me(e) {
+	return {
+		textColor: e ? G("--dc-text-muted", "#cbd5e1") : G("--dc-text-secondary", "#374151"),
+		gridColor: e ? G("--dc-border", "#475569") : "#9ca3af"
+	};
+}
+//#endregion
+//#region src/client/components/charts/ActivityGridChart.helpers.ts
+var K = (e) => Math.floor(e.getMonth() / 3) + 1, Ne = (e) => e.getMonth() % 3 + 1, Pe = (e) => Math.floor((e.getDate() - 1) / 7) + 1, Fe = [
+	"J",
+	"F",
+	"M",
+	"A",
+	"M",
+	"J",
+	"J",
+	"A",
+	"S",
+	"O",
+	"N",
+	"D"
+], q = [
+	"Q1",
+	"Q2",
+	"Q3",
+	"Q4"
+], J = [
+	"Month 1",
+	"Month 2",
+	"Month 3"
+], Y = [
+	"Week 1",
+	"Week 2",
+	"Week 3",
+	"Week 4",
+	"Week 5"
+], X = [
+	"Sun",
+	"Mon",
+	"Tue",
+	"Wed",
+	"Thu",
+	"Fri",
+	"Sat"
+], Z = [
+	"00-03",
+	"03-06",
+	"06-09",
+	"09-12",
+	"12-15",
+	"15-18",
+	"18-21",
+	"21-00"
+];
+function Ie(e) {
+	let t = new Date(Date.UTC(e.getFullYear(), e.getMonth(), e.getDate())), n = t.getUTCDay() || 7;
+	t.setUTCDate(t.getUTCDate() + 4 - n);
+	let r = t.getUTCFullYear(), i = new Date(Date.UTC(r, 0, 1));
+	return {
+		year: r,
+		week: Math.ceil(((t.getTime() - i.getTime()) / 864e5 + 1) / 7)
+	};
+}
+var Le = {
+	quarter: {
+		extractX: (e) => e.getFullYear(),
+		extractY: (e) => K(e) - 1,
+		xLabels: [],
+		yLabels: q,
+		xFormat: (e) => `'${e.toString().slice(-2)}`,
+		yFormat: (e) => q[e] || "",
+		cellWidth: 16,
+		cellHeight: 16
+	},
+	month: {
+		extractX: (e) => e.getFullYear() * 10 + K(e),
+		extractY: (e) => Ne(e) - 1,
+		xLabels: [],
+		yLabels: J,
+		xFormat: (e) => `Q${e % 10}`,
+		yFormat: (e) => J[e] || "",
+		cellWidth: 16,
+		cellHeight: 16,
+		hasHierarchicalLabels: !0,
+		getYearFromX: (e) => Math.floor(e / 10)
+	},
+	week: {
+		extractX: (e) => e.getFullYear() * 100 + (e.getMonth() + 1),
+		extractY: (e) => Pe(e) - 1,
+		xLabels: [],
+		yLabels: Y,
+		xFormat: (e) => Fe[e % 100 - 1] || "",
+		yFormat: (e) => Y[e] || "",
+		cellWidth: 16,
+		cellHeight: 16,
+		hasHierarchicalLabels: !0,
+		getYearFromX: (e) => Math.floor(e / 100)
+	},
+	day: {
+		extractX: (e) => {
+			let { year: t, week: n } = Ie(e);
+			return t * 100 + n;
+		},
+		extractY: (e) => e.getDay(),
+		xLabels: [],
+		yLabels: X,
+		xFormat: (e) => `${e % 100}`,
+		yFormat: (e) => X[e] || "",
+		cellWidth: 16,
+		cellHeight: 16,
+		hasHierarchicalLabels: !0,
+		getYearFromX: (e) => Math.floor(e / 100)
+	},
+	hour: {
+		extractX: (e) => e.getFullYear() * 1e4 + (e.getMonth() + 1) * 100 + e.getDate(),
+		extractY: (e) => Math.floor(e.getHours() / 3),
+		xLabels: [],
+		yLabels: Z,
+		xFormat: (e) => `${e % 100}`,
+		yFormat: (e) => Z[e] || "",
+		cellWidth: 16,
+		cellHeight: 16,
+		hasHierarchicalLabels: !0,
+		getYearFromX: (e) => Math.floor(e / 100)
+	}
+};
+function Re(e) {
+	return Le[e?.toLowerCase()] ?? null;
+}
+function Q(e) {
+	if (e) return Array.isArray(e) ? e[0] : e;
+}
+function ze(e, t) {
+	let n = e?.timeDimensions;
+	if (!n || n.length === 0) return "day";
+	let r = n.find((e) => e.dimension === t || e.dimension.includes(t));
+	if (r && r.granularity) return r.granularity;
+	let i = n[0];
+	return i && i.granularity ? i.granularity : "day";
+}
+function Be(e) {
+	if (typeof e == "string") {
+		let t = e;
+		return e.includes(" ") && (t = e.replace(" ", "T").replace("+00", "Z").replace(/\+\d{2}:\d{2}$/, "Z")), !t.endsWith("Z") && !t.includes("+") && (t += "Z"), new Date(t);
+	}
+	return new Date(e);
+}
+function Ve(e, t, n, r, i) {
+	return e.map((e) => {
+		let a = e[t], o = typeof e[n] == "string" ? parseFloat(e[n]) : e[n] || 0, s = Be(a);
+		return isNaN(s.getTime()) ? null : {
+			x: r.extractX(s),
+			y: r.extractY(s),
+			value: o,
+			date: s,
+			label: F(a, i)
+		};
+	}).filter((e) => e !== null);
+}
+//#endregion
+//#region src/client/components/charts/ActivityGridChart.render.ts
+var He = [
+	"Jan",
+	"Feb",
+	"Mar",
+	"Apr",
+	"May",
+	"Jun",
+	"Jul",
+	"Aug",
+	"Sep",
+	"Oct",
+	"Nov",
+	"Dec"
+];
+function Ue(e) {
+	return {
+		textColor: e ? G("--dc-text-muted", "#cbd5e1") : G("--dc-text-secondary", "#374151"),
+		lineColor: G("--dc-border", "#e5e7eb"),
+		emptyCellColor: e ? G("--dc-bg-secondary", "#1e293b") : G("--dc-bg-secondary", "#f3f4f6"),
+		cellStrokeColor: e ? G("--dc-border", "#334155") : G("--dc-bg", "#ffffff")
+	};
+}
+function We(e) {
+	let { gridData: t, gridMapping: n, dimensions: r, safeDisplayConfig: i } = e, a = f(t, (e) => e.y) || 0, o = p(t, (e) => e.y) || 0, s = [...new Set(t.map((e) => e.x))].sort((e, t) => e - t), c = s.length * n.cellWidth + (s.length - 1) * 4, l = (a - o + 1) * n.cellHeight + (a - o) * 4, u = {
+		...U,
+		left: 60,
+		bottom: 10,
+		top: n.hasHierarchicalLabels ? 40 : 25,
+		right: 10
+	}, d = r.width - u.left - u.right, m = r.height - u.top - u.bottom, h = Math.min(d / c, m / l), g, _;
+	i.fitToWidth ? (g = n.cellWidth * h, _ = n.cellHeight * h) : (g = Math.max(16, Math.min(24, n.cellWidth * h)), _ = Math.max(16, Math.min(24, n.cellHeight * h)), e.granularity === "week" && g < 16 && (g = 16));
+	let v = s.length * g + (s.length - 1) * 4, y = v > d ? v + u.left + u.right : r.width;
+	return {
+		margin: u,
+		finalCellWidth: g,
+		finalCellHeight: _,
+		completeXRange: s,
+		minY: o,
+		maxY: a,
+		svgWidth: y
+	};
+}
+function Ge() {
+	return h("body").append("div").attr("class", "activity-grid-tooltip").style("position", "absolute").style("padding", "8px").style("background", "rgba(0, 0, 0, 0.8)").style("color", "white").style("border-radius", "4px").style("font-size", "12px").style("pointer-events", "none").style("opacity", 0).style("z-index", 1e3);
+}
+function $(e, t, n, r, i) {
+	e.style("cursor", t.drillEnabled ? "pointer" : "default").on("mouseover", function(e) {
+		if (h(this).style("stroke", "#000").style("stroke-width", 2), n) {
+			let i = [`<strong>${n.label}</strong>`, `${t.getFieldLabel(t.valueField)}: ${n.value}`].join("<br>");
+			r.html(i).style("left", e.pageX + 10 + "px").style("top", e.pageY - 10 + "px").transition().duration(200).style("opacity", 1);
+		}
+	}).on("mousemove", function(e) {
+		r.style("left", e.pageX + 10 + "px").style("top", e.pageY - 10 + "px");
+	}).on("mouseout", function() {
+		h(this).style("stroke", i).style("stroke-width", 1), r.transition().duration(200).style("opacity", 0);
+	});
+}
+function Ke(e, t, n, r, i, a) {
+	let { gridData: o, valueField: s, dateField: c, drillEnabled: l, onDataPointClick: u, safeDisplayConfig: d } = e, { completeXRange: f, minY: p, maxY: m, finalCellWidth: h, finalCellHeight: g } = n, _ = /* @__PURE__ */ new Map();
+	o.forEach((e) => _.set(`${e.x}-${e.y}`, e));
+	let v = /* @__PURE__ */ new Map();
+	f.forEach((e, t) => v.set(e, t));
+	for (let n of f) for (let o = p; o <= m; o++) {
+		let f = _.get(`${n}-${o}`), m = v.get(n) || 0, y = t.append("rect").attr("x", m * (h + 4)).attr("y", (o - p) * (g + 4)).attr("width", h).attr("height", g).attr("rx", 2).attr("ry", 2).style("fill", f ? r(f.value) : a.emptyCellColor).style("stroke", a.cellStrokeColor).style("stroke-width", 1);
+		d.showTooltip ? $(y, e, f, i, a.cellStrokeColor) : l && y.style("cursor", "pointer"), l && u && f && y.on("click", function(e) {
+			u({
+				dataPoint: {
+					[s]: f.value,
+					[c]: f.date
+				},
+				clickedField: s,
+				xValue: f.label,
+				position: {
+					x: e.pageX,
+					y: e.pageY
+				},
+				nativeEvent: e
+			});
+		});
+	}
+}
+function qe(e) {
+	if (e > 9999) {
+		let t = Math.floor(e / 100);
+		return `${He[e % 100 - 1]} '${t.toString().slice(-2)}`;
+	}
+	return `'${e.toString().slice(-2)}`;
+}
+function Je(e, t, n, r) {
+	let { gridMapping: i } = e, { completeXRange: a, finalCellWidth: o } = n, s = /* @__PURE__ */ new Map();
+	a.forEach((e, t) => s.set(e, t));
+	let c = /* @__PURE__ */ new Map();
+	for (let e of a) {
+		let t = i.getYearFromX(e);
+		c.has(t) || c.set(t, []), c.get(t).push(e);
+	}
+	for (let e of a) {
+		let n = s.get(e) || 0;
+		t.append("text").attr("x", n * (o + 4) + o / 2).attr("y", -8).attr("text-anchor", "middle").style("font-size", "10px").style("fill", r.textColor).text(i.xFormat(e));
+	}
+	for (let [e, n] of c) {
+		if (n.length === 0) continue;
+		let i = Math.min(...n.map((e) => s.get(e) || 0)), a = Math.max(...n.map((e) => s.get(e) || 0)), c = (i + a) / 2;
+		t.append("text").attr("x", c * (o + 4) + o / 2).attr("y", -25).attr("text-anchor", "middle").style("font-size", "12px").style("font-weight", "bold").style("fill", r.textColor).text(qe(e)), n.length > 1 && t.append("line").attr("x1", i * (o + 4)).attr("x2", a * (o + 4) + o).attr("y1", -20).attr("y2", -20).style("stroke", r.lineColor).style("stroke-width", 1).style("opacity", .3);
+	}
+}
+function Ye(e, t, n, r) {
+	let { gridMapping: i } = e, { completeXRange: a, finalCellWidth: o } = n, s = Math.max(1, Math.floor(a.length / 10));
+	for (let e = 0; e < a.length; e += s) t.append("text").attr("x", e * (o + 4) + o / 2).attr("y", -8).attr("text-anchor", "middle").style("font-size", "10px").style("fill", r.textColor).text(i.xFormat(a[e]));
+}
+function Xe(e, t, n, r) {
+	let { gridMapping: i } = e, { minY: a, maxY: o, finalCellHeight: s } = n;
+	i.hasHierarchicalLabels && i.getYearFromX ? Je(e, t, n, r) : Ye(e, t, n, r);
+	for (let e = a; e <= o; e++) t.append("text").attr("x", -8).attr("y", (e - a) * (s + 4) + s / 2).attr("text-anchor", "end").attr("dy", ".35em").style("font-size", "10px").style("fill", r.textColor).text(i.yFormat(e));
+}
+function Ze(e) {
+	let { svgEl: t, gridData: n, dimensions: r, colorPalette: i, isDark: a, safeDisplayConfig: o } = e;
+	if (h(t).selectAll("*").remove(), n.length === 0) return;
+	let s = We(e), c = h(t).attr("width", s.svgWidth).attr("height", r.height).append("g").attr("transform", `translate(${s.margin.left},${s.margin.top})`), l = n.map((e) => e.value), u = m().domain([p(l) || 0, f(l) || 1]).range(i?.gradient || H), d = Ue(a), g = Ge();
+	return Ke(e, c, s, u, g, d), o.showLabels && Xe(e, c, s, d), () => {
+		g.remove();
+	};
+}
+//#endregion
+//#region src/client/components/charts/ActivityGridChart.tsx
+var Qe = /* @__PURE__ */ e({ default: () => $e }), $e = t.memo(function({ data: e, chartConfig: t, displayConfig: n = {}, queryObject: r, height: i = "100%", colorPalette: o, onDataPointClick: f, drillEnabled: p }) {
+	let { t: m } = D(), h = c(null), { containerRef: g, dimensions: _, dimensionsReady: v } = W(), [y, b] = l("light"), x = R();
+	a(() => (b(B()), V((e) => b(e))), []);
+	let S = s(() => ({
+		showTooltip: n?.showTooltip ?? !0,
+		showLabels: n?.showLabels ?? !0,
+		fitToWidth: n?.fitToWidth ?? !1
+	}), [
+		n?.showTooltip,
+		n?.showLabels,
+		n?.fitToWidth
+	]);
+	if (a(() => {
+		if (!e || e.length === 0 || !h.current || !v || _.width === 0 || !t?.dateField || !t?.valueField) return;
+		let n = Q(t.dateField), i = Q(t.valueField);
+		if (!n || !i) return;
+		let a = ze(r, n), s = Re(a);
+		if (!s) return;
+		let c = Ve(e, n, i, s, a);
+		return Ze({
+			svgEl: h.current,
+			gridData: c,
+			gridMapping: s,
+			granularity: a,
+			dimensions: _,
+			safeDisplayConfig: S,
+			colorPalette: o,
+			isDark: y !== "light",
+			valueField: i,
+			dateField: n,
+			getFieldLabel: x,
+			drillEnabled: p,
+			onDataPointClick: f
+		});
+	}, [
+		e,
+		t,
+		r,
+		_,
+		v,
+		S,
+		o,
+		y,
+		x,
+		p,
+		f
+	]), !e || e.length === 0) return /* @__PURE__ */ u("div", {
+		className: "dc:flex dc:items-center dc:justify-center dc:w-full",
+		style: { height: i },
+		children: /* @__PURE__ */ d("div", {
+			className: "dc:text-center text-dc-text-muted",
+			children: [/* @__PURE__ */ u("div", {
+				className: "dc:text-sm dc:font-semibold dc:mb-1",
+				children: m("chart.runtime.noData")
+			}), /* @__PURE__ */ u("div", {
+				className: "dc:text-xs text-dc-text-secondary",
+				children: m("chart.runtime.noDataHint.activityGrid")
+			})]
+		})
+	});
+	if (!(t?.dateField && t?.valueField)) return /* @__PURE__ */ u("div", {
+		className: "dc:flex dc:items-center dc:justify-center dc:w-full",
+		style: { height: i },
+		children: /* @__PURE__ */ d("div", {
+			className: "dc:text-center text-dc-text-muted",
+			children: [/* @__PURE__ */ u("div", {
+				className: "dc:text-sm dc:font-semibold dc:mb-1",
+				children: m("chart.runtime.activityGridConfigRequired")
+			}), /* @__PURE__ */ u("div", {
+				className: "dc:text-xs text-dc-text-secondary",
+				children: m("chart.runtime.configErrorHint.activityGridRequired")
+			})]
+		})
+	});
+	let C = Q(t.dateField);
+	return (r?.timeDimensions?.find((e) => e.dimension === C || e.dimension.includes(C))?.granularity || "day")?.toLowerCase() === "year" ? /* @__PURE__ */ u("div", {
+		className: "dc:flex dc:items-center dc:justify-center dc:w-full",
+		style: { height: i },
+		children: /* @__PURE__ */ d("div", {
+			className: "dc:text-center text-dc-text-muted",
+			children: [
+				/* @__PURE__ */ u("div", {
+					className: "dc:text-sm dc:font-semibold dc:mb-1",
+					children: m("chart.runtime.activityGridGranularityTooHigh")
+				}),
+				/* @__PURE__ */ u("div", {
+					className: "dc:text-xs text-dc-text-secondary",
+					children: m("chart.runtime.activityGridGranularityHint")
+				}),
+				/* @__PURE__ */ u("div", {
+					className: "dc:text-xs text-dc-text-secondary dc:mt-1",
+					children: m("chart.runtime.activityGridGranularityAction")
+				})
+			]
+		})
+	}) : /* @__PURE__ */ u("div", {
+		className: "dc:w-full dc:flex dc:flex-col dc:relative",
+		style: {
+			height: i,
+			minHeight: "250px",
+			overflow: "hidden",
+			width: "100%"
+		},
+		children: /* @__PURE__ */ d("div", {
+			ref: g,
+			className: "dc:w-full dc:h-full dc:relative dc:overflow-x-auto",
+			style: { width: "100%" },
+			children: [/* @__PURE__ */ u("svg", {
+				ref: h,
+				className: "dc:h-full"
+			}), !v && /* @__PURE__ */ u("div", {
+				className: "dc:absolute dc:inset-0 dc:flex dc:items-center dc:justify-center",
+				children: /* @__PURE__ */ u("div", {
+					className: "text-dc-text-muted dc:text-sm",
+					children: m("chart.runtime.measuringDimensions")
+				})
+			})]
+		})
+	});
+});
+//#endregion
+export { j as A, _ as B, he as C, I as D, F as E, D as F, ie as I, ee as L, _e as M, ge as N, P as O, O as P, w as R, R as S, M as T, Se as _, je as a, z as b, H as c, Te as d, De as f, ve as g, B as h, Me as i, L as j, A as k, U as l, ye as m, Oe as n, W as o, Ce as p, ke as r, we as s, Qe as t, Ee as u, be as v, N as w, V as x, xe as y, g as z };
+
+//# sourceMappingURL=chart-activity-grid-D6X0iOUw.js.map

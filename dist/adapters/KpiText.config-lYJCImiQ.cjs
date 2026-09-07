@@ -1,0 +1,1 @@
+const e=require("./handler-CZcPpgA_.cjs");exports.kpiTextConfig=e.h;

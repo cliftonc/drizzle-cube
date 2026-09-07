@@ -1,0 +1,10 @@
+/**
+ * AI-Ready Data Layer Utilities
+ * Schema-aware intelligence for AI agents - no server-side LLM required
+ */
+export { discoverCubes, findBestFieldMatch, type CubeDiscoveryResult, type DiscoveryOptions } from './discovery.js';
+export { suggestQuery, type QuerySuggestion } from './suggestion.js';
+export { validateQuery, type ValidationResult, type ValidationError, type ValidationWarning } from './validation.js';
+export { QUERY_SCHEMAS, type QuerySchemas } from './schemas.js';
+export { QUERY_PARAMS_SCHEMA, QUERY_LANGUAGE_REFERENCE } from './query-schema.js';
+export { MCP_PROMPTS, MCP_GUIDE_PROMPT, QUERY_LANGUAGE_PROMPT, QUERY_RULES_PROMPT, QUERY_BUILDING_PROMPT, DATE_FILTERING_PROMPT, DEFAULT_MCP_INSTRUCTIONS, getDefaultMCPPrompts, getDefaultMcpInstructions, type MCPPrompt } from './mcp-prompts.js';
