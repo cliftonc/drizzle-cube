@@ -19,12 +19,13 @@ interface CustomDateDropdownProps {
   anchorRef: React.RefObject<HTMLElement>
 }
 
+// `label` is a translation key resolved with t() at render time.
 const LAST_UNITS: { value: LastUnit; label: string }[] = [
-  { value: 'days', label: 'Days' },
-  { value: 'weeks', label: 'Weeks' },
-  { value: 'months', label: 'Months' },
-  { value: 'quarters', label: 'Quarters' },
-  { value: 'years', label: 'Years' }
+  { value: 'days', label: 'dashboardFilter.units.days' },
+  { value: 'weeks', label: 'dashboardFilter.units.weeks' },
+  { value: 'months', label: 'dashboardFilter.units.months' },
+  { value: 'quarters', label: 'dashboardFilter.units.quarters' },
+  { value: 'years', label: 'dashboardFilter.units.years' }
 ]
 
 const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
@@ -170,7 +171,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
             className="dc:flex-1 dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:capitalize dc:transition-colors"
             style={tabButtonStyle(activeTab === tab)}
           >
-            {tab}
+            {t(`dashboardFilter.customTabs.${tab}`)}
           </button>
         ))}
       </div>
@@ -320,7 +321,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 >
                   {LAST_UNITS.map(unit => (
                     <option key={unit.value} value={unit.value}>
-                      {unit.label}
+                      {t(unit.label)}
                     </option>
                   ))}
                 </select>

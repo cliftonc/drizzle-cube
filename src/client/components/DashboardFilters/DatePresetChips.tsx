@@ -7,6 +7,7 @@
 
 import React, { useMemo } from 'react'
 import { DATE_PRESETS, calculateDateRange, formatDateRangeDisplay } from '../shared/utils.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface DatePresetChipsProps {
   activePreset: string | null
@@ -19,6 +20,7 @@ const DatePresetChips: React.FC<DatePresetChipsProps> = ({
   onPresetSelect,
   disabled = false
 }) => {
+  const { t } = useTranslation()
   // Memoize tooltip content for each preset
   const presetTooltips = useMemo(() => {
     const tooltips: Record<string, string> = {}
@@ -69,7 +71,7 @@ const DatePresetChips: React.FC<DatePresetChipsProps> = ({
               }
             }}
           >
-            {preset.label}
+            {t(preset.label)}
           </button>
         )
       })}

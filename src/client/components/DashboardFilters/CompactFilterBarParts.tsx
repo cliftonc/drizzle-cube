@@ -168,6 +168,7 @@ function XTDButton({
   props: CompactFilterBarViewProps
   withTitle: boolean
 }) {
+  const { t } = useTranslation()
   const {
     activeXTDId,
     dateRangeTooltip,
@@ -197,7 +198,7 @@ function XTDButton({
           borderColor: activeXTDId ? 'transparent' : 'var(--dc-border)'
         }}
       >
-        <span>XTD</span>
+        <span>{t('dashboardFilter.xtd.trigger')}</span>
         <ChevronDownIcon className="dc:w-3 dc:h-3" />
       </button>
 

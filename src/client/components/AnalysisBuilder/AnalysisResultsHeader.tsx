@@ -174,6 +174,7 @@ function RefreshButton({
   showCacheBustIndicator,
   setIsHoveringRefresh,
 }: Pick<ResultsToolbarActions, 'onRefreshClick' | 'canRefresh' | 'isRefreshing' | 'showCacheBustIndicator' | 'setIsHoveringRefresh'>) {
+  const { t } = useTranslation()
   if (!onRefreshClick || !canRefresh) return null
   return (
     <button
@@ -191,7 +192,7 @@ function RefreshButton({
       title={isRefreshing ? 'Refreshing...' : showCacheBustIndicator ? 'Click to refresh and bypass cache' : 'Refresh data (Shift+click to bypass cache)'}
     >
       <RefreshIcon className={`dc:w-3 dc:h-3 ${isRefreshing ? 'dc:animate-spin' : ''}`} />
-      <span className="dc:hidden dc:sm:inline">{isRefreshing ? 'Refreshing' : 'Refresh'}</span>
+      <span className="dc:hidden dc:sm:inline">{isRefreshing ? t('results.toolbar.refreshing') : t('results.toolbar.refresh')}</span>
     </button>
   )
 }
