@@ -56,6 +56,9 @@ export async function loadLocale(locale: string): Promise<void> {
   if (locale === 'nl') {
     locale = 'nl-NL'
   }
+  if (locale === 'pt') {
+    locale = 'pt-BR'
+  }
   if (locale === 'en-GB' || locale === 'en') {
     currentLocale = 'en-GB'
     messages = en
