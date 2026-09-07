@@ -18,21 +18,23 @@ export interface DatePreset {
   value: string
 }
 
+// `label` is a translation key (resolved with t() at render time) so the
+// preset chips and XTD options are localisable like the rest of the UI.
 export const DATE_PRESETS: DatePreset[] = [
-  { id: 'today', label: 'Today', value: 'today' },
-  { id: 'yesterday', label: 'Yesterday', value: 'yesterday' },
-  { id: '7d', label: '7D', value: 'last 7 days' },
-  { id: '30d', label: '30D', value: 'last 30 days' },
-  { id: '3m', label: '3M', value: 'last 3 months' },
-  { id: '6m', label: '6M', value: 'last 6 months' },
-  { id: '12m', label: '12M', value: 'last 12 months' }
+  { id: 'today', label: 'dashboardFilter.presets.today', value: 'today' },
+  { id: 'yesterday', label: 'dashboardFilter.presets.yesterday', value: 'yesterday' },
+  { id: '7d', label: 'dashboardFilter.presets.7d', value: 'last 7 days' },
+  { id: '30d', label: 'dashboardFilter.presets.30d', value: 'last 30 days' },
+  { id: '3m', label: 'dashboardFilter.presets.3m', value: 'last 3 months' },
+  { id: '6m', label: 'dashboardFilter.presets.6m', value: 'last 6 months' },
+  { id: '12m', label: 'dashboardFilter.presets.12m', value: 'last 12 months' }
 ]
 
 export const XTD_OPTIONS: DatePreset[] = [
-  { id: 'wtd', label: 'Week to Date', value: 'this week' },
-  { id: 'mtd', label: 'Month to Date', value: 'this month' },
-  { id: 'qtd', label: 'Quarter to Date', value: 'this quarter' },
-  { id: 'ytd', label: 'Year to Date', value: 'this year' }
+  { id: 'wtd', label: 'dashboardFilter.xtd.wtd', value: 'this week' },
+  { id: 'mtd', label: 'dashboardFilter.xtd.mtd', value: 'this month' },
+  { id: 'qtd', label: 'dashboardFilter.xtd.qtd', value: 'this quarter' },
+  { id: 'ytd', label: 'dashboardFilter.xtd.ytd', value: 'this year' }
 ]
 
 type DateRange = { start: Date, end: Date }
