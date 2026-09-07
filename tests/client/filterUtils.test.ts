@@ -655,7 +655,7 @@ describe('filterUtils', () => {
       ]
       const result = applyUniversalTimeToDateFilters(universal, filters)
 
-      expect(result![0].values).toEqual(['2024-01-01', '2024-06-30'])
+      expect((result![0] as SimpleFilter).values).toEqual(['2024-01-01', '2024-06-30'])
       expect(result![1]).toEqual(filters[1])
     })
 
