@@ -165,7 +165,8 @@ vi.mock('../../src/client/components/LoadingIndicator', () => ({
 vi.mock('../../src/client/utils/filterUtils', () => ({
   getApplicableDashboardFilters: vi.fn((filters, _mapping) => filters || []),
   mergeDashboardAndPortletFilters: vi.fn((dashboardFilters, portletFilters) => [...(dashboardFilters || []), ...(portletFilters || [])]),
-  applyUniversalTimeFilters: vi.fn((_dashboardFilters, _mapping, timeDimensions) => timeDimensions || [])
+  applyUniversalTimeFilters: vi.fn((_dashboardFilters, _mapping, timeDimensions) => timeDimensions || []),
+  applyUniversalTimeToDateFilters: vi.fn((_dashboardFilters, filters) => filters)
 }))
 
 // Mock shared/utils (cleanQueryForServer)
