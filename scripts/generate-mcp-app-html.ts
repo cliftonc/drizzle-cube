@@ -2,8 +2,11 @@
  * Post-build script: reads dist/mcp-app/mcp-app.html and writes it
  * to src/mcp-app/generated-html.ts as an exported string constant.
  *
- * This keeps the large HTML blob out of mcp-transport.ts while still
- * allowing bundlers to include it without tree-shaking issues.
+ * This keeps the large (~2 MB) HTML blob out of mcp-transport.ts. It is only
+ * reachable from the framework adapters through a dynamic `import()` in
+ * `getMcpAppHtml` (via `src/adapters/mcp-app-html.ts`, the public
+ * `drizzle-cube/mcp-app-html` subpath) so it never lands in a consumer's server
+ * bundle at import time — never import it statically from adapter code.
  *
  * Run after build:mcp-app, before build:adapters.
  */
