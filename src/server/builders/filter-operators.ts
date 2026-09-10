@@ -89,6 +89,26 @@ const handleNotSet: FilterOperatorHandler = ({ fieldExpr }) => isNull(fieldExpr 
 
 const handleInDateRange: FilterOperatorHandler = (ctx) => {
   const { fieldExpr, values, filteredValues, databaseAdapter, dateTimeBuilder } = ctx
+
+  // A single string value is a relative range ("today", "last 30 days",
+  // "this quarter"...) — the same grammar timeDimensions.dateRange accepts.
+  // Previously this case fell through the `length < 2` guard and the filter
+  // was silently dropped, returning unfiltered (all-time) results.
+  if (filteredValues.length === 1 && typeof filteredValues[0] === 'string') {
+    const relative = dateTimeBuilder.parseRelativeDateRange(filteredValues[0])
+    if (relative) {
+      const startDate = dateTimeBuilder.normalizeDate(relative.start.toISOString())
+      const endDate = dateTimeBuilder.normalizeDate(relative.end.toISOString())
+      if (startDate && endDate) {
+        return and(
+          gte(fieldExpr as AnyColumn, startDate),
+          lte(fieldExpr as AnyColumn, endDate)
+        ) as SQL
+      }
+    }
+    return null
+  }
+
   if (filteredValues.length < 2) {
     return null
   }

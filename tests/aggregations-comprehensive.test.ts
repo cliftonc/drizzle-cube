@@ -316,6 +316,29 @@ describe('Comprehensive Aggregations', () => {
       }
     })
 
+    it('should apply a relative range in an inDateRange filter (single value)', async () => {
+      // Regression: a single relative value ("today", "last 30 days"...) used
+      // to be silently dropped by the `length < 2` guard, returning
+      // unfiltered (all-time) results.
+      const relativeQuery = TestQueryBuilder.create()
+        .measures(['Productivity.recordCount'])
+        .filters([
+          { member: 'Productivity.date', operator: 'inDateRange', values: ['last 30 days'] }
+        ])
+        .build()
+      const unfilteredQuery = TestQueryBuilder.create()
+        .measures(['Productivity.recordCount'])
+        .build()
+
+      const relative = await testExecutor.executeQuery(relativeQuery)
+      const unfiltered = await testExecutor.executeQuery(unfilteredQuery)
+
+      const relativeCount = Number(relative.data[0]['Productivity.recordCount'])
+      const unfilteredCount = Number(unfiltered.data[0]['Productivity.recordCount'])
+      // The filter must actually narrow the result set (test data spans years).
+      expect(relativeCount).toBeLessThan(unfilteredCount)
+    })
+
     it('should handle aggregations with time dimension grouping', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.totalLinesOfCode', 'Productivity.avgHappinessIndex'])

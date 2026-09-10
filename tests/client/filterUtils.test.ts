@@ -10,6 +10,7 @@ import {
   validatePortletFilterMapping,
   extractDashboardFields,
   applyUniversalTimeFilters,
+  applyUniversalTimeToDateFilters,
   normalizeFilterMapping,
   serializeFilterMapping,
   mappingIncludesFilter,
@@ -582,7 +583,7 @@ describe('filterUtils', () => {
       expect(result![0].dateRange).toBe('this quarter')
     })
 
-    it('should only apply filters in the mapping', () => {
+    it('applies universal time filters regardless of mapping (dashboard-wide)', () => {
       const dashboardFilters: DashboardFilter[] = [
         {
           id: 'time-filter-1',
@@ -606,9 +607,78 @@ describe('filterUtils', () => {
         }
       ]
       const timeDimensions = [{ dimension: 'Orders.createdAt', granularity: 'day' }]
+      // Mapping is ignored for universal time filters: they are dashboard-wide
+      // (per-id mapping rots when a filter is recreated). First universal wins.
       const result = applyUniversalTimeFilters(dashboardFilters, ['time-filter-2'], timeDimensions)
 
-      expect(result![0].dateRange).toEqual(['2024-07-01', '2024-12-31'])
+      expect(result![0].dateRange).toEqual(['2024-01-01', '2024-06-30'])
+    })
+
+    it('applies with an empty mapping (dashboard-wide)', () => {
+      const dashboardFilters: DashboardFilter[] = [
+        {
+          id: 'time-filter-1',
+          label: 'Date Range',
+          isUniversalTime: true,
+          filter: {
+            member: 'Orders.createdAt',
+            operator: 'inDateRange',
+            values: ['last 30 days']
+          }
+        }
+      ]
+      const timeDimensions = [{ dimension: 'Orders.createdAt', granularity: 'day' }]
+      const result = applyUniversalTimeFilters(dashboardFilters, undefined, timeDimensions)
+
+      expect(result![0].dateRange).toEqual('last 30 days')
+    })
+  })
+
+  describe('applyUniversalTimeToDateFilters', () => {
+    const universal: DashboardFilter[] = [
+      {
+        id: 'time-filter-1',
+        label: 'Date Range',
+        isUniversalTime: true,
+        filter: {
+          member: 'Orders.createdAt',
+          operator: 'inDateRange',
+          values: ['2024-01-01', '2024-06-30']
+        }
+      }
+    ]
+
+    it('rewrites inDateRange filters with the universal range', () => {
+      const filters = [
+        { member: 'Orders.createdAt', operator: 'inDateRange' as const, values: ['last 30 days'] },
+        { member: 'Orders.status', operator: 'equals' as const, values: ['done'] }
+      ]
+      const result = applyUniversalTimeToDateFilters(universal, filters)
+
+      expect((result![0] as SimpleFilter).values).toEqual(['2024-01-01', '2024-06-30'])
+      expect(result![1]).toEqual(filters[1])
+    })
+
+    it('recurses into group filters', () => {
+      const filters = [
+        {
+          type: 'and' as const,
+          filters: [
+            { member: 'Orders.createdAt', operator: 'inDateRange' as const, values: ['last 7 days'] }
+          ]
+        }
+      ]
+      const result = applyUniversalTimeToDateFilters(universal, filters as any)
+
+      expect((result![0] as any).filters[0].values).toEqual(['2024-01-01', '2024-06-30'])
+    })
+
+    it('is a no-op without a universal filter', () => {
+      const filters = [
+        { member: 'Orders.createdAt', operator: 'inDateRange' as const, values: ['last 30 days'] }
+      ]
+      expect(applyUniversalTimeToDateFilters([], filters)).toBe(filters)
+      expect(applyUniversalTimeToDateFilters(undefined, undefined)).toBeUndefined()
     })
   })
 })

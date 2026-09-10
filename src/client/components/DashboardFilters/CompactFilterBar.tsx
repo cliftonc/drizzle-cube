@@ -10,7 +10,7 @@
  * layout shell.
  */
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import type { DashboardFilter, CubeMeta } from '../../types.js'
 import { useCompactFilterBar } from './useCompactFilterBar.js'
 import { DesktopLayout, MobileLayout, type CompactFilterBarViewProps } from './CompactFilterBarParts.js'
@@ -25,6 +25,26 @@ interface CompactFilterBarProps {
   onRemoveFilter?: (filterId: string) => void
 }
 
+/**
+ * Mount ONE layout, chosen by media query, instead of rendering both and
+ * hiding one with CSS. The layouts share the dropdown open-state, so mounting
+ * both used to mount two CustomDate/XTD dropdowns at once — and each
+ * dropdown's document-level outside-click handler treated clicks inside the
+ * *other* instance as "outside", closing the shared state on any interaction.
+ * (768px matches the dc:md: breakpoint previously used to swap them.)
+ */
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(true)
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 768px)')
+    const update = () => setIsDesktop(query.matches)
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+  return isDesktop
+}
+
 const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   dashboardFilters,
   schema,
@@ -35,6 +55,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   onRemoveFilter
 }) => {
   const bar = useCompactFilterBar(dashboardFilters, onDashboardFiltersChange)
+  const isDesktop = useIsDesktop()
 
   // If no filters and not in edit mode, don't show anything
   if (!isEditMode && bar.localFilters.length === 0) {
@@ -72,8 +93,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
         backgroundColor: 'var(--dc-surface)'
       }}
     >
-      <DesktopLayout {...viewProps} />
-      <MobileLayout {...viewProps} />
+      {isDesktop ? <DesktopLayout {...viewProps} /> : <MobileLayout {...viewProps} />}
     </div>
   )
 }
