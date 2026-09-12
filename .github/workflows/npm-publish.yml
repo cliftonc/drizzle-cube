@@ -2,7 +2,14 @@ name: Publish to NPM
 
 on:
   release:
-    types: [created]
+    # `published`, not `created`. Attaching an asset to `gh release create`
+    # makes it create a draft, upload, then publish — and Actions does not run
+    # workflows for draft release activity, so `created` is swallowed and the
+    # publish silently never happens. `published` fires exactly once either way.
+    types: [published]
+  # Escape hatch for when a release event is missed: publishes whatever version
+  # the checked-out ref declares, after the same CI gate.
+  workflow_dispatch:
 
 permissions:
   id-token: write  # Required for OIDC
