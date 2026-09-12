@@ -1133,6 +1133,7 @@
   "chart.runtime.markdown.noContent": "No content",
   "chart.runtime.markdown.addContent": "Add markdown content in the chart configuration",
   "chart.runtime.markdown.templateError": "Template error",
+  "chart.runtime.markdown.templateWarning": "Unresolved references",
   "chart.runtime.axisFormat.label": "Label",
   "chart.runtime.axisFormat.autoLabel": "Auto-generated label",
   "chart.runtime.axisFormat.unit": "Unit",

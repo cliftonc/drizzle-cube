@@ -17,20 +17,21 @@ import {
  * Showing them beats showing nothing: the author is usually looking straight at
  * the portlet while editing, and a thrown error would take the dashboard down.
  */
-function TemplateErrors({ errors, t }: {
-  errors: MarkdownTemplateDiagnostic[]
-  t: (key: string) => string
+function Diagnostics({ heading, items, tone }: {
+  heading: string
+  items: MarkdownTemplateDiagnostic[]
+  tone: 'error' | 'warning'
 }) {
   return (
     <>
-      <div className="dc:font-semibold dc:mb-2 text-dc-error">
-        {t('chart.runtime.markdown.templateError')}
+      <div className={`dc:font-semibold dc:mb-2 ${tone === 'error' ? 'text-dc-error' : 'text-dc-warning'}`}>
+        {heading}
       </div>
       <ul className="dc:list-disc dc:ml-5 dc:space-y-1 dc:text-xs text-dc-text-secondary">
-        {errors.map((error, index) => (
-          <li key={`${error.line}:${error.column}:${index}`}>
-            <span className="dc:font-mono">{`${error.line}:${error.column}`}</span>
-            {` ${error.message}`}
+        {items.map((item, index) => (
+          <li key={`${item.line}:${item.column}:${index}`}>
+            <span className="dc:font-mono">{`${item.line}:${item.column}`}</span>
+            {` ${item.message}`}
           </li>
         ))}
       </ul>
@@ -89,7 +90,11 @@ const MarkdownChart = React.memo(function MarkdownChart({
         className={`dc-markdown-content dc:w-full dc:overflow-auto ${padding}dc:text-sm`}
         style={containerStyle}
       >
-        <TemplateErrors errors={template.errors} t={t} />
+        <Diagnostics
+          heading={t('chart.runtime.markdown.templateError')}
+          items={template.errors}
+          tone="error"
+        />
       </div>
     )
   }
@@ -105,6 +110,18 @@ const MarkdownChart = React.memo(function MarkdownChart({
       className={`dc-markdown-content dc:w-full dc:overflow-auto ${padding}${bodySizeClass(fontSize)} ${alignment}`}
       style={containerStyle}
     >
+      {/* Shown above the body, not instead of it: the rest of the narrative is
+          usually correct, and the blank it leaves behind is the only other clue
+          the author gets. */}
+      {template.warnings.length > 0 ? (
+        <div className="dc:mb-3 dc:pb-2 dc:text-sm border-dc-border dc:border-b">
+          <Diagnostics
+            heading={t('chart.runtime.markdown.templateWarning')}
+            items={template.warnings}
+            tone="warning"
+          />
+        </div>
+      ) : null}
       {body ? <Markdown options={markdownOptions}>{body}</Markdown> : null}
     </div>
   )

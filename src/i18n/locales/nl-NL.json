@@ -1133,6 +1133,7 @@
   "chart.runtime.markdown.noContent": "Geen inhoud",
   "chart.runtime.markdown.addContent": "Voeg markdown-inhoud toe in de grafiekconfiguratie",
   "chart.runtime.markdown.templateError": "Sjabloonfout",
+  "chart.runtime.markdown.templateWarning": "Onopgeloste verwijzingen",
   "chart.runtime.axisFormat.label": "Label",
   "chart.runtime.axisFormat.autoLabel": "Automatisch-gegenereerd label",
   "chart.runtime.axisFormat.unit": "Eenheid",

@@ -16,7 +16,8 @@ import type { CubeQuery } from '../../types.js'
 import {
   buildTemplateContext,
   renderMarkdownTemplate,
-  type MarkdownTemplateDiagnostic
+  type MarkdownTemplateDiagnostic,
+  type MarkdownTemplateResult
 } from './markdownTemplate.js'
 
 /** Heading scale per fontSize setting. */
@@ -150,6 +151,8 @@ export interface MarkdownTemplateState {
   /** The rendered body, or null before the first async render lands. */
   output: string | null
   errors: MarkdownTemplateDiagnostic[]
+  /** References that resolved to nothing, reported alongside the output. */
+  warnings: MarkdownTemplateDiagnostic[]
 }
 
 /**
@@ -174,10 +177,7 @@ export function useMarkdownTemplate(
   const metaContext = useContext(CubeMetaContext) as CubeMetaContextValue | null
   const getFieldLabel = metaContext?.getFieldLabel
 
-  const [result, setResult] = useState<{
-    output: string
-    errors: MarkdownTemplateDiagnostic[]
-  } | null>(null)
+  const [result, setResult] = useState<MarkdownTemplateResult | null>(null)
 
   useEffect(() => {
     if (!isTemplate || !content.trim()) {
@@ -199,6 +199,7 @@ export function useMarkdownTemplate(
   return {
     isTemplate,
     output: result?.output ?? null,
-    errors: result?.errors ?? []
+    errors: result?.errors ?? [],
+    warnings: result?.warnings ?? []
   }
 }

@@ -21,6 +21,7 @@
 
 import {
   createEngine,
+  parse,
   standardFilters,
   type TemplateEngine,
   type TemplateVariables
@@ -51,6 +52,13 @@ export interface MarkdownTemplateContext {
 export interface MarkdownTemplateResult {
   output: string
   errors: MarkdownTemplateDiagnostic[]
+  /**
+   * References the template makes that resolve to nothing. Knap renders an
+   * unknown name as an empty string, so a misspelt field produces a blank
+   * heading rather than any complaint — the failure is invisible at exactly the
+   * moment the author needs to see it.
+   */
+  warnings: MarkdownTemplateDiagnostic[]
 }
 
 export interface MarkdownTemplateDiagnostic {
@@ -186,6 +194,174 @@ function safeLabel(getFieldLabel: (key: string) => string, key: string): string 
   }
 }
 
+/** The variables every template is given, whatever the query returned. */
+const CONTEXT_NAMES = ['rows', 'labelled', 'data', 'rowCount', 'first', 'last', 'fields']
+
+/** Variables whose members are result fields, so `x.alias` must be a real one. */
+const ROW_SHAPED = ['first', 'last']
+
+/** The members a `fields` entry carries. */
+const FIELD_MEMBERS = ['key', 'alias', 'label']
+
+/** A Knap identifier, which carries its dotted access as a `path`. */
+interface IdentifierNode {
+  type: 'identifier'
+  name: string
+  path?: string[]
+  line: number
+  column: number
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isIdentifier(node: unknown): node is IdentifierNode {
+  return isRecord(node) && node.type === 'identifier' && typeof node.name === 'string'
+}
+
+/** Depth-first walk over the parsed template, visiting every node once. */
+function walkNodes(node: unknown, visit: (node: Record<string, unknown>) => void): void {
+  if (Array.isArray(node)) {
+    for (const child of node) walkNodes(child, visit)
+    return
+  }
+  if (!isRecord(node)) return
+  visit(node)
+  for (const value of Object.values(node)) walkNodes(value, visit)
+}
+
+/**
+ * Map each `{% for %}` iterator to what it iterates.
+ *
+ * A loop variable is only checkable once we know its source: `row` in
+ * `for row in rows` holds a result row, so its members are field aliases, while
+ * `f` in `for f in fields` holds metadata instead.
+ */
+function collectLoopSources(ast: unknown): Map<string, string> {
+  const sources = new Map<string, string>()
+  walkNodes(ast, (node) => {
+    if (node.type !== 'for' || typeof node.iterator !== 'string') return
+    const iterable = node.iterable
+    sources.set(node.iterator, isIdentifier(iterable) ? iterable.name : '')
+  })
+  return sources
+}
+
+/** What a root variable holds, which decides how its members are checked. */
+type RootKind =
+  /** A row under aliases — members must be real aliases. */
+  | { kind: 'aliased' }
+  /** A `fields` entry — members are the metadata keys. */
+  | { kind: 'metadata' }
+  /** A raw row with dotted keys — dotted access never resolves on it. */
+  | { kind: 'raw' }
+  /** Not checkable, e.g. `labelled`, whose keys contain spaces. */
+  | { kind: 'skip' }
+
+function rootKind(root: string, loopSources: Map<string, string>): RootKind {
+  if (ROW_SHAPED.includes(root)) return { kind: 'aliased' }
+
+  switch (loopSources.get(root)) {
+    case 'rows': return { kind: 'aliased' }
+    case 'fields': return { kind: 'metadata' }
+    case 'data': return { kind: 'raw' }
+    default: return { kind: 'skip' }
+  }
+}
+
+/**
+ * Find references that will silently render as nothing.
+ *
+ * Two mistakes account for nearly all of them: naming a variable the context
+ * does not provide, and reading a field off a row under a name that is not its
+ * alias. Both look identical in the output — a blank space where a value should
+ * be — so they are reported with the names that would have worked.
+ */
+export function findUnknownReferences(
+  template: string,
+  context: MarkdownTemplateContext
+): MarkdownTemplateDiagnostic[] {
+  const { ast, errors } = parse(template)
+  // A template that does not parse has real errors to fix first.
+  if (errors.length > 0) return []
+
+  const aliases = context.fields.map((field) => field.alias)
+  const loopSources = collectLoopSources(ast)
+  const knownRoots = new Set([...CONTEXT_NAMES, ...loopSources.keys()])
+  const available = aliases.length > 0 ? aliases.join(', ') : CONTEXT_NAMES.join(', ')
+
+  const scope: ReferenceScope = { aliases, loopSources, knownRoots, available }
+  const diagnostics: MarkdownTemplateDiagnostic[] = []
+  const reported = new Set<string>()
+
+  walkNodes(ast, (node) => {
+    if (!isIdentifier(node)) return
+    const message = describeReference(node.path ?? [node.name], scope)
+    if (message) addOnce(diagnostics, reported, node, message)
+  })
+
+  return diagnostics
+}
+
+/** What a template may legitimately name, derived from the context and its loops. */
+interface ReferenceScope {
+  aliases: string[]
+  loopSources: Map<string, string>
+  knownRoots: Set<string>
+  /** The alias list as prose, for the "Available: …" half of a message. */
+  available: string
+}
+
+/** The problem with one reference, or null if there is none. */
+function describeReference(path: string[], scope: ReferenceScope): string | null {
+  const [root, member] = path
+
+  if (!scope.knownRoots.has(root)) {
+    return `Unknown variable "${root}". Available: ${CONTEXT_NAMES.join(', ')}.`
+  }
+  if (member === undefined) return null
+
+  return describeMember(path, member, scope)
+}
+
+/** The problem with reading `member` off a known root, or null if there is none. */
+function describeMember(path: string[], member: string, scope: ReferenceScope): string | null {
+  const root = path[0]
+
+  switch (rootKind(root, scope.loopSources).kind) {
+    case 'raw':
+      // `data` keeps the cube-qualified keys, and Knap reads `r.Employees.count`
+      // as two levels of nesting rather than one literal key, so it resolves to
+      // nothing. Bracket syntax is the only way in.
+      return `"${root}" holds raw rows, so dotted access does not resolve. `
+        + `Use ${root}["${path.slice(1).join('.')}"], or loop over rows and use ${root}.${scope.aliases[0] ?? 'alias'}.`
+    case 'aliased':
+      return unknownField(member, scope.aliases, scope.available)
+    case 'metadata':
+      return unknownField(member, FIELD_MEMBERS, FIELD_MEMBERS.join(', '))
+    case 'skip':
+      return null
+  }
+}
+
+/** "Unknown field" with the names that would have worked, or null if it is known. */
+function unknownField(member: string, known: string[], available: string): string | null {
+  return known.includes(member) ? null : `Unknown field "${member}". Available: ${available}.`
+}
+
+/** Record a diagnostic once per name, so a loop does not repeat the same advice. */
+function addOnce(
+  diagnostics: MarkdownTemplateDiagnostic[],
+  reported: Set<string>,
+  node: IdentifierNode,
+  message: string
+): void {
+  if (reported.has(message)) return
+  reported.add(message)
+  diagnostics.push({ message, line: node.line, column: node.column })
+}
+
 /**
  * Render limits for a dashboard portlet.
  *
@@ -257,16 +433,24 @@ export async function renderMarkdownTemplate(
     }
 
     const result = await getEngine().render(template, { variables }, { limits: RENDER_LIMITS })
+    const errors = result.errors.map((error) => ({
+      message: error.message,
+      line: error.line,
+      column: error.column
+    }))
     return {
       output: result.output,
-      errors: result.errors.map((error) => ({
-        message: error.message,
-        line: error.line,
-        column: error.column
-      }))
+      errors,
+      // Only worth computing when the template ran: a parse failure has real
+      // errors to fix first, and every reference would look unresolved.
+      warnings: errors.length > 0 ? [] : findUnknownReferences(template, context)
     }
   } catch (error) {
-    return { output: '', errors: [{ message: toMessage(error), line: 1, column: 1 }] }
+    return {
+      output: '',
+      errors: [{ message: toMessage(error), line: 1, column: 1 }],
+      warnings: []
+    }
   }
 }
 

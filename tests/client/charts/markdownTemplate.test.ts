@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import {
   aliasForField,
   buildTemplateContext,
+  findUnknownReferences,
   renderMarkdownTemplate,
   validateTemplate
 } from '../../../src/client/components/charts/markdownTemplate'
@@ -161,6 +162,99 @@ describe('renderMarkdownTemplate', () => {
     expect(result.output).toBe('')
     expect(result.errors.length).toBeGreaterThan(0)
     expect(result.errors[0]).toMatchObject({ line: expect.any(Number), column: expect.any(Number) })
+  })
+})
+
+describe('findUnknownReferences', () => {
+  const context = buildTemplateContext(HEADCOUNT_ROWS)
+
+  it('finds nothing wrong with a correct template', () => {
+    const template = '{% for row in rows %}## {{ row.employees_department }}{% endfor %}'
+
+    expect(findUnknownReferences(template, context)).toEqual([])
+  })
+
+  // The reported case: the loop is fine, but a misspelt field renders as an
+  // empty heading, so nothing appears and nothing complains.
+  it('catches a misspelt field on a loop variable', () => {
+    const template = '{% for row in rows %}\n## {{ row.employee_department }}\n{% endfor %}'
+    const found = findUnknownReferences(template, context)
+
+    expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('Unknown field "employee_department"')
+    expect(found[0].message).toContain('employees_department')
+  })
+
+  it('reports a misspelt field once, not once per row', () => {
+    const template = '{% for row in rows %}{{ row.nope }}{{ row.nope }}{% endfor %}'
+
+    expect(findUnknownReferences(template, context)).toHaveLength(1)
+  })
+
+  it('catches a field misspelt on first or last', () => {
+    const found = findUnknownReferences('{{ first.employee_count }}', context)
+
+    expect(found[0].message).toContain('Unknown field "employee_count"')
+  })
+
+  it('catches a variable the context does not provide', () => {
+    const found = findUnknownReferences('{{ totals }}', context)
+
+    expect(found[0].message).toContain('Unknown variable "totals"')
+    expect(found[0].message).toContain('rowCount')
+  })
+
+  it('allows the members of a fields entry', () => {
+    const template = '{% for f in fields %}{{ f.alias }} {{ f.label }} {{ f.key }}{% endfor %}'
+
+    expect(findUnknownReferences(template, context)).toEqual([])
+  })
+
+  it('catches an unknown member on a fields entry', () => {
+    const found = findUnknownReferences('{% for f in fields %}{{ f.title }}{% endfor %}', context)
+
+    expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('Available: key, alias, label.')
+  })
+
+  it('stays quiet about members of a labelled row, whose keys have spaces', () => {
+    const template = '{% for l in labelled %}{{ l.anything }}{% endfor %}'
+
+    expect(findUnknownReferences(template, context)).toEqual([])
+  })
+
+  it('leaves bracket access on raw rows alone', () => {
+    expect(findUnknownReferences('{{ data[0]["Employees.count"] }}', context)).toEqual([])
+  })
+
+  it('leaves bracket access inside a loop over raw rows alone', () => {
+    const template = '{% for r in data %}{{ r["Employees.count"] }}{% endfor %}'
+
+    expect(findUnknownReferences(template, context)).toEqual([])
+  })
+
+  // Knap reads `r.Employees.count` as two levels of nesting, not one literal
+  // key, so it resolves to nothing on a raw row.
+  it('catches dotted access on a raw row and suggests brackets', () => {
+    const template = '{% for r in data %}{{ r.Employees.count }}{% endfor %}'
+    const found = findUnknownReferences(template, context)
+
+    expect(found).toHaveLength(1)
+    expect(found[0].message).toContain('r["Employees.count"]')
+  })
+
+  it('does not second-guess labelled, whose keys contain spaces', () => {
+    expect(findUnknownReferences('{{ labelled | table }}', context)).toEqual([])
+  })
+
+  it('stays quiet when the template does not parse', () => {
+    expect(findUnknownReferences('{% if %}', context)).toEqual([])
+  })
+
+  it('reports a line and column to point at', () => {
+    const found = findUnknownReferences('line one\n{{ first.wrong }}', context)
+
+    expect(found[0].line).toBe(2)
   })
 })
 
