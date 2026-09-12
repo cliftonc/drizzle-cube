@@ -9,15 +9,28 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
  * drop zones, display options, clickable elements, validation.
  */
 export const markdownConfig: ChartTypeConfig = {
-  skipQuery: true, // This chart doesn't require a valid query
-  dropZones: [], // No drop zones needed for markdown content
+  // Does not *require* a query. It may still carry one: a markdown portlet with
+  // a query renders its content as a Knap template over the result rows. See
+  // `markdownTemplate.ts` and `hasRunnableQuery` in `parsePortletQuery.ts`.
+  skipQuery: true,
+  dropZones: [], // No axes to map — the template addresses fields by name
   displayOptionsConfig: [
     {
       key: 'content',
       label: 'chart.configText.markdown_content',
       type: 'string',
-      placeholder: '# Welcome\n\nAdd your **markdown** content here:\n\n- Lists with bullets\n- [Links](https://example.com)\n- *Italic* and **bold** text\n\n---\n\nUse --- for horizontal rules.',
-      description: 'chart.configText.enter_markdown_text_supports_headers_bold_text_italic_text_links_text_ur'
+      // The content is this chart's entire substance, so it belongs on the
+      // Chart tab where the drop zones would be — that tab is otherwise empty
+      // for markdown, and the editor deserves better than a sidebar box.
+      placement: 'chart',
+      rows: 18,
+      syntax: 'markdownTemplate',
+      placeholder: 'chart.markdown.contentPlaceholder',
+      description: 'chart.markdown.contentDescription',
+      // The variable and filter syntax is Knap's, and restating it in help text
+      // only ever gets a fraction of it across. Link to the reference instead.
+      docsUrl: 'https://knap.md/variables',
+      docsLabel: 'chart.markdown.contentDocsLabel'
     },
     {
       key: 'accentColorIndex',

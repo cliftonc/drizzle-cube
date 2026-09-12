@@ -12,7 +12,9 @@ import SectionHeading from './SectionHeading.js'
 import AnalysisAxisDropZone from './AnalysisAxisDropZone.js'
 import ChartTypeSelector from '../ChartTypeSelector.js'
 import { useChartConfig } from '../../charts/lazyChartConfigRegistry.js'
-import type { ChartType, ChartAxisConfig } from '../../types.js'
+import { optionsForPlacement } from '../../charts/chartConfigs.js'
+import DisplayOptionControl from './DisplayOptionControl.js'
+import type { ChartType, ChartAxisConfig, ChartDisplayConfig, ColorPalette } from '../../types.js'
 import type { MetricItem, BreakdownItem } from './types.js'
 import type { ChartAvailabilityMap } from '../../shared/chartDefaults.js'
 import type { MetaResponse } from '../../shared/types.js'
@@ -34,6 +36,14 @@ interface AnalysisChartConfigPanelProps {
   chartAvailability?: ChartAvailabilityMap
   onChartTypeChange: (type: ChartType) => void
   onChartConfigChange: (config: ChartAxisConfig) => void
+  /**
+   * Display config, for the options a chart asks to render here rather than on
+   * the Display tab — see `placement` on `DisplayOptionConfig`. Optional, since
+   * not every mount of this panel owns the display config.
+   */
+  displayConfig?: ChartDisplayConfig
+  colorPalette?: ColorPalette
+  onDisplayConfigChange?: (config: ChartDisplayConfig) => void
 }
 
 export default function AnalysisChartConfigPanel({
@@ -44,7 +54,10 @@ export default function AnalysisChartConfigPanel({
   schema,
   chartAvailability,
   onChartTypeChange,
-  onChartConfigChange
+  onChartConfigChange,
+  displayConfig,
+  colorPalette,
+  onDisplayConfigChange
 }: AnalysisChartConfigPanelProps) {
   const { t } = useTranslation()
   // Track currently dragging item for immediate state updates
@@ -69,6 +82,9 @@ export default function AnalysisChartConfigPanel({
 
   // Check if this chart type skips queries
   const shouldSkipQuery = chartTypeConfig.skipQuery === true
+
+  // Options this chart wants on the Chart tab rather than the Display tab.
+  const chartPlacedOptions = optionsForPlacement(chartTypeConfig.displayOptionsConfig, 'chart')
 
   // Get fields for each drop zone
   const getFieldsForDropZone = useCallback((key: string): string[] => {
@@ -299,6 +315,24 @@ export default function AnalysisChartConfigPanel({
           compact
         />
       </div>
+
+      {/* Options the chart asks to render here instead of on the Display tab.
+          They take the place of the drop zones, which a content-first chart
+          does not have. */}
+      {displayConfig && onDisplayConfigChange && chartPlacedOptions.length > 0 && (
+        <div className="dc:space-y-2">
+          {chartPlacedOptions.map((option) => (
+            <DisplayOptionControl
+              key={option.key}
+              option={option}
+              displayConfig={displayConfig}
+              colorPalette={colorPalette}
+              chartConfig={chartConfig}
+              onDisplayConfigChange={onDisplayConfigChange}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Chart Axis Configuration - Dynamic Drop Zones */}
       {!shouldSkipQuery && chartTypeConfig.dropZones.length > 0 && (

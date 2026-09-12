@@ -20,6 +20,7 @@ import type { ServerFlowQuery } from '../../types/flow.js'
 import { isServerFlowQuery } from '../../types/flow.js'
 import type { ServerRetentionQuery } from '../../types/retention.js'
 import { isServerRetentionQuery } from '../../types/retention.js'
+import { queryHasMembers } from '../../../shared/query-shape.js'
 import {
   getApplicableDashboardFilters,
   mergeDashboardAndPortletFilters,
@@ -41,6 +42,41 @@ const EMPTY_RESULT: ParsedPortletQuery = {
   serverFunnelQuery: null,
   serverFlowQuery: null,
   serverRetentionQuery: null
+}
+
+/**
+ * Whether a portlet's query string asks for anything the engine could run.
+ *
+ * A chart type marked `skipQuery` does not *require* a query, but it may still
+ * carry one — a markdown portlet with a query renders its content as a data
+ * template. This decides which of the two it is.
+ *
+ * Everything unrunnable reads as "no query": an empty string, `{}` (what the
+ * agent writes for a text portlet), unparseable JSON, or a query whose members
+ * are all empty. The alternate formats count as runnable in their own right.
+ */
+export function hasRunnableQuery(query: string): boolean {
+  if (!query || !query.trim()) return false
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(query)
+  } catch {
+    return false
+  }
+
+  if (!parsed || typeof parsed !== 'object') return false
+
+  if (
+    isMultiQueryConfig(parsed)
+    || isServerFunnelQuery(parsed)
+    || isServerFlowQuery(parsed)
+    || isServerRetentionQuery(parsed)
+  ) {
+    return true
+  }
+
+  return queryHasMembers(parsed as Partial<CubeQuery>)
 }
 
 export interface ParsePortletQueryParams {

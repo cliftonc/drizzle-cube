@@ -306,7 +306,10 @@ export function buildChartRequirementsDescription(allowedChartTypes: string[]): 
     }
 
     if (config.skipQuery) {
-      lines.push(`  ${chartType}${contextSuffix} No query needed.`)
+      lines.push(
+        `  ${chartType}${contextSuffix} Query optional: omit it for static text, `
+        + 'or supply one to render displayConfig.content as a data template.'
+      )
       continue
     }
 

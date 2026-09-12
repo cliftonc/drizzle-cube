@@ -2,102 +2,65 @@ import React, { useMemo } from 'react'
 import { useTranslation } from '../../hooks/useTranslation.js'
 import Markdown from 'markdown-to-jsx'
 import type { ChartProps } from '../../types.js'
+import type { MarkdownTemplateDiagnostic } from './markdownTemplate.js'
+import {
+  alignmentClass,
+  bodySizeClass,
+  buildAccentBorderStyle,
+  buildMarkdownOptions,
+  resolveAccentColor,
+  useMarkdownTemplate
+} from './MarkdownChart.helpers.js'
 
-// Header size classes per fontSize setting (stable constants, outside component)
-const headerSizes: Record<string, Record<number, string>> = {
-  small: { 1: 'dc:text-lg', 2: 'dc:text-base', 3: 'dc:text-sm' },
-  medium: { 1: 'dc:text-3xl', 2: 'dc:text-2xl', 3: 'dc:text-xl' },
-  large: { 1: 'dc:text-5xl', 2: 'dc:text-4xl', 3: 'dc:text-3xl' }
+/**
+ * A template that failed to parse or render reports its diagnostics in place.
+ * Showing them beats showing nothing: the author is usually looking straight at
+ * the portlet while editing, and a thrown error would take the dashboard down.
+ */
+function Diagnostics({ heading, items, tone }: {
+  heading: string
+  items: MarkdownTemplateDiagnostic[]
+  tone: 'error' | 'warning'
+}) {
+  return (
+    <>
+      <div className={`dc:font-semibold dc:mb-2 ${tone === 'error' ? 'text-dc-error' : 'text-dc-warning'}`}>
+        {heading}
+      </div>
+      <ul className="dc:list-disc dc:ml-5 dc:space-y-1 dc:text-xs text-dc-text-secondary">
+        {items.map((item, index) => (
+          <li key={`${item.line}:${item.column}:${index}`}>
+            <span className="dc:font-mono">{`${item.line}:${item.column}`}</span>
+            {` ${item.message}`}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
 }
 
-const headerMargins: Record<number, string> = { 1: 'dc:mb-4', 2: 'dc:mb-3', 3: 'dc:mb-2' }
-
 const MarkdownChart = React.memo(function MarkdownChart({
+  data,
   displayConfig = {},
+  queryObject,
   height = "100%",
   colorPalette
 }: ChartProps) {
   const { t } = useTranslation()
   const content = displayConfig.content || ''
-  const accentColorIndex = displayConfig.accentColorIndex ?? 0
   const fontSize = displayConfig.fontSize || 'medium'
-  const alignment = displayConfig.alignment || 'left'
   const transparentBackground = !!displayConfig.transparentBackground
-  const accentBorder = displayConfig.accentBorder || 'none'
 
-  // Get accent color from palette
-  const accentColor = useMemo(() => {
-    if (colorPalette?.colors && accentColorIndex < colorPalette.colors.length) {
-      return colorPalette.colors[accentColorIndex]
-    }
-    return '#8884d8'
-  }, [colorPalette, accentColorIndex])
+  const accentColor = resolveAccentColor(colorPalette?.colors, displayConfig.accentColorIndex ?? 0)
 
-  // Font size mapping
-  const fontSizeClasses: Record<string, string> = {
-    small: 'dc:text-sm',
-    medium: 'dc:text-lg',
-    large: 'dc:text-xl'
-  }
+  // With a query attached the content is a Knap template over the result rows
+  // rather than literal markdown. Without one this is inert.
+  const template = useMarkdownTemplate(content, data, queryObject)
 
-  // Alignment mapping
-  const alignmentClasses: Record<string, string> = {
-    left: 'dc:text-left',
-    center: 'dc:text-center',
-    right: 'dc:text-right'
-  }
-
-  // Build markdown-to-jsx options with dynamic accent color
-  const markdownOptions = useMemo(() => ({
-    overrides: {
-      h1: {
-        props: {
-          className: `dc:font-bold ${headerSizes[fontSize]?.[1] || 'dc:text-3xl'} ${headerMargins[1]}`,
-          style: { color: accentColor }
-        }
-      },
-      h2: {
-        props: {
-          className: `dc:font-bold ${headerSizes[fontSize]?.[2] || 'dc:text-2xl'} ${headerMargins[2]}`,
-          style: { color: accentColor }
-        }
-      },
-      h3: {
-        props: {
-          className: `dc:font-bold ${headerSizes[fontSize]?.[3] || 'dc:text-xl'} ${headerMargins[3]}`,
-          style: { color: accentColor }
-        }
-      },
-      p: { props: { className: 'dc:mb-3 dc:leading-relaxed text-dc-text' } },
-      strong: { props: { className: 'dc:font-bold text-dc-text' } },
-      em: { props: { className: 'dc:italic text-dc-text' } },
-      a: {
-        props: {
-          className: 'dc:hover:underline dc:transition-colors',
-          target: '_blank',
-          rel: 'nofollow noopener noreferrer',
-          style: { color: accentColor }
-        }
-      },
-      code: { props: { className: 'dc:px-1 dc:py-0.5 dc:rounded-sm dc:text-xs bg-dc-surface-secondary text-dc-accent dc:font-mono' } },
-      pre: { props: { className: 'dc:rounded-lg dc:p-3 dc:my-2 dc:overflow-x-auto dc:text-xs bg-dc-surface-secondary text-dc-text dc:font-mono' } },
-      ul: { props: { className: 'dc:list-disc dc:ml-6 dc:mb-3 text-dc-text dc:space-y-1' } },
-      ol: { props: { className: 'dc:list-decimal dc:ml-6 dc:mb-3 text-dc-text dc:space-y-1' } },
-      li: { props: { className: 'dc:mb-1 text-dc-text' } },
-      blockquote: { props: { className: 'dc:border-l-4 border-dc-accent dc:pl-3 dc:my-2 dc:italic text-dc-text-secondary' } },
-      hr: {
-        props: {
-          className: 'dc:my-4 dc:border-none',
-          style: { height: '2px', backgroundColor: accentColor, opacity: 0.3 }
-        }
-      },
-      table: { props: { className: 'dc:w-full dc:border-collapse dc:my-3 dc:text-sm' } },
-      thead: { props: { className: 'bg-dc-surface-secondary' } },
-      th: { props: { className: 'dc:px-3 dc:py-2 dc:text-left dc:font-semibold dc:text-xs text-dc-text-secondary dc:uppercase dc:tracking-wider border-dc-border dc:border-b' } },
-      td: { props: { className: 'dc:px-3 dc:py-2 text-dc-text border-dc-border dc:border-b' } },
-      tr: { props: { className: 'dc:hover:opacity-80' } },
-    },
-  }), [accentColor, fontSize])
+  const markdownOptions = useMemo(
+    () => buildMarkdownOptions(accentColor, fontSize),
+    [accentColor, fontSize]
+  )
 
   if (!content.trim()) {
     if (transparentBackground) return null
@@ -105,9 +68,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
     return (
       <div
         className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
-        style={{
-          height: height === "100%" ? "100%" : height,
-        }}
+        style={{ height: height === "100%" ? "100%" : height }}
       >
         <div className="dc:text-center text-dc-text-muted">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.markdown.noContent')}</div>
@@ -117,28 +78,51 @@ const MarkdownChart = React.memo(function MarkdownChart({
     )
   }
 
-  // Build accent border styles
-  const accentBorderStyle: React.CSSProperties = {}
-  if (accentBorder !== 'none') {
-    const borderProp = `border${accentBorder.charAt(0).toUpperCase() + accentBorder.slice(1)}` as 'borderLeft' | 'borderTop' | 'borderBottom'
-    accentBorderStyle[borderProp] = `4px solid ${accentColor}`
-    if (transparentBackground) {
-      const paddingProp = `padding${accentBorder.charAt(0).toUpperCase() + accentBorder.slice(1)}` as 'paddingLeft' | 'paddingTop' | 'paddingBottom'
-      if (accentBorder === 'left') accentBorderStyle[paddingProp] = '12px'
-    }
+  const containerStyle = {
+    height: height === "100%" ? "100%" : height,
+    ...buildAccentBorderStyle(displayConfig.accentBorder || 'none', accentColor, transparentBackground)
   }
+  const padding = transparentBackground ? '' : 'dc:p-4 '
+
+  if (template.errors.length > 0) {
+    return (
+      <div
+        className={`dc-markdown-content dc:w-full dc:overflow-auto ${padding}dc:text-sm`}
+        style={containerStyle}
+      >
+        <Diagnostics
+          heading={t('chart.runtime.markdown.templateError')}
+          items={template.errors}
+          tone="error"
+        />
+      </div>
+    )
+  }
+
+  // In template mode the rendered output replaces the raw content. Before the
+  // first async render lands there is nothing to show, so the body is empty for
+  // one paint rather than flashing the un-rendered template source.
+  const body = template.isTemplate ? (template.output ?? '') : content
+  const alignment = alignmentClass(displayConfig.alignment || 'left')
 
   return (
     <div
-      className={`dc-markdown-content dc:w-full dc:overflow-auto ${transparentBackground ? '' : 'dc:p-4 '}${fontSizeClasses[fontSize] || 'dc:text-lg'} ${alignmentClasses[alignment] || 'dc:text-left'}`}
-      style={{
-        height: height === "100%" ? "100%" : height,
-        ...accentBorderStyle
-      }}
+      className={`dc-markdown-content dc:w-full dc:overflow-auto ${padding}${bodySizeClass(fontSize)} ${alignment}`}
+      style={containerStyle}
     >
-      <Markdown options={markdownOptions}>
-        {content}
-      </Markdown>
+      {/* Shown above the body, not instead of it: the rest of the narrative is
+          usually correct, and the blank it leaves behind is the only other clue
+          the author gets. */}
+      {template.warnings.length > 0 ? (
+        <div className="dc:mb-3 dc:pb-2 dc:text-sm border-dc-border dc:border-b">
+          <Diagnostics
+            heading={t('chart.runtime.markdown.templateWarning')}
+            items={template.warnings}
+            tone="warning"
+          />
+        </div>
+      ) : null}
+      {body ? <Markdown options={markdownOptions}>{body}</Markdown> : null}
     </div>
   )
 })

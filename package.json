@@ -467,6 +467,7 @@
     "@modelcontextprotocol/sdk": "^1.28.0",
     "@tanstack/react-query": "^5.90.12",
     "highlight.js": "^11.9.0",
+    "knap": "^0.4.2",
     "lz-string": "^1.5.0",
     "markdown-to-jsx": "^9.7.6",
     "react-intersection-observer": "^11.0.0",

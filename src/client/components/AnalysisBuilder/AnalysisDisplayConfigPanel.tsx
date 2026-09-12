@@ -9,6 +9,7 @@ import SectionHeading from './SectionHeading.js'
 import DisplayOptionControl from './DisplayOptionControl.js'
 import LegacyBooleanOptions from './LegacyBooleanOptions.js'
 import { useChartConfig } from '../../charts/lazyChartConfigRegistry.js'
+import { optionsForPlacement } from '../../charts/chartConfigs.js'
 import type { ChartAxisConfig, ChartType, ChartDisplayConfig, ColorPalette } from '../../types.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
 
@@ -44,10 +45,14 @@ export default function AnalysisDisplayConfigPanel({
     )
   }
 
+  // Options the Chart tab renders are not repeated here.
+  const options = optionsForPlacement(chartTypeConfig.displayOptionsConfig, 'display')
+    .filter(option => !excludeKeys?.includes(option.key))
+
   // Check if we have any display options to show
   const hasDisplayOptions =
     (chartTypeConfig.displayOptions && chartTypeConfig.displayOptions.length > 0) ||
-    (chartTypeConfig.displayOptionsConfig && chartTypeConfig.displayOptionsConfig.length > 0)
+    options.length > 0
 
   if (!hasDisplayOptions) {
     return (
@@ -70,7 +75,7 @@ export default function AnalysisDisplayConfigPanel({
           />
 
           {/* New structured display options */}
-          {chartTypeConfig.displayOptionsConfig?.filter(option => !excludeKeys?.includes(option.key)).map((option) => (
+          {options.map((option) => (
             <div key={option.key} className={`dc:space-y-1 ${option.type === 'axisFormat' ? 'dc:mt-6 dc:pt-2' : ''}`}>
               <DisplayOptionControl
                 option={option}

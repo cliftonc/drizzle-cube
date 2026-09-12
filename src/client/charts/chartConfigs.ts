@@ -58,9 +58,41 @@ export interface DisplayOptionConfig {
   /** Options for select type */
   options?: Array<{ value: any; label: string }>
   
+  /**
+   * Which tab the option belongs on. Defaults to `display`.
+   *
+   * The Chart tab exists to answer "what feeds this chart", which for most
+   * types is the axis drop zones. A content-first chart has no zones, and its
+   * equivalent input is a display option — markdown's `content` being the case
+   * in point, which is its whole substance and wants the room. Marking it
+   * `chart` moves it there rather than leaving the tab empty and the editor
+   * squeezed into a sidebar.
+   */
+  placement?: 'chart' | 'display'
+
   /** Help text shown below the input */
   description?: string
-  
+
+  /** Visible rows for a string option's textarea. Defaults to 8. */
+  rows?: number
+
+  /**
+   * Render a string option with syntax highlighting rather than as a plain
+   * textarea. Only `markdownTemplate` exists, colouring `{{ }}` expressions,
+   * `{% %}` tags and markdown headings.
+   */
+  syntax?: 'markdownTemplate'
+
+  /**
+   * External reference for options whose full syntax cannot fit in help text.
+   * Rendered as a link after the description, so the panel can stay short
+   * instead of restating a whole template language badly.
+   */
+  docsUrl?: string
+
+  /** Label for the `docsUrl` link — a translation key, like `label`. */
+  docsLabel?: string
+
   /** Minimum value for number inputs */
   min?: number
   
@@ -69,6 +101,19 @@ export interface DisplayOptionConfig {
   
   /** Step value for number inputs */
   step?: number
+}
+
+/**
+ * Split display options by which tab renders them.
+ *
+ * Shared by the Chart and Display panels so the two cannot disagree and leave
+ * an option shown twice or not at all.
+ */
+export function optionsForPlacement(
+  options: DisplayOptionConfig[] | undefined,
+  placement: 'chart' | 'display'
+): DisplayOptionConfig[] {
+  return (options ?? []).filter((option) => (option.placement ?? 'display') === placement)
 }
 
 /**
