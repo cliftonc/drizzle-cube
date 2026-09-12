@@ -336,6 +336,27 @@ describe('AnalysisDisplayConfigPanel', () => {
 
     // The variable and filter syntax is Knap's, so the panel links to its
     // reference rather than trying to restate a template language in help text.
+    // The Chart tab renders it instead, and showing it in both places would
+    // give the same field two inputs.
+    it('should not render an option the chart tab has claimed', () => {
+      mockedUseChartConfig.mockReturnValue({
+        config: {
+          dropZones: [],
+          displayOptionsConfig: [
+            { key: 'content', label: 'Markdown Content', type: 'string', placement: 'chart' },
+            { key: 'fontSize', label: 'Font Size', type: 'string' },
+          ],
+        },
+        loading: false,
+        loaded: true,
+      })
+
+      render(<AnalysisDisplayConfigPanel {...defaultProps} />)
+
+      expect(screen.queryByText('Markdown Content')).not.toBeInTheDocument()
+      expect(screen.getByText('Font Size')).toBeInTheDocument()
+    })
+
     it('should link to the template syntax reference', () => {
       render(<AnalysisDisplayConfigPanel {...defaultProps} />)
 

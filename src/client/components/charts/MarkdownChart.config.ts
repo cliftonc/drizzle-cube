@@ -19,6 +19,12 @@ export const markdownConfig: ChartTypeConfig = {
       key: 'content',
       label: 'chart.configText.markdown_content',
       type: 'string',
+      // The content is this chart's entire substance, so it belongs on the
+      // Chart tab where the drop zones would be — that tab is otherwise empty
+      // for markdown, and the editor deserves better than a sidebar box.
+      placement: 'chart',
+      rows: 18,
+      syntax: 'markdownTemplate',
       placeholder: 'chart.markdown.contentPlaceholder',
       description: 'chart.markdown.contentDescription',
       // The variable and filter syntax is Knap's, and restating it in help text

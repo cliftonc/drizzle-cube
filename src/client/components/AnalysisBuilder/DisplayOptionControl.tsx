@@ -24,6 +24,7 @@ import { useTranslation } from '../../hooks/useTranslation.js'
 import StringArrayInput from './StringArrayInput.js'
 import { parseThresholds } from '../charts/gaugeChartHelpers.js'
 import ColumnFormatsEditor from './ColumnFormatsEditor.js'
+import TemplateEditor from './TemplateEditor.js'
 
 /** Neutral starting colour for a newly added threshold band. */
 const DEFAULT_BAND_COLOUR = '#22c55e'
@@ -109,12 +110,19 @@ function StringOption({ option, displayConfig, setValue, t }: OptionRenderProps)
           </span>
         )}
       </label>
-      {option.key === 'content' ? (
+      {option.syntax === 'markdownTemplate' ? (
+        <TemplateEditor
+          value={value}
+          onChange={setValue}
+          placeholder={placeholder}
+          rows={option.rows ?? 8}
+        />
+      ) : option.key === 'content' ? (
         <textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
-          rows={8}
+          rows={option.rows ?? 8}
           className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent dc:font-mono dc:resize-y bg-dc-surface text-dc-text"
         />
       ) : (

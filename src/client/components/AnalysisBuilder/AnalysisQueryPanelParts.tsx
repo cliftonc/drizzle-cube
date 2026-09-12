@@ -599,6 +599,9 @@ export function QueryPanelTabContent(props: TabContentProps) {
         chartAvailability={chartAvailability}
         onChartTypeChange={onChartTypeChange}
         onChartConfigChange={onChartConfigChange}
+        displayConfig={displayConfig}
+        colorPalette={colorPalette}
+        onDisplayConfigChange={onDisplayConfigChange}
       />
     )
   }
