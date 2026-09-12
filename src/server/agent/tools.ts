@@ -19,6 +19,7 @@ import {
   SCALE_DISPLAY_CONFIG_SCHEMA
 } from '../ai/chart-schema.js'
 import { QUERY_PARAMS_SCHEMA } from '../ai/query-schema.js'
+import { queryHasMembers } from '../../shared/query-shape.js'
 
 /**
  * Result of executing a tool call
@@ -31,6 +32,24 @@ export interface ToolExecutionResult {
   /** Optional SSE event to emit as a side effect (add_portlet, add_markdown) */
   sideEffect?: AgentSSEEvent
 }
+
+/**
+ * How a markdown portlet's content behaves once a query is attached.
+ *
+ * Written once and shared by every tool that can create one, so the model is
+ * told the same thing whichever route it takes. The alias rule matters: Knap
+ * reads `a.b` as nested access, so `Employees.count` is only reachable as
+ * `employees_count`, never as `{{ r.Employees.count }}`.
+ */
+const MARKDOWN_TEMPLATE_GUIDANCE =
+  'With a query attached, `content` is rendered as a Knap template over the result rows. '
+  + 'Variables: `rows` (rows keyed by snake_case alias, so Employees.avgSalary becomes '
+  + 'employees_avg_salary), `labelled` (same rows keyed by field label — use this for '
+  + '`{{ labelled | table }}` so column headers read well), `data` (raw rows, addressed as '
+  + '`{{ data[0]["Employees.count"] }}`), `rowCount`, `first` and `last`. '
+  + 'Filters include sum, map, join, length, sort, reverse, slice, round, number_format, date and table. '
+  + 'Example: `We employ {{ rows | map:"employees_count" | sum }} people across {{ rowCount }} teams.` '
+  + 'A template cannot sort and then index, so rely on the query\'s own order via `first` and `last`.'
 
 /**
  * Chart types the notebook agent may create — an explicit list, not a derived
@@ -145,6 +164,10 @@ export function getToolDefinitions(): ToolDefinition[] {
               showTooltip: { type: 'boolean' },
               stacked: { type: 'boolean' },
               orientation: { type: 'string', enum: ['horizontal', 'vertical'] },
+              content: {
+                type: 'string',
+                description: 'Markdown body, for the "markdown" chart type. ' + MARKDOWN_TEMPLATE_GUIDANCE
+              },
               ...RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA,
               ...SCALE_DISPLAY_CONFIG_SCHEMA
             },
@@ -223,7 +246,9 @@ export function getToolDefinitions(): ToolDefinition[] {
                 },
                 query: {
                   type: 'string',
-                  description: 'JSON string of the query. Omit or leave empty for markdown portlets.'
+                  description: 'JSON string of the query. For a markdown portlet this is optional: '
+                    + 'omit it for a static text block or section header, or supply one to render '
+                    + 'displayConfig.content as a template over the result rows.'
                 },
                 chartConfig: {
                   type: 'object',
@@ -240,7 +265,8 @@ export function getToolDefinitions(): ToolDefinition[] {
                 },
                 displayConfig: {
                   type: 'object',
-                  description: 'Chart display configuration (for markdown: { content, hideHeader, transparentBackground, autoHeight })',
+                  description: 'Chart display configuration (for markdown: { content, hideHeader, transparentBackground, autoHeight }). '
+                    + MARKDOWN_TEMPLATE_GUIDANCE,
                   properties: { ...RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA, ...SCALE_DISPLAY_CONFIG_SCHEMA }
                 },
                 dashboardFilterMapping: {
@@ -662,10 +688,13 @@ export function createToolExecutor(options: {
       const resolvedChartTypes = new Map<Record<string, unknown>, string>()
       for (const portlet of portlets) {
         const declaredChartType = portlet.chartType as string
-        if (declaredChartType === 'markdown') continue
+        const isMarkdown = declaredChartType === 'markdown'
 
         const queryStr = portlet.query as string | undefined
         if (!queryStr) {
+          // A markdown portlet without a query is a static text block, which is
+          // still the common case for section headers.
+          if (isMarkdown) continue
           errors.push(`Portlet "${portlet.title}": missing query`)
           continue
         }
@@ -681,9 +710,19 @@ export function createToolExecutor(options: {
         // Normalize before validation (fix double-prefixed fields, etc.)
         parsedQuery = normalizeQueryFields(parsedQuery)
 
+        if (isMarkdown && !queryHasMembers(parsedQuery)) continue
+
         const validation = semanticLayer.validateQuery(parsedQuery as any, securityContext)
         if (!validation.isValid) {
           errors.push(`Portlet "${portlet.title}": ${validation.errors.join(', ')}`)
+          continue
+        }
+
+        // Markdown addresses fields from its template, so it has no chart
+        // config to infer and must not be swapped for another type by the
+        // fallback — a narrative block is never "really" a bar chart.
+        if (isMarkdown) {
+          resolvedChartTypes.set(portlet, declaredChartType)
           continue
         }
 
@@ -751,7 +790,10 @@ export function createToolExecutor(options: {
                 displayConfig: (p.displayConfig as Record<string, unknown>) || {},
               },
             },
-            query: isMarkdown ? {} : parsedQuery,
+            // Markdown keeps a query only when there is one worth running: with
+            // it, its content renders as a template over the rows; without it,
+            // the portlet stays a static text block.
+            query: isMarkdown && !queryHasMembers(parsedQuery) ? {} : parsedQuery,
           }
 
           return {

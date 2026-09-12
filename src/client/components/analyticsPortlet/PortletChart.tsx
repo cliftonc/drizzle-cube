@@ -112,10 +112,9 @@ export function PortletChart(props: PortletChartProps) {
     }
 
     // Cast to unknown[] for ChartProps - specific charts (like Sankey) handle their own data format
-    const data = resolvePortletData(props) as unknown as unknown[]
-
-    // For markdown chart, use empty data array
-    const chartData = effectiveChartType === 'markdown' ? [] : data
+    // Markdown is no longer special-cased to an empty array: with a query
+    // attached it renders its content as a template over these rows.
+    const chartData = resolvePortletData(props) as unknown as unknown[]
 
     // Use drill chart config if available, otherwise fall back to original
     const effectiveChartConfig = (drillEnabled && currentChartConfig)

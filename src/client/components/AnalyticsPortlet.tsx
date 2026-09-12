@@ -8,7 +8,7 @@ import { useInView } from 'react-intersection-observer'
 import { useScrollContainer } from '../providers/ScrollContainerContext.js'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
 import type { AnalyticsPortletProps } from '../types.js'
-import { parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
+import { hasRunnableQuery, parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
 import { usePortletDrillState } from './analyticsPortlet/usePortletDrillState.js'
 import { usePortletPagination } from './analyticsPortlet/usePortletPagination.js'
 import { usePortletDeadMembers } from './analyticsPortlet/usePortletDeadMembers.js'
@@ -57,9 +57,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   // Note: Batching is handled by BatchCoordinator which collects queries for 100ms before flushing
   const isVisible = eagerLoad || inView
 
-  // Check if this chart type skips queries (using lazy-loaded config)
+  // `skipQuery` says the chart does not *require* a query, not that it can
+  // never have one — a markdown portlet with a query renders its content as a
+  // data template. So the query is only skipped when there is nothing to run,
+  // which keeps every existing text portlet on exactly its old path.
   const { config: chartTypeConfig } = useChartConfig(chartType)
-  const shouldSkipQuery = chartTypeConfig.skipQuery === true
+  const shouldSkipQuery = chartTypeConfig.skipQuery === true && !hasRunnableQuery(query)
 
   // Memoize regular filters to prevent array recreation on every render
   const regularFilters = useMemo(() => {
@@ -194,6 +197,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     hasChartConfig: !!chartConfig,
     hasMandatoryFields,
     shouldSkipQuery,
+    rendersWithoutData: chartTypeConfig.skipQuery === true,
     eagerLoad,
     isVisible,
     isLoading,

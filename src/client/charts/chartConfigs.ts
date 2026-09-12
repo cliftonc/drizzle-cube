@@ -60,7 +60,17 @@ export interface DisplayOptionConfig {
   
   /** Help text shown below the input */
   description?: string
-  
+
+  /**
+   * External reference for options whose full syntax cannot fit in help text.
+   * Rendered as a link after the description, so the panel can stay short
+   * instead of restating a whole template language badly.
+   */
+  docsUrl?: string
+
+  /** Label for the `docsUrl` link — a translation key, like `label`. */
+  docsLabel?: string
+
   /** Minimum value for number inputs */
   min?: number
   

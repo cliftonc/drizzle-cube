@@ -44,9 +44,36 @@ interface OptionRenderProps {
   t: (key: string, params?: Record<string, string | number>) => string
 }
 
-function OptionDescription({ description, t }: { description?: string; t: (key: string) => string }) {
-  if (!description) return null
-  return <p className="dc:text-xs text-dc-text-muted">{t(description)}</p>
+function OptionDescription({
+  description,
+  docsUrl,
+  docsLabel,
+  t
+}: {
+  description?: string
+  docsUrl?: string
+  docsLabel?: string
+  t: (key: string) => string
+}) {
+  if (!description && !docsUrl) return null
+  return (
+    <p className="dc:text-xs text-dc-text-muted">
+      {description ? t(description) : null}
+      {docsUrl ? (
+        <>
+          {description ? ' ' : null}
+          <a
+            href={docsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="dc:underline text-dc-accent"
+          >
+            {t(docsLabel ?? 'chart.config.learnMore')}
+          </a>
+        </>
+      ) : null}
+    </p>
+  )
 }
 
 function BooleanOption({ option, displayConfig, setValue, t }: OptionRenderProps) {
@@ -68,13 +95,17 @@ function BooleanOption({ option, displayConfig, setValue, t }: OptionRenderProps
 function StringOption({ option, displayConfig, setValue, t }: OptionRenderProps) {
   const key = option.key as keyof ChartDisplayConfig
   const value = (displayConfig[key] as string) ?? option.defaultValue ?? ''
+  // Placeholders are usually literal examples, but a chart may supply a
+  // translation key instead. `t` returns an unknown key unchanged, so one call
+  // handles both.
+  const placeholder = option.placeholder ? t(option.placeholder) : undefined
   return (
     <div className="dc:space-y-1">
       <label className="dc:text-sm text-dc-text-secondary">
         {t(option.label)}
         {option.key === 'content' && (
           <span className="dc:text-xs text-dc-text-muted dc:ml-1">
-            (only headers, lists and links)
+            {t('chart.markdown.contentHint')}
           </span>
         )}
       </label>
@@ -82,7 +113,7 @@ function StringOption({ option, displayConfig, setValue, t }: OptionRenderProps)
         <textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={option.placeholder}
+          placeholder={placeholder}
           rows={8}
           className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent dc:font-mono dc:resize-y bg-dc-surface text-dc-text"
         />
@@ -91,11 +122,11 @@ function StringOption({ option, displayConfig, setValue, t }: OptionRenderProps)
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={option.placeholder}
+          placeholder={placeholder}
           className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
         />
       )}
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -138,7 +169,7 @@ function PaletteColorOption({ option, displayConfig, colorPalette, setValue, t }
           />
         ]}
       </div>
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -158,7 +189,7 @@ function NumberOption({ option, displayConfig, setValue, t }: OptionRenderProps)
         step={option.step}
         className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
       />
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -179,7 +210,7 @@ function SelectOption({ option, displayConfig, setValue, t }: OptionRenderProps)
           </option>
         ))}
       </select>
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -205,7 +236,7 @@ function ColorOption({ option, displayConfig, setValue, t }: OptionRenderProps) 
           className="dc:flex-1 dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
         />
       </div>
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -258,7 +289,7 @@ function ButtonGroupOption({ option, displayConfig, setValue, t }: OptionRenderP
           )
         })}
       </div>
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -339,7 +370,7 @@ function ThresholdBandsOption({ option, displayConfig, setValue, t }: OptionRend
       >
         {t('chart.gauge.thresholds.add')}
       </button>
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -361,7 +392,7 @@ function ColumnFormatsOption({ option, displayConfig, chartConfig, colorPalette,
         onChange={setValue}
         t={t}
       />
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -405,7 +436,7 @@ function RowLinkOption({ option, displayConfig, setValue, t }: OptionRenderProps
           </button>
         ))}
       </div>
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
