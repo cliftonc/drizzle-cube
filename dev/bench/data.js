@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789175400927,
+  "lastUpdate": 1789196259751,
   "repoUrl": "https://github.com/cliftonc/drizzle-cube",
   "entries": {
     "drizzle-cube": [
@@ -94130,6 +94130,324 @@ window.BENCHMARK_DATA = {
             "range": "± 0.1ms p95",
             "unit": "ms",
             "extra": "Cache-enabled executor, warm cache · p95 0.6ms · 700 rows"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "clifton.cunningham@gmail.com",
+            "name": "Clifton Cunningham",
+            "username": "cliftonc"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22f51abecbf22b387e208fb01704fc39524c5665",
+          "message": "feat(client): render markdown portlets as data templates (#1249)\n\n* feat(client): render markdown portlets as data templates\n\nA markdown portlet may now carry a query. When it does, its content is\nrendered as a Knap template over the result rows rather than as literal\nmarkdown, so a dashboard can hold a written summary that stays current\ninstead of one typed by hand.\n\n`skipQuery` changes meaning from \"never runs a query\" to \"does not\nrequire one\". Markdown is the only chart type that sets it, so the blast\nradius is contained: a portlet with no query takes exactly its old path.\nThe two are told apart by `queryHasMembers`, shared by the client and the\nagent, which checks for real members rather than a non-null object —\nseveral callers pass `{}` for \"no query\".\n\nRows reach a template three ways. Knap resolves `a.b` as nested member\naccess, so a cube-qualified key is unreachable from a loop or the `map`\nfilter: `rows` is keyed by snake_case alias, `labelled` by field label so\n`{{ labelled | table }}` gets readable headers, and `data` keeps the raw\ndotted keys for bracket access. `first` and `last` are precomputed\nbecause a Knap filter chain stringifies on assignment, so a template\ncannot sort and then index.\n\nKnap is Obsidian's markdown template language. It is an AST interpreter\nand never evaluates JavaScript; regexes are disabled and render limits\ntightened. It lands only in the lazy chart-markdown chunk, ~33 KB gzip.\n\nAgent-facing: `save_as_dashboard` no longer forces markdown portlets to\nan empty query, and skips the chart-type fallback for them so a narrative\nis never swapped for a bar chart. The `add_portlet` and `save_as_dashboard`\nschemas describe the template variables. `add_markdown` is unchanged — it\ncreates notebook text blocks, which have no query execution.\n\nThe MCP app picks this up for free: it already passes a real queryObject.\nThat inlines Knap into its single-file bundle, which grows 2.09 MB to\n2.21 MB.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* fix(client): report markdown template references that resolve to nothing\n\nKnap renders an unknown name as an empty string, so a misspelt field in a\nloop produces a blank heading and no complaint. `{% for row in rows %}##\n{{ row.employee_country }}{% endfor %}` looks like the loop is broken when\nthe loop is fine and the alias is `employees_country`.\n\nThe chart now walks the parsed template and reports references that cannot\nresolve, above the rendered body rather than instead of it — the rest of a\nnarrative is usually correct, and the blank it leaves is the author's only\nother clue. Each message names the fields that would have worked, which is\nalso the only way to discover the aliases.\n\nThree cases are caught: a variable the context does not provide, a field\nread off a row under a name that is not its alias, and dotted access on\n`data`. That last one is its own trap — Knap reads `r.Employees.count` as\ntwo levels of nesting rather than one literal key, so it resolves to\nnothing, while `r[\"Employees.count\"]` works. The message says so.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n* feat(client): give the markdown template a proper editor\n\nTwo problems with where the template lived. The Chart tab showed only a\nchart-type picker and then a tall empty panel, because markdown has no\ndrop zones, while the field carrying the chart's entire substance was a\nsmall box on the Display tab. And a template is code shown as flat text.\n\nPlacement is now declared by the option rather than switched on chart\ntype: `placement: 'chart'` moves an option to where the drop zones would\nbe, and the Display tab stops rendering it. The Chart tab answers \"what\nfeeds this chart\", which for a content-first chart is its content, so the\nmechanism says something true rather than special-casing markdown.\n\nThe field is also syntax highlighted, via `syntax: 'markdownTemplate'`.\nhighlight.js has no Knap grammar, so rather than load one to colour two\ndelimiters there is a small tokenizer that splits template code into\nkeywords, variables, filter names, literals and punctuation — matching\nwhat knap.md itself shows. Colours come from existing theme tokens and\nstay distinct in light and dark.\n\nA textarea cannot style its own contents, so the text is drawn twice: a\ncoloured layer underneath and the real textarea on top, transparent, with\na visible caret. Every metric that affects layout is shared between them,\nand the tokenizer guarantees its output concatenates back to the input\nexactly — anything else would shift the layer out of alignment.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-09-12T07:55:21+01:00",
+          "tree_id": "a0ba33de2096921628d65965ef920ecf8bb40e04",
+          "url": "https://github.com/cliftonc/drizzle-cube/commit/22f51abecbf22b387e208fb01704fc39524c5665"
+        },
+        "date": 1789196258041,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "baseline.count-time-entries",
+            "value": 33.52,
+            "range": "± 0.9ms p95",
+            "unit": "ms",
+            "extra": "Count over ~730k time entries · p95 34.4ms · 1 rows"
+          },
+          {
+            "name": "baseline.sum-avg-productivity",
+            "value": 12.88,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Sum + avg over ~335k productivity rows · p95 13.4ms · 1 rows"
+          },
+          {
+            "name": "baseline.count-distinct",
+            "value": 79.66,
+            "range": "± 10.5ms p95",
+            "unit": "ms",
+            "extra": "Count distinct employees over time entries · p95 90.2ms · 1 rows"
+          },
+          {
+            "name": "baseline.min-max",
+            "value": 11.98,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Min + max lines of code · p95 12.4ms · 1 rows"
+          },
+          {
+            "name": "baseline.calculated-measure",
+            "value": 12.91,
+            "range": "± 0.7ms p95",
+            "unit": "ms",
+            "extra": "Calculated measure (productivity score) · p95 13.6ms · 1 rows"
+          },
+          {
+            "name": "multi.six-measures",
+            "value": 41.71,
+            "range": "± 0.9ms p95",
+            "unit": "ms",
+            "extra": "Six measures on time entries · p95 42.6ms · 1 rows"
+          },
+          {
+            "name": "multi.mixed-types",
+            "value": 53.71,
+            "range": "± 5.1ms p95",
+            "unit": "ms",
+            "extra": "Mixed aggregation types on productivity · p95 58.8ms · 1 rows"
+          },
+          {
+            "name": "groupby.low-cardinality",
+            "value": 95.65,
+            "range": "± 8.1ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type (6 groups) · p95 103.7ms · 6 rows"
+          },
+          {
+            "name": "groupby.mid-cardinality",
+            "value": 77.09,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Group by department (~25 groups) · p95 77.7ms · 25 rows"
+          },
+          {
+            "name": "groupby.high-cardinality",
+            "value": 31.82,
+            "range": "± 10.3ms p95",
+            "unit": "ms",
+            "extra": "Group by employee (~700 groups) · p95 42.1ms · 700 rows"
+          },
+          {
+            "name": "groupby.two-dimensions",
+            "value": 199.03,
+            "range": "± 23.2ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type + department · p95 222.3ms · 150 rows"
+          },
+          {
+            "name": "filter.equals",
+            "value": 33.24,
+            "range": "± 0.7ms p95",
+            "unit": "ms",
+            "extra": "Equals filter (development entries) · p95 33.9ms · 1 rows"
+          },
+          {
+            "name": "filter.numeric-range",
+            "value": 12.03,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Numeric range filter (linesOfCode > 100) · p95 12.1ms · 1 rows"
+          },
+          {
+            "name": "filter.string-contains",
+            "value": 0.77,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "String contains filter on employee name · p95 0.8ms · 1 rows"
+          },
+          {
+            "name": "filter.nested-and-or",
+            "value": 37.95,
+            "range": "± 0.8ms p95",
+            "unit": "ms",
+            "extra": "Nested AND/OR filter on time entries · p95 38.7ms · 1 rows"
+          },
+          {
+            "name": "filter.in-list-100",
+            "value": 31.87,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "IN-list filter with 100 employee ids · p95 32.1ms · 1 rows"
+          },
+          {
+            "name": "time.day-granularity-year",
+            "value": 117.55,
+            "range": "± 7.5ms p95",
+            "unit": "ms",
+            "extra": "Daily time series over 2024 (~366 buckets) · p95 125.0ms · 262 rows"
+          },
+          {
+            "name": "time.month-granularity",
+            "value": 120.42,
+            "range": "± 9.5ms p95",
+            "unit": "ms",
+            "extra": "Monthly time series over 2024 · p95 130.0ms · 12 rows"
+          },
+          {
+            "name": "time.week-with-dimension",
+            "value": 24.97,
+            "range": "± 1.8ms p95",
+            "unit": "ms",
+            "extra": "Weekly series split by allocation type (H1 2024) · p95 26.7ms · 104 rows"
+          },
+          {
+            "name": "time.gap-fill",
+            "value": 42.06,
+            "range": "± 20.1ms p95",
+            "unit": "ms",
+            "extra": "Daily series with fillMissingDates over 16 months · p95 62.1ms · 488 rows"
+          },
+          {
+            "name": "time.compare-date-range",
+            "value": 81.79,
+            "range": "± 6.2ms p95",
+            "unit": "ms",
+            "extra": "Period comparison Q1 vs Q2 2024 by month · p95 88.0ms · 6 rows"
+          },
+          {
+            "name": "join.belongs-to",
+            "value": 1.63,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Employees joined to departments · p95 1.8ms · 25 rows"
+          },
+          {
+            "name": "join.has-many-fanout",
+            "value": 167.63,
+            "range": "± 6.3ms p95",
+            "unit": "ms",
+            "extra": "Employee count with time-entry fan-out (~730k child rows) · p95 173.9ms · 25 rows"
+          },
+          {
+            "name": "join.many-to-many",
+            "value": 2.28,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Employees by team via junction table · p95 2.4ms · 40 rows"
+          },
+          {
+            "name": "join.three-cubes",
+            "value": 140.75,
+            "range": "± 8.8ms p95",
+            "unit": "ms",
+            "extra": "Departments + employees + time entries · p95 149.5ms · 25 rows"
+          },
+          {
+            "name": "rows.ordered-700",
+            "value": 73.64,
+            "range": "± 6.7ms p95",
+            "unit": "ms",
+            "extra": "~700 ordered group rows · p95 80.3ms · 700 rows"
+          },
+          {
+            "name": "rows.deep-offset",
+            "value": 68.08,
+            "range": "± 3.4ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped page at offset 100k (limit 1000) · p95 71.5ms · 1,000 rows"
+          },
+          {
+            "name": "rows.ungrouped-10k",
+            "value": 21.28,
+            "range": "± 10.1ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped raw rows (limit 10,000) · p95 31.4ms · 10,000 rows"
+          },
+          {
+            "name": "analysis.funnel",
+            "value": 92.99,
+            "range": "± 3.8ms p95",
+            "unit": "ms",
+            "extra": "Three-step funnel over ~335k events · p95 96.7ms · 3 rows"
+          },
+          {
+            "name": "analysis.flow",
+            "value": 25.79,
+            "range": "± 3.1ms p95",
+            "unit": "ms",
+            "extra": "Flow with 2 steps before/after · p95 28.9ms · 1 rows"
+          },
+          {
+            "name": "analysis.retention",
+            "value": 225.61,
+            "range": "± 8.8ms p95",
+            "unit": "ms",
+            "extra": "Monthly retention over 2024 (6 periods) · p95 234.4ms · 7 rows"
+          },
+          {
+            "name": "compile.simple",
+            "value": 0.04,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Compile simple aggregation query · p95 0.1ms · 0 rows"
+          },
+          {
+            "name": "compile.complex",
+            "value": 0.35,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Compile multi-cube query with filters + time dimension · p95 0.5ms · 0 rows"
+          },
+          {
+            "name": "eav.project-page",
+            "value": 0.67,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Project 2 EAV attributes over a 25-row page · p95 0.7ms · 25 rows"
+          },
+          {
+            "name": "eav.project-page-total",
+            "value": 10.63,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Same page, plus the total row count · p95 10.8ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-string",
+            "value": 0.57,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Filter on a common string value (LIMIT satisfied early) · p95 0.7ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-numeric",
+            "value": 0.67,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Filter on a numeric attribute, incl. the tolerant cast · p95 0.7ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-selective",
+            "value": 199.45,
+            "range": "± 7.8ms p95",
+            "unit": "ms",
+            "extra": "Filter matching almost nothing — the full-scan case · p95 207.2ms · 0 rows"
+          },
+          {
+            "name": "eav.sort",
+            "value": 277.48,
+            "range": "± 1.3ms p95",
+            "unit": "ms",
+            "extra": "Order by a numeric EAV attribute (always a full scan) · p95 278.8ms · 25 rows"
+          },
+          {
+            "name": "eav.baseline-sort",
+            "value": 22.59,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Same shape ordering by a real column, for comparison · p95 23.2ms · 25 rows"
+          },
+          {
+            "name": "cache.miss",
+            "value": 25.64,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, cache bypassed · p95 25.8ms · 700 rows"
+          },
+          {
+            "name": "cache.hit",
+            "value": 0.25,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, warm cache · p95 0.3ms · 700 rows"
           }
         ]
       }
