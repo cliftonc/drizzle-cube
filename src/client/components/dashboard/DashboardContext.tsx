@@ -22,6 +22,7 @@ import {
 import type { LayoutItem, Layout } from 'react-grid-layout'
 import type { UseDashboardActions } from '../../hooks/useDashboardHook.js'
 import type { DashboardDisplayMode } from '../../hooks/useResponsiveDashboard.js'
+import type { DashboardImportExportState } from '../../hooks/dashboard/useDashboardImportExport.js'
 import type { ColorPalette } from '../../utils/colorPalettes.js'
 import type {
   DashboardConfig,
@@ -33,7 +34,8 @@ import type {
   DashboardGridSettings,
   RowLayout,
   PortletGroup,
-  FeaturesConfig
+  FeaturesConfig,
+  DashboardMeta
 } from '../../types.js'
 
 /**
@@ -61,6 +63,8 @@ export interface DashboardProviderProps {
   dashboardModes?: DashboardLayoutMode[]
   /** When true, DashboardToolbar renders nothing (both the top bar and floating toolbar) */
   hideToolbar?: boolean
+  /** Name/description of the host's dashboard record, written into exports (features.dashboardImportExport) */
+  dashboardMeta?: DashboardMeta
   children: ReactNode
 }
 
@@ -80,6 +84,7 @@ export interface DashboardContextValue {
   onConfigChange?: (config: DashboardConfig) => void
   onDashboardFiltersChange?: (filters: DashboardFilter[]) => void
   hideToolbar?: boolean
+  dashboardMeta?: DashboardMeta
 
   // ---- Store state (from useDashboard) ----
   isEditMode: boolean
@@ -124,6 +129,8 @@ export interface DashboardContextValue {
 
   // ---- Features ----
   features: FeaturesConfig
+  /** Dashboard JSON export/import flow (features.dashboardImportExport); `enabled` is false when the feature is off */
+  importExport: DashboardImportExportState
 
   // ---- Refs (attached by the consuming pieces) ----
   editBarRef: MutableRefObject<HTMLDivElement | null>

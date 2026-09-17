@@ -14,6 +14,11 @@ const EditIcon = getIcon('edit')
 const CheckIcon = getIcon('check')
 const AddIcon = getIcon('add')
 const DesktopIcon = getIcon('desktop')
+const DownloadIcon = getIcon('download')
+
+const SECONDARY_BUTTON_CLASS =
+  'dc:inline-flex dc:items-center dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:border dc:rounded-md focus:outline-hidden dc:focus:ring-2 dc:focus:ring-offset-2 border-dc-border bg-dc-surface hover:bg-dc-surface-hover'
+const SECONDARY_BUTTON_STYLE = { color: 'var(--dc-text-secondary)', borderColor: 'var(--dc-border)' }
 
 /** The Edit / Finish-editing toggle button. */
 function EditToggleButton({
@@ -92,6 +97,27 @@ function EditActions({
   )
 }
 
+/** Export (features.dashboardImportExport). Available in view and edit mode. */
+function ImportExportActions() {
+  const { t } = useTranslation()
+  const { importExport } = useDashboardContext()
+
+  return (
+    <div className="dc:flex dc:items-center dc:gap-3">
+      <button
+        type="button"
+        onClick={importExport.exportDashboard}
+        title={t('dashboard.export.tooltip')}
+        className={SECONDARY_BUTTON_CLASS}
+        style={SECONDARY_BUTTON_STYLE}
+      >
+        <DownloadIcon className="dc:w-5 dc:h-5 dc:mr-2" />
+        {t('dashboard.export.button')}
+      </button>
+    </div>
+  )
+}
+
 export default function DashboardEditBar() {
   const { t } = useTranslation()
   const {
@@ -107,6 +133,7 @@ export default function DashboardEditBar() {
     handleAddText,
     handleAddPortlet,
     handlePaletteChange,
+    importExport,
   } = useDashboardContext()
 
   return (
@@ -143,15 +170,19 @@ export default function DashboardEditBar() {
         )}
       </div>
 
-      {/* Color Palette Selector and Add Portlet - Only show in edit mode */}
-      {isEditMode && (
-        <EditActions
-          colorPalette={config.colorPalette}
-          onPaletteChange={handlePaletteChange}
-          onAddText={handleAddText}
-          onAddPortlet={handleAddPortlet}
-        />
-      )}
+      <div className="dc:flex dc:items-center dc:gap-3">
+        {importExport.enabled && <ImportExportActions />}
+
+        {/* Color Palette Selector and Add Portlet - Only show in edit mode */}
+        {isEditMode && (
+          <EditActions
+            colorPalette={config.colorPalette}
+            onPaletteChange={handlePaletteChange}
+            onAddText={handleAddText}
+            onAddPortlet={handleAddPortlet}
+          />
+        )}
+      </div>
     </div>
   )
 }

@@ -27,6 +27,7 @@ export default function DashboardToolbar() {
     isEditBarVisible,
     config,
     actions,
+    importExport,
   } = useDashboardContext()
 
   if (!editable || hideToolbar) return null
@@ -50,6 +51,7 @@ export default function DashboardToolbar() {
           onPaletteChange={actions.handlePaletteChange}
           onAddPortlet={actions.openAddPortlet}
           onAddText={actions.openAddText}
+          onExportDashboard={importExport.enabled ? importExport.exportDashboard : undefined}
         />
       )}
     </>

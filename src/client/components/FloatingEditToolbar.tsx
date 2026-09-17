@@ -15,11 +15,13 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { getIcon } from '../icons/index.js'
+import { useTranslation } from '../hooks/useTranslation.js'
 import { COLOR_PALETTES } from '../utils/colorPalettes.js'
 import type { DashboardLayoutMode } from '../types.js'
 
 const EditIcon = getIcon('edit')
 const CheckIcon = getIcon('check')
+const DownloadIcon = getIcon('download')
 const GridIcon = getIcon('segment')
 const RowsIcon = getIcon('table')
 const AddIcon = getIcon('add')
@@ -58,6 +60,8 @@ interface FloatingEditToolbarProps {
   onAddPortlet: () => void
   /** Add new text portlet */
   onAddText?: () => void
+  /** Export the dashboard as JSON (features.dashboardImportExport); button hidden when absent */
+  onExportDashboard?: () => void
 }
 
 export default function FloatingEditToolbar({
@@ -72,8 +76,10 @@ export default function FloatingEditToolbar({
   currentPalette,
   onPaletteChange,
   onAddPortlet,
-  onAddText
+  onAddText,
+  onExportDashboard
 }: FloatingEditToolbarProps) {
+  const { t } = useTranslation()
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
   const paletteRef = useRef<HTMLDivElement>(null)
 
@@ -128,6 +134,18 @@ export default function FloatingEditToolbar({
         isActive={isEditMode}
         onClick={onEditModeToggle}
       />
+
+      {/* Export - available in any mode when the feature is enabled */}
+      {onExportDashboard && (
+        <>
+          <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />
+          <ToolbarButton
+            icon={DownloadIcon}
+            tooltip={t('dashboard.export.tooltip')}
+            onClick={onExportDashboard}
+          />
+        </>
+      )}
 
       {/* Layout Mode Switcher - only in edit mode with multiple modes */}
       {isEditMode && allowedModes.length > 1 && (

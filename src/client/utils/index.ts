@@ -19,6 +19,18 @@ export { captureThumbnail, isThumbnailCaptureAvailable } from './thumbnail.js'
 // XLSX export utilities (requires exceljs peer dependency)
 export { exportPortletToXlsx, isExportAvailable } from './exportXlsx.js'
 
+// Dashboard JSON export (no extra dependency)
+export {
+  DASHBOARD_EXPORT_FORMAT,
+  DASHBOARD_EXPORT_VERSION,
+  createDashboardExport,
+  serializeDashboardExport,
+  downloadDashboardExport,
+  dashboardExportFilename,
+  normalizeDashboardConfigForExport,
+} from './dashboardExport.js'
+export type { DashboardExportFile } from './dashboardExport.js'
+
 /**
  * Create a dashboard layout from portlet configurations
  */

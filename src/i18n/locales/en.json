@@ -1668,5 +1668,7 @@
   "chart.gauge.thresholds.from": "Band starts at",
   "chart.gauge.thresholds.colour": "Band colour",
   "chart.gauge.thresholds.add": "Add band",
-  "chart.gauge.thresholds.remove": "Remove band"
+  "chart.gauge.thresholds.remove": "Remove band",
+  "dashboard.export.button": "Export",
+  "dashboard.export.tooltip": "Download this dashboard as a JSON file"
 }

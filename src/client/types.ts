@@ -684,6 +684,16 @@ export interface AnalyticsPortletProps {
   }) => void
 }
 
+/**
+ * Host-owned dashboard record fields the library does not store in DashboardConfig.
+ * Supplied so the dashboard import/export feature can write them into the export
+ * file and derive a filename; the library never persists them itself.
+ */
+export interface DashboardMeta {
+  name?: string
+  description?: string
+}
+
 export interface AnalyticsDashboardProps {
   config: DashboardConfig
   editable?: boolean
@@ -693,6 +703,8 @@ export interface AnalyticsDashboardProps {
   onSave?: (config: DashboardConfig) => Promise<void> | void
   onSaveThumbnail?: (thumbnailData: string) => Promise<string | void> // Callback to save thumbnail separately (called on edit mode exit)
   onDirtyStateChange?: (isDirty: boolean) => void
+  /** Name/description of the host's dashboard record, written into dashboard exports (features.dashboardImportExport) */
+  dashboardMeta?: DashboardMeta
 }
 
 export interface ChartProps {
@@ -753,6 +765,13 @@ export interface XlsExportFeatureConfig {
   filenamePrefix?: string
 }
 
+// Dashboard JSON import/export feature configuration (no extra dependency)
+export interface DashboardImportExportFeatureConfig {
+  enabled: boolean
+  /** Optional prefix for exported filenames (default: none; the file is named after the dashboard) */
+  filenamePrefix?: string
+}
+
 // Features configuration
 export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
@@ -764,6 +783,7 @@ export interface FeaturesConfig {
   thumbnail?: ThumbnailFeatureConfig // Optional dashboard thumbnail capture on save
   manualRefresh?: boolean // When true, queries don't auto-execute on config changes. User must click Refresh. (default: false)
   xlsExport?: XlsExportFeatureConfig // Optional XLSX data export from portlets (requires exceljs)
+  dashboardImportExport?: DashboardImportExportFeatureConfig // Optional dashboard export/import as a JSON file (toolbar buttons)
 }
 
 // Grid layout types (simplified)

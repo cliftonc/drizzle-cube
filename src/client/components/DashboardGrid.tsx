@@ -26,7 +26,8 @@ import type {
   DashboardConfig,
   DashboardFilter,
   CubeMeta,
-  DashboardLayoutMode
+  DashboardLayoutMode,
+  DashboardMeta
 } from '../types.js'
 
 interface DashboardGridProps {
@@ -45,6 +46,8 @@ interface DashboardGridProps {
   dashboardModes?: DashboardLayoutMode[]
   /** When true, no toolbar is rendered (neither the top edit bar nor the floating toolbar) */
   hideToolbar?: boolean
+  /** Name/description of the host's dashboard record, written into exports (features.dashboardImportExport) */
+  dashboardMeta?: DashboardMeta
 }
 
 export default function DashboardGrid(props: DashboardGridProps) {
