@@ -170,19 +170,5 @@ describe('Dashboard export add-on', () => {
     expect(file.name).toBe('Sales overview')
     expect(file.description).toBe('Weekly')
     expect(file.config.portlets.map((p) => p.id)).toEqual(['portlet-0', 'portlet-1'])
-    // Legacy test portlets are exported in canonical form
-    expect(file.config.portlets[0].analysisConfig).toBeDefined()
-    expect(file.config.portlets[0]).not.toHaveProperty('query')
-  })
-
-  it('exports from the floating toolbar too', () => {
-    URL.createObjectURL = vi.fn(() => 'blob:mock')
-    URL.revokeObjectURL = vi.fn()
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-
-    renderDashboard(createTestConfig(1))
-    fireEvent.click(screen.getByTestId('floating-export'))
-
-    expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
   })
 })

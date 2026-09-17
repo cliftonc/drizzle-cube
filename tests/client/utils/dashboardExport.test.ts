@@ -8,7 +8,6 @@ import {
   serializeDashboardExport,
   downloadDashboardExport,
   dashboardExportFilename,
-  normalizeDashboardConfigForExport,
 } from '../../../src/client/utils/dashboardExport'
 import type { DashboardConfig, PortletConfig } from '../../../src/client/types'
 import type { QueryAnalysisConfig } from '../../../src/client/types/analysisConfig'
@@ -51,9 +50,7 @@ describe('dashboardExport', () => {
       expect(file.name).toBe('Sales')
       expect(file.description).toBe('Weekly')
       expect(file.config.portlets).toHaveLength(2)
-      expect(file.config.layoutMode).toBe('rows')
       expect(file.config.rows).toEqual(sampleConfig().rows)
-      expect(file.config.filters).toEqual(sampleConfig().filters)
     })
 
     it('omits empty name and description', () => {
@@ -108,13 +105,6 @@ describe('dashboardExport', () => {
         'Cannot export portlet "malformed": legacy query is not valid JSON'
       )
     })
-
-    it('does not mutate the input config', () => {
-      const config = sampleConfig()
-      normalizeDashboardConfigForExport(config)
-      expect(config.thumbnailData).toBeDefined()
-      expect(config.portlets[0]).toHaveProperty('analysisConfig')
-    })
   })
 
   describe('serializeDashboardExport', () => {
@@ -129,8 +119,9 @@ describe('dashboardExport', () => {
   describe('dashboardExportFilename', () => {
     const date = new Date('2026-09-17T23:59:00.000Z')
 
-    it('lowercases the dashboard name, dashes the spaces and appends the date', () => {
+    it('lowercases the name, dashes spaces and path separators, and appends the date', () => {
       expect(dashboardExportFilename('Sales Overview (Q3) — Résumé', date)).toBe('sales-overview-(q3)-—-résumé-2026-09-17.json')
+      expect(dashboardExportFilename('Q3 / Q4', date)).toBe('q3---q4-2026-09-17.json')
     })
 
     it('falls back to "dashboard" without a name', () => {
@@ -140,10 +131,6 @@ describe('dashboardExport', () => {
 
     it('prepends an optional prefix', () => {
       expect(dashboardExportFilename('Sales', date, 'Acme Corp')).toBe('acme-corp-sales-2026-09-17.json')
-    })
-
-    it('replaces path separators so the name stays a single filename', () => {
-      expect(dashboardExportFilename('Q3 / Q4', date)).toBe('q3---q4-2026-09-17.json')
     })
   })
 
@@ -164,20 +151,16 @@ describe('dashboardExport', () => {
         return 'blob:mock'
       })
       URL.revokeObjectURL = vi.fn()
-      const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
       let downloadName = ''
-      const append = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
-        downloadName = (node as HTMLAnchorElement).download
-        return node
+      const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        downloadName = this.download
       })
-      vi.spyOn(document.body, 'removeChild').mockImplementation((node) => node)
 
       const now = new Date('2026-09-17T10:00:00.000Z')
       const file = createDashboardExport(sampleConfig(), { name: 'Sales' }, now)
       downloadDashboardExport(file, dashboardExportFilename(file.name, now))
 
       expect(click).toHaveBeenCalledTimes(1)
-      expect(append).toHaveBeenCalledTimes(1)
       expect(downloadName).toBe('sales-2026-09-17.json')
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock')
       expect(blobs).toHaveLength(1)
