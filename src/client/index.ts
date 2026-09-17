@@ -346,8 +346,6 @@ export { migrateConfig, migrateLegacyPortlet } from './utils/configMigration.js'
 export { captureThumbnail, isThumbnailCaptureAvailable, warnIfScreenshotLibMissing } from './utils/thumbnail.js'
 export { exportPortletToXlsx, isExportAvailable, warnIfExcelJsMissing } from './utils/exportXlsx.js'
 export {
-  DASHBOARD_EXPORT_FORMAT,
-  DASHBOARD_EXPORT_VERSION,
   createDashboardExport,
   serializeDashboardExport,
   downloadDashboardExport,

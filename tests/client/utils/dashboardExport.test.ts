@@ -4,8 +4,6 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
-  DASHBOARD_EXPORT_FORMAT,
-  DASHBOARD_EXPORT_VERSION,
   createDashboardExport,
   serializeDashboardExport,
   downloadDashboardExport,
@@ -44,12 +42,11 @@ function sampleConfig(): DashboardConfig {
 
 describe('dashboardExport', () => {
   describe('createDashboardExport', () => {
-    it('wraps the config in a versioned envelope with name and description', () => {
+    it('wraps the config in an envelope with name and description', () => {
       const now = new Date('2026-09-17T10:00:00.000Z')
       const file = createDashboardExport(sampleConfig(), { name: '  Sales  ', description: 'Weekly ' }, now)
 
-      expect(file.format).toBe(DASHBOARD_EXPORT_FORMAT)
-      expect(file.version).toBe(DASHBOARD_EXPORT_VERSION)
+      expect(Object.keys(file)).toEqual(['exportedAt', 'config', 'name', 'description'])
       expect(file.exportedAt).toBe('2026-09-17T10:00:00.000Z')
       expect(file.name).toBe('Sales')
       expect(file.description).toBe('Weekly')
@@ -107,7 +104,7 @@ describe('dashboardExport', () => {
     it('produces pretty-printed JSON that parses back to the envelope', () => {
       const file = createDashboardExport(sampleConfig(), { name: 'Sales', description: 'Weekly' })
       const json = serializeDashboardExport(file)
-      expect(json).toContain('\n  "format": "drizzle-cube-dashboard"')
+      expect(json).toContain('\n  "exportedAt": "')
       expect(JSON.parse(json)).toEqual(file)
     })
   })

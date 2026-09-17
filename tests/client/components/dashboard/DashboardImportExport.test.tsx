@@ -167,8 +167,6 @@ describe('Dashboard export add-on', () => {
 
     expect(blobs).toHaveLength(1)
     const file = JSON.parse(await blobs[0].text()) as DashboardExportFile
-    expect(file.format).toBe('drizzle-cube-dashboard')
-    expect(file.version).toBe(1)
     expect(file.name).toBe('Sales overview')
     expect(file.description).toBe('Weekly')
     expect(file.config.portlets.map((p) => p.id)).toEqual(['portlet-0', 'portlet-1'])

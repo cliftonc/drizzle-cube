@@ -21,8 +21,6 @@ export { exportPortletToXlsx, isExportAvailable } from './exportXlsx.js'
 
 // Dashboard JSON export (no extra dependency)
 export {
-  DASHBOARD_EXPORT_FORMAT,
-  DASHBOARD_EXPORT_VERSION,
   createDashboardExport,
   serializeDashboardExport,
   downloadDashboardExport,

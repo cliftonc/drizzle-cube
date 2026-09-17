@@ -1,7 +1,7 @@
 /**
  * Dashboard Export Utilities
  *
- * Serialises a DashboardConfig (plus the host's name/description) into a versioned
+ * Serialises a DashboardConfig (plus the host's name/description) into a small
  * JSON envelope that can be downloaded, stored, or imported again later. Pure
  * functions, no extra dependency.
  *
@@ -19,16 +19,11 @@ import { ensureAnalysisConfig } from './configMigration.js'
 // File format
 // ============================================================================
 
-export const DASHBOARD_EXPORT_FORMAT = 'drizzle-cube-dashboard' as const
-export const DASHBOARD_EXPORT_VERSION = 1 as const
-
 /**
- * The on-disk shape of a dashboard export. `version` is the envelope version;
- * portlets carry their own `analysisConfig.version` and migrate independently.
+ * The on-disk shape of a dashboard export: the config plus the host-owned name and
+ * description. Portlets carry their own `analysisConfig.version` and migrate on read.
  */
 export interface DashboardExportFile {
-  format: typeof DASHBOARD_EXPORT_FORMAT
-  version: typeof DASHBOARD_EXPORT_VERSION
   /** ISO 8601 timestamp of when the file was created */
   exportedAt: string
   name?: string
@@ -90,8 +85,6 @@ export function createDashboardExport(
   now: Date = new Date()
 ): DashboardExportFile {
   const file: DashboardExportFile = {
-    format: DASHBOARD_EXPORT_FORMAT,
-    version: DASHBOARD_EXPORT_VERSION,
     exportedAt: now.toISOString(),
     config: normalizeDashboardConfigForExport(config),
   }
