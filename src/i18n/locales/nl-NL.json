@@ -1669,6 +1669,8 @@
   "chart.gauge.thresholds.colour": "Bandkleur",
   "chart.gauge.thresholds.add": "Band toevoegen",
   "chart.gauge.thresholds.remove": "Band verwijderen",
+  "dashboard.importExport.menu": "Importeren / exporteren",
+  "dashboard.importExport.tooltip": "Dit dashboard importeren of exporteren",
   "dashboard.export.button": "Exporteren",
   "dashboard.export.tooltip": "Dit dashboard downloaden als JSON-bestand",
   "dashboard.import.button": "Importeren",
