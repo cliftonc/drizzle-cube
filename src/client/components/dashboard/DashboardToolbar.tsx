@@ -39,7 +39,8 @@ export default function DashboardToolbar() {
   if (hideToolbar) return null
   if (!editable && !importExport.enabled) return null
 
-  const showImportExport = importExport.enabled
+  const showExport = importExport.enabled && importExport.canExport
+  const showImport = importExport.enabled && importExport.canImport
 
   return (
     <>
@@ -61,11 +62,11 @@ export default function DashboardToolbar() {
           onPaletteChange={actions.handlePaletteChange}
           onAddPortlet={actions.openAddPortlet}
           onAddText={actions.openAddText}
-          onExportDashboard={showImportExport ? importExport.exportDashboard : undefined}
-          onImportDashboard={showImportExport ? () => fileInputRef.current?.click() : undefined}
+          onExportDashboard={showExport ? importExport.exportDashboard : undefined}
+          onImportDashboard={showImport ? () => fileInputRef.current?.click() : undefined}
         />
       )}
-      {showImportExport && (
+      {showImport && (
         <DashboardImportFileInput ref={fileInputRef} onFile={importExport.importFromFile} />
       )}
     </>

@@ -1,7 +1,8 @@
 /**
  * Tests for the dashboard import/export add-on (features.dashboardImportExport):
- * the edit-bar dropdown gated by the feature flag, export download, import confirm flow
- * through onConfigChange/onSave/onDashboardMetaChange, error dialog, and the
+ * the edit-bar dropdown gated by the feature flag, Export offered only for a dashboard
+ * with portlets and Import only for a still-empty one, export download, import confirm
+ * flow through onConfigChange/onSave/onDashboardMetaChange, error dialog, and the
  * empty-state import button.
  */
 
@@ -196,20 +197,39 @@ describe('Dashboard import / export add-on', () => {
     expect(screen.queryByTestId('dashboard-import-file-input')).toBeNull()
   })
 
-  it('keeps Export and Import in a dropdown, with Import only once editing', async () => {
+  it('offers only Export on a dashboard with portlets, never Import', async () => {
     renderDashboard(createTestConfig(2))
 
     // Closed by default - neither item is on screen
     expect(screen.queryByText('Export')).toBeNull()
     expect(screen.getByTestId('floating-export')).toBeInTheDocument()
+    expect(screen.queryByTestId('floating-import')).toBeNull()
 
     openImportExportMenu()
     expect(screen.getByRole('menuitem', { name: 'Export' })).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'Import' })).toBeNull()
 
+    // Editing a populated dashboard still does not offer Import
     fireEvent.click(screen.getByText('Edit'))
-    await waitFor(() => expect(screen.getByRole('menuitem', { name: 'Import' })).toBeInTheDocument())
-    expect(screen.getByTestId('floating-import')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Add Portlet')).toBeInTheDocument())
+    openImportExportMenu()
+    expect(screen.queryByRole('menuitem', { name: 'Import' })).toBeNull()
+    expect(screen.queryByTestId('floating-import')).toBeNull()
+    expect(screen.queryByTestId('dashboard-import-file-input')).toBeNull()
+  })
+
+  it('offers only Import on an empty dashboard while editing, never Export', async () => {
+    renderDashboard({ portlets: [] })
+
+    // Nothing to export and not editing yet, so the dropdown has no items and stays hidden
+    expect(screen.queryByLabelText('Import / Export')).toBeNull()
+    expect(screen.queryByTestId('floating-export')).toBeNull()
+
+    fireEvent.click(screen.getByText('Edit'))
+    await waitFor(() => expect(screen.getByTestId('floating-import')).toBeInTheDocument())
+    openImportExportMenu()
+    expect(screen.getByRole('menuitem', { name: 'Import' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Export' })).toBeNull()
   })
 
   it.each([{ editable: false }, { editable: undefined }])('shows only Export on a read-only dashboard (%o)', (props) => {
@@ -287,10 +307,7 @@ describe('Dashboard import / export add-on', () => {
     const onDashboardMetaChange = vi.fn().mockResolvedValue(undefined)
     const { config, file } = importedFile('Imported dashboard')
 
-    renderDashboard(createTestConfig(2), { onConfigChange, onSave, onDashboardMetaChange })
-    fireEvent.click(screen.getByText('Edit'))
-    openImportExportMenu()
-    await waitFor(() => expect(screen.getByRole('menuitem', { name: 'Import' })).toBeInTheDocument())
+    renderDashboard({ portlets: [] }, { onConfigChange, onSave, onDashboardMetaChange })
 
     await act(async () => {
       pickFile(file)
@@ -315,10 +332,7 @@ describe('Dashboard import / export add-on', () => {
     const onConfigChange = vi.fn()
     const { file } = importedFile()
 
-    renderDashboard(createTestConfig(2), { onConfigChange })
-    fireEvent.click(screen.getByText('Edit'))
-    openImportExportMenu()
-    await waitFor(() => expect(screen.getByRole('menuitem', { name: 'Import' })).toBeInTheDocument())
+    renderDashboard({ portlets: [] }, { onConfigChange })
 
     await act(async () => {
       pickFile(file)
@@ -334,10 +348,7 @@ describe('Dashboard import / export add-on', () => {
 
   it('shows the error dialog for a file that is not a dashboard export', async () => {
     const onConfigChange = vi.fn()
-    renderDashboard(createTestConfig(2), { onConfigChange })
-    fireEvent.click(screen.getByText('Edit'))
-    openImportExportMenu()
-    await waitFor(() => expect(screen.getByRole('menuitem', { name: 'Import' })).toBeInTheDocument())
+    renderDashboard({ portlets: [] }, { onConfigChange })
 
     await act(async () => {
       pickFile(new File(['{"hello": "world"}'], 'notes.json', { type: 'application/json' }))
@@ -372,7 +383,7 @@ describe('Dashboard import / export add-on', () => {
     expect(screen.queryByText('Import')).toBeNull()
   })
 
-  it('exports from the dropdown while editing', async () => {
+  it('exports from the dropdown while editing a populated dashboard', async () => {
     const blobs: Blob[] = []
     URL.createObjectURL = vi.fn((blob: Blob) => {
       blobs.push(blob)
@@ -383,8 +394,8 @@ describe('Dashboard import / export add-on', () => {
 
     renderDashboard(createTestConfig(1))
     fireEvent.click(screen.getByText('Edit'))
+    await waitFor(() => expect(screen.getByText('Add Portlet')).toBeInTheDocument())
     openImportExportMenu()
-    await waitFor(() => expect(screen.getByRole('menuitem', { name: 'Import' })).toBeInTheDocument())
 
     fireEvent.click(screen.getByRole('menuitem', { name: 'Export' }))
     expect(blobs).toHaveLength(1)

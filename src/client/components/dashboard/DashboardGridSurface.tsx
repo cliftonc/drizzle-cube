@@ -50,7 +50,7 @@ export default function DashboardGridSurface() {
           {editable && (
             <div className="dc:flex dc:items-center dc:gap-3">
               {/* An empty dashboard has no toolbar, so Import lives here too */}
-              {importExport.enabled && (
+              {importExport.enabled && importExport.canImport && (
                 <>
                   <button
                     onClick={() => fileInputRef.current?.click()}

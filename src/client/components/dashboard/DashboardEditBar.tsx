@@ -153,7 +153,10 @@ export default function DashboardEditBar() {
 
       <div className="dc:flex dc:items-center dc:gap-3">
         {importExport.enabled && (
-          <DashboardImportExportMenu showImport={isEditMode && isResponsiveEditable} />
+          <DashboardImportExportMenu
+            showExport={importExport.canExport}
+            showImport={importExport.canImport && isEditMode && isResponsiveEditable}
+          />
         )}
 
         {/* Color Palette Selector and Add Portlet - Only show in edit mode */}

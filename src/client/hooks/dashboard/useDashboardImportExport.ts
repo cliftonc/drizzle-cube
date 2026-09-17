@@ -3,8 +3,10 @@
  *
  * The state machine behind the dashboard Export / Import toolbar buttons
  * (features.dashboardImportExport). Export downloads the current config as a JSON
- * file. Import is two TanStack mutations: reading and parsing the picked file
- * (its result stays staged until the user confirms or dismisses), then applying
+ * file and is offered only for a dashboard that has portlets; Import is offered only
+ * while the dashboard is still empty, so a file seeds a newly created dashboard
+ * instead of replacing work. Import is two TanStack mutations: reading and parsing
+ * the picked file (its result stays staged until the user confirms or dismisses), then applying
  * the staged config through the normal save path and, when the host provided
  * `onDashboardMetaChange`, renaming the host's dashboard record.
  *
@@ -48,6 +50,16 @@ export interface FailedDashboardImport {
 export interface DashboardImportExportState {
   /** Whether features.dashboardImportExport is enabled; toolbars hide the buttons otherwise */
   enabled: boolean
+  /**
+   * Whether Export should be offered: only once the dashboard has portlets, so an
+   * empty, never-populated dashboard cannot be exported.
+   */
+  canExport: boolean
+  /**
+   * Whether Import should be offered: only while the dashboard is still empty, so a
+   * file can seed a newly created dashboard but never overwrite a populated one.
+   */
+  canImport: boolean
   /** Download the current dashboard as a JSON file */
   exportDashboard: () => void
   /** Parse a picked file and stage it for confirmation (or surface its errors) */
@@ -155,8 +167,12 @@ export function useDashboardImportExport({
     }
   }, [pendingImport, isImporting, applyImport])
 
+  const isEmpty = !config.portlets || config.portlets.length === 0
+
   return {
     enabled: featureConfig?.enabled === true,
+    canExport: !isEmpty,
+    canImport: isEmpty,
     exportDashboard,
     importFromFile,
     pendingImport,

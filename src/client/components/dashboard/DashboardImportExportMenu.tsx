@@ -1,8 +1,9 @@
 /**
  * Dropdown holding the dashboard Export / Import actions
  * (features.dashboardImportExport), so the edit bar keeps a single control
- * instead of two inline buttons. Export is always available; Import replaces the
- * dashboard, so it is only offered while editing.
+ * instead of two inline buttons. Export needs a dashboard with portlets; Import
+ * seeds a still-empty dashboard and is only offered while editing. Renders nothing
+ * when neither item applies.
  *
  * Owns the hidden file input the Import item clicks.
  */
@@ -21,7 +22,13 @@ const UploadIcon = getIcon('upload')
 const MENU_ITEM_CLASS =
   'dc:w-full dc:inline-flex dc:items-center dc:gap-2 dc:px-3 dc:py-2 dc:text-left dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover text-dc-text-secondary'
 
-export default function DashboardImportExportMenu({ showImport }: { showImport: boolean }) {
+export default function DashboardImportExportMenu({
+  showExport,
+  showImport
+}: {
+  showExport: boolean
+  showImport: boolean
+}) {
   const { t } = useTranslation()
   const { importExport } = useDashboardContext()
   const [isOpen, setIsOpen] = useState(false)
@@ -54,6 +61,8 @@ export default function DashboardImportExportMenu({ showImport }: { showImport: 
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
 
+  if (!showExport && !showImport) return null
+
   return (
     <div className="dc:relative" ref={menuRef}>
       <button
@@ -76,19 +85,21 @@ export default function DashboardImportExportMenu({ showImport }: { showImport: 
           className="dc:absolute dc:top-full dc:right-0 dc:mt-1 dc:w-56 bg-dc-surface dc:border border-dc-border dc:rounded-md dc:z-50 dc:py-1"
           style={{ boxShadow: 'var(--dc-shadow-lg)' }}
         >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setIsOpen(false)
-              importExport.exportDashboard()
-            }}
-            title={t('dashboard.export.tooltip')}
-            className={MENU_ITEM_CLASS}
-          >
-            <DownloadIcon className="dc:w-5 dc:h-5 dc:shrink-0" />
-            {t('dashboard.export.button')}
-          </button>
+          {showExport && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setIsOpen(false)
+                importExport.exportDashboard()
+              }}
+              title={t('dashboard.export.tooltip')}
+              className={MENU_ITEM_CLASS}
+            >
+              <DownloadIcon className="dc:w-5 dc:h-5 dc:shrink-0" />
+              {t('dashboard.export.button')}
+            </button>
+          )}
           {showImport && (
             <button
               type="button"
