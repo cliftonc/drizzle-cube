@@ -109,31 +109,27 @@ export function serializeDashboardExport(file: DashboardExportFile): string {
   return JSON.stringify(file, null, 2)
 }
 
-const MAX_SLUG_LENGTH = 60
-
-function slugify(value: string): string {
+function toFileNamePart(value: string): string {
   return value
+    .trim()
     .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, MAX_SLUG_LENGTH)
-    .replace(/-+$/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[/\\]/g, '-')
 }
 
 /**
  * Filename for an export: `<prefix->?<dashboard-name|dashboard>-<yyyy-mm-dd>.json`.
+ * The name is lowercased with spaces turned into dashes — no slugification.
  */
 export function dashboardExportFilename(
   name?: string,
   date: Date = new Date(),
   prefix?: string
 ): string {
-  const slug = slugify(name ?? '') || 'dashboard'
-  const prefixSlug = prefix ? slugify(prefix) : ''
+  const namePart = toFileNamePart(name ?? '') || 'dashboard'
+  const prefixPart = prefix ? toFileNamePart(prefix) : ''
   const day = date.toISOString().slice(0, 10)
-  return `${prefixSlug ? `${prefixSlug}-` : ''}${slug}-${day}.json`
+  return `${prefixPart ? `${prefixPart}-` : ''}${namePart}-${day}.json`
 }
 
 /**

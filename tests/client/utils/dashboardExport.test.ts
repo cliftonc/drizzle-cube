@@ -115,8 +115,8 @@ describe('dashboardExport', () => {
   describe('dashboardExportFilename', () => {
     const date = new Date('2026-09-17T23:59:00.000Z')
 
-    it('slugifies the dashboard name and appends the date', () => {
-      expect(dashboardExportFilename('Sales Overview (Q3) — Résumé', date)).toBe('sales-overview-q3-resume-2026-09-17.json')
+    it('lowercases the dashboard name, dashes the spaces and appends the date', () => {
+      expect(dashboardExportFilename('Sales Overview (Q3) — Résumé', date)).toBe('sales-overview-(q3)-—-résumé-2026-09-17.json')
     })
 
     it('falls back to "dashboard" without a name', () => {
@@ -128,10 +128,8 @@ describe('dashboardExport', () => {
       expect(dashboardExportFilename('Sales', date, 'Acme Corp')).toBe('acme-corp-sales-2026-09-17.json')
     })
 
-    it('caps very long names', () => {
-      const name = 'x'.repeat(200)
-      const filename = dashboardExportFilename(name, date)
-      expect(filename.length).toBeLessThanOrEqual(60 + '-2026-09-17.json'.length)
+    it('replaces path separators so the name stays a single filename', () => {
+      expect(dashboardExportFilename('Q3 / Q4', date)).toBe('q3---q4-2026-09-17.json')
     })
   })
 
