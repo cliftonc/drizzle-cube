@@ -92,6 +92,23 @@ describe('dashboardExport', () => {
       expect(exported).not.toHaveProperty('displayConfig')
     })
 
+    it('rejects malformed legacy portlets instead of exporting an empty chart', () => {
+      const malformed: PortletConfig = {
+        id: 'malformed',
+        title: 'Malformed',
+        query: 'not-json',
+        chartType: 'line',
+        x: 0,
+        y: 0,
+        w: 6,
+        h: 4,
+      }
+
+      expect(() => createDashboardExport({ portlets: [malformed] })).toThrow(
+        'Cannot export portlet "malformed": legacy query is not valid JSON'
+      )
+    })
+
     it('does not mutate the input config', () => {
       const config = sampleConfig()
       normalizeDashboardConfigForExport(config)

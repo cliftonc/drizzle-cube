@@ -13,7 +13,7 @@
  */
 
 import type { DashboardConfig, DashboardMeta, PortletConfig } from '../types.js'
-import { ensureAnalysisConfig } from './configMigration.js'
+import { ensureAnalysisConfig, hasAnalysisConfig } from './configMigration.js'
 
 // ============================================================================
 // File format
@@ -55,7 +55,24 @@ const LEGACY_PORTLET_KEYS = [
  * legacy fields on the way) and the deprecated legacy fields dropped.
  */
 function normalizePortletForExport(portlet: PortletConfig): PortletConfig {
+  // ensureAnalysisConfig intentionally falls back to a default query when it
+  // cannot parse legacy data. An export must not turn a broken chart into a
+  // valid-looking empty one, so validate legacy JSON before migrating it.
+  if (!hasAnalysisConfig(portlet)) {
+    if (typeof portlet.query !== 'string') {
+      throw new Error(`Cannot export portlet "${portlet.id}": no valid analysis configuration`)
+    }
+    try {
+      JSON.parse(portlet.query)
+    } catch {
+      throw new Error(`Cannot export portlet "${portlet.id}": legacy query is not valid JSON`)
+    }
+  }
+
   const normalized: PortletConfig = { ...ensureAnalysisConfig(portlet) }
+  if (!hasAnalysisConfig(normalized)) {
+    throw new Error(`Cannot export portlet "${portlet.id}": could not migrate analysis configuration`)
+  }
   for (const key of LEGACY_PORTLET_KEYS) {
     delete normalized[key]
   }
