@@ -348,11 +348,18 @@ export { exportPortletToXlsx, isExportAvailable, warnIfExcelJsMissing } from './
 export {
   createDashboardExport,
   serializeDashboardExport,
+  parseDashboardExport,
+  readDashboardExportFile,
   downloadDashboardExport,
   dashboardExportFilename,
   normalizeDashboardConfigForExport,
 } from './utils/dashboardExport.js'
-export type { DashboardExportFile } from './utils/dashboardExport.js'
+export type {
+  DashboardExportFile,
+  DashboardImportResult,
+  DashboardImportError,
+  DashboardImportWarning,
+} from './utils/dashboardExport.js'
 export type { DashboardImportExportState } from './hooks/dashboard/useDashboardImportExport.js'
 export { compressAndEncode, decodeAndDecompress, generateShareUrl, parseShareUrl, isShareableSize } from './utils/shareUtils.js'
 
