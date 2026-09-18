@@ -7,6 +7,9 @@
  *
  * Reads everything from DashboardContext. Renders nothing when `hideToolbar` is set, so
  * a host can either omit this component or pass `hideToolbar` to suppress it.
+ *
+ * A read-only dashboard (`editable` false) normally has no toolbar at all. When the
+ * dashboard export feature is on it still gets one, reduced to the Export button.
  */
 
 import FloatingEditToolbar from '../FloatingEditToolbar.js'
@@ -30,7 +33,8 @@ export default function DashboardToolbar() {
     importExport,
   } = useDashboardContext()
 
-  if (!editable || hideToolbar) return null
+  if (hideToolbar) return null
+  if (!editable && !importExport.enabled) return null
 
   return (
     <>
@@ -42,6 +46,7 @@ export default function DashboardToolbar() {
           isEditBarVisible={features.editToolbar === 'floating' ? false : isEditBarVisible}
           position={features.floatingToolbarPosition || 'right'}
           isEditMode={isEditMode}
+          canEdit={editable === true}
           onEditModeToggle={() => isResponsiveEditable && actions.toggleEditMode()}
           layoutMode={layoutMode}
           onLayoutModeChange={actions.handleLayoutModeChange}

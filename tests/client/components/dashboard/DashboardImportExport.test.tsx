@@ -87,6 +87,7 @@ vi.mock('../../../../src/client/components/MobileStackedLayout', () => ({
 vi.mock('../../../../src/client/components/FloatingEditToolbar', () => ({
   default: (props: any) => (
     <div data-testid="floating-toolbar">
+      {props.canEdit !== false && <button data-testid="floating-edit-toggle" onClick={props.onEditModeToggle}>edit</button>}
       {props.onExportDashboard && <button data-testid="floating-export" onClick={props.onExportDashboard}>export</button>}
     </div>
   )
@@ -151,6 +152,43 @@ describe('Dashboard export add-on', () => {
     fireEvent.click(screen.getByText('Edit'))
     expect(await screen.findByText('Finish Editing')).toBeInTheDocument()
     expect(screen.getByText('Export')).toBeInTheDocument()
+  })
+
+  it.each([{ editable: false }, { editable: undefined }])('shows only Export on a read-only dashboard (%o)', (props) => {
+    renderDashboard(createTestConfig(2), props)
+
+    expect(screen.getByText('Export')).toBeInTheDocument()
+    expect(screen.getByTestId('floating-export')).toBeInTheDocument()
+    expect(screen.queryByText('Edit')).toBeNull()
+    expect(screen.queryByTestId('floating-edit-toggle')).toBeNull()
+    expect(screen.queryByText('Add Portlet')).toBeNull()
+  })
+
+  it('renders no toolbar on a read-only dashboard when the feature is off', () => {
+    mockFeatures = {}
+    renderDashboard(createTestConfig(2), { editable: false })
+
+    expect(screen.queryByText('Export')).toBeNull()
+    expect(screen.queryByTestId('floating-toolbar')).toBeNull()
+    expect(screen.queryByText('Edit')).toBeNull()
+  })
+
+  it('renders no toolbar when hideToolbar is set, editable or not', () => {
+    const { unmount } = renderDashboard(createTestConfig(2), { hideToolbar: true })
+    expect(screen.queryByText('Export')).toBeNull()
+    expect(screen.queryByTestId('floating-toolbar')).toBeNull()
+    unmount()
+
+    renderDashboard(createTestConfig(2), { editable: false, hideToolbar: true })
+    expect(screen.queryByText('Export')).toBeNull()
+    expect(screen.queryByTestId('floating-toolbar')).toBeNull()
+  })
+
+  it('keeps the edit toggle and edit actions when editable', () => {
+    renderDashboard(createTestConfig(2))
+
+    expect(screen.getByText('Edit')).toBeInTheDocument()
+    expect(screen.getByTestId('floating-edit-toggle')).toBeInTheDocument()
   })
 
   it('exports the current config with the dashboard name as a JSON download', async () => {

@@ -42,6 +42,8 @@ interface FloatingEditToolbarProps {
   position: 'left' | 'right'
   /** Whether currently in edit mode */
   isEditMode: boolean
+  /** Whether the dashboard can be edited at all; when false only the export action is offered (default true) */
+  canEdit?: boolean
   /** Toggle edit mode on/off */
   onEditModeToggle: () => void
   /** Current layout mode */
@@ -68,6 +70,7 @@ export default function FloatingEditToolbar({
   isEditBarVisible,
   position,
   isEditMode,
+  canEdit = true,
   onEditModeToggle,
   layoutMode,
   onLayoutModeChange,
@@ -127,18 +130,20 @@ export default function FloatingEditToolbar({
         boxShadow: 'var(--dc-shadow-lg)'
       }}
     >
-      {/* Edit Toggle */}
-      <ToolbarButton
-        icon={isEditMode ? CheckIcon : EditIcon}
-        tooltip={isEditMode ? 'Finish Editing' : 'Edit Dashboard'}
-        isActive={isEditMode}
-        onClick={onEditModeToggle}
-      />
+      {/* Edit Toggle - omitted on a read-only dashboard */}
+      {canEdit && (
+        <ToolbarButton
+          icon={isEditMode ? CheckIcon : EditIcon}
+          tooltip={isEditMode ? 'Finish Editing' : 'Edit Dashboard'}
+          isActive={isEditMode}
+          onClick={onEditModeToggle}
+        />
+      )}
 
       {/* Export - available in any mode when the feature is enabled */}
       {onExportDashboard && (
         <>
-          <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />
+          {canEdit && <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />}
           <ToolbarButton
             icon={DownloadIcon}
             tooltip={t('dashboard.export.tooltip')}

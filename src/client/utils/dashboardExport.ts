@@ -9,7 +9,8 @@
  * 1. Enable in CubeProvider: features={{ dashboardImportExport: { enabled: true } }}
  * 2. Optionally pass `dashboardMeta` to AnalyticsDashboard so exports carry the
  *    dashboard name and description (the library never stores those itself).
- * 3. An Export button appears in the dashboard toolbar.
+ * 3. An Export button appears in the dashboard toolbar, in view and edit mode and
+ *    also on read-only dashboards (`editable={false}`). `hideToolbar` still hides it.
  *
  * Hosts reading a file themselves (e.g. to create a dashboard record on a list
  * page) call `readDashboardExportFile()` and persist the returned config.
