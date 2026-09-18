@@ -39,7 +39,7 @@ export default function DashboardToolbar() {
   if (hideToolbar) return null
   if (!editable && !importExport.enabled) return null
 
-  const showExport = importExport.enabled && importExport.canExport
+  const showExport = importExport.enabled && importExport.canExport && !isEditMode
   const showImport = importExport.enabled && importExport.canImport
 
   return (

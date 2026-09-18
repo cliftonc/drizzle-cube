@@ -11,7 +11,7 @@ import { useTranslation } from '../../hooks/useTranslation.js'
 import ColorPaletteSelector from '../ColorPaletteSelector.js'
 import { TextIcon } from './dashboardGridUtils.js'
 import { useDashboardContext } from './DashboardContext.js'
-import DashboardImportExportMenu from './DashboardImportExportMenu.js'
+import DashboardImportExportActions from './DashboardImportExportActions.js'
 import LayoutModeToggle from './LayoutModeToggle.js'
 
 const EditIcon = getIcon('edit')
@@ -153,8 +153,8 @@ export default function DashboardEditBar() {
 
       <div className="dc:flex dc:items-center dc:gap-3">
         {importExport.enabled && (
-          <DashboardImportExportMenu
-            showExport={importExport.canExport}
+          <DashboardImportExportActions
+            showExport={importExport.canExport && !isEditMode}
             showImport={importExport.canImport && isEditMode && isResponsiveEditable}
           />
         )}
