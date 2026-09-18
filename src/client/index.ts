@@ -360,7 +360,11 @@ export type {
   DashboardImportError,
   DashboardImportWarning,
 } from './utils/dashboardExport.js'
-export type { DashboardImportExportState } from './hooks/dashboard/useDashboardImportExport.js'
+export type {
+  DashboardImportExportState,
+  PendingDashboardImport,
+  FailedDashboardImport,
+} from './hooks/dashboard/useDashboardImportExport.js'
 export { compressAndEncode, decodeAndDecompress, generateShareUrl, parseShareUrl, isShareableSize } from './utils/shareUtils.js'
 
 // Multi-query utilities

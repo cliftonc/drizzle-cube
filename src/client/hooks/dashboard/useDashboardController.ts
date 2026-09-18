@@ -123,6 +123,18 @@ export function useDashboardController({
     [onConfigChangeRef, onSaveRef, storeActions]
   )
 
+  /**
+   * Replace the whole dashboard config (dashboard import). Goes through the same
+   * save path as every other edit, so onConfigChange/onSave fire and the thumbnail
+   * is marked dirty.
+   */
+  const importConfig = useCallback(
+    async (config: DashboardConfig) => {
+      await saveConfig(config, 'Failed to import dashboard:')
+    },
+    [saveConfig]
+  )
+
   const enterEditMode = useCallback(() => {
     startTransition(() => {
       storeActions.setEditMode(true)
@@ -695,6 +707,7 @@ export function useDashboardController({
     selectAllForFilter,
     saveFilterConfig,
     handlePaletteChange,
+    importConfig,
     snapPortletIntoGroup,
     ungroupGroup,
     deleteGroup,

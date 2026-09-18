@@ -705,6 +705,12 @@ export interface AnalyticsDashboardProps {
   onDirtyStateChange?: (isDirty: boolean) => void
   /** Name/description of the host's dashboard record, written into dashboard exports (features.dashboardImportExport) */
   dashboardMeta?: DashboardMeta
+  /**
+   * Called after a dashboard import has replaced the config, when the imported file
+   * carries a name. Lets the host rename its dashboard record to match. Optional:
+   * without it an import only replaces the config.
+   */
+  onDashboardMetaChange?: (meta: { name: string; description?: string }) => Promise<void> | void
 }
 
 export interface ChartProps {

@@ -5,6 +5,7 @@
 
 import React from 'react'
 import { render, fireEvent, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import DashboardProvider from '../../../../src/client/components/dashboard/DashboardProvider'
 import DashboardToolbar from '../../../../src/client/components/dashboard/DashboardToolbar'
@@ -110,13 +111,17 @@ function createTestConfig(portletCount = 2): DashboardConfig {
   return { portlets, layoutMode: 'grid' }
 }
 
+// The import flow runs on TanStack mutations, so the tree needs a QueryClient (CubeProvider supplies it in apps)
 function renderDashboard(config: DashboardConfig, props: Partial<React.ComponentProps<typeof DashboardProvider>> = {}) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
-    <DashboardProvider config={config} editable {...props}>
-      <DashboardToolbar />
-      <DashboardGridSurface />
-      <DashboardModals />
-    </DashboardProvider>
+    <QueryClientProvider client={queryClient}>
+      <DashboardProvider config={config} editable {...props}>
+        <DashboardToolbar />
+        <DashboardGridSurface />
+        <DashboardModals />
+      </DashboardProvider>
+    </QueryClientProvider>
   )
 }
 

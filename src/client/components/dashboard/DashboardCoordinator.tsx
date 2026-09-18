@@ -78,6 +78,7 @@ export default function DashboardCoordinator({
   dashboardModes,
   hideToolbar,
   dashboardMeta,
+  onDashboardMetaChange,
   children
 }: DashboardProviderProps) {
   // Get features from context for conditional rendering
@@ -824,10 +825,12 @@ export default function DashboardCoordinator({
     await actions.handlePaletteChange(paletteName)
   }, [actions])
 
-  // Dashboard JSON export (features.dashboardImportExport)
+  // Dashboard JSON export / import (features.dashboardImportExport)
   const importExport = useDashboardImportExport({
     config,
     dashboardMeta,
+    onDashboardMetaChange,
+    importConfig: actions.importConfig,
     featureConfig: features.dashboardImportExport,
   })
 

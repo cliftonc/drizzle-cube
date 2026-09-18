@@ -194,6 +194,8 @@ export interface UseDashboardActions {
 
   // Config Operations
   handlePaletteChange: (paletteName: string) => Promise<void>
+  /** Replace the entire config (dashboard import); saves like any other edit */
+  importConfig: (config: DashboardConfig) => Promise<void>
 
   // Group Operations (rows layout mode only)
   snapPortletIntoGroup: (
@@ -407,6 +409,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     selectAllForFilter,
     saveFilterConfig,
     handlePaletteChange,
+    importConfig,
     snapPortletIntoGroup,
     ungroupGroup,
     deleteGroup,
@@ -484,6 +487,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
       // Config operations
       handlePaletteChange,
+      importConfig,
 
       // Group operations
       snapPortletIntoGroup,
@@ -524,6 +528,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       selectAllForFilter,
       saveFilterConfig,
       handlePaletteChange,
+      importConfig,
       snapPortletIntoGroup,
       ungroupGroup,
       deleteGroup,
