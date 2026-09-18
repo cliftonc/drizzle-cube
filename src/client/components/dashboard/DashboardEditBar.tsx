@@ -6,11 +6,13 @@
  * and the bar carries only the export action.
  */
 
+import { useRef } from 'react'
 import { getIcon } from '../../icons/index.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
 import ColorPaletteSelector from '../ColorPaletteSelector.js'
 import { TextIcon } from './dashboardGridUtils.js'
 import { useDashboardContext } from './DashboardContext.js'
+import DashboardImportFileInput from './DashboardImportFileInput.js'
 import LayoutModeToggle from './LayoutModeToggle.js'
 
 const EditIcon = getIcon('edit')
@@ -18,6 +20,7 @@ const CheckIcon = getIcon('check')
 const AddIcon = getIcon('add')
 const DesktopIcon = getIcon('desktop')
 const DownloadIcon = getIcon('download')
+const UploadIcon = getIcon('upload')
 
 const SECONDARY_BUTTON_CLASS =
   'dc:inline-flex dc:items-center dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:border dc:rounded-md focus:outline-hidden dc:focus:ring-2 dc:focus:ring-offset-2 border-dc-border bg-dc-surface hover:bg-dc-surface-hover'
@@ -100,10 +103,14 @@ function EditActions({
   )
 }
 
-/** Export (features.dashboardImportExport). Available in view and edit mode. */
-function ImportExportActions() {
+/**
+ * Export / Import (features.dashboardImportExport). Export is always available;
+ * Import replaces the dashboard, so it only shows while editing.
+ */
+function ImportExportActions({ showImport }: { showImport: boolean }) {
   const { t } = useTranslation()
   const { importExport } = useDashboardContext()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   return (
     <div className="dc:flex dc:items-center dc:gap-3">
@@ -117,6 +124,21 @@ function ImportExportActions() {
         <DownloadIcon className="dc:w-5 dc:h-5 dc:mr-2" />
         {t('dashboard.export.button')}
       </button>
+      {showImport && (
+        <>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            title={t('dashboard.import.tooltip')}
+            className={SECONDARY_BUTTON_CLASS}
+            style={SECONDARY_BUTTON_STYLE}
+          >
+            <UploadIcon className="dc:w-5 dc:h-5 dc:mr-2" />
+            {t('dashboard.import.button')}
+          </button>
+          <DashboardImportFileInput ref={fileInputRef} onFile={importExport.importFromFile} />
+        </>
+      )}
     </div>
   )
 }
@@ -177,7 +199,9 @@ export default function DashboardEditBar() {
       )}
 
       <div className="dc:flex dc:items-center dc:gap-3">
-        {importExport.enabled && <ImportExportActions />}
+        {importExport.enabled && (
+          <ImportExportActions showImport={isEditMode && isResponsiveEditable} />
+        )}
 
         {/* Color Palette Selector and Add Portlet - Only show in edit mode */}
         {editable && isEditMode && (

@@ -78,6 +78,7 @@ export interface IconRegistry {
   schemaGraph: IconDefinition
   cube: IconDefinition
   download: IconDefinition
+  upload: IconDefinition
 
   // Field type icons
   measure: IconDefinition

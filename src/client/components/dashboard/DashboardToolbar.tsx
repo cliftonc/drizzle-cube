@@ -12,11 +12,14 @@
  * dashboard export feature is on it still gets one, reduced to the Export button.
  */
 
+import { useRef } from 'react'
 import FloatingEditToolbar from '../FloatingEditToolbar.js'
 import { useDashboardContext } from './DashboardContext.js'
 import DashboardEditBar from './DashboardEditBar.js'
+import DashboardImportFileInput from './DashboardImportFileInput.js'
 
 export default function DashboardToolbar() {
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const {
     editable,
     hideToolbar,
@@ -35,6 +38,8 @@ export default function DashboardToolbar() {
 
   if (hideToolbar) return null
   if (!editable && !importExport.enabled) return null
+
+  const showImportExport = importExport.enabled
 
   return (
     <>
@@ -56,8 +61,12 @@ export default function DashboardToolbar() {
           onPaletteChange={actions.handlePaletteChange}
           onAddPortlet={actions.openAddPortlet}
           onAddText={actions.openAddText}
-          onExportDashboard={importExport.enabled ? importExport.exportDashboard : undefined}
+          onExportDashboard={showImportExport ? importExport.exportDashboard : undefined}
+          onImportDashboard={showImportExport ? () => fileInputRef.current?.click() : undefined}
         />
+      )}
+      {showImportExport && (
+        <DashboardImportFileInput ref={fileInputRef} onFile={importExport.importFromFile} />
       )}
     </>
   )

@@ -1670,5 +1670,19 @@
   "chart.gauge.thresholds.add": "Band toevoegen",
   "chart.gauge.thresholds.remove": "Band verwijderen",
   "dashboard.export.button": "Exporteren",
-  "dashboard.export.tooltip": "Dit dashboard downloaden als JSON-bestand"
+  "dashboard.export.tooltip": "Dit dashboard downloaden als JSON-bestand",
+  "dashboard.import.button": "Importeren",
+  "dashboard.import.tooltip": "Dit dashboard vervangen door een JSON-export",
+  "dashboard.import.confirmTitle": "Dashboard importeren",
+  "dashboard.import.confirmMessage": "Alles op dit dashboard vervangen door de {count} portlets uit \"{fileName}\"? Dit kan niet ongedaan worden gemaakt.",
+  "dashboard.import.confirmRename": "Het dashboard wordt ook hernoemd naar \"{name}\".",
+  "dashboard.import.confirmAction": "Dashboard vervangen",
+  "dashboard.import.warningsTitle": "Waarschuwingen",
+  "dashboard.import.warning.unknownFilterMapping": "Portlet \"{portlet}\" is gekoppeld aan een dashboardfilter dat niet in het bestand staat ({filterId}).",
+  "dashboard.import.errorTitle": "Dashboard kon niet worden geïmporteerd",
+  "dashboard.import.errorIntro": "\"{fileName}\" kon niet worden geïmporteerd:",
+  "dashboard.import.error.invalidJson": "Het bestand is geen geldige JSON.",
+  "dashboard.import.error.unknownFormat": "Het bestand is geen drizzle-cube dashboardexport.",
+  "dashboard.import.error.invalidConfig": "De dashboardconfiguratie is ongeldig ({path}).",
+  "dashboard.import.error.invalidPortlet": "Portlet {index} is ongeldig ({path})."
 }

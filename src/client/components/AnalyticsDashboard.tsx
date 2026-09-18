@@ -20,7 +20,8 @@ export default function AnalyticsDashboard({
   onSave,
   onSaveThumbnail,
   onDirtyStateChange,
-  dashboardMeta
+  dashboardMeta,
+  onDashboardMetaChange
 }: AnalyticsDashboardProps) {
   // Get cube metadata for filter building
   const { meta } = useCubeMeta()
@@ -113,6 +114,7 @@ export default function AnalyticsDashboard({
         dashboardModes={dashboardModes}
         onDashboardFiltersChange={handleDashboardFiltersChange}
         dashboardMeta={dashboardMeta}
+        onDashboardMetaChange={onDashboardMetaChange}
       />
     </div>
   )

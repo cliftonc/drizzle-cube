@@ -1,18 +1,24 @@
 /**
- * Tests for the dashboard export add-on (features.dashboardImportExport):
- * toolbar buttons gated by the feature flag and the export download.
+ * Tests for the dashboard import/export add-on (features.dashboardImportExport):
+ * toolbar buttons gated by the feature flag, export download, import confirm flow
+ * through onConfigChange/onSave/onDashboardMetaChange, error dialog, and the
+ * empty-state import button.
  */
 
 import React from 'react'
-import { render, fireEvent, screen } from '@testing-library/react'
+import { render, fireEvent, waitFor, screen, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import DashboardProvider from '../../../../src/client/components/dashboard/DashboardProvider'
 import DashboardToolbar from '../../../../src/client/components/dashboard/DashboardToolbar'
 import DashboardGridSurface from '../../../../src/client/components/dashboard/DashboardGridSurface'
 import DashboardModals from '../../../../src/client/components/dashboard/DashboardModals'
-import type { DashboardConfig, PortletConfig, FeaturesConfig } from '../../../../src/client/types'
+import {
+  createDashboardExport,
+  serializeDashboardExport,
+} from '../../../../src/client/utils/dashboardExport'
 import type { DashboardExportFile } from '../../../../src/client/utils/dashboardExport'
+import type { DashboardConfig, PortletConfig, FeaturesConfig } from '../../../../src/client/types'
 
 let mockFeatures: FeaturesConfig = {}
 
@@ -90,6 +96,7 @@ vi.mock('../../../../src/client/components/FloatingEditToolbar', () => ({
     <div data-testid="floating-toolbar">
       {props.canEdit !== false && <button data-testid="floating-edit-toggle" onClick={props.onEditModeToggle}>edit</button>}
       {props.onExportDashboard && <button data-testid="floating-export" onClick={props.onExportDashboard}>export</button>}
+      {props.onImportDashboard && <button data-testid="floating-import" onClick={props.onImportDashboard}>import</button>}
     </div>
   )
 }))
@@ -111,6 +118,39 @@ function createTestConfig(portletCount = 2): DashboardConfig {
   return { portlets, layoutMode: 'grid' }
 }
 
+function importedFile(name = 'Imported dashboard') {
+  const config: DashboardConfig = {
+    portlets: [
+      {
+        id: 'imported-1',
+        title: 'Imported portlet',
+        analysisConfig: {
+          version: 1,
+          analysisType: 'query',
+          activeView: 'chart',
+          charts: { query: { chartType: 'line', chartConfig: {}, displayConfig: {} } },
+          query: { measures: ['Sales.total'], dimensions: [] },
+        },
+        x: 0,
+        y: 0,
+        w: 12,
+        h: 4,
+      },
+    ],
+    layoutMode: 'grid',
+  }
+  const file = createDashboardExport(config, { name, description: 'From a file' })
+  return {
+    config: file.config,
+    file: new File([serializeDashboardExport(file)], 'sales.json', { type: 'application/json' }),
+  }
+}
+
+function pickFile(file: File) {
+  const inputs = screen.getAllByTestId('dashboard-import-file-input')
+  fireEvent.change(inputs[0], { target: { files: [file] } })
+}
+
 // The import flow runs on TanStack mutations, so the tree needs a QueryClient (CubeProvider supplies it in apps)
 function renderDashboard(config: DashboardConfig, props: Partial<React.ComponentProps<typeof DashboardProvider>> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -125,7 +165,7 @@ function renderDashboard(config: DashboardConfig, props: Partial<React.Component
   )
 }
 
-describe('Dashboard export add-on', () => {
+describe('Dashboard import / export add-on', () => {
   const originalCreate = URL.createObjectURL
   const originalRevoke = URL.revokeObjectURL
 
@@ -140,23 +180,26 @@ describe('Dashboard export add-on', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders no export controls when the feature is off', () => {
+  it('renders no export/import controls when the feature is off', () => {
     mockFeatures = {}
     renderDashboard(createTestConfig(2))
 
     expect(screen.queryByText('Export')).toBeNull()
+    expect(screen.queryByText('Import')).toBeNull()
     expect(screen.queryByTestId('floating-export')).toBeNull()
+    expect(screen.queryByTestId('dashboard-import-file-input')).toBeNull()
   })
 
-  it('shows Export in both the edit bar and the floating toolbar, in view and edit mode', async () => {
+  it('shows Export in view mode and adds Import once editing', async () => {
     renderDashboard(createTestConfig(2))
 
     expect(screen.getByText('Export')).toBeInTheDocument()
     expect(screen.getByTestId('floating-export')).toBeInTheDocument()
+    expect(screen.queryByText('Import')).toBeNull()
 
     fireEvent.click(screen.getByText('Edit'))
-    expect(await screen.findByText('Finish Editing')).toBeInTheDocument()
-    expect(screen.getByText('Export')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Import')).toBeInTheDocument())
+    expect(screen.getByTestId('floating-import')).toBeInTheDocument()
   })
 
   it.each([{ editable: false }, { editable: undefined }])('shows only Export on a read-only dashboard (%o)', (props) => {
@@ -213,5 +256,93 @@ describe('Dashboard export add-on', () => {
     expect(file.name).toBe('Sales overview')
     expect(file.description).toBe('Weekly')
     expect(file.config.portlets.map((p) => p.id)).toEqual(['portlet-0', 'portlet-1'])
+  })
+
+  it('imports a file after confirmation, saving the config and renaming via onDashboardMetaChange', async () => {
+    const onConfigChange = vi.fn()
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    const onDashboardMetaChange = vi.fn().mockResolvedValue(undefined)
+    const { config, file } = importedFile('Imported dashboard')
+
+    renderDashboard(createTestConfig(2), { onConfigChange, onSave, onDashboardMetaChange })
+    fireEvent.click(screen.getByText('Edit'))
+    await waitFor(() => expect(screen.getByText('Import')).toBeInTheDocument())
+
+    await act(async () => {
+      pickFile(file)
+    })
+
+    await waitFor(() => expect(screen.getByText('Import dashboard')).toBeInTheDocument())
+    expect(screen.getByText(/1 portlets in "sales.json"/)).toBeInTheDocument()
+    expect(screen.getByText(/renamed to "Imported dashboard"/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Replace dashboard'))
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(onConfigChange).toHaveBeenCalledWith(config)
+    expect(onSave).toHaveBeenCalledWith(config)
+    await waitFor(() =>
+      expect(onDashboardMetaChange).toHaveBeenCalledWith({ name: 'Imported dashboard', description: 'From a file' })
+    )
+    await waitFor(() => expect(screen.queryByText('Import dashboard')).toBeNull())
+  })
+
+  it('does not mention renaming when the host gave no onDashboardMetaChange', async () => {
+    const onConfigChange = vi.fn()
+    const { file } = importedFile()
+
+    renderDashboard(createTestConfig(2), { onConfigChange })
+    fireEvent.click(screen.getByText('Edit'))
+    await waitFor(() => expect(screen.getByText('Import')).toBeInTheDocument())
+
+    await act(async () => {
+      pickFile(file)
+    })
+
+    await waitFor(() => expect(screen.getByText('Import dashboard')).toBeInTheDocument())
+    expect(screen.queryByText(/renamed to/)).toBeNull()
+
+    fireEvent.click(screen.getByText('Cancel'))
+    await waitFor(() => expect(screen.queryByText('Import dashboard')).toBeNull())
+    expect(onConfigChange).not.toHaveBeenCalled()
+  })
+
+  it('shows the error dialog for a file that is not a dashboard export', async () => {
+    const onConfigChange = vi.fn()
+    renderDashboard(createTestConfig(2), { onConfigChange })
+    fireEvent.click(screen.getByText('Edit'))
+    await waitFor(() => expect(screen.getByText('Import')).toBeInTheDocument())
+
+    await act(async () => {
+      pickFile(new File(['{"hello": "world"}'], 'notes.json', { type: 'application/json' }))
+    })
+
+    await waitFor(() => expect(screen.getByText('Could not import dashboard')).toBeInTheDocument())
+    expect(screen.getByText('The file is not a drizzle-cube dashboard export.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Close'))
+    await waitFor(() => expect(screen.queryByText('Could not import dashboard')).toBeNull())
+    expect(onConfigChange).not.toHaveBeenCalled()
+  })
+
+  it('offers Import on an empty editable dashboard', async () => {
+    const onConfigChange = vi.fn()
+    const { config, file } = importedFile()
+
+    renderDashboard({ portlets: [] }, { onConfigChange })
+    expect(screen.getByText('Import')).toBeInTheDocument()
+
+    await act(async () => {
+      pickFile(file)
+    })
+    await waitFor(() => expect(screen.getByText('Import dashboard')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('Replace dashboard'))
+    await waitFor(() => expect(onConfigChange).toHaveBeenCalledWith(config))
+  })
+
+  it('hides the empty-state Import when the feature is off', () => {
+    mockFeatures = {}
+    renderDashboard({ portlets: [] })
+    expect(screen.queryByText('Import')).toBeNull()
   })
 })

@@ -48,6 +48,8 @@ interface DashboardGridProps {
   hideToolbar?: boolean
   /** Name/description of the host's dashboard record, written into exports (features.dashboardImportExport) */
   dashboardMeta?: DashboardMeta
+  /** Called after an import replaced the config when the file carries a name, so the host can rename its record */
+  onDashboardMetaChange?: (meta: { name: string; description?: string }) => Promise<void> | void
 }
 
 export default function DashboardGrid(props: DashboardGridProps) {

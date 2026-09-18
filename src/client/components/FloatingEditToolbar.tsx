@@ -22,6 +22,7 @@ import type { DashboardLayoutMode } from '../types.js'
 const EditIcon = getIcon('edit')
 const CheckIcon = getIcon('check')
 const DownloadIcon = getIcon('download')
+const UploadIcon = getIcon('upload')
 const GridIcon = getIcon('segment')
 const RowsIcon = getIcon('table')
 const AddIcon = getIcon('add')
@@ -64,6 +65,8 @@ interface FloatingEditToolbarProps {
   onAddText?: () => void
   /** Export the dashboard as JSON (features.dashboardImportExport); button hidden when absent */
   onExportDashboard?: () => void
+  /** Import a dashboard JSON file, replacing this one; button hidden when absent, edit mode only */
+  onImportDashboard?: () => void
 }
 
 export default function FloatingEditToolbar({
@@ -80,7 +83,8 @@ export default function FloatingEditToolbar({
   onPaletteChange,
   onAddPortlet,
   onAddText,
-  onExportDashboard
+  onExportDashboard,
+  onImportDashboard
 }: FloatingEditToolbarProps) {
   const { t } = useTranslation()
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
@@ -140,15 +144,24 @@ export default function FloatingEditToolbar({
         />
       )}
 
-      {/* Export - available in any mode when the feature is enabled */}
-      {onExportDashboard && (
+      {/* Export / Import - export in any mode, import only while editing */}
+      {(onExportDashboard || (isEditMode && onImportDashboard)) && (
         <>
           {canEdit && <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />}
-          <ToolbarButton
-            icon={DownloadIcon}
-            tooltip={t('dashboard.export.tooltip')}
-            onClick={onExportDashboard}
-          />
+          {onExportDashboard && (
+            <ToolbarButton
+              icon={DownloadIcon}
+              tooltip={t('dashboard.export.tooltip')}
+              onClick={onExportDashboard}
+            />
+          )}
+          {isEditMode && onImportDashboard && (
+            <ToolbarButton
+              icon={UploadIcon}
+              tooltip={t('dashboard.import.tooltip')}
+              onClick={onImportDashboard}
+            />
+          )}
         </>
       )}
 

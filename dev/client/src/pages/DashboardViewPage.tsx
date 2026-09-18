@@ -80,6 +80,7 @@ export default function DashboardViewPage() {
         onDirtyStateChange={handleDirtyStateChange}
         loadingComponent={<DrizzleCubeLoader />}
         dashboardMeta={{ name: page.name, description: page.description ?? undefined }}
+        onDashboardMetaChange={handleEditMetadata}
       />
 
       <DashboardEditModal
