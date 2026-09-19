@@ -5,7 +5,8 @@
  */
 
 import React from 'react'
-import { render, fireEvent, waitFor } from '@testing-library/react'
+import { render as rtlRender, fireEvent, waitFor, type RenderOptions } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import DashboardGrid from '../../../../src/client/components/DashboardGrid'
 import DashboardProvider from '../../../../src/client/components/dashboard/DashboardProvider'
@@ -92,6 +93,15 @@ vi.mock('../../../../src/client/components/MobileStackedLayout', () => ({
 vi.mock('../../../../src/client/components/FloatingEditToolbar', () => ({
   default: () => <div data-testid="floating-toolbar" />
 }))
+
+// The dashboard import/export flow uses TanStack mutations, so the tree needs a QueryClient
+const testQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+function QueryWrapper({ children }: { children: React.ReactNode }) {
+  return <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
+}
+function render(ui: React.ReactElement, options?: Omit<RenderOptions, 'wrapper'>) {
+  return rtlRender(ui, { ...options, wrapper: QueryWrapper })
+}
 
 function createTestConfig(portletCount = 2): DashboardConfig {
   const portlets: PortletConfig[] = []

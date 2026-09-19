@@ -7,13 +7,19 @@
  *
  * Reads everything from DashboardContext. Renders nothing when `hideToolbar` is set, so
  * a host can either omit this component or pass `hideToolbar` to suppress it.
+ *
+ * A read-only dashboard (`editable` false) normally has no toolbar at all. When the
+ * dashboard export feature is on it still gets one, reduced to the Export button.
  */
 
+import { useRef } from 'react'
 import FloatingEditToolbar from '../FloatingEditToolbar.js'
 import { useDashboardContext } from './DashboardContext.js'
 import DashboardEditBar from './DashboardEditBar.js'
+import DashboardImportFileInput from './DashboardImportFileInput.js'
 
 export default function DashboardToolbar() {
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const {
     editable,
     hideToolbar,
@@ -27,9 +33,14 @@ export default function DashboardToolbar() {
     isEditBarVisible,
     config,
     actions,
+    importExport,
   } = useDashboardContext()
 
-  if (!editable || hideToolbar) return null
+  if (hideToolbar) return null
+  if (!editable && !importExport.enabled) return null
+
+  const showExport = importExport.enabled && importExport.canExport && !isEditMode
+  const showImport = importExport.enabled && importExport.canImport
 
   return (
     <>
@@ -41,6 +52,7 @@ export default function DashboardToolbar() {
           isEditBarVisible={features.editToolbar === 'floating' ? false : isEditBarVisible}
           position={features.floatingToolbarPosition || 'right'}
           isEditMode={isEditMode}
+          canEdit={editable === true}
           onEditModeToggle={() => isResponsiveEditable && actions.toggleEditMode()}
           layoutMode={layoutMode}
           onLayoutModeChange={actions.handleLayoutModeChange}
@@ -50,7 +62,12 @@ export default function DashboardToolbar() {
           onPaletteChange={actions.handlePaletteChange}
           onAddPortlet={actions.openAddPortlet}
           onAddText={actions.openAddText}
+          onExportDashboard={showExport ? importExport.exportDashboard : undefined}
+          onImportDashboard={showImport ? () => fileInputRef.current?.click() : undefined}
         />
+      )}
+      {showImport && (
+        <DashboardImportFileInput ref={fileInputRef} onFile={importExport.importFromFile} />
       )}
     </>
   )

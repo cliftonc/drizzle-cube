@@ -36,6 +36,7 @@ import { useCubeFeatures } from '../../providers/CubeProvider.js'
 import { useResponsiveDashboard } from '../../hooks/useResponsiveDashboard.js'
 import { ScrollContainerProvider } from '../../providers/ScrollContainerContext.js'
 import { useDashboard } from '../../hooks/useDashboardHook.js'
+import { useDashboardImportExport } from '../../hooks/dashboard/useDashboardImportExport.js'
 import type {
   PortletConfig,
   PortletGroup,
@@ -76,6 +77,8 @@ export default function DashboardCoordinator({
   onDashboardFiltersChange,
   dashboardModes,
   hideToolbar,
+  dashboardMeta,
+  onDashboardMetaChange,
   children
 }: DashboardProviderProps) {
   // Get features from context for conditional rendering
@@ -822,6 +825,15 @@ export default function DashboardCoordinator({
     await actions.handlePaletteChange(paletteName)
   }, [actions])
 
+  // Dashboard JSON export / import (features.dashboardImportExport)
+  const importExport = useDashboardImportExport({
+    config,
+    dashboardMeta,
+    onDashboardMetaChange,
+    importConfig: actions.importConfig,
+    featureConfig: features.dashboardImportExport,
+  })
+
   // Handle opening filter config modal - delegate to hook action
   const handleOpenFilterConfig = useCallback((portlet: PortletConfig) => {
     actionsRef.current.openFilterConfig(portlet)
@@ -1045,6 +1057,7 @@ export default function DashboardCoordinator({
     onConfigChange,
     onDashboardFiltersChange,
     hideToolbar,
+    dashboardMeta,
 
     // Store state
     isEditMode,
@@ -1088,6 +1101,7 @@ export default function DashboardCoordinator({
 
     // Features
     features,
+    importExport,
 
     // Refs
     editBarRef,

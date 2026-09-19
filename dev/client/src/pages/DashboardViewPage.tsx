@@ -79,6 +79,8 @@ export default function DashboardViewPage() {
         onSaveThumbnail={handleSaveThumbnail}
         onDirtyStateChange={handleDirtyStateChange}
         loadingComponent={<DrizzleCubeLoader />}
+        dashboardMeta={{ name: page.name, description: page.description ?? undefined }}
+        onDashboardMetaChange={handleEditMetadata}
       />
 
       <DashboardEditModal

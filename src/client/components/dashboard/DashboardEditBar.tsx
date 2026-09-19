@@ -1,6 +1,9 @@
 /**
  * Sticky top edit bar for the dashboard toolbar. Reads everything from
  * DashboardContext; rendered only when the top toolbar variant is active.
+ *
+ * On a read-only dashboard (`editable` false) the editing controls are left out
+ * and the bar carries only the export action.
  */
 
 import { getIcon } from '../../icons/index.js'
@@ -8,6 +11,7 @@ import { useTranslation } from '../../hooks/useTranslation.js'
 import ColorPaletteSelector from '../ColorPaletteSelector.js'
 import { TextIcon } from './dashboardGridUtils.js'
 import { useDashboardContext } from './DashboardContext.js'
+import DashboardImportExportActions from './DashboardImportExportActions.js'
 import LayoutModeToggle from './LayoutModeToggle.js'
 
 const EditIcon = getIcon('edit')
@@ -95,6 +99,7 @@ function EditActions({
 export default function DashboardEditBar() {
   const { t } = useTranslation()
   const {
+    editable,
     isEditMode,
     isResponsiveEditable,
     layoutMode,
@@ -107,51 +112,63 @@ export default function DashboardEditBar() {
     handleAddText,
     handleAddPortlet,
     handlePaletteChange,
+    importExport,
   } = useDashboardContext()
 
   return (
     <div
       ref={editBarRef}
-      className={`dc:mb-4 dc:flex dc:justify-between dc:items-center dc:sticky dc:top-0 dc:z-10 dc:px-4 dc:py-4 bg-dc-surface-tertiary dc:border border-dc-border dc:rounded-lg dc:transition-all dc:duration-200 ${
+      className={`dc:mb-4 dc:flex ${editable ? 'dc:justify-between' : 'dc:justify-end'} dc:items-center dc:sticky dc:top-0 dc:z-10 dc:px-4 dc:py-4 bg-dc-surface-tertiary dc:border border-dc-border dc:rounded-lg dc:transition-all dc:duration-200 ${
         isScrolled ? 'dc:border-b' : ''
       }`}
       style={{ boxShadow: isScrolled ? 'var(--dc-shadow-md)' : 'var(--dc-shadow-sm)' }}
     >
-      <div className="dc:flex dc:items-center dc:gap-4">
-        <EditToggleButton
-          isEditMode={isEditMode}
-          isResponsiveEditable={isResponsiveEditable}
-          onToggle={actions.toggleEditMode}
-        />
-        {isEditMode && selectableModes.length > 1 && (
-          <LayoutModeToggle
-            layoutMode={layoutMode}
-            canChangeLayoutMode={canChangeLayoutMode}
-            onLayoutModeChange={actions.handleLayoutModeChange}
+      {editable && (
+        <div className="dc:flex dc:items-center dc:gap-4">
+          <EditToggleButton
+            isEditMode={isEditMode}
+            isResponsiveEditable={isResponsiveEditable}
+            onToggle={actions.toggleEditMode}
+          />
+          {isEditMode && selectableModes.length > 1 && (
+            <LayoutModeToggle
+              layoutMode={layoutMode}
+              canChangeLayoutMode={canChangeLayoutMode}
+              onLayoutModeChange={actions.handleLayoutModeChange}
+            />
+          )}
+          {!isResponsiveEditable && (
+            <div className="dc:flex dc:items-center dc:gap-2 dc:text-sm text-dc-text-secondary">
+              <DesktopIcon className="dc:w-4 dc:h-4" />
+              <span>{t('dashboard.desktopRequired')}</span>
+            </div>
+          )}
+          {isEditMode && isResponsiveEditable && (
+            <p className="dc:hidden dc:md:block dc:text-sm text-dc-text-secondary">
+              {t('dashboard.editModeHint')}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="dc:flex dc:items-center dc:gap-3">
+        {importExport.enabled && (
+          <DashboardImportExportActions
+            showExport={importExport.canExport && !isEditMode}
+            showImport={importExport.canImport && isEditMode && isResponsiveEditable}
           />
         )}
-        {!isResponsiveEditable && (
-          <div className="dc:flex dc:items-center dc:gap-2 dc:text-sm text-dc-text-secondary">
-            <DesktopIcon className="dc:w-4 dc:h-4" />
-            <span>{t('dashboard.desktopRequired')}</span>
-          </div>
-        )}
-        {isEditMode && isResponsiveEditable && (
-          <p className="dc:hidden dc:md:block dc:text-sm text-dc-text-secondary">
-            {t('dashboard.editModeHint')}
-          </p>
+
+        {/* Color Palette Selector and Add Portlet - Only show in edit mode */}
+        {editable && isEditMode && (
+          <EditActions
+            colorPalette={config.colorPalette}
+            onPaletteChange={handlePaletteChange}
+            onAddText={handleAddText}
+            onAddPortlet={handleAddPortlet}
+          />
         )}
       </div>
-
-      {/* Color Palette Selector and Add Portlet - Only show in edit mode */}
-      {isEditMode && (
-        <EditActions
-          colorPalette={config.colorPalette}
-          onPaletteChange={handlePaletteChange}
-          onAddText={handleAddText}
-          onAddPortlet={handleAddPortlet}
-        />
-      )}
     </div>
   )
 }

@@ -1,9 +1,9 @@
 /**
  * DashboardModals
  *
- * The four dashboard modals (add/edit portlet, add/edit text, portlet filter config,
- * delete confirmation). All read their open/target state from DashboardContext; when
- * closed they render nothing, so always mounting them is harmless.
+ * The dashboard modals (add/edit portlet, add/edit text, portlet filter config,
+ * delete confirmation, dashboard import). All read their open/target state from
+ * DashboardContext; when closed they render nothing, so always mounting them is harmless.
  */
 
 import { useTranslation } from '../../hooks/useTranslation.js'
@@ -12,6 +12,7 @@ import TextPortletModal from '../TextPortletModal.js'
 import PortletFilterConfigModal from '../PortletFilterConfigModal.js'
 import ConfirmModal from '../ConfirmModal.js'
 import { useDashboardContext } from './DashboardContext.js'
+import DashboardImportModals from './DashboardImportModals.js'
 
 export default function DashboardModals() {
   const { t } = useTranslation()
@@ -103,6 +104,9 @@ export default function DashboardModals() {
         confirmText={t('common.actions.delete')}
         confirmVariant="danger"
       />
+
+      {/* Dashboard import confirm / error dialogs (features.dashboardImportExport) */}
+      <DashboardImportModals />
     </>
   )
 }
