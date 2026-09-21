@@ -40,6 +40,7 @@ import codeBracket from '@iconify-icons/heroicons-outline/code-bracket'
 import swatch from '@iconify-icons/heroicons-outline/swatch'
 import camera from '@iconify-icons/heroicons-outline/camera'
 import arrowDownTray from '@iconify-icons/heroicons-outline/arrow-down-tray'
+import arrowUpTray from '@iconify-icons/heroicons-outline/arrow-up-tray'
 import handThumbUp from '@iconify-icons/heroicons-solid/hand-thumb-up'
 import handThumbDown from '@iconify-icons/heroicons-solid/hand-thumb-down'
 
@@ -136,6 +137,7 @@ export const DEFAULT_ICONS: IconRegistry = {
   schemaGraph: { icon: map, category: 'action' },
   cube: { icon: cubeOutline, category: 'action' },
   download: { icon: arrowDownTray, category: 'action' },
+  upload: { icon: arrowUpTray, category: 'action' },
 
   // Field type icons (solid for visual distinction)
   measure: { icon: chartBarSolid, category: 'field' },

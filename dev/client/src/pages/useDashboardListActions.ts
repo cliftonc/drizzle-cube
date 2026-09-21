@@ -2,6 +2,7 @@
  * Create/delete actions for DashboardListPage, extracted to flatten the page
  * component. Behaviour is identical to the original inline handlers.
  */
+import { readDashboardExportFile } from '@drizzle-cube/client'
 import {
   useCreateExamplePage,
   useDeleteAnalyticsPage,
@@ -60,6 +61,29 @@ export function useDashboardListActions(pageCount: number) {
     }
   }
 
+  // Create a new dashboard from a drizzle-cube dashboard export (.json). The file's
+  // name/description become the record's; the config is used as-is.
+  const handleImportDashboard = async (file: File) => {
+    if (atLimit) {
+      alert(LIMIT_MESSAGE)
+      return
+    }
+    const result = await readDashboardExportFile(file)
+    if (!result.ok) {
+      alert(`Could not import "${file.name}": ${result.errors.map(e => e.code).join(', ')}`)
+      return
+    }
+    try {
+      await createPage.mutateAsync({
+        name: result.name ?? file.name.replace(/\.json$/i, ''),
+        description: result.description,
+        config: result.config
+      })
+    } catch (error) {
+      console.error('Failed to import dashboard:', error)
+    }
+  }
+
   return {
     atLimit,
     createExample,
@@ -67,5 +91,6 @@ export function useDashboardListActions(pageCount: number) {
     handleCreateExample,
     handleDelete,
     handleCreateDashboard,
+    handleImportDashboard,
   }
 }

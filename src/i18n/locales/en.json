@@ -1668,5 +1668,21 @@
   "chart.gauge.thresholds.from": "Band starts at",
   "chart.gauge.thresholds.colour": "Band colour",
   "chart.gauge.thresholds.add": "Add band",
-  "chart.gauge.thresholds.remove": "Remove band"
+  "chart.gauge.thresholds.remove": "Remove band",
+  "dashboard.export.button": "Export",
+  "dashboard.export.tooltip": "Download this dashboard as a JSON file",
+  "dashboard.import.button": "Import",
+  "dashboard.import.tooltip": "Replace this dashboard with a JSON export",
+  "dashboard.import.confirmTitle": "Import dashboard",
+  "dashboard.import.confirmMessage": "Replace everything on this dashboard with the {count} portlets in \"{fileName}\"? This cannot be undone.",
+  "dashboard.import.confirmRename": "The dashboard will also be renamed to \"{name}\".",
+  "dashboard.import.confirmAction": "Replace dashboard",
+  "dashboard.import.warningsTitle": "Warnings",
+  "dashboard.import.warning.unknownFilterMapping": "Portlet \"{portlet}\" is linked to a dashboard filter that is not in the file ({filterId}).",
+  "dashboard.import.errorTitle": "Could not import dashboard",
+  "dashboard.import.errorIntro": "\"{fileName}\" could not be imported:",
+  "dashboard.import.error.invalidJson": "The file is not valid JSON.",
+  "dashboard.import.error.unknownFormat": "The file is not a drizzle-cube dashboard export.",
+  "dashboard.import.error.invalidConfig": "The dashboard configuration is invalid ({path}).",
+  "dashboard.import.error.invalidPortlet": "Portlet {index} is invalid ({path})."
 }
