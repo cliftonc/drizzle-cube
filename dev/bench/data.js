@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789953132076,
+  "lastUpdate": 1789965177749,
   "repoUrl": "https://github.com/cliftonc/drizzle-cube",
   "entries": {
     "drizzle-cube": [
@@ -106214,6 +106214,324 @@ window.BENCHMARK_DATA = {
             "range": "± 0.2ms p95",
             "unit": "ms",
             "extra": "Cache-enabled executor, warm cache · p95 0.7ms · 700 rows"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "45509582+andrew-hu368@users.noreply.github.com",
+            "name": "Andrew Hu",
+            "username": "andrew-hu368"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "46d9ff7fddeb0a29ea3465444df81915e09726c5",
+          "message": "feat(client): add dashboard import and export (#1275)\n\n* feat(client): add dashboard JSON export add-on\n\nAdds features.dashboardImportExport, an opt-in CubeProvider feature like\nxlsExport and thumbnail. When enabled, the dashboard edit bar and the\nfloating toolbar show an Export button that downloads the current\nDashboardConfig as a versioned JSON envelope (format\n\"drizzle-cube-dashboard\", version 1), with portlets normalised to\nanalysisConfig and the transient thumbnail fields removed.\n\nHosts pass the new dashboardMeta prop (name/description of their dashboard\nrecord) so the file carries them and the filename is derived from the name.\nThe export helpers are exported from drizzle-cube/client for hosts that\nwant their own UI. The dev example enables the feature and passes\ndashboardMeta.\n\n* refactor(client): derive export filename without slugifying\n\nReplace the slugify helper in dashboardExport with a plain transform that\ntrims, lowercases and turns whitespace runs into dashes. Accents, unicode\nand punctuation are kept as typed, and the 60-char cap is gone. Path\nseparators are still mapped to dashes so the name stays a single filename\nin the anchor's download attribute.\n\n* refactor(client): drop format and version markers from dashboard export\n\nThe envelope is now just exportedAt, name, description and config. The\nmarkers only served future compatibility checks that nothing needs yet;\nportlets still carry analysisConfig.version and migrate on read.\n\n* fix(client): reject malformed dashboard exports\n\n* test(client): trim redundant dashboard export tests\n\nDrop a non-mutation test whose assertions held either way, merge the\npath-separator filename case into the name-formatting test, and read the\nanchor's download name from the click spy instead of mocking out\nappendChild/removeChild.\n\nIn the component test, drop the floating-toolbar download case (the\ntoolbar is mocked, so it only re-proved a wired prop) and the legacy\nmigration assertions already covered by the unit tests.\n\n* feat(client): parse and read dashboard export files\n\nAdds the read side of features.dashboardImportExport as pure functions, so\nthe UI stage that follows only has to render the outcome.\n\n- parseDashboardExport / readDashboardExportFile check that a file has the\n  shape of a dashboard config (portlet geometry, filters, groups, rows,\n  referential integrity between them), migrate legacy portlets, whitelist\n  known keys and strip thumbnail fields.\n- The check is structural only. What the values mean is taken on trust: a\n  portlet's analysisConfig is not inspected beyond its discriminators, legacy\n  `query` JSON goes to the migration as-is, and repeated ids are accepted.\n- Failures come back as codes (DashboardImportError) and non-fatal problems\n  as warnings, never as sentences: resolving them to text is the UI's job.\n- Both functions and their result types are exported from the client barrel\n  so hosts can read a file and persist the config themselves.\n\n* feat(client): offer export on a read-only dashboard\n\nA dashboard rendered with `editable={false}` had no toolbar at all, so hosts that\nenable the export feature could not offer it on a view-only page. The toolbar is\nnow rendered for the export action alone: the edit toggle and the edit actions are\nleft out, and `hideToolbar` still suppresses everything.\n\n* feat(client): add the dashboard import action and its state\n\nThe headless half of dashboard import: `useDashboardImportExport` gains the two\nTanStack mutations that read/parse a picked file and then apply it, along with the\nstaged and failed states the dialogs will render. `useDashboard` actions gain\n`importConfig`, which replaces the config through the normal save path so\nonConfigChange/onSave and thumbnail dirty tracking apply, and a new\n`onDashboardMetaChange` prop lets a host rename its record from the file's name.\n\nNo UI yet - the buttons and dialogs land in the next stage. Existing dashboard\ntests now need a QueryClient because the provider runs mutations.\n\n* feat(client): render the dashboard import UI\n\nThe visible half: an Import button in the edit bar and floating toolbar (edit mode\nonly) and on the empty-dashboard placeholder, a hidden file input, a confirmation\ndialog before the current dashboard is replaced, and an error dialog that resolves\nthe parser's codes to translated text.\n\nDev example: \"Import Dashboard\" on the list page creates a record from a file; the\nview page wires onDashboardMetaChange and the metadata update no longer resends a\npossibly stale config.\n\n* refactor(client): move dashboard export/import into a dropdown\n\nThe edit bar carried Export and Import as two inline buttons next to the\npalette, Add Text and Add Portlet. Collapses them into a single\nDashboardImportExportMenu: an ellipsis trigger opening Export and, while\nediting, Import. Closes on outside click, Escape or item selection, and\nowns the hidden file input the Import item clicks.\n\nThe floating toolbar keeps its icon buttons and the empty-dashboard\nplaceholder keeps its single Import button.\n\n* refactor(client): split import and export by dashboard emptiness\n\nExport and Import were both offered on any dashboard, so a populated one\ncould be overwritten from a file and an empty one could be exported with\nnothing in it. Gates the two on the config instead:\n\n- useDashboardImportExport exposes canExport (has portlets) and canImport\n  (still empty) next to enabled.\n- The edit-bar dropdown gates each item on its own and renders nothing,\n  trigger included, when neither applies.\n- The floating toolbar gets each handler under the same condition, and the\n  hidden file input only mounts when Import is available.\n\n* refactor(client): show Export as a full button outside edit mode\n\nThe edit bar collapsed Export and Import into an ellipsis dropdown, which hid\nthe action behind an extra click for what is at most one item at a time: Export\nis now offered only while not editing and Import only while editing an empty\ndashboard, so the two never appear together.\n\nDashboardImportExportMenu becomes DashboardImportExportActions and renders the\nlabelled buttons inline instead. The floating toolbar drops its export icon in\nedit mode for the same reason, and the now unused importExport.menu/tooltip\nstrings are removed.",
+          "timestamp": "2026-09-21T05:30:31+01:00",
+          "tree_id": "7805cadba066e446d214777bcb050d5df5b13bde",
+          "url": "https://github.com/cliftonc/drizzle-cube/commit/46d9ff7fddeb0a29ea3465444df81915e09726c5"
+        },
+        "date": 1789965174242,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "baseline.count-time-entries",
+            "value": 32.61,
+            "range": "± 1.4ms p95",
+            "unit": "ms",
+            "extra": "Count over ~730k time entries · p95 34.0ms · 1 rows"
+          },
+          {
+            "name": "baseline.sum-avg-productivity",
+            "value": 13.04,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Sum + avg over ~335k productivity rows · p95 13.6ms · 1 rows"
+          },
+          {
+            "name": "baseline.count-distinct",
+            "value": 89.76,
+            "range": "± 5.7ms p95",
+            "unit": "ms",
+            "extra": "Count distinct employees over time entries · p95 95.5ms · 1 rows"
+          },
+          {
+            "name": "baseline.min-max",
+            "value": 12.67,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Min + max lines of code · p95 13.0ms · 1 rows"
+          },
+          {
+            "name": "baseline.calculated-measure",
+            "value": 13.77,
+            "range": "± 4.8ms p95",
+            "unit": "ms",
+            "extra": "Calculated measure (productivity score) · p95 18.6ms · 1 rows"
+          },
+          {
+            "name": "multi.six-measures",
+            "value": 43.51,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Six measures on time entries · p95 44.1ms · 1 rows"
+          },
+          {
+            "name": "multi.mixed-types",
+            "value": 52.63,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Mixed aggregation types on productivity · p95 52.7ms · 1 rows"
+          },
+          {
+            "name": "groupby.low-cardinality",
+            "value": 96.62,
+            "range": "± 5.9ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type (6 groups) · p95 102.5ms · 6 rows"
+          },
+          {
+            "name": "groupby.mid-cardinality",
+            "value": 78.17,
+            "range": "± 6.2ms p95",
+            "unit": "ms",
+            "extra": "Group by department (~25 groups) · p95 84.4ms · 25 rows"
+          },
+          {
+            "name": "groupby.high-cardinality",
+            "value": 30.83,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "Group by employee (~700 groups) · p95 31.9ms · 700 rows"
+          },
+          {
+            "name": "groupby.two-dimensions",
+            "value": 205.47,
+            "range": "± 15.5ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type + department · p95 221.0ms · 150 rows"
+          },
+          {
+            "name": "filter.equals",
+            "value": 34.8,
+            "range": "± 0.8ms p95",
+            "unit": "ms",
+            "extra": "Equals filter (development entries) · p95 35.6ms · 1 rows"
+          },
+          {
+            "name": "filter.numeric-range",
+            "value": 12.28,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Numeric range filter (linesOfCode > 100) · p95 12.7ms · 1 rows"
+          },
+          {
+            "name": "filter.string-contains",
+            "value": 0.73,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "String contains filter on employee name · p95 0.8ms · 1 rows"
+          },
+          {
+            "name": "filter.nested-and-or",
+            "value": 41.41,
+            "range": "± 0.7ms p95",
+            "unit": "ms",
+            "extra": "Nested AND/OR filter on time entries · p95 42.1ms · 1 rows"
+          },
+          {
+            "name": "filter.in-list-100",
+            "value": 33.31,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "IN-list filter with 100 employee ids · p95 33.6ms · 1 rows"
+          },
+          {
+            "name": "time.day-granularity-year",
+            "value": 128.33,
+            "range": "± 2.8ms p95",
+            "unit": "ms",
+            "extra": "Daily time series over 2024 (~366 buckets) · p95 131.1ms · 262 rows"
+          },
+          {
+            "name": "time.month-granularity",
+            "value": 121.88,
+            "range": "± 1.9ms p95",
+            "unit": "ms",
+            "extra": "Monthly time series over 2024 · p95 123.7ms · 12 rows"
+          },
+          {
+            "name": "time.week-with-dimension",
+            "value": 25.86,
+            "range": "± 1.2ms p95",
+            "unit": "ms",
+            "extra": "Weekly series split by allocation type (H1 2024) · p95 27.0ms · 104 rows"
+          },
+          {
+            "name": "time.gap-fill",
+            "value": 45.11,
+            "range": "± 2.4ms p95",
+            "unit": "ms",
+            "extra": "Daily series with fillMissingDates over 16 months · p95 47.5ms · 488 rows"
+          },
+          {
+            "name": "time.compare-date-range",
+            "value": 64.06,
+            "range": "± 25.8ms p95",
+            "unit": "ms",
+            "extra": "Period comparison Q1 vs Q2 2024 by month · p95 89.8ms · 6 rows"
+          },
+          {
+            "name": "join.belongs-to",
+            "value": 1.7,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Employees joined to departments · p95 1.9ms · 25 rows"
+          },
+          {
+            "name": "join.has-many-fanout",
+            "value": 172.99,
+            "range": "± 7.4ms p95",
+            "unit": "ms",
+            "extra": "Employee count with time-entry fan-out (~730k child rows) · p95 180.4ms · 25 rows"
+          },
+          {
+            "name": "join.many-to-many",
+            "value": 2.85,
+            "range": "± 5.2ms p95",
+            "unit": "ms",
+            "extra": "Employees by team via junction table · p95 8.1ms · 40 rows"
+          },
+          {
+            "name": "join.three-cubes",
+            "value": 148.28,
+            "range": "± 6.3ms p95",
+            "unit": "ms",
+            "extra": "Departments + employees + time entries · p95 154.6ms · 25 rows"
+          },
+          {
+            "name": "rows.ordered-700",
+            "value": 41.31,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "~700 ordered group rows · p95 42.4ms · 700 rows"
+          },
+          {
+            "name": "rows.deep-offset",
+            "value": 9.71,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped page at offset 100k (limit 1000) · p95 9.9ms · 1,000 rows"
+          },
+          {
+            "name": "rows.ungrouped-10k",
+            "value": 19.79,
+            "range": "± 1.0ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped raw rows (limit 10,000) · p95 20.8ms · 10,000 rows"
+          },
+          {
+            "name": "analysis.funnel",
+            "value": 70.02,
+            "range": "± 2.0ms p95",
+            "unit": "ms",
+            "extra": "Three-step funnel over ~335k events · p95 72.0ms · 3 rows"
+          },
+          {
+            "name": "analysis.flow",
+            "value": 26.5,
+            "range": "± 1.0ms p95",
+            "unit": "ms",
+            "extra": "Flow with 2 steps before/after · p95 27.5ms · 1 rows"
+          },
+          {
+            "name": "analysis.retention",
+            "value": 228.98,
+            "range": "± 1.8ms p95",
+            "unit": "ms",
+            "extra": "Monthly retention over 2024 (6 periods) · p95 230.7ms · 7 rows"
+          },
+          {
+            "name": "compile.simple",
+            "value": 0.05,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Compile simple aggregation query · p95 0.1ms · 0 rows"
+          },
+          {
+            "name": "compile.complex",
+            "value": 0.37,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Compile multi-cube query with filters + time dimension · p95 0.5ms · 0 rows"
+          },
+          {
+            "name": "eav.project-page",
+            "value": 0.68,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Project 2 EAV attributes over a 25-row page · p95 0.7ms · 25 rows"
+          },
+          {
+            "name": "eav.project-page-total",
+            "value": 11.76,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Same page, plus the total row count · p95 12.3ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-string",
+            "value": 0.78,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Filter on a common string value (LIMIT satisfied early) · p95 0.8ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-numeric",
+            "value": 0.7,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Filter on a numeric attribute, incl. the tolerant cast · p95 0.8ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-selective",
+            "value": 215.53,
+            "range": "± 5.6ms p95",
+            "unit": "ms",
+            "extra": "Filter matching almost nothing — the full-scan case · p95 221.2ms · 0 rows"
+          },
+          {
+            "name": "eav.sort",
+            "value": 284.89,
+            "range": "± 6.4ms p95",
+            "unit": "ms",
+            "extra": "Order by a numeric EAV attribute (always a full scan) · p95 291.2ms · 25 rows"
+          },
+          {
+            "name": "eav.baseline-sort",
+            "value": 24.74,
+            "range": "± 0.8ms p95",
+            "unit": "ms",
+            "extra": "Same shape ordering by a real column, for comparison · p95 25.5ms · 25 rows"
+          },
+          {
+            "name": "cache.miss",
+            "value": 28.08,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, cache bypassed · p95 28.3ms · 700 rows"
+          },
+          {
+            "name": "cache.hit",
+            "value": 0.27,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, warm cache · p95 0.4ms · 700 rows"
           }
         ]
       }
