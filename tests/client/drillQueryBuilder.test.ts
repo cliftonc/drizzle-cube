@@ -490,7 +490,12 @@ describe('drillQueryBuilder', () => {
           },
           { member: 'Sales.orderDate', operator: 'beforeDate', values: ['2026-05-01T00:00:00.000Z'] }
         ])
-        expect(result.query.timeDimensions).toEqual(originalQuery.timeDimensions)
+        expect(result.query.timeDimensions).toEqual([{
+          dimension: 'Sales.orderDate',
+          granularity: 'month',
+          dateRange: ['2026-04-10', '2026-05-10'],
+          fillMissingDates: false
+        }])
         expect(result.query.measures).toEqual(['Sales.revenue'])
         expect(result.query.dimensions).toEqual(['Sales.productName'])
         expect(result.chartConfig).toEqual({ xAxis: ['Sales.productName'], yAxis: ['Sales.revenue'] })
@@ -636,6 +641,30 @@ describe('drillQueryBuilder', () => {
         expect(result.query.timeDimensions!.length).toBe(1)
         expect(result.query.timeDimensions![0].dimension).toBe('Sales.orderDate')
         expect(result.query.timeDimensions![0].granularity).toBe('day') // Default granularity
+      })
+
+      it('should preserve time series filling when drilling from a time bucket to a time dimension', () => {
+        const query: CubeQuery = {
+          measures: ['Sales.totalOrders'],
+          timeDimensions: [{
+            dimension: 'Sales.orderDate',
+            granularity: 'month',
+            dateRange: ['2026-03-01', '2026-09-22']
+          }]
+        }
+        const option: DrillOption = {
+          id: 'details-totalOrders-Sales.orderDate',
+          label: 'Show by Order Date',
+          type: 'details',
+          scope: 'portlet',
+          measure: 'Sales.totalOrders',
+          targetDimension: 'Sales.orderDate'
+        }
+
+        const result = buildDrillQuery(option, createClickEvent('Sales.totalOrders', '2026-04'), query, meta)
+
+        expect(result.query.timeDimensions).toEqual(query.timeDimensions)
+        expect(result.chartConfig).toEqual({ xAxis: ['Sales.orderDate'], yAxis: ['Sales.totalOrders'] })
       })
 
       it('should preserve dateRange from original query when drilling to time dimension', () => {

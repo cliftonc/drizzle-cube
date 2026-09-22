@@ -57,7 +57,7 @@ describe('Details drilling into a time bucket (SQLite execution)', () => {
         return { from: documents, where: eq(documents.organisationId, organisationId) }
       },
       measures: {
-        count: { name: 'count', type: 'count', sql: () => sql`${documents.name}`, drillMembers: ['Documents.name'] }
+        count: { name: 'count', type: 'count', sql: () => sql`${documents.name}`, drillMembers: ['Documents.name', 'Documents.status'] }
       },
       dimensions: {
         name: { name: 'name', type: 'string', sql: () => sql`${documents.name}` },
@@ -70,8 +70,38 @@ describe('Details drilling into a time bucket (SQLite execution)', () => {
 
   afterAll(() => client.close())
 
+  it('should return one row per status for a clicked month within a multi-month date range', async () => {
+    const query: CubeQuery = {
+      measures: ['Documents.count'],
+      timeDimensions: [{
+        dimension: 'Documents.uploadedAt',
+        granularity: 'month',
+        dateRange: ['2026-03-01', '2026-09-22']
+      }]
+    }
+    const result = buildDrillQuery({
+      ...option,
+      targetDimension: 'Documents.status'
+    }, {
+      clickedField: 'Documents.count',
+      xValue: '2026-04',
+      dataPoint: { name: '2026-04', 'Documents.count': 5 },
+      position: { x: 0, y: 0 }
+    }, query, metadata)
+    const response = await handleLoad(semanticLayer, securityContext, {
+      query: JSON.parse(JSON.stringify(cleanQueryForServer(result.query)))
+    })
+
+    expect(response.data).toHaveLength(2)
+    expect(response.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ 'Documents.status': 'reviewed', 'Documents.count': 4 }),
+      expect.objectContaining({ 'Documents.status': 'pending', 'Documents.count': 1 })
+    ]))
+  })
+
   it.each([
     { dateRange: undefined, names: ['April end', 'April start', 'Document A', 'Document B'] },
+    { dateRange: ['2026-03-01', '2026-09-22'], names: ['April end', 'April start', 'Document A', 'Document B'] },
     { dateRange: ['2026-04-10', '2026-04-20'], names: ['Document B'] }
   ])('should return only April contributors within the original date range $dateRange', async ({ dateRange, names }) => {
     const query: CubeQuery = {

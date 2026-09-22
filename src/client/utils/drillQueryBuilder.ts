@@ -593,6 +593,12 @@ function buildDetailsQuery(
     const bucketRange = timeDimension?.granularity
       ? getDetailsBucketRange(String(xValue), timeDimension.granularity)
       : null
+    if (bucketRange && !isTargetTimeDimension) {
+      // The category axis must not include empty months from the original date range.
+      newQuery.timeDimensions = newQuery.timeDimensions?.map(td =>
+        td.dimension === xAxisDimension ? { ...td, fillMissingDates: false } : td
+      )
+    }
     const xFilters: Filter[] = bucketRange
       ? [
           // Date operators normalize timestamps across engines. Avoid inDateRange,
