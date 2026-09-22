@@ -456,6 +456,86 @@ describe('drillQueryBuilder', () => {
     })
 
     describe('details drill', () => {
+      it('should restrict monthly details to the clicked bucket without replacing existing constraints', () => {
+        const query: CubeQuery = {
+          measures: ['Sales.revenue'],
+          timeDimensions: [{
+            dimension: 'Sales.orderDate',
+            granularity: 'month',
+            dateRange: ['2026-04-10', '2026-05-10']
+          }],
+          filters: [{ member: 'Sales.category', operator: 'equals', values: ['Electronics'] }]
+        }
+        const originalQuery = structuredClone(query)
+        const option: DrillOption = {
+          id: 'details-revenue-Sales.productName',
+          label: 'Show by Product Name',
+          type: 'details',
+          icon: 'table',
+          scope: 'portlet',
+          measure: 'Sales.revenue',
+          targetDimension: 'Sales.productName'
+        }
+
+        const result = buildDrillQuery(option, createClickEvent('Sales.revenue', '2026-04'), query, meta)
+
+        expect(result.query.filters).toEqual([
+          ...originalQuery.filters!,
+          {
+            type: 'or',
+            filters: [
+              { member: 'Sales.orderDate', operator: 'afterDate', values: ['2026-04-01T00:00:00.000Z'] },
+              { member: 'Sales.orderDate', operator: 'equals', values: ['2026-04-01T00:00:00.000Z'] }
+            ]
+          },
+          { member: 'Sales.orderDate', operator: 'beforeDate', values: ['2026-05-01T00:00:00.000Z'] }
+        ])
+        expect(result.query.timeDimensions).toEqual(originalQuery.timeDimensions)
+        expect(result.query.measures).toEqual(['Sales.revenue'])
+        expect(result.query.dimensions).toEqual(['Sales.productName'])
+        expect(result.chartConfig).toEqual({ xAxis: ['Sales.productName'], yAxis: ['Sales.revenue'] })
+        expect(query).toEqual(originalQuery)
+      })
+
+      it.each([
+        ['year', '2026', '2026-01-01T00:00:00.000Z', '2027-01-01T00:00:00.000Z'],
+        ['quarter', '2026-Q2', '2026-04-01T00:00:00.000Z', '2026-07-01T00:00:00.000Z'],
+        ['month', '2024-02', '2024-02-01T00:00:00.000Z', '2024-03-01T00:00:00.000Z'],
+        ['month', '2026-12', '2026-12-01T00:00:00.000Z', '2027-01-01T00:00:00.000Z'],
+        ['week', '2026-03-30', '2026-03-30T00:00:00.000Z', '2026-04-06T00:00:00.000Z'],
+        ['day', '2026-04-15', '2026-04-15T00:00:00.000Z', '2026-04-16T00:00:00.000Z'],
+        ['hour', '2026-04-15 23:00', '2026-04-15T23:00:00.000Z', '2026-04-16T00:00:00.000Z'],
+        ['minute', '2026-04-15 12:59', '2026-04-15T12:59:00.000Z', '2026-04-15T13:00:00.000Z'],
+        ['second', '2026-04-15T12:59:59.000Z', '2026-04-15T12:59:59.000Z', '2026-04-15T13:00:00.000Z']
+      ])('should restrict %s details for %s to the full UTC bucket', (granularity, value, start, end) => {
+        const query: CubeQuery = {
+          measures: ['Sales.revenue'],
+          timeDimensions: [{ dimension: 'Sales.orderDate', granularity }]
+        }
+        const option: DrillOption = {
+          id: 'details-revenue-Sales.productName',
+          label: 'Show by Product Name',
+          type: 'details',
+          icon: 'table',
+          scope: 'portlet',
+          measure: 'Sales.revenue',
+          targetDimension: 'Sales.productName'
+        }
+
+        const result = buildDrillQuery(option, createClickEvent('Sales.revenue', value), query, meta)
+
+        expect(result.query.filters).toEqual([
+          {
+            type: 'or',
+            filters: [
+              { member: 'Sales.orderDate', operator: 'afterDate', values: [start] },
+              { member: 'Sales.orderDate', operator: 'equals', values: [start] }
+            ]
+          },
+          { member: 'Sales.orderDate', operator: 'beforeDate', values: [end] }
+        ])
+      })
+
       it('should create query with selected drillMember as dimension', () => {
         const query: CubeQuery = {
           measures: ['Sales.revenue'],
@@ -482,7 +562,7 @@ describe('drillQueryBuilder', () => {
         const categoryFilter = result.query.filters!.find(f =>
           'member' in f && f.member === 'Sales.category'
         )
-        expect(categoryFilter).toBeDefined()
+        expect(categoryFilter).toEqual({ member: 'Sales.category', operator: 'equals', values: ['Electronics'] })
       })
 
       it('should throw error when no targetDimension specified', () => {
