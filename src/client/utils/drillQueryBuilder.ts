@@ -684,12 +684,11 @@ function getDetailsBucketRange(periodValue: string, granularity: string): [strin
       start = Date.UTC(year, month, 1)
       end = Date.UTC(year, month + 1, 1)
       break
-    case 'week': {
-      const monday = day - (date.getUTCDay() + 6) % 7
-      start = Date.UTC(year, month, monday)
-      end = Date.UTC(year, month, monday + 7)
+    case 'week':
+      // Preserve the week boundary reported by the query engine.
+      start = Date.UTC(year, month, day)
+      end = Date.UTC(year, month, day + 7)
       break
-    }
     case 'day':
       start = Date.UTC(year, month, day)
       end = Date.UTC(year, month, day + 1)

@@ -7,6 +7,7 @@ import { SemanticLayerCompiler } from '../src/server/compiler'
 import { defineCube } from '../src/server/cube-utils'
 import { handleLoad } from '../src/server/query-handlers'
 import { buildDrillQuery } from '../src/client/utils/drillQueryBuilder'
+import { formatTimeValue } from '../src/client/utils/chartUtils'
 import { cleanQueryForServer } from '../src/client/shared/utils'
 import type { CubeMeta, CubeQuery } from '../src/client/types'
 import type { DrillOption } from '../src/client/types/drill'
@@ -45,7 +46,12 @@ describe('Details drilling into a time bucket (SQLite execution)', () => {
       ['April end', '2026-04-30T23:59:59Z', 'reviewed', 1],
       ['May start', '2026-05-01T00:00:00Z', 'reviewed', 1],
       ['Unreviewed', '2026-04-15T15:30:00Z', 'pending', 1],
-      ['Other organisation', '2026-04-15T15:30:00Z', 'reviewed', 2]
+      ['Other organisation', '2026-04-15T15:30:00Z', 'reviewed', 2],
+      ['Before week', '2026-03-30T23:59:59Z', 'reviewed', 3],
+      ['Week start', '2026-03-31T00:00:00Z', 'reviewed', 3],
+      ['Midweek', '2026-04-02T12:00:00Z', 'reviewed', 3],
+      ['Week end', '2026-04-06T23:59:59Z', 'reviewed', 3],
+      ['Next week', '2026-04-07T00:00:00Z', 'reviewed', 3]
     ]
     db.insert(documents).values(records.map(([name, uploadedAt, status, organisationId]) => ({
       name, uploadedAt: new Date(uploadedAt).getTime() / 1000, status, organisationId
@@ -69,6 +75,37 @@ describe('Details drilling into a time bucket (SQLite execution)', () => {
   })
 
   afterAll(() => client.close())
+
+  it('should return the contributors of the weekly bucket reported by SQLite', async () => {
+    const weeklySecurityContext = { organisationId: 3 }
+    const query: CubeQuery = {
+      measures: ['Documents.count'],
+      timeDimensions: [{ dimension: 'Documents.uploadedAt', granularity: 'week' }]
+    }
+    const weeklyResponse = await handleLoad(semanticLayer, weeklySecurityContext, {
+      query: JSON.parse(JSON.stringify(cleanQueryForServer(query)))
+    })
+    const bucket = weeklyResponse.data.find(row =>
+      formatTimeValue(row['Documents.uploadedAt'], 'week') === '2026-03-31'
+    )
+    expect(bucket).toBeDefined()
+    expect(bucket?.['Documents.count']).toBe(3)
+    if (!bucket) throw new Error('Missing weekly bucket')
+
+    const result = buildDrillQuery(option, {
+      clickedField: 'Documents.count',
+      xValue: formatTimeValue(bucket['Documents.uploadedAt'], 'week'),
+      dataPoint: bucket,
+      position: { x: 0, y: 0 }
+    }, query, { cubes: semanticLayer.getMetadata(weeklySecurityContext) })
+    const response = await handleLoad(semanticLayer, weeklySecurityContext, {
+      query: JSON.parse(JSON.stringify(cleanQueryForServer(result.query)))
+    })
+
+    expect(response.data.map(row => row['Documents.name']).sort()).toEqual([
+      'Midweek', 'Week end', 'Week start'
+    ])
+  })
 
   it('should return one row per status for a clicked month within a multi-month date range', async () => {
     const query: CubeQuery = {
