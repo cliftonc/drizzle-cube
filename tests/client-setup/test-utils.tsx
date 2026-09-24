@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode } from 'react'
 import { render, type RenderOptions } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CubeProvider } from '../../src/client/providers/CubeProvider'
+import type { FeaturesConfig } from '../../src/client/types'
 
 /**
  * Creates a fresh QueryClient configured for testing.
@@ -47,7 +48,7 @@ interface RenderWithProvidersOptions extends Omit<RenderOptions, 'wrapper'> {
   /**
    * Feature flags to enable
    */
-  features?: Record<string, boolean>
+  features?: FeaturesConfig
 }
 
 /**
