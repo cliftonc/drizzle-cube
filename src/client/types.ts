@@ -782,6 +782,13 @@ export interface DashboardImportExportFeatureConfig {
 export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
   aiEndpoint?: string // Custom AI endpoint (default: '/api/ai/generate')
+  /**
+   * Custom endpoint for AI analysis of EXPLAIN plans, used by the built-in
+   * execution plan panel (default: '/api/ai/explain/analyze').
+   * Set this when the AI routes are mounted under a non-default path.
+   * An `aiEndpoint` passed directly to `useExplainAI()` takes precedence.
+   */
+  aiExplainEndpoint?: string
   showSchemaDiagram?: boolean // Show schema visualization button in AnalysisBuilder results panel (requires @xyflow/react and @dagrejs/dagre)
   useAnalysisBuilder?: boolean // Deprecated - AnalysisBuilder modal is now always used (PortletEditModal was removed)
   editToolbar?: 'floating' | 'top' | 'both' // Which edit toolbar(s) to show: 'floating' only, 'top' only, or 'both' (default: 'both')

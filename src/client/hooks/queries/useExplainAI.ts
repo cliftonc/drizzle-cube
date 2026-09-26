@@ -6,7 +6,8 @@
  * - Analyzes execution plans and provides actionable recommendations
  * - Returns structured recommendations (indexes, table changes, cube improvements)
  * - No caching - always fetches fresh analysis
- * - Uses the /api/ai/explain/analyze endpoint
+ * - Uses the /api/ai/explain/analyze endpoint by default (override with
+ *   `features.aiExplainEndpoint` on CubeProvider, or the `aiEndpoint` option)
  *
  * Usage:
  * ```tsx
@@ -25,8 +26,9 @@ import { useCubeApi } from '../../providers/CubeApiProvider.js'
 
 export interface UseExplainAIOptions {
   /**
-   * Custom AI endpoint for explain analysis
-   * @default '/api/ai/explain/analyze'
+   * Custom AI endpoint for explain analysis.
+   * Takes precedence over `features.aiExplainEndpoint`.
+   * @default features.aiExplainEndpoint ?? '/api/ai/explain/analyze'
    */
   aiEndpoint?: string
 }
@@ -92,9 +94,9 @@ export function useExplainAI(options: UseExplainAIOptions = {}): UseExplainAIRes
   const enableAI = features.enableAI ?? true
   const queryClient = useQueryClient()
 
-  // AI endpoint - defaults to /api/ai/explain/analyze
-  // This is the standard path for AI routes in the dev server
-  const aiEndpoint = options.aiEndpoint ?? '/api/ai/explain/analyze'
+  // Explicit hook option wins, then the provider-level feature config, then
+  // the standard path for AI routes in the dev server
+  const aiEndpoint = options.aiEndpoint ?? features.aiExplainEndpoint ?? '/api/ai/explain/analyze'
 
   const mutation = useMutation({
     mutationKey: EXPLAIN_AI_QUERY_KEY,
