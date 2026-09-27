@@ -318,10 +318,11 @@ See the [MCP endpoint documentation](https://www.drizzle-cube.dev/ai/mcp-endpoin
 
 ## Claude Code Plugin
 
-Query your semantic layer with natural language directly from Claude Code. In Claude Code, run the interactive command:
+Query your semantic layer with natural language directly from Claude Code. In Claude Code, add the plugin marketplace and install the plugin:
 
 ```text
-/plugin install cliftonc/drizzle-cube-plugin
+/plugin marketplace add cliftonc/drizzle-cube-plugin
+/plugin install drizzle-cube@drizzle-cube-marketplace
 ```
 
 The plugin repository is the source of truth for installation and configuration: **[cliftonc/drizzle-cube-plugin](https://github.com/cliftonc/drizzle-cube-plugin)**. For custom servers, configure Claude's `.mcp.json` plus the plugin's `.drizzle-cube.json` endpoint settings.

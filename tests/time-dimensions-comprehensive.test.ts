@@ -109,7 +109,7 @@ describe('Comprehensive Time Dimensions', () => {
       expect(result.annotation.timeDimensions['Productivity.createdAt']).toBeDefined()
     })
 
-    it('should handle time dimensions without granularity (raw timestamps)', async () => {
+    it('should treat time dimensions without granularity as filter-only (Cube.js semantics)', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.recordCount'])
         .timeDimensions([{
@@ -121,11 +121,9 @@ describe('Comprehensive Time Dimensions', () => {
 
       const result = await testExecutor.executeQuery(query)
 
-      expect(result.data.length).toBeGreaterThan(0)
-      
-      // Should return raw timestamps
-      const firstRow = result.data[0]
-      expect(firstRow['Productivity.date']).toBeDefined()
+      // Not grouped by the raw timestamp: a single total row, no time column
+      expect(result.data).toHaveLength(1)
+      expect(result.data[0]).not.toHaveProperty('Productivity.date')
     })
   })
 
@@ -603,7 +601,7 @@ describe('Comprehensive Time Dimensions', () => {
       expect(timeDimAnnotation.title).toBe('Date')
     })
 
-    it('should handle time dimensions without granularity in annotations', async () => {
+    it('should not annotate time dimensions without granularity (they are filter-only)', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.recordCount'])
         .timeDimensions([{
@@ -615,10 +613,8 @@ describe('Comprehensive Time Dimensions', () => {
 
       const result = await testExecutor.executeQuery(query)
 
-      const timeDimAnnotation = result.annotation.timeDimensions['Productivity.date']
-      expect(timeDimAnnotation).toBeDefined()
-      expect(timeDimAnnotation.granularity).toBeUndefined()
-      expect(timeDimAnnotation.type).toBe('time')
+      expect(result.annotation.timeDimensions['Productivity.date']).toBeUndefined()
+      expect(result.annotation.measures['Productivity.recordCount']).toBeDefined()
     })
   })
 })

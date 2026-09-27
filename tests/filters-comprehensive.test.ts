@@ -582,11 +582,8 @@ describe('Comprehensive Filter Operations', () => {
         .filter('Employees.createdAt', 'afterDate', ["2023-01-01'; DROP TABLE employees; --"])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
-      
-      // Should handle gracefully and not execute malicious SQL
-      const securityValidation = SecurityTestUtils.validateNoSQLInjection(result)
-      expect(securityValidation.isValid).toBe(true)
+      // A value that is not a date is rejected by validation before any SQL is built
+      await expect(testExecutor.executeQuery(query)).rejects.toThrow(/not a valid date/)
     })
   })
 

@@ -220,9 +220,18 @@ describe('resolveChartTypeFallback', () => {
   it('leaves a bar with only a time dimension alone', () => {
     const result = resolveChartTypeFallback('bar', undefined, {
       measures: ['A.n'],
-      timeDimensions: [{ dimension: 'A.createdAt' }]
+      timeDimensions: [{ dimension: 'A.createdAt', granularity: 'month' }]
     })
     expect(result).toEqual({ chartType: 'bar' })
+  })
+
+  it('treats a time dimension without granularity as a filter, not an axis', () => {
+    // No granularity → the time dimension only filters and returns no column
+    const result = resolveChartTypeFallback('bar', undefined, {
+      measures: ['A.n'],
+      timeDimensions: [{ dimension: 'A.createdAt', dateRange: 'last month' }]
+    })
+    expect(result.chartType).toBe('kpiNumber')
   })
 
   it('leaves a bar the agent gave an explicit xAxis alone', () => {
