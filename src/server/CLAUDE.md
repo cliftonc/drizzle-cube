@@ -40,7 +40,8 @@ src/server/
 │   ├── query-result-cache.ts   QueryResultCache — key/lookup/store
 │   ├── filter-cache-preloader.ts FilterCachePreloader — pre-build filter SQL
 │   ├── annotation-builder.ts   buildAnnotations — UI metadata
-│   └── result-post-processor.ts postProcessResultRows — time-dim normalise + gap fill
+│   ├── result-post-processor.ts postProcessResultRows — time-dim normalise + gap fill
+│   └── query-normalizer.ts     granularity-less timeDimensions → inDateRange filters (Cube.js filter-only semantics)
 ├── cube-utils.ts            defineCube, isolateSqlExpression, resolveSqlExpression, buildRegularJoinCondition, expandBelongsToManyJoin
 ├── measure-classification.ts SQL-free measure window-function classification (used by planning)
 ├── database-utils.ts        createDatabaseAdapter, getSupportedEngines
@@ -76,6 +77,7 @@ src/server/
 ├── physical-plan/           Logical → Drizzle SQL
 │   ├── drizzle-plan-builder.ts  DrizzlePlanBuilder — physical plan from logical plan
 │   ├── drizzle-sql-builder.ts   DrizzleSqlBuilder — SQL clause construction
+│   ├── semi-join.ts             IN / EXISTS semi-join subqueries (CTE filter propagation, cross-cube OR groups)
 │   └── processors/          Modular physical-plan processors
 │       ├── cte-processor.ts      buildCTEState
 │       ├── joins-processor.ts    applyJoins

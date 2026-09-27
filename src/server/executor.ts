@@ -38,6 +38,7 @@ import { FilterCachePreloader } from './execution/filter-cache-preloader.js'
 import { ModeRouter } from './execution/mode-router.js'
 import type { QueryExecutionMode } from './execution/mode-router.js'
 import { QueryResultCache } from './execution/query-result-cache.js'
+import { normalizeFilterOnlyTimeDimensions } from './execution/query-normalizer.js'
 import { ComparisonQueryBuilder } from './builders/comparison-query-builder.js'
 import type { NormalizedPeriod } from './builders/comparison-query-builder.js'
 import { FunnelQueryBuilder } from './builders/funnel-query-builder.js'
@@ -220,6 +221,7 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): import('./logical-plan/index.js').QueryNode {
+    query = normalizeFilterOnlyTimeDimensions(query)
     const filterCache = new FilterCacheManager()
     const context = this.createQueryContext(securityContext, filterCache, query)
     this.filterCachePreloader.preload(query, filterCache, cubes, context)
@@ -235,6 +237,7 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): QueryAnalysis {
+    query = normalizeFilterOnlyTimeDimensions(query)
     const filterCache = new FilterCacheManager()
     const context = this.createQueryContext(securityContext, filterCache, query)
     this.filterCachePreloader.preload(query, filterCache, cubes, context)
@@ -526,6 +529,9 @@ export class QueryExecutor {
     securityContext: SecurityContext,
     cacheKey?: string | undefined
   ): Promise<QueryResult> {
+    // A timeDimension without granularity is a filter only (Cube.js semantics)
+    query = normalizeFilterOnlyTimeDimensions(query)
+
     // Create filter cache for parameter deduplication across CTEs
     const filterCache = new FilterCacheManager()
 
@@ -904,6 +910,7 @@ export class QueryExecutor {
     query: SemanticQuery, 
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
+    query = normalizeFilterOnlyTimeDimensions(query)
     const filterCache = new FilterCacheManager()
     const context = this.createQueryContext(securityContext, filterCache, query)
     this.filterCachePreloader.preload(query, filterCache, cubes, context)

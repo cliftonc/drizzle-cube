@@ -89,6 +89,11 @@ const handleNotSet: FilterOperatorHandler = ({ fieldExpr }) => isNull(fieldExpr 
 
 const handleInDateRange: FilterOperatorHandler = (ctx) => {
   const { fieldExpr, values, filteredValues, databaseAdapter, dateTimeBuilder } = ctx
+  // A single value is a date-range expression ('last 90 days', 'this month', or one
+  // absolute date) — resolve it exactly like `dateRange` (Cube.js-compatible).
+  if (filteredValues.length === 1 && typeof values[0] === 'string') {
+    return dateTimeBuilder.buildDateRangeCondition(fieldExpr, values[0])
+  }
   if (filteredValues.length < 2) {
     return null
   }
@@ -197,13 +202,17 @@ const pgArrayCondition = (
   return null
 }
 
-const OPERATOR_HANDLERS: Partial<Record<FilterOperator, FilterOperatorHandler>> = {
+// Exhaustive: adding a FilterOperator without a handler is a compile error, so no
+// operator can pass validation and then be silently dropped at SQL-build time.
+const OPERATOR_HANDLERS: Record<FilterOperator, FilterOperatorHandler> = {
   equals: handleEquals,
   notEquals: handleNotEquals,
   contains: stringCondition('contains'),
   notContains: stringCondition('notContains'),
   startsWith: stringCondition('startsWith'),
+  notStartsWith: stringCondition('notStartsWith'),
   endsWith: stringCondition('endsWith'),
+  notEndsWith: stringCondition('notEndsWith'),
   gt: handleGt,
   gte: handleGte,
   lt: handleLt,
@@ -229,14 +238,30 @@ const OPERATOR_HANDLERS: Partial<Record<FilterOperator, FilterOperatorHandler>> 
   arrayContained: pgArrayCondition(drizzleArrayContained)
 }
 
+/** Every operator the SQL layer can build, in declaration order. */
+export const SUPPORTED_FILTER_OPERATORS = Object.keys(OPERATOR_HANDLERS) as FilterOperator[]
+
+/** Type guard: whether `operator` is a filter operator the SQL layer can build. */
+export function isSupportedFilterOperator(operator: unknown): operator is FilterOperator {
+  return typeof operator === 'string' && Object.prototype.hasOwnProperty.call(OPERATOR_HANDLERS, operator)
+}
+
+/**
+ * Operators that test the field itself and take no values (`values` may be
+ * omitted or empty).
+ */
+export const NO_VALUE_FILTER_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOperator>([
+  'set', 'notSet', 'isEmpty', 'isNotEmpty'
+])
+
 /**
  * Dispatch a single filter operator to its handler. Returns null for any
- * unknown operator (matching the original `default` case).
+ * unknown operator (validation rejects those before SQL is built).
  */
 export function applyFilterOperator(
   operator: FilterOperator,
   ctx: FilterOperatorContext
 ): SQL | null {
-  const handler = OPERATOR_HANDLERS[operator]
-  return handler ? handler(ctx) : null
+  if (!isSupportedFilterOperator(operator)) return null
+  return OPERATOR_HANDLERS[operator](ctx)
 }

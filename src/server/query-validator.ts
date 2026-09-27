@@ -7,9 +7,16 @@
  * circular dependency).
  */
 
-import type { SemanticQuery, Cube } from './types/index.js'
-import { resolveCubeReference } from './cube-utils.js'
+import type { SemanticQuery, Cube, Filter, FilterCondition, TimeDimension } from './types/index.js'
 import { getActiveQueryModes } from './query-modes.js'
+import { isResolvableDateRange, isValidDateValue } from './builders/date-time-helpers.js'
+import {
+  isSupportedFilterOperator,
+  SUPPORTED_FILTER_OPERATORS
+} from './builders/filter-operators.js'
+import { LogicalPlanner } from './logical-plan/logical-planner.js'
+import { flattenFilters } from './filter-cache.js'
+import { isFilterOnlyTimeDimension } from './execution/query-normalizer.js'
 import { t } from '../i18n/runtime.js'
 
 type ValidationMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
@@ -311,6 +318,50 @@ function validateTimeDimensions(
       errors.pushMissingMember('timeDimension', timeDimension.dimension,
         t('server.validation.query.timeDimensionNotFound', { fieldName, cubeName }))
     }
+
+    validateTimeDimensionRanges(timeDimension, errors)
+  }
+
+  validateGranularityLessTimeDimensions(query, errors)
+}
+
+/** Relative-range examples quoted in date-range error messages. */
+const RELATIVE_RANGE_EXAMPLES = "'today', 'last 7 days', 'last 3 months', 'this month', 'last quarter', 'next week'"
+
+function pushInvalidDateRange(errors: ValidationErrors, member: string, dateRange: unknown): void {
+  errors.push(t('server.validation.query.invalidDateRange', {
+    dateRange: JSON.stringify(dateRange),
+    member,
+    examples: RELATIVE_RANGE_EXAMPLES
+  }))
+}
+
+/** Reject timeDimension dateRange / compareDateRange entries that would not resolve. */
+function validateTimeDimensionRanges(timeDimension: TimeDimension, errors: ValidationErrors): void {
+  if (timeDimension.dateRange !== undefined && !isResolvableDateRange(timeDimension.dateRange)) {
+    pushInvalidDateRange(errors, timeDimension.dimension, timeDimension.dateRange)
+  }
+  for (const range of timeDimension.compareDateRange ?? []) {
+    if (!isResolvableDateRange(range)) {
+      pushInvalidDateRange(errors, timeDimension.dimension, range)
+    }
+  }
+}
+
+/**
+ * A timeDimension without a granularity is a filter only (Cube.js semantics) —
+ * it restricts the date range but is not selected or grouped. A grouped query
+ * made up solely of such time dimensions would therefore select nothing.
+ */
+function validateGranularityLessTimeDimensions(query: SemanticQuery, errors: ValidationErrors): void {
+  if (query.ungrouped) return
+  if ((query.measures?.length ?? 0) > 0 || (query.dimensions?.length ?? 0) > 0) return
+  const timeDimensions = query.timeDimensions ?? []
+  const filterOnly = timeDimensions.filter(isFilterOnlyTimeDimension)
+  if (filterOnly.length > 0 && filterOnly.length === timeDimensions.length) {
+    errors.push(t('server.validation.query.granularityLessTimeDimensionOnly', {
+      dimension: filterOnly[0].dimension
+    }))
   }
 }
 
@@ -359,7 +410,7 @@ function validateUngroupedConstraints(
   }
 
   validateUngroupedMeasures(query, cubes, errors)
-  validateUngroupedHasManyJoins(cubes, errors, referencedCubes)
+  validateUngroupedHasManyJoins(query, cubes, errors, referencedCubes)
 }
 
 /** Validate measure types/filters are compatible with ungrouped queries. */
@@ -393,27 +444,33 @@ function validateUngroupedMeasures(
   }
 }
 
-/** Reject hasMany joins between cubes both referenced by an ungrouped query. */
+/**
+ * Reject ungrouped queries whose join path — from the primary cube the planner
+ * would actually choose — traverses a hasMany edge. A cube that merely
+ * *declares* a hasMany back to the primary cube is fine when the path used is
+ * belongsTo/hasOne.
+ */
 function validateUngroupedHasManyJoins(
+  query: SemanticQuery,
   cubes: Map<string, Cube>,
   errors: ValidationErrors,
   referencedCubes: Set<string>
 ): void {
-  for (const cubeName of referencedCubes) {
-    const cube = cubes.get(cubeName)
-    if (!cube?.joins) continue
+  const cubeNames = [...referencedCubes].filter(name => cubes.has(name))
+  if (cubeNames.length < 2) return
 
-    for (const [joinName, joinDef] of Object.entries(cube.joins)) {
-      if (joinDef.relationship !== 'hasMany') continue
+  const planner = new LogicalPlanner()
+  const primaryCube = planner.analyzePrimaryCube(cubeNames, query, cubes).selectedCube
 
-      // Check if the target cube is also referenced in this query
-      const targetCube = resolveCubeReference(joinDef.targetCube, cubes)
-      if (targetCube && referencedCubes.has(targetCube.name)) {
-        errors.push(
-          `Ungrouped queries are incompatible with hasMany relationships ` +
-          `(${cubeName} → ${joinName} is hasMany)`
-        )
-      }
+  for (const targetCube of cubeNames) {
+    if (targetCube === primaryCube) continue
+    const analysis = planner.analyzeJoinPathForTarget(cubes, primaryCube, targetCube, query)
+    const hasManyStep = analysis.path?.find(step => step.relationship === 'hasMany')
+    if (hasManyStep) {
+      errors.push(
+        `Ungrouped queries are incompatible with hasMany relationships ` +
+        `(${hasManyStep.fromCube} → ${hasManyStep.toCube} is hasMany)`
+      )
     }
   }
 }
@@ -432,6 +489,9 @@ function validateFilter(
     const logicalFilters = filter.and || filter.or || []
     for (const subFilter of logicalFilters) {
       validateFilter(subFilter, cubes, errors, referencedCubes)
+    }
+    if (filter.or) {
+      validateOrGroupMemberKinds(filter.or, cubes, errors)
     }
     return
   }
@@ -466,6 +526,73 @@ function validateFilter(
       : ''
     errors.pushMissingMember('filter', filter.member,
       t('server.validation.query.filterFieldNotFound', { fieldName, cubeName, hint }))
+  }
+
+  validateFilterOperatorAndValues(filter, errors)
+}
+
+/** Operators whose single value must parse as a date. */
+const SINGLE_DATE_OPERATORS = new Set(['beforeDate', 'afterDate'])
+
+/**
+ * Reject operators the SQL layer cannot build, and date filters whose values
+ * would not resolve — both used to be silently dropped at SQL-build time.
+ */
+function validateFilterOperatorAndValues(filter: FilterCondition, errors: ValidationErrors): void {
+  const { member, operator } = filter
+  if (!isSupportedFilterOperator(operator)) {
+    errors.push(t('server.validation.query.unknownFilterOperator', {
+      operator: String(operator),
+      member,
+      operators: SUPPORTED_FILTER_OPERATORS.join(', ')
+    }))
+    return
+  }
+
+  const values: unknown[] = Array.isArray(filter.values) ? filter.values : []
+
+  if (operator === 'inDateRange') {
+    const range = filter.dateRange ?? (values.length === 1 ? values[0] : values)
+    if (filter.dateRange === undefined && values.length === 0) {
+      errors.push(t('server.validation.query.inDateRangeMissingRange', { member }))
+    } else if (!isResolvableDateRange(range)) {
+      pushInvalidDateRange(errors, member, range)
+    }
+    return
+  }
+
+  if (SINGLE_DATE_OPERATORS.has(operator) && values.length > 0 && !isValidDateValue(values[0])) {
+    errors.push(t('server.validation.query.invalidDateValue', {
+      member,
+      operator,
+      value: JSON.stringify(values[0])
+    }))
+  }
+}
+
+/**
+ * An OR group mixing measure and dimension filters cannot be expressed: the
+ * dimension branches land in WHERE and the measure branches in HAVING, which
+ * ANDs them together instead of ORing.
+ */
+function validateOrGroupMemberKinds(
+  orFilters: Filter[],
+  cubes: Map<string, Cube>,
+  errors: ValidationErrors
+): void {
+  const measures: string[] = []
+  const dimensions: string[] = []
+  for (const { member } of flattenFilters(orFilters)) {
+    const [cubeName, fieldName] = member.split('.')
+    const cube = cubes.get(cubeName)
+    if (cube?.measures[fieldName]) measures.push(member)
+    else if (cube?.dimensions[fieldName]) dimensions.push(member)
+  }
+  if (measures.length > 0 && dimensions.length > 0) {
+    errors.push(t('server.validation.query.orMixesMeasuresAndDimensions', {
+      measures: measures.join(', '),
+      dimensions: dimensions.join(', ')
+    }))
   }
 }
 
