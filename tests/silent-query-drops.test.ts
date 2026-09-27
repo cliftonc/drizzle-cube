@@ -324,7 +324,19 @@ describe('Silent query drops', () => {
     it('returns exactly the rows the OR describes', async () => {
       // Amanda White is in department 5 (and writes no code), so the two OR
       // branches are disjoint: all of Amanda's rows, plus department-1 rows with
-      // linesOfCode >= 1000.
+      // linesOfCode >= threshold.
+      //
+      // Seed data is random per run, so derive the threshold from it: the highest
+      // per-employee max in department 1 guarantees one employee qualifies while
+      // the rest (with lower maxima) are excluded.
+      const maxima = await run({
+        measures: ['Productivity.maxLinesOfCode'],
+        dimensions: ['Employees.name'],
+        filters: [{ member: 'Employees.departmentId', operator: 'equals', values: [1] }]
+      })
+      const threshold = Math.max(...maxima.data.map(r => Number(r['Productivity.maxLinesOfCode'] ?? 0)))
+      expect(threshold).toBeGreaterThan(0)
+
       const mixed = await run({
         measures: ['Employees.count', 'Productivity.recordCount'],
         dimensions: ['Employees.name'],
@@ -334,7 +346,7 @@ describe('Silent query drops', () => {
             {
               and: [
                 { member: 'Employees.departmentId', operator: 'equals', values: [1] },
-                { member: 'Productivity.linesOfCode', operator: 'gte', values: [1000] }
+                { member: 'Productivity.linesOfCode', operator: 'gte', values: [threshold] }
               ]
             }
           ]
@@ -348,13 +360,13 @@ describe('Silent query drops', () => {
         dimensions: ['Employees.name'],
         filters: [{ member: 'Employees.name', operator: 'equals', values: ['Amanda White'] }]
       })
-      // Branch 2: department 1 employees, only their rows with linesOfCode >= 1000
+      // Branch 2: department 1 employees, only their rows with linesOfCode >= threshold
       const branch2 = await run({
         measures: ['Employees.count', 'Productivity.recordCount'],
         dimensions: ['Employees.name'],
         filters: [
           { member: 'Employees.departmentId', operator: 'equals', values: [1] },
-          { member: 'Productivity.linesOfCode', operator: 'gte', values: [1000] }
+          { member: 'Productivity.linesOfCode', operator: 'gte', values: [threshold] }
         ]
       })
       // Sanity: some department-1 employees have no qualifying rows and must be excluded
