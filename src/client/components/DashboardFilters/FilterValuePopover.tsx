@@ -102,6 +102,9 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
 
   // Convert schema to MetaResponse format
   const metaResponse = convertToMetaResponse(schema)
+  const values = filter.operator === 'inDateRange' && filter.dateRange
+    ? (Array.isArray(filter.dateRange) ? filter.dateRange : [filter.dateRange])
+    : filter.values || []
 
   return (
     <div
@@ -126,7 +129,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
         <FilterValueSelector
           fieldName={filter.member}
           operator={filter.operator}
-          values={filter.values || []}
+          values={values}
           onValuesChange={handleValuesChange}
           schema={metaResponse}
         />
