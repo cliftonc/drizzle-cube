@@ -5,7 +5,7 @@
  * Uses FilterValueSelector for the actual value input.
  */
 
-import React, { useEffect, useRef, useCallback, useState } from 'react'
+import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react'
 import FilterValueSelector from '../shared/FilterValueSelector.js'
 import type { SimpleFilter, CubeMeta } from '../../types.js'
 import type { MetaResponse } from '../../shared/types.js'
@@ -113,7 +113,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
   }, [filter, onValuesChange])
 
   // Convert schema to MetaResponse format
-  const metaResponse = convertToMetaResponse(schema)
+  const metaResponse = useMemo(() => convertToMetaResponse(schema), [schema])
   const values = filter.operator === 'inDateRange' && filter.dateRange
     ? (Array.isArray(filter.dateRange) ? filter.dateRange : [filter.dateRange])
     : filter.values || []
