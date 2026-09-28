@@ -5,7 +5,7 @@
  * Uses FilterValueSelector for the actual value input.
  */
 
-import React, { useEffect, useRef, useCallback } from 'react'
+import React, { useEffect, useRef, useCallback, useState } from 'react'
 import FilterValueSelector from '../shared/FilterValueSelector.js'
 import type { SimpleFilter, CubeMeta } from '../../types.js'
 import type { MetaResponse } from '../../shared/types.js'
@@ -62,6 +62,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
 }) => {
   const { t } = useTranslation()
   const popoverRef = useRef<HTMLDivElement>(null)
+  const [dateDraft, setDateDraft] = useState<{ filter: SimpleFilter, values: SimpleFilter['values'] } | null>(null)
 
   // Handle click outside to close
   useEffect(() => {
@@ -95,10 +96,21 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
     }
   }, [onClose, anchorRef])
 
-  // Handle value change
-  const handleValuesChange = useCallback((newValues: any[]) => {
+  /**
+   * Keep incomplete date edits local until both endpoints are set or cleared.
+   * @param newValues - Values emitted by the native selector.
+   */
+  const handleValuesChange = useCallback((newValues: SimpleFilter['values']) => {
+    if (
+      filter.operator === 'inDateRange' && newValues.length === 2 &&
+      newValues.some(value => value === '') && newValues.some(value => value !== '')
+    ) {
+      setDateDraft({ filter, values: newValues })
+      return
+    }
+    setDateDraft(null)
     onValuesChange(newValues)
-  }, [onValuesChange])
+  }, [filter, onValuesChange])
 
   // Convert schema to MetaResponse format
   const metaResponse = convertToMetaResponse(schema)
@@ -129,7 +141,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
         <FilterValueSelector
           fieldName={filter.member}
           operator={filter.operator}
-          values={values}
+          values={dateDraft?.filter === filter ? dateDraft.values : values}
           onValuesChange={handleValuesChange}
           schema={metaResponse}
         />
