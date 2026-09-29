@@ -148,25 +148,21 @@ export function useCompactFilterBar(
     onDashboardFiltersChange(updatedFilters)
   }, [localFilters, onDashboardFiltersChange])
 
-  // Calculate tooltip for active date range
-  const dateRangeTooltip = useMemo(() => {
-    if (!currentDateRange) return null
-
+  // Resolve relative labels on each render because the UTC day can change
+  // without a change to the saved expression.
+  let dateRangeTooltip: string | null = null
+  if (currentDateRange) {
     if (Array.isArray(currentDateRange)) {
-      // Custom date range - format the dates
       const start = new Date(currentDateRange[0])
       const end = new Date(currentDateRange[1] || currentDateRange[0])
-      return formatDateRangeDisplay(start, end)
+      dateRangeTooltip = formatDateRangeDisplay(start, end)
+    } else {
+      const range = calculateDateRange(currentDateRange)
+      dateRangeTooltip = range
+        ? formatDateRangeDisplay(range.start, range.end)
+        : currentDateRange
     }
-
-    // Preset - calculate the actual range
-    const range = calculateDateRange(currentDateRange)
-    if (range) {
-      return formatDateRangeDisplay(range.start, range.end)
-    }
-
-    return currentDateRange
-  }, [currentDateRange])
+  }
 
   return {
     localFilters,
