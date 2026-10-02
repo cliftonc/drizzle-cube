@@ -910,15 +910,20 @@ const RESOURCES = [
       '```',
       '',
       '### Filter operators',
-      'String: equals, notEquals, contains, notContains, startsWith, endsWith, like, ilike, regex',
+      'String: equals, notEquals, contains, notContains, startsWith, notStartsWith, endsWith, notEndsWith, like, notLike, ilike, regex, notRegex',
       'Numeric: gt, gte, lt, lte, between, notBetween',
       'Set: in, notIn, set, notSet, isEmpty, isNotEmpty',
       'Date: inDateRange, beforeDate, afterDate',
+      'No values: set, notSet, isEmpty, isNotEmpty (omit values)',
+      'Unknown operators are rejected by validation.',
       '',
       '### Time handling',
       '- Aggregated totals: use filters with inDateRange (NOT timeDimensions)',
       '- Time series grouping: use timeDimensions with granularity',
-      '- Both can be combined: inDateRange filter + timeDimensions with granularity',
+      '- A timeDimension without granularity is only a date filter (no time column)',
+      '- inDateRange values: ["last 3 months"] (one relative string) or ["2024-01-01", "2024-03-31"]',
+      '- Relative ranges: today, yesterday, tomorrow, this/last/next week|month|quarter|year, last N days|weeks|months|quarters|years',
+      '- Combine an inDateRange filter with timeDimensions only when they are on DIFFERENT fields',
       '- Period comparison: use compareDateRange in timeDimensions'
     ].join('\n')
   }

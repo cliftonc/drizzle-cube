@@ -1,7 +1,7 @@
 /**
  * FilterChip Component
  *
- * Compact display of non-date filters as clickable chips.
+ * Compact display of field-specific filters as clickable chips.
  * Clicking opens a popover for inline value editing.
  */
 
@@ -37,20 +37,30 @@ const FilterChip: React.FC<FilterChipProps> = ({
   // Get filter details
   const simpleFilter = filter.filter as SimpleFilter
   const { label } = filter
-  const { operator, values } = simpleFilter
+  const { operator, dateRange } = simpleFilter
+  const values = operator === 'inDateRange' && dateRange
+    ? (Array.isArray(dateRange) ? dateRange : [dateRange])
+    : simpleFilter.values
 
   // Format value display
   const valueDisplay = formatFilterValueDisplay(values || [], operator)
 
-  // Handle value change from popover
-  const handleValueChange = useCallback((newValues: any[]) => {
-    onChange({
-      ...filter,
-      filter: {
-        ...simpleFilter,
-        values: newValues
+  /**
+   * Keep the saved date range and picker values in sync, including an empty range.
+   * @param newValues - Values emitted by the inline picker.
+   */
+  const handleValueChange = useCallback((newValues: NonNullable<SimpleFilter['values']>) => {
+    const updatedFilter = { ...simpleFilter, values: newValues }
+    if (simpleFilter.operator === 'inDateRange') {
+      const dateValues = newValues.some(value => value !== '') ? newValues : []
+      updatedFilter.values = dateValues
+      if (dateValues.length === 0) {
+        delete updatedFilter.dateRange
+      } else {
+        updatedFilter.dateRange = dateValues.length === 1 ? dateValues[0] : dateValues
       }
-    })
+    }
+    onChange({ ...filter, filter: updatedFilter })
   }, [filter, simpleFilter, onChange])
 
   // Handle chip click - open popover in view mode, or edit in edit mode

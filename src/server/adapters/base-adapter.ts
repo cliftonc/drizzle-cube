@@ -140,7 +140,7 @@ export interface DatabaseAdapter {
    * @param value - The value to match
    * @returns SQL expression for string matching
    */
-  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL
+  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'notStartsWith' | 'endsWith' | 'notEndsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL
 
   /**
    * Cast expression to specific database type
@@ -323,7 +323,7 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   }
 
   /**
-   * Case-insensitive LIKE matching for contains/startsWith/endsWith/ilike.
+   * Case-insensitive LIKE matching for (not)contains/(not)startsWith/(not)endsWith/ilike.
    * Default uses native ILIKE (PostgreSQL/DuckDB/Snowflake); engines without ILIKE
    * (MySQL/SQLite/Databend) override with LOWER()+LIKE.
    * @param pattern - the LIKE pattern in its original case (already wrapped with % as needed)
@@ -351,7 +351,7 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
    */
   buildStringCondition(
     fieldExpr: AnyColumn | SQL,
-    operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex',
+    operator: 'contains' | 'notContains' | 'startsWith' | 'notStartsWith' | 'endsWith' | 'notEndsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex',
     value: string
   ): SQL {
     switch (operator) {
@@ -361,8 +361,12 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
         return this.caseInsensitiveLike(fieldExpr, `%${value}%`, true)
       case 'startsWith':
         return this.caseInsensitiveLike(fieldExpr, `${value}%`, false)
+      case 'notStartsWith':
+        return this.caseInsensitiveLike(fieldExpr, `${value}%`, true)
       case 'endsWith':
         return this.caseInsensitiveLike(fieldExpr, `%${value}`, false)
+      case 'notEndsWith':
+        return this.caseInsensitiveLike(fieldExpr, `%${value}`, true)
       case 'like':
         return sql`${fieldExpr} LIKE ${value}`
       case 'notLike':

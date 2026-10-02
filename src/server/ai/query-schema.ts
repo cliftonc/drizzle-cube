@@ -44,7 +44,7 @@ export const QUERY_PARAMS_SCHEMA = {
             'arrayContains', 'arrayOverlaps', 'arrayContained'
           ]
         },
-        values: { type: 'array', items: {}, description: 'Filter values. Omit for set/notSet/isEmpty/isNotEmpty.' }
+        values: { type: 'array', items: {}, description: 'Filter values. Omit for set/notSet/isEmpty/isNotEmpty. inDateRange: ["last 3 months"] (one relative string) or ["YYYY-MM-DD", "YYYY-MM-DD"].' }
       },
       required: ['member', 'operator']
     },
@@ -59,10 +59,10 @@ export const QUERY_PARAMS_SCHEMA = {
         granularity: {
           type: 'string',
           enum: ['second', 'minute', 'hour', 'day', 'week', 'month', 'quarter', 'year'],
-          description: 'Time bucket size. REQUIRED for time series; omit only for date range filtering.'
+          description: 'Time bucket size. REQUIRED for time series. Without it the time dimension is a date-range filter only (no time column, no grouping).'
         },
         dateRange: {
-          description: 'Relative string ("last 7 days", "this month", "last quarter") or absolute tuple ["YYYY-MM-DD", "YYYY-MM-DD"]'
+          description: 'Relative string ("today", "last 7 days", "this month", "last quarter", "next week", "last N days|weeks|months|quarters|years"), a single "YYYY-MM-DD", or absolute tuple ["YYYY-MM-DD", "YYYY-MM-DD"]. Unrecognised strings are rejected.'
         },
         fillMissingDates: {
           type: 'boolean',
@@ -194,6 +194,8 @@ type FilterCondition = {
   member: string                // "CubeName.fieldName"
   operator: FilterOperator
   values?: any[]                // omit for set/notSet/isEmpty/isNotEmpty
+                                // inDateRange: ["last 3 months"] | ["2024-01-01", "2024-03-31"]
+  dateRange?: string | [string, string]  // inDateRange only; alternative to values
 }
 
 type LogicalFilter = { and: Filter[] } | { or: Filter[] }
@@ -274,6 +276,11 @@ type RetentionQuery = {
   }
 }
 
+// Relative date ranges: "today" | "yesterday" | "tomorrow"
+//   | "this|last|next week|month|quarter|year" | "last 12 months"
+//   | "last N days|weeks|months|quarters|years"
+// Anything else (e.g. "past 90 days", "since January") is rejected — use absolute dates.
+
 // --- Rules ---
 // 1. Fields are EXACTLY "CubeName.fieldName" (two parts, one dot). Copy verbatim from discover.
 //    WRONG: "Teams.Teams.name" (double-prefixed!), "PullRequests" (bare cube), "Teams_count" (underscore)
@@ -281,7 +288,7 @@ type RetentionQuery = {
 // 2. Cross-cube joins: include dimensions from related cubes — the system auto-joins
 // 3. For AGGREGATED TOTALS: use filters with inDateRange (NOT timeDimensions)
 // 4. For TIME SERIES: use timeDimensions WITH granularity
-// 5. timeDimensions WITHOUT granularity = daily grouping (usually wrong)
+// 5. timeDimensions WITHOUT granularity = date filter only (no time column, not grouped)
 // 6. Order keys MUST appear in measures or dimensions of the same query
 // 7. Funnel/flow/retention are mutually exclusive with measures/dimensions
 // 8. Always discover cubes first — never guess field names

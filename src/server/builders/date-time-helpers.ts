@@ -8,6 +8,7 @@
  */
 
 import type { DatabaseAdapter } from '../adapters/base-adapter.js'
+import { parseRelativeDateRange } from '../../shared/date-utils.js'
 
 /**
  * Convert a millisecond epoch to the engine's wire format:
@@ -92,171 +93,36 @@ export function normalizeDateValue(
   return dateToEngineValue(databaseAdapter, date)
 }
 
-type DateRange = { start: Date; end: Date }
-type RelativeRangeHandler = (ctx: RelativeRangeContext) => DateRange
-
-interface RelativeRangeContext {
-  now: Date
-  utcYear: number
-  utcMonth: number
-  utcDate: number
-  utcDay: number
-}
-
-const startOfNow = (now: Date): Date => {
-  const start = new Date(now)
-  start.setUTCHours(0, 0, 0, 0)
-  return start
-}
-
-const endOfNow = (now: Date): Date => {
-  const end = new Date(now)
-  end.setUTCHours(23, 59, 59, 999)
-  return end
-}
-
-/** Fixed (non-parameterised) relative-range expressions. */
-const FIXED_RANGES: Record<string, RelativeRangeHandler> = {
-  today: ({ now }) => ({ start: startOfNow(now), end: endOfNow(now) }),
-
-  yesterday: ({ now, utcDate }) => {
-    const start = new Date(now)
-    start.setUTCDate(utcDate - 1)
-    start.setUTCHours(0, 0, 0, 0)
-    const end = new Date(now)
-    end.setUTCDate(utcDate - 1)
-    end.setUTCHours(23, 59, 59, 999)
-    return { start, end }
-  },
-
-  'this week': ({ now, utcDate, utcDay }) => {
-    const mondayOffset = utcDay === 0 ? -6 : 1 - utcDay // If Sunday, go back 6 days, otherwise go to Monday
-    const start = new Date(now)
-    start.setUTCDate(utcDate + mondayOffset)
-    start.setUTCHours(0, 0, 0, 0)
-    const end = new Date(start)
-    end.setUTCDate(start.getUTCDate() + 6) // Sunday
-    end.setUTCHours(23, 59, 59, 999)
-    return { start, end }
-  },
-
-  'this month': ({ utcYear, utcMonth }) => ({
-    start: new Date(Date.UTC(utcYear, utcMonth, 1, 0, 0, 0, 0)),
-    end: new Date(Date.UTC(utcYear, utcMonth + 1, 0, 23, 59, 59, 999))
-  }),
-
-  'this quarter': ({ utcYear, utcMonth }) => {
-    const quarter = Math.floor(utcMonth / 3)
-    return {
-      start: new Date(Date.UTC(utcYear, quarter * 3, 1, 0, 0, 0, 0)),
-      end: new Date(Date.UTC(utcYear, quarter * 3 + 3, 0, 23, 59, 59, 999))
-    }
-  },
-
-  'this year': ({ utcYear }) => ({
-    start: new Date(Date.UTC(utcYear, 0, 1, 0, 0, 0, 0)),
-    end: new Date(Date.UTC(utcYear, 11, 31, 23, 59, 59, 999))
-  }),
-
-  'last week': ({ now, utcDate, utcDay }) => {
-    const lastMondayOffset = utcDay === 0 ? -13 : -6 - utcDay // Go to previous Monday
-    const start = new Date(now)
-    start.setUTCDate(utcDate + lastMondayOffset)
-    start.setUTCHours(0, 0, 0, 0)
-    const end = new Date(start)
-    end.setUTCDate(start.getUTCDate() + 6) // Previous Sunday
-    end.setUTCHours(23, 59, 59, 999)
-    return { start, end }
-  },
-
-  'last month': ({ utcYear, utcMonth }) => ({
-    start: new Date(Date.UTC(utcYear, utcMonth - 1, 1, 0, 0, 0, 0)),
-    end: new Date(Date.UTC(utcYear, utcMonth, 0, 23, 59, 59, 999))
-  }),
-
-  'last quarter': ({ utcYear, utcMonth }) => {
-    const currentQuarter = Math.floor(utcMonth / 3)
-    const lastQuarter = currentQuarter === 0 ? 3 : currentQuarter - 1
-    const year = currentQuarter === 0 ? utcYear - 1 : utcYear
-    return {
-      start: new Date(Date.UTC(year, lastQuarter * 3, 1, 0, 0, 0, 0)),
-      end: new Date(Date.UTC(year, lastQuarter * 3 + 3, 0, 23, 59, 59, 999))
-    }
-  },
-
-  'last year': ({ utcYear }) => ({
-    start: new Date(Date.UTC(utcYear - 1, 0, 1, 0, 0, 0, 0)),
-    end: new Date(Date.UTC(utcYear - 1, 11, 31, 23, 59, 59, 999))
-  }),
-
-  'last 12 months': ({ now, utcYear, utcMonth }) => ({
-    start: new Date(Date.UTC(utcYear, utcMonth - 11, 1, 0, 0, 0, 0)),
-    end: endOfNow(now)
-  })
-}
-
-/** Parameterised (regex-matched) relative-range expressions. */
-const PATTERN_RANGES: Array<{
-  re: RegExp
-  build: (n: number, ctx: RelativeRangeContext) => DateRange
-}> = [
-  {
-    re: /^last\s+(\d+)\s+days?$/,
-    build: (days, { now, utcDate }) => {
-      const start = new Date(now)
-      start.setUTCDate(utcDate - days + 1) // Include today in the count
-      start.setUTCHours(0, 0, 0, 0)
-      return { start, end: endOfNow(now) }
-    }
-  },
-  {
-    re: /^last\s+(\d+)\s+weeks?$/,
-    build: (weeks, { now, utcDate }) => {
-      const start = new Date(now)
-      start.setUTCDate(utcDate - weeks * 7 + 1) // Include today in the count
-      start.setUTCHours(0, 0, 0, 0)
-      return { start, end: endOfNow(now) }
-    }
-  },
-  {
-    re: /^last\s+(\d+)\s+months?$/,
-    build: (months, { now, utcYear, utcMonth }) => ({
-      start: new Date(Date.UTC(utcYear, utcMonth - months + 1, 1, 0, 0, 0, 0)),
-      end: endOfNow(now)
-    })
-  },
-  {
-    re: /^last\s+(\d+)\s+years?$/,
-    build: (years, { now, utcYear }) => ({
-      start: new Date(Date.UTC(utcYear - years, 0, 1, 0, 0, 0, 0)),
-      end: endOfNow(now)
-    })
-  }
-]
-
 /**
  * Parse relative date range expressions like "today", "yesterday",
- * "last 7 days", "this month", etc. Handles all 14 DATE_RANGE_OPTIONS.
+ * "last 7 days", "this month", "next week", etc. Delegates to the shared parser
+ * so the server, gap filler and client resolve the same strings identically.
  */
-export function parseRelativeDateRangeValue(dateRange: string): DateRange | null {
-  const now = new Date()
-  const lowerRange = dateRange.toLowerCase().trim()
+export function parseRelativeDateRangeValue(dateRange: string): { start: Date; end: Date } | null {
+  return parseRelativeDateRange(dateRange)
+}
 
-  const ctx: RelativeRangeContext = {
-    now,
-    utcYear: now.getUTCFullYear(),
-    utcMonth: now.getUTCMonth(),
-    utcDate: now.getUTCDate(),
-    utcDay: now.getUTCDay()
+/**
+ * Whether a value parses as a single absolute date (string, number or Date) —
+ * the same test `normalizeDateValue` applies before building SQL.
+ */
+export function isValidDateValue(value: unknown): boolean {
+  return Boolean(value) && toValidDate(value) !== null
+}
+
+/**
+ * Whether a date-range expression resolves to concrete bounds exactly as
+ * `DateTimeBuilder.buildDateRangeCondition` would resolve it:
+ * - a relative string ('last 7 days', 'this month', 'next week', ...)
+ * - a single absolute date string (that whole day)
+ * - a one-element array holding either of the above
+ * - a `[start, end]` pair of absolute dates
+ */
+export function isResolvableDateRange(dateRange: unknown): boolean {
+  if (typeof dateRange === 'string') {
+    return parseRelativeDateRange(dateRange) !== null || isValidDateValue(dateRange)
   }
-
-  const fixed = FIXED_RANGES[lowerRange]
-  if (fixed) return fixed(ctx)
-
-  for (const { re, build } of PATTERN_RANGES) {
-    const match = lowerRange.match(re)
-    if (match) return build(parseInt(match[1], 10), ctx)
-  }
-
-  return null
+  if (!Array.isArray(dateRange)) return false
+  if (dateRange.length === 1) return isResolvableDateRange(dateRange[0])
+  return dateRange.length >= 2 && isValidDateValue(dateRange[0]) && isValidDateValue(dateRange[1])
 }

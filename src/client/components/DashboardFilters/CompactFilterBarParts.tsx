@@ -217,7 +217,7 @@ function XTDButton({
 export function DesktopLayout(props: CompactFilterBarViewProps) {
   const { activePresetId, activeXTDId, nonDateFilters, handlePresetSelect, isEditMode, onAddFilter } = props
   return (
-    <div className="dc:hidden dc:md:flex dc:items-center dc:gap-2 dc:px-3 dc:py-2">
+    <div className="dc:hidden dc:md:flex dc:flex-wrap dc:items-center dc:gap-2 dc:px-3 dc:py-2">
       {/* Filter Icon */}
       <FilterIcon
         className="dc:w-4 dc:h-4 dc:shrink-0"

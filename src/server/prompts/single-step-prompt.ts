@@ -53,8 +53,8 @@ QUERY STRUCTURE:
   }],
   filters?: [{
     member: string, // dimension/measure from CUBE SCHEMA
-    operator: 'equals'|'notEquals'|'contains'|'notContains'|'startsWith'|'endsWith'|'gt'|'gte'|'lt'|'lte'|'inDateRange'|'notInDateRange'|'beforeDate'|'afterDate'|'set'|'notSet',
-    values?: any[] // required unless set/notSet
+    operator: 'equals'|'notEquals'|'contains'|'notContains'|'startsWith'|'notStartsWith'|'endsWith'|'notEndsWith'|'gt'|'gte'|'lt'|'lte'|'in'|'notIn'|'inDateRange'|'beforeDate'|'afterDate'|'set'|'notSet'|'isEmpty'|'isNotEmpty',
+    values?: any[] // required unless set/notSet/isEmpty/isNotEmpty; inDateRange: ['last 7 days'] or ['2024-01-01','2024-03-31']
   }],
   order?: {[member: string]: 'asc'|'desc'}, // member from dimensions/measures/timeDimensions
   limit?: number,

@@ -965,4 +965,30 @@ describe('Database Adapters', () => {
       })
     })
   })
+
+  describe('negated prefix/suffix string operators (all engines)', () => {
+    const engines = [
+      new MySQLAdapter(), new SQLiteAdapter(), new PostgresAdapter(), new SingleStoreAdapter(),
+      new DuckDBAdapter(), new DatabendAdapter(), new SnowflakeAdapter()
+    ]
+    const field = sql`name`
+
+    for (const adapter of engines) {
+      const engine = adapter.getEngineType()
+
+      it(`${engine}: notStartsWith negates startsWith's pattern`, () => {
+        const positive = getSqlString(adapter.buildStringCondition(field, 'startsWith', 'Ab'))
+        const negated = getSqlString(adapter.buildStringCondition(field, 'notStartsWith', 'Ab'))
+        expect(negated).toMatch(/NOT (I)?LIKE/)
+        expect(negated.replace(/NOT /, '')).toBe(positive)
+      })
+
+      it(`${engine}: notEndsWith negates endsWith's pattern`, () => {
+        const positive = getSqlString(adapter.buildStringCondition(field, 'endsWith', 'Ab'))
+        const negated = getSqlString(adapter.buildStringCondition(field, 'notEndsWith', 'Ab'))
+        expect(negated).toMatch(/NOT (I)?LIKE/)
+        expect(negated.replace(/NOT /, '')).toBe(positive)
+      })
+    }
+  })
 })

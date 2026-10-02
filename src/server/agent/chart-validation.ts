@@ -20,6 +20,15 @@ function hasConfigValue(value: unknown): boolean {
   return Array.isArray(value) ? value.length > 0 : !!value
 }
 
+/**
+ * Time dimensions that produce a result column. Without a granularity a time
+ * dimension is a date filter only (unless the query is ungrouped).
+ */
+function returnedTimeDimensions(query: Record<string, unknown>): Array<{ dimension: string }> {
+  const timeDimensions = (query.timeDimensions as Array<{ dimension: string; granularity?: string }> | undefined) ?? []
+  return query.ungrouped ? timeDimensions : timeDimensions.filter(td => Boolean(td.granularity))
+}
+
 /** Collect errors for missing mandatory drop zones. */
 function validateMandatoryZones(
   config: ChartTypeConfig,
@@ -43,7 +52,7 @@ function validateBarXAxis(
 ): void {
   if (hasConfigValue(chartConfig?.xAxis)) return
   const dimensions = (query.dimensions as string[] | undefined) ?? []
-  const timeDimensions = (query.timeDimensions as Array<{ dimension: string }> | undefined) ?? []
+  const timeDimensions = returnedTimeDimensions(query)
   const hasDimensions = dimensions.length > 0 || timeDimensions.length > 0
   errors.push(t(hasDimensions
     ? 'server.validation.chart.barXAxisRequired'
@@ -140,7 +149,7 @@ export function resolveChartTypeFallback(
   if (hasConfigValue(chartConfig?.xAxis)) return { chartType }
 
   const dimensions = (query.dimensions as string[] | undefined) ?? []
-  const timeDimensions = (query.timeDimensions as Array<{ dimension: string }> | undefined) ?? []
+  const timeDimensions = returnedTimeDimensions(query)
   if (dimensions.length > 0 || timeDimensions.length > 0) return { chartType }
 
   const measureCount = ((query.measures as string[] | undefined) ?? []).length
@@ -247,7 +256,7 @@ export function inferChartConfig(
 
   const result: Record<string, unknown> = { ...chartConfig }
 
-  const timeDimensions = (query.timeDimensions as Array<{ dimension: string }> | undefined) ?? []
+  const timeDimensions = returnedTimeDimensions(query)
   const fields: InferenceFields = {
     measures: (query.measures as string[] | undefined) ?? [],
     dimensions: (query.dimensions as string[] | undefined) ?? [],
