@@ -64,7 +64,7 @@ export interface ComboBoxGroup {
   error: unknown
   searchText: string
   highlightedIndex: number
-  listRef: RefObject<HTMLDivElement>
+  listRef: RefObject<HTMLDivElement | null>
   onSearchTextChange: (text: string) => void
   onHighlightedIndexChange: (index: number) => void
   onSelect: (value: unknown, event?: MouseEvent | { shiftKey: boolean }) => void

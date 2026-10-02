@@ -15,7 +15,7 @@ export interface FieldSearchKeyboardApi {
   setFocusedField: (field: FieldOption | null) => void
   focusedIndex: number
   setFocusedIndex: (index: number) => void
-  resultsContainerRef: RefObject<HTMLDivElement>
+  resultsContainerRef: RefObject<HTMLDivElement | null>
   handleKeyDown: (e: KeyboardEvent) => void
 }
 

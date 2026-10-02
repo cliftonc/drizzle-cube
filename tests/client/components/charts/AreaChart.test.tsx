@@ -18,7 +18,7 @@ import AreaChart from '../../../../src/client/components/charts/AreaChart'
 
 // Mock ChartContainer to bypass the dimension check and render children immediately
 vi.mock('../../../../src/client/components/charts/ChartContainer', () => ({
-  default: ({ children, height, minHeight }: { children: React.ReactElement; height?: string | number; minHeight?: string | number }) => {
+  default: ({ children, height, minHeight }: { children: React.ReactElement<{ width?: number; height?: number }>; height?: string | number; minHeight?: string | number }) => {
     const heightStyle = typeof height === 'number' ? `${height}px` : (height || '100%')
     return (
       <div

@@ -129,7 +129,7 @@ export class AnalysisModeErrorBoundary extends Component<Props, State> {
     this.props.onSwitchToSafeMode?.()
   }
 
-  render() {
+  render(): ReactNode {
     if (this.state.hasError) {
       return (
         <ErrorBoundaryFallback

@@ -16,7 +16,7 @@ interface CustomDateDropdownProps {
   onClose: () => void
   onDateRangeChange: (dateRange: string | string[]) => void
   currentDateRange?: string | string[]
-  anchorRef: React.RefObject<HTMLElement>
+  anchorRef: React.RefObject<HTMLElement | null>
 }
 
 const LAST_UNITS: { value: LastUnit; label: string }[] = [
