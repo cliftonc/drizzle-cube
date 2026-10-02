@@ -383,6 +383,9 @@
     "@iconify-icons/heroicons-solid": "^2.0.0",
     "@iconify-icons/tabler": "^2.0.0",
     "@iconify/react": "^6.0.0",
+    "@modelcontextprotocol/client": "^2.2.0",
+    "@modelcontextprotocol/core": "^2.2.0",
+    "@modelcontextprotocol/ext-apps": "^2.0.3",
     "@neondatabase/serverless": "^1.0.1",
     "@nivo/heatmap": "^0.99.0",
     "@playwright/test": "^1.58.2",
@@ -463,7 +466,6 @@
     }
   },
   "dependencies": {
-    "@modelcontextprotocol/ext-apps": "^1.3.2",
     "@modelcontextprotocol/sdk": "^1.28.0",
     "@tanstack/react-query": "^5.90.12",
     "highlight.js": "^11.9.0",
