@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790918141480,
+  "lastUpdate": 1790918732914,
   "repoUrl": "https://github.com/cliftonc/drizzle-cube",
   "entries": {
     "drizzle-cube": [
@@ -126248,6 +126248,324 @@ window.BENCHMARK_DATA = {
             "range": "± 0.2ms p95",
             "unit": "ms",
             "extra": "Cache-enabled executor, warm cache · p95 0.7ms · 700 rows"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "29139614+renovate[bot]@users.noreply.github.com",
+            "name": "renovate[bot]",
+            "username": "renovate[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "34f2bf5f65b5f16d0721fb5019c65fd30d97e6bf",
+          "message": "chore(deps): update dependency snowflake-sdk to v3.4.0 (#1350)\n\nCo-authored-by: renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>",
+          "timestamp": "2026-10-02T05:22:42Z",
+          "tree_id": "733b5e01f7e0ccd28940d361352341e4c060b04d",
+          "url": "https://github.com/cliftonc/drizzle-cube/commit/34f2bf5f65b5f16d0721fb5019c65fd30d97e6bf"
+        },
+        "date": 1790918728764,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "baseline.count-time-entries",
+            "value": 52.32,
+            "range": "± 1.6ms p95",
+            "unit": "ms",
+            "extra": "Count over ~730k time entries · p95 53.9ms · 1 rows"
+          },
+          {
+            "name": "baseline.sum-avg-productivity",
+            "value": 21.1,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Sum + avg over ~335k productivity rows · p95 21.7ms · 1 rows"
+          },
+          {
+            "name": "baseline.count-distinct",
+            "value": 160.75,
+            "range": "± 1.5ms p95",
+            "unit": "ms",
+            "extra": "Count distinct employees over time entries · p95 162.3ms · 1 rows"
+          },
+          {
+            "name": "baseline.min-max",
+            "value": 32.35,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Min + max lines of code · p95 32.9ms · 1 rows"
+          },
+          {
+            "name": "baseline.calculated-measure",
+            "value": 35.54,
+            "range": "± 7.6ms p95",
+            "unit": "ms",
+            "extra": "Calculated measure (productivity score) · p95 43.1ms · 1 rows"
+          },
+          {
+            "name": "multi.six-measures",
+            "value": 83.11,
+            "range": "± 3.3ms p95",
+            "unit": "ms",
+            "extra": "Six measures on time entries · p95 86.4ms · 1 rows"
+          },
+          {
+            "name": "multi.mixed-types",
+            "value": 59.17,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Mixed aggregation types on productivity · p95 59.5ms · 1 rows"
+          },
+          {
+            "name": "groupby.low-cardinality",
+            "value": 95.96,
+            "range": "± 2.1ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type (6 groups) · p95 98.1ms · 6 rows"
+          },
+          {
+            "name": "groupby.mid-cardinality",
+            "value": 88.43,
+            "range": "± 2.5ms p95",
+            "unit": "ms",
+            "extra": "Group by department (~25 groups) · p95 91.0ms · 25 rows"
+          },
+          {
+            "name": "groupby.high-cardinality",
+            "value": 44.92,
+            "range": "± 0.7ms p95",
+            "unit": "ms",
+            "extra": "Group by employee (~700 groups) · p95 45.6ms · 700 rows"
+          },
+          {
+            "name": "groupby.two-dimensions",
+            "value": 112.86,
+            "range": "± 2.1ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type + department · p95 115.0ms · 150 rows"
+          },
+          {
+            "name": "filter.equals",
+            "value": 66.2,
+            "range": "± 0.9ms p95",
+            "unit": "ms",
+            "extra": "Equals filter (development entries) · p95 67.1ms · 1 rows"
+          },
+          {
+            "name": "filter.numeric-range",
+            "value": 30.86,
+            "range": "± 1.2ms p95",
+            "unit": "ms",
+            "extra": "Numeric range filter (linesOfCode > 100) · p95 32.1ms · 1 rows"
+          },
+          {
+            "name": "filter.string-contains",
+            "value": 1.28,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "String contains filter on employee name · p95 1.3ms · 1 rows"
+          },
+          {
+            "name": "filter.nested-and-or",
+            "value": 75.38,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "Nested AND/OR filter on time entries · p95 76.5ms · 1 rows"
+          },
+          {
+            "name": "filter.in-list-100",
+            "value": 65.83,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "IN-list filter with 100 employee ids · p95 66.3ms · 1 rows"
+          },
+          {
+            "name": "time.day-granularity-year",
+            "value": 125.94,
+            "range": "± 6.4ms p95",
+            "unit": "ms",
+            "extra": "Daily time series over 2024 (~366 buckets) · p95 132.3ms · 262 rows"
+          },
+          {
+            "name": "time.month-granularity",
+            "value": 127.16,
+            "range": "± 1.2ms p95",
+            "unit": "ms",
+            "extra": "Monthly time series over 2024 · p95 128.3ms · 12 rows"
+          },
+          {
+            "name": "time.week-with-dimension",
+            "value": 47.59,
+            "range": "± 2.6ms p95",
+            "unit": "ms",
+            "extra": "Weekly series split by allocation type (H1 2024) · p95 50.2ms · 104 rows"
+          },
+          {
+            "name": "time.gap-fill",
+            "value": 72.8,
+            "range": "± 18.4ms p95",
+            "unit": "ms",
+            "extra": "Daily series with fillMissingDates over 16 months · p95 91.2ms · 488 rows"
+          },
+          {
+            "name": "time.compare-date-range",
+            "value": 115.35,
+            "range": "± 6.6ms p95",
+            "unit": "ms",
+            "extra": "Period comparison Q1 vs Q2 2024 by month · p95 121.9ms · 6 rows"
+          },
+          {
+            "name": "join.belongs-to",
+            "value": 2.27,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Employees joined to departments · p95 2.6ms · 25 rows"
+          },
+          {
+            "name": "join.has-many-fanout",
+            "value": 301.87,
+            "range": "± 25.9ms p95",
+            "unit": "ms",
+            "extra": "Employee count with time-entry fan-out (~730k child rows) · p95 327.8ms · 25 rows"
+          },
+          {
+            "name": "join.many-to-many",
+            "value": 2.88,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Employees by team via junction table · p95 3.1ms · 40 rows"
+          },
+          {
+            "name": "join.three-cubes",
+            "value": 272.19,
+            "range": "± 5.4ms p95",
+            "unit": "ms",
+            "extra": "Departments + employees + time entries · p95 277.6ms · 25 rows"
+          },
+          {
+            "name": "rows.ordered-700",
+            "value": 87.42,
+            "range": "± 1.7ms p95",
+            "unit": "ms",
+            "extra": "~700 ordered group rows · p95 89.1ms · 700 rows"
+          },
+          {
+            "name": "rows.deep-offset",
+            "value": 17.99,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped page at offset 100k (limit 1000) · p95 18.2ms · 1,000 rows"
+          },
+          {
+            "name": "rows.ungrouped-10k",
+            "value": 37.83,
+            "range": "± 0.9ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped raw rows (limit 10,000) · p95 38.7ms · 10,000 rows"
+          },
+          {
+            "name": "analysis.funnel",
+            "value": 135.58,
+            "range": "± 10.0ms p95",
+            "unit": "ms",
+            "extra": "Three-step funnel over ~335k events · p95 145.6ms · 3 rows"
+          },
+          {
+            "name": "analysis.flow",
+            "value": 53.79,
+            "range": "± 1.5ms p95",
+            "unit": "ms",
+            "extra": "Flow with 2 steps before/after · p95 55.3ms · 1 rows"
+          },
+          {
+            "name": "analysis.retention",
+            "value": 394.26,
+            "range": "± 4.7ms p95",
+            "unit": "ms",
+            "extra": "Monthly retention over 2024 (6 periods) · p95 399.0ms · 7 rows"
+          },
+          {
+            "name": "compile.simple",
+            "value": 0.09,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Compile simple aggregation query · p95 0.1ms · 0 rows"
+          },
+          {
+            "name": "compile.complex",
+            "value": 0.59,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Compile multi-cube query with filters + time dimension · p95 0.7ms · 0 rows"
+          },
+          {
+            "name": "eav.project-page",
+            "value": 1.04,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Project 2 EAV attributes over a 25-row page · p95 1.1ms · 25 rows"
+          },
+          {
+            "name": "eav.project-page-total",
+            "value": 32.18,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Same page, plus the total row count · p95 32.4ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-string",
+            "value": 1.17,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Filter on a common string value (LIMIT satisfied early) · p95 1.3ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-numeric",
+            "value": 1.21,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Filter on a numeric attribute, incl. the tolerant cast · p95 1.3ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-selective",
+            "value": 740.42,
+            "range": "± 1.3ms p95",
+            "unit": "ms",
+            "extra": "Filter matching almost nothing — the full-scan case · p95 741.8ms · 0 rows"
+          },
+          {
+            "name": "eav.sort",
+            "value": 879.08,
+            "range": "± 8.1ms p95",
+            "unit": "ms",
+            "extra": "Order by a numeric EAV attribute (always a full scan) · p95 887.2ms · 25 rows"
+          },
+          {
+            "name": "eav.baseline-sort",
+            "value": 39.5,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Same shape ordering by a real column, for comparison · p95 40.1ms · 25 rows"
+          },
+          {
+            "name": "cache.miss",
+            "value": 44.26,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, cache bypassed · p95 44.9ms · 700 rows"
+          },
+          {
+            "name": "cache.hit",
+            "value": 0.47,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, warm cache · p95 0.6ms · 700 rows"
           }
         ]
       }
