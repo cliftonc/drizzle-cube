@@ -22,10 +22,16 @@ function createFakePort(opts: {
   headers?: Record<string, string>
   body?: unknown
   queryParams?: Record<string, string>
-} = {}): HttpPort<{ status: number; body: unknown }> & { sent: Array<{ status: number; body: unknown }> } {
+} = {}): HttpPort<{ status: number; body: unknown }> & {
+  sent: Array<{ status: number; body: unknown }>
+  headersSet: Record<string, string>
+} {
   const sent: Array<{ status: number; body: unknown }> = []
+  const headersSet: Record<string, string> = {}
   return {
     sent,
+    headersSet,
+    setHeader: (name: string, value: string) => { headersSet[name] = value },
     getHeader: (name: string) => opts.headers?.[name.toLowerCase()],
     getBody: async () => opts.body,
     getQueryParam: (name: string) => opts.queryParams?.[name],
@@ -161,5 +167,70 @@ describe('createCubeHttpHandler — REST /load core', () => {
 
     const [, securityContext] = semanticLayer.executeMultiCubeQuery.mock.calls[0]
     expect(securityContext).toMatchObject({ organisationId: 'org1', locale: 'nl-NL' })
+  })
+})
+
+describe('createCubeHttpHandler — tenant scoping and cache headers', () => {
+  const securityContext = { organisationId: 'org1' }
+  const getBaseSC = async () => securityContext
+
+  it('resolves the security context for /meta and returns that tenant\'s cubes', async () => {
+    const semanticLayer = createStubSemanticLayer({
+      getMetadata: vi.fn(() => [{ name: 'Employees', measures: [], dimensions: [] }])
+    })
+    const handler = createCubeHttpHandler({ semanticLayer, onError: vi.fn() })
+    const port = createFakePort()
+
+    await handler.handleMetaGet(port, getBaseSC)
+
+    // /meta never touched the extractor before this release.
+    expect(semanticLayer.getMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({ organisationId: 'org1' })
+    )
+    expect(port.sent[0].status).toBe(200)
+    expect((port.sent[0].body as any).cubes).toHaveLength(1)
+  })
+
+  it('sets Cache-Control: private, no-store on every REST response', async () => {
+    const semanticLayer = createStubSemanticLayer({
+      getMetadata: vi.fn(() => []),
+      generateMultiCubeSQL: vi.fn(async () => ({ sql: 'SELECT 1', params: [] })),
+      dryRun: vi.fn(async () => ({ sql: 'SELECT 1', params: [] })),
+      explainQuery: vi.fn(async () => ({ plan: [] }))
+    })
+    const handler = createCubeHttpHandler({ semanticLayer, onError: vi.fn() })
+    const body = { measures: ['Employees.count'] }
+
+    const calls: Array<[string, () => Promise<unknown>]> = []
+    const ports: Record<string, ReturnType<typeof createFakePort>> = {}
+    for (const name of ['load', 'meta', 'sql', 'dryRun', 'batch', 'explain']) {
+      ports[name] = createFakePort({ body: name === 'batch' ? { queries: [body] } : body })
+    }
+    calls.push(['load', () => handler.handleLoadPost(ports.load, getBaseSC)])
+    calls.push(['meta', () => handler.handleMetaGet(ports.meta, getBaseSC)])
+    calls.push(['sql', () => handler.handleSqlPost(ports.sql, getBaseSC)])
+    calls.push(['dryRun', () => handler.handleDryRunPost(ports.dryRun, getBaseSC)])
+    calls.push(['batch', () => handler.handleBatchPost(ports.batch, getBaseSC)])
+    calls.push(['explain', () => handler.handleExplainPost(ports.explain, getBaseSC)])
+
+    for (const [, invoke] of calls) await invoke()
+
+    // Tenant-scoped data must never be heuristically cached by a shared cache.
+    for (const [name] of calls) {
+      expect(ports[name].headersSet['Cache-Control'], `${name} response`).toBe('private, no-store')
+    }
+  })
+
+  it('sets the cache header on error responses too', async () => {
+    const semanticLayer = createStubSemanticLayer({
+      validateQuery: vi.fn(() => ({ isValid: false, errors: ['nope'] }))
+    })
+    const handler = createCubeHttpHandler({ semanticLayer, onError: vi.fn() })
+    const port = createFakePort({ body: { measures: ['Foo.bar'] } })
+
+    await handler.handleLoadPost(port, getBaseSC)
+
+    expect(port.sent[0].status).toBe(400)
+    expect(port.headersSet['Cache-Control']).toBe('private, no-store')
   })
 })

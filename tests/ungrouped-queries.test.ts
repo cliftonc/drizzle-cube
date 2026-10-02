@@ -309,7 +309,7 @@ describe('Ungrouped Query Validation', () => {
       measures: ['Employees.totalSalary'],
       ungrouped: true
     }
-    const result = compiler.validateQuery(query)
+    const result = compiler.validateQuery(query, testSecurityContexts.org1)
     expect(result.isValid).toBe(false)
     expect(result.errors.some(e => e.includes('at least one dimension'))).toBe(true)
   })
@@ -321,7 +321,7 @@ describe('Ungrouped Query Validation', () => {
       measures: ['Employees.count'],
       ungrouped: true
     }
-    const result = compiler.validateQuery(query)
+    const result = compiler.validateQuery(query, testSecurityContexts.org1)
     expect(result.isValid).toBe(false)
     expect(result.errors.some(e => e.includes('incompatible with ungrouped'))).toBe(true)
   })
@@ -332,7 +332,7 @@ describe('Ungrouped Query Validation', () => {
       measures: ['Employees.countDistinctDepartments'],
       ungrouped: true
     }
-    const result = compiler.validateQuery(query)
+    const result = compiler.validateQuery(query, testSecurityContexts.org1)
     expect(result.isValid).toBe(false)
     expect(result.errors.some(e => e.includes('incompatible'))).toBe(true)
   })
@@ -343,7 +343,7 @@ describe('Ungrouped Query Validation', () => {
       measures: ['Employees.totalSalary', 'Employees.avgSalary', 'Employees.minSalary', 'Employees.maxSalary'],
       ungrouped: true
     }
-    const result = compiler.validateQuery(query)
+    const result = compiler.validateQuery(query, testSecurityContexts.org1)
     expect(result.isValid).toBe(true)
   })
 
@@ -352,7 +352,7 @@ describe('Ungrouped Query Validation', () => {
       dimensions: ['Employees.name', 'Employees.email'],
       ungrouped: true
     }
-    const result = compiler.validateQuery(query)
+    const result = compiler.validateQuery(query, testSecurityContexts.org1)
     expect(result.isValid).toBe(true)
   })
 
@@ -366,7 +366,7 @@ describe('Ungrouped Query Validation', () => {
       }],
       ungrouped: true
     }
-    const result = compiler.validateQuery(query)
+    const result = compiler.validateQuery(query, testSecurityContexts.org1)
     expect(result.isValid).toBe(false)
     expect(result.errors.some(e => e.includes('compareDateRange'))).toBe(true)
   })
@@ -381,7 +381,7 @@ describe('Ungrouped Query Validation', () => {
       }],
       ungrouped: true
     }
-    const result = compiler.validateQuery(query)
+    const result = compiler.validateQuery(query, testSecurityContexts.org1)
     expect(result.isValid).toBe(false)
     expect(result.errors.some(e => e.includes('fillMissingDates'))).toBe(true)
   })
@@ -396,7 +396,7 @@ describe('Ungrouped Query Validation', () => {
         steps: []
       }
     }
-    const result = compiler.validateQuery(query)
+    const result = compiler.validateQuery(query, testSecurityContexts.org1)
     expect(result.isValid).toBe(false)
     expect(result.errors.some(e => e.includes('funnel'))).toBe(true)
   })
@@ -408,7 +408,7 @@ describe('Ungrouped Query Validation', () => {
       measures: ['Productivity.totalLinesOfCode'],
       ungrouped: true
     }
-    const result = compiler.validateQuery(query)
+    const result = compiler.validateQuery(query, testSecurityContexts.org1)
     expect(result.isValid).toBe(false)
     expect(result.errors.some(e => e.includes('hasMany'))).toBe(true)
   })
@@ -419,7 +419,7 @@ describe('Ungrouped Query Validation', () => {
       measures: ['Employees.count'],
       dimensions: ['Employees.name']
     }
-    const result = compiler.validateQuery(query)
+    const result = compiler.validateQuery(query, testSecurityContexts.org1)
     expect(result.isValid).toBe(true)
   })
 })

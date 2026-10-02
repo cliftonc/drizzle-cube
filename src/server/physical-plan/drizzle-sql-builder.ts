@@ -21,13 +21,17 @@ import type {
   FilterCondition,
   LogicalFilter,
   Cube,
+  CubeJoin,
   QueryContext,
   PhysicalQueryPlan
 } from '../types/index.js'
 
-import { resolveSqlExpression } from '../cube-utils.js'
+import { resolveSqlExpression, resolveCubeReference } from '../cube-utils.js'
 import type { DatabaseAdapter } from '../adapters/base-adapter.js'
-import { getFilterKey, getTimeDimensionFilterKey } from '../filter-cache.js'
+import { getFilterKey, getTimeDimensionFilterKey, flattenFilters } from '../filter-cache.js'
+import { buildSemiJoinCondition, type SemiJoinKeyPair } from './semi-join.js'
+import { JoinPathResolver, type InternalJoinPathStep } from '../resolvers/join-path-resolver.js'
+import { t } from '../../i18n/runtime.js'
 import { DateTimeBuilder } from '../builders/date-time-builder.js'
 import { FilterBuilder } from '../builders/filter-builder.js'
 import { GroupByBuilder } from '../builders/group-by-builder.js'
@@ -389,6 +393,12 @@ export class DrizzleSqlBuilder {
       }
 
       if (logicalFilter.or) {
+        // An OR whose branches span both sides of a CTE boundary (or reference a
+        // cube not in scope here) cannot be split per cube: rewrite the
+        // out-of-scope branches as semi-join subqueries instead.
+        if (filterType === 'where' && this.orNeedsSemiJoins(logicalFilter.or, cubes, queryPlan)) {
+          return this.buildFilterWithSemiJoins(logicalFilter, cubes, context, queryPlan)
+        }
         const conditions = logicalFilter.or
           .map(f => this.processFilter(f, cubes, context, filterType, queryPlan))
           .filter((condition): condition is SQL => condition !== null)
@@ -433,6 +443,171 @@ export class DrizzleSqlBuilder {
 
     // Skip if this filter doesn't match the type we're processing
     return null
+  }
+
+  /** Whether a cube's rows are directly addressable in this WHERE clause. */
+  private isCubeInScope(cubeName: string, cubes: Map<string, Cube>, queryPlan?: PhysicalQueryPlan): boolean {
+    return cubes.has(cubeName) && !this.cubeIsInCTE(cubeName, queryPlan)
+  }
+
+  /**
+   * An OR group needs semi-join rewriting when it references several cubes and
+   * some — but not all — of them are in scope. (All in scope: plain OR. None in
+   * scope: the group belongs entirely to another clause, e.g. inside a CTE.)
+   */
+  private orNeedsSemiJoins(
+    orFilters: Filter[],
+    cubes: Map<string, Cube>,
+    queryPlan?: PhysicalQueryPlan
+  ): boolean {
+    const cubeNames = new Set(flattenFilters(orFilters).map(f => f.member.split('.')[0]))
+    if (cubeNames.size < 2) return false
+    const inScope = [...cubeNames].filter(name => this.isCubeInScope(name, cubes, queryPlan))
+    return inScope.length > 0 && inScope.length < cubeNames.size
+  }
+
+  /**
+   * Build a logical filter where in-scope leaves are plain conditions and
+   * out-of-scope leaves become `inScopeKey IN (SELECT key FROM leafCube WHERE
+   * security AND leaf)`. This keeps OR semantics exact across a CTE boundary.
+   */
+  private buildFilterWithSemiJoins(
+    filter: Filter,
+    cubes: Map<string, Cube>,
+    context: QueryContext,
+    queryPlan?: PhysicalQueryPlan
+  ): SQL | null {
+    if ('and' in filter || 'or' in filter) {
+      const logicalFilter = filter as LogicalFilter
+      const conditions = (logicalFilter.and ?? logicalFilter.or ?? [])
+        .map(f => this.buildFilterWithSemiJoins(f, cubes, context, queryPlan))
+        .filter((condition): condition is SQL => condition !== null)
+      if (conditions.length === 0) return null
+      if (conditions.length === 1) return conditions[0]
+      return (logicalFilter.and ? and(...conditions) : or(...conditions)) as SQL
+    }
+
+    const leaf = filter as FilterCondition
+    const [cubeName] = leaf.member.split('.')
+    if (this.isCubeInScope(cubeName, cubes, queryPlan)) {
+      return this.processFilter(leaf, cubes, context, 'where', queryPlan)
+    }
+    return this.buildSemiJoinLeaf(leaf, cubes, context, queryPlan)
+  }
+
+  /** Rewrite one out-of-scope leaf as a semi-join onto an in-scope cube. */
+  private buildSemiJoinLeaf(
+    leaf: FilterCondition,
+    cubes: Map<string, Cube>,
+    context: QueryContext,
+    queryPlan?: PhysicalQueryPlan
+  ): SQL | null {
+    const [leafCubeName, fieldName] = leaf.member.split('.')
+    const known = this.knownCubes(cubes, queryPlan)
+    // Measure leaves belong to HAVING, never WHERE (validation rejects ORs mixing the two)
+    if (known.get(leafCubeName)?.measures?.[fieldName]) return null
+
+    const hops = this.findSemiJoinPath(leafCubeName, cubes, known, queryPlan)
+    if (!hops) {
+      throw new Error(t('server.errors.crossCubeOrFilterUnsupported', {
+        member: leaf.member,
+        cubeName: leafCubeName,
+        contextCube: [...cubes.keys()].filter(name => this.isCubeInScope(name, cubes, queryPlan)).join(', ')
+      }))
+    }
+
+    // Build the leaf against its own cube (no plan → no CTE skipping)
+    const leafCube = hops[hops.length - 1].cube
+    const leafConditions = this.buildWhereConditions(
+      new Map([[leafCube.name, leafCube]]),
+      { filters: [leaf] },
+      context
+    )
+    if (leafConditions.length === 0) return null
+
+    // Nest one security-scoped semi-join per hop, from the leaf back to the
+    // in-scope cube: a.k IN (SELECT b.k FROM b WHERE b.sec AND b.j IN (...))
+    let condition: SQL | null = null
+    for (let i = hops.length - 1; i >= 0; i--) {
+      const { cube, keyPairs } = hops[i]
+      const cubeBase = cube.sql(context)
+      const inner = condition ? [condition] : leafConditions
+      condition = buildSemiJoinCondition(
+        context,
+        cubeBase,
+        keyPairs,
+        cubeBase.where ? [cubeBase.where, ...inner] : inner
+      )
+    }
+    return condition
+  }
+
+  /** Every cube visible from here: the in-scope map plus the rest of the plan. */
+  private knownCubes(cubes: Map<string, Cube>, queryPlan?: PhysicalQueryPlan): Map<string, Cube> {
+    const known = new Map<string, Cube>(cubes)
+    if (queryPlan) {
+      const planCubes = [
+        queryPlan.primaryCube,
+        ...(queryPlan.joinCubes ?? []).map(j => j.cube),
+        ...(queryPlan.preAggregationCTEs ?? []).map(cte => cte.cube)
+      ]
+      for (const cube of planCubes) {
+        if (!known.has(cube.name)) known.set(cube.name, cube)
+      }
+    }
+    return known
+  }
+
+  /**
+   * Find how an out-of-scope cube links to the rows in scope, as a list of
+   * semi-join hops ordered outward from an in-scope cube (the last hop's cube is
+   * the leaf's cube). A pre-aggregated cube links through its CTE join keys;
+   * anything else through the shortest equi-join path (no many-to-many hops).
+   */
+  private findSemiJoinPath(
+    leafCubeName: string,
+    cubes: Map<string, Cube>,
+    known: Map<string, Cube>,
+    queryPlan?: PhysicalQueryPlan
+  ): SemiJoinHop[] | null {
+    const cteInfo = queryPlan?.preAggregationCTEs?.find(cte => cte.cube.name === leafCubeName)
+    if (cteInfo && !(cteInfo.intermediateJoins && cteInfo.intermediateJoins.length > 0)) {
+      const keyPairs: SemiJoinKeyPair[] = []
+      for (const key of cteInfo.joinKeys) {
+        if (key.sourceColumnObj && key.targetColumnObj) {
+          keyPairs.push({ outer: key.sourceColumnObj, inner: key.targetColumnObj })
+        }
+      }
+      if (keyPairs.length > 0 && keyPairs.length === cteInfo.joinKeys.length) {
+        return [{ cube: cteInfo.cube, keyPairs }]
+      }
+    }
+
+    const resolver = new JoinPathResolver(known)
+    let shortest: InternalJoinPathStep[] | null = null
+    for (const inScopeName of cubes.keys()) {
+      if (!this.isCubeInScope(inScopeName, cubes, queryPlan)) continue
+      const path = resolver.findPath(inScopeName, leafCubeName)
+      if (path && path.length > 0 && (!shortest || path.length < shortest.length)) {
+        shortest = path
+      }
+    }
+    if (!shortest) return null
+
+    const hops: SemiJoinHop[] = []
+    for (const step of shortest) {
+      const cube = known.get(step.toCube) ??
+        (step.reversed ? null : resolveCubeReference(step.joinDef.targetCube, known))
+      if (!cube || !isEquiJoin(step.joinDef)) return null
+      // A reversed step's join is declared on the far cube, so its source/target swap
+      hops.push({
+        cube,
+        keyPairs: step.joinDef.on.map(k => step.reversed
+          ? { outer: k.target, inner: k.source }
+          : { outer: k.source, inner: k.target })
+      })
+    }
+    return hops
   }
 
   /** Build a WHERE condition for a dimension filter, honouring CTE skips and the filter cache. */
@@ -659,4 +834,17 @@ export class DrizzleSqlBuilder {
   ): SQL | null {
     return this.filterBuilder.buildLogicalFilter(filter, cubes, context)
   }
+}
+
+/** One semi-join hop: the subquery cube and the keys linking it to the previous hop. */
+interface SemiJoinHop {
+  cube: Cube
+  keyPairs: SemiJoinKeyPair[]
+}
+
+/** A join expressible as key equality (no junction table, no custom comparator). */
+function isEquiJoin(joinDef: CubeJoin): boolean {
+  return joinDef.relationship !== 'belongsToMany' &&
+    joinDef.on.length > 0 &&
+    joinDef.on.every(k => !k.as)
 }

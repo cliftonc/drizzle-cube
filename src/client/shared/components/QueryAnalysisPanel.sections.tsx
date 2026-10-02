@@ -153,11 +153,11 @@ const JoinPathHeader: React.FC<{ jp: JoinPathAnalysis; primaryCube: string }> = 
       <ArrowRightIcon className="dc:w-4 dc:h-4 text-dc-text-muted" />
       <span className="dc:font-mono dc:font-medium text-dc-text">{jp.targetCube}</span>
       {jp.pathFound ? (
-        <span className="dc:text-xs dc:px-2 dc:py-0.5 bg-dc-success-bg text-dc-success dc:rounded">
+        <span className="dc:text-xs dc:px-2 dc:py-0.5 bg-dc-success-bg text-dc-success dc:rounded-sm">
           {jp.pathLength} step{jp.pathLength !== 1 ? 's' : ''}
         </span>
       ) : (
-        <span className="dc:text-xs dc:px-2 dc:py-0.5 bg-dc-error-bg text-dc-error dc:rounded">
+        <span className="dc:text-xs dc:px-2 dc:py-0.5 bg-dc-error-bg text-dc-error dc:rounded-sm">
           No path
         </span>
       )}
@@ -170,7 +170,7 @@ const JoinPathHeader: React.FC<{ jp: JoinPathAnalysis; primaryCube: string }> = 
  */
 export const JoinPathItem: React.FC<{ jp: JoinPathAnalysis; primaryCube: string }> = ({ jp, primaryCube }) => {
   return (
-    <div className="bg-dc-surface dc:p-3 dc:rounded dc:text-sm">
+    <div className="bg-dc-surface dc:p-3 dc:rounded-sm dc:text-sm">
       <JoinPathHeader jp={jp} primaryCube={primaryCube} />
       <JoinPathSteps jp={jp} />
       <JoinPathSelectionSummary jp={jp} />
@@ -221,12 +221,12 @@ export const PrimaryCubeSection: React.FC<{ analysis: QueryAnalysis }> = ({ anal
         <TableIcon className="dc:w-4 dc:h-4 dc:mr-2" />
         {t('queryAnalysis.primaryCube')}
       </h4>
-      <div className="bg-dc-surface dc:p-3 dc:rounded dc:text-sm">
+      <div className="bg-dc-surface dc:p-3 dc:rounded-sm dc:text-sm">
         <div className="dc:flex dc:items-center dc:gap-2 dc:mb-2 dc:flex-wrap">
           <span className="dc:font-mono dc:font-medium text-dc-primary">
             {analysis.primaryCube.selectedCube}
           </span>
-          <span className={`dc:text-xs dc:px-2 dc:py-0.5 dc:rounded ${getReasonBadgeClasses(analysis.primaryCube.reason)}`}>
+          <span className={`dc:text-xs dc:px-2 dc:py-0.5 dc:rounded-sm ${getReasonBadgeClasses(analysis.primaryCube.reason)}`}>
             {formatReason(analysis.primaryCube.reason)}
           </span>
         </div>
@@ -284,11 +284,11 @@ export const PreAggregationsSection: React.FC<{ analysis: QueryAnalysis }> = ({ 
       </h4>
       <div className="dc:space-y-2">
         {analysis.preAggregations.map((pa, idx) => (
-          <div key={idx} className="bg-dc-surface dc:p-3 dc:rounded dc:text-sm">
+          <div key={idx} className="bg-dc-surface dc:p-3 dc:rounded-sm dc:text-sm">
             <div className="dc:flex dc:items-center dc:gap-2 dc:mb-1 dc:flex-wrap">
               <span className="dc:font-mono dc:font-medium text-dc-text">{pa.cubeName}</span>
               <span className="dc:text-xs text-dc-text-muted">as</span>
-              <code className="dc:text-xs bg-dc-surface-secondary dc:px-1 dc:rounded dc:font-mono">{pa.cteAlias}</code>
+              <code className="dc:text-xs bg-dc-surface-secondary dc:px-1 dc:rounded-sm dc:font-mono">{pa.cteAlias}</code>
             </div>
             <p className="dc:text-xs text-dc-text-secondary">{pa.reason}</p>
             <div className="dc:mt-1 dc:text-xs text-dc-text-muted">

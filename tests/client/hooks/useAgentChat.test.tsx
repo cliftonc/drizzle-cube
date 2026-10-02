@@ -50,6 +50,7 @@ function createDefaultCallbacks(): UseAgentChatOptions {
     onToolStart: vi.fn(),
     onToolResult: vi.fn(),
     onAddPortlet: vi.fn(),
+    onUpdatePortlet: vi.fn(),
     onAddMarkdown: vi.fn(),
     onDone: vi.fn(),
     onTurnComplete: vi.fn(),
@@ -133,7 +134,27 @@ describe('useAgentChat', () => {
         await result.current.sendMessage('test')
       })
 
-      expect(callbacks.onToolResult).toHaveBeenCalledWith('t-1', 'discover_cubes', 'cubes found', undefined)
+      expect(callbacks.onToolResult).toHaveBeenCalledWith('t-1', 'discover_cubes', 'cubes found', undefined, undefined)
+    })
+
+    it('should pass the tool input through so reloaded history keeps its arguments', async () => {
+      server.use(
+        http.post('*/agent/chat', () =>
+          createSSEResponse([
+            { type: 'tool_use_result', data: { id: 't-2', name: 'add_markdown', result: 'ok', input: { content: 'hi' } } },
+            { type: 'done', data: { sessionId: '' } },
+          ])
+        )
+      )
+
+      const { wrapper } = createHookWrapper()
+      const { result } = renderHook(() => useAgentChat(callbacks), { wrapper })
+
+      await act(async () => {
+        await result.current.sendMessage('test')
+      })
+
+      expect(callbacks.onToolResult).toHaveBeenCalledWith('t-2', 'add_markdown', 'ok', undefined, { content: 'hi' })
     })
 
     it('should call onAddPortlet with type:portlet for add_portlet events', async () => {

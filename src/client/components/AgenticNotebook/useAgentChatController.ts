@@ -53,6 +53,7 @@ export function useAgentChatController({
 
   const sessionId = useNotebookStore((s) => s.sessionId)
   const addBlock = useNotebookStore((s) => s.addBlock)
+  const updateBlock = useNotebookStore((s) => s.updateBlock)
 
   // Refs for values doSend reads at call-time (avoids recreating callbacks on every text delta)
   const messagesRef = useRef(messages)
@@ -93,12 +94,20 @@ export function useAgentChatController({
       ensureNewMessage()
       addToolCallToLastAssistant({ id, name, input, status: 'running' })
     }, [ensureNewMessage, addToolCallToLastAssistant]),
-    onToolResult: useCallback((id: string, _name: string, result?: unknown, isError?: boolean) => {
-      updateLastToolCall({ id, status: isError ? 'error' : 'complete', result })
+    onToolResult: useCallback((id: string, _name: string, result?: unknown, isError?: boolean, input?: unknown) => {
+      // `input` arrives here rather than on tool_use_start: the arguments stream
+      // in after the start event, so recording it here is what lets a reloaded
+      // session replay the agent's own tool calls with real arguments.
+      updateLastToolCall({ id, status: isError ? 'error' : 'complete', result, ...(input !== undefined ? { input } : {}) })
     }, [updateLastToolCall]),
     onAddPortlet: useCallback((data: PortletBlock) => {
       addBlock(data)
     }, [addBlock]),
+    onUpdatePortlet: useCallback(({ id, ...updates }: PortletBlock) => {
+      // updateBlock only touches portlet blocks, which is exactly the scope of
+      // the agent's update_portlet tool.
+      updateBlock(id, updates)
+    }, [updateBlock]),
     onAddMarkdown: useCallback((data: MarkdownBlock) => {
       addBlock(data)
     }, [addBlock]),

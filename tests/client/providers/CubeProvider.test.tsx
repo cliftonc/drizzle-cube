@@ -632,7 +632,9 @@ describe('CubeProvider', () => {
       const defaultOptions = queryClient.getDefaultOptions()
       expect(defaultOptions.queries?.staleTime).toBe(5 * 60 * 1000) // 5 minutes
       expect(defaultOptions.queries?.gcTime).toBe(15 * 60 * 1000) // 15 minutes
-      expect(defaultOptions.queries?.retry).toBe(3)
+      // A predicate rather than a count: 4xx is not retried. See the
+      // "retry policy" cases under createCubeQueryClient Factory.
+      expect(typeof defaultOptions.queries?.retry).toBe('function')
       expect(defaultOptions.queries?.refetchOnWindowFocus).toBe(false)
     })
 
@@ -1550,8 +1552,31 @@ describe('createCubeQueryClient Factory', () => {
     // Check query defaults
     expect(defaults.queries?.staleTime).toBe(5 * 60 * 1000)
     expect(defaults.queries?.gcTime).toBe(15 * 60 * 1000)
-    expect(defaults.queries?.retry).toBe(3)
     expect(defaults.queries?.refetchOnWindowFocus).toBe(false)
+  })
+
+  describe('retry policy', () => {
+    const shouldRetry = (failureCount: number, error: unknown) => {
+      const retry = createCubeQueryClient().getDefaultOptions().queries?.retry
+      return typeof retry === 'function' ? retry(failureCount, error as Error) : retry
+    }
+
+    it('does not retry a 4xx — the answer will not change', () => {
+      // An invalid query or an unknown member is decided; retrying it only
+      // delays the error by the backoff, making the widget look like it hung.
+      expect(shouldRetry(0, Object.assign(new Error('bad query'), { status: 400 }))).toBe(false)
+      expect(shouldRetry(0, Object.assign(new Error('not found'), { status: 404 }))).toBe(false)
+    })
+
+    it('retries a 5xx or a network failure up to three times', () => {
+      const serverError = Object.assign(new Error('boom'), { status: 503 })
+      expect(shouldRetry(0, serverError)).toBe(true)
+      expect(shouldRetry(2, serverError)).toBe(true)
+      expect(shouldRetry(3, serverError)).toBe(false)
+
+      // No status at all — a network failure, which may well be transient.
+      expect(shouldRetry(0, new Error('Failed to fetch'))).toBe(true)
+    })
   })
 })
 

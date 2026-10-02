@@ -6,6 +6,7 @@
  * {@link createCubeHttpHandler}.
  */
 export type { HttpPort, McpHttpPort } from './http-port.js'
+export { withRestCacheHeaders, REST_CACHE_CONTROL } from './http-port.js'
 export {
   withLocaleFromHeaders,
   resolveSecurityContext,

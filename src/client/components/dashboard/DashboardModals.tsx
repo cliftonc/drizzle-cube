@@ -1,9 +1,9 @@
 /**
  * DashboardModals
  *
- * The four dashboard modals (add/edit portlet, add/edit text, portlet filter config,
- * delete confirmation). All read their open/target state from DashboardContext; when
- * closed they render nothing, so always mounting them is harmless.
+ * The dashboard modals (add/edit portlet, add/edit text, portlet filter config,
+ * delete confirmation, dashboard import). All read their open/target state from
+ * DashboardContext; when closed they render nothing, so always mounting them is harmless.
  */
 
 import { useTranslation } from '../../hooks/useTranslation.js'
@@ -12,6 +12,7 @@ import TextPortletModal from '../TextPortletModal.js'
 import PortletFilterConfigModal from '../PortletFilterConfigModal.js'
 import ConfirmModal from '../ConfirmModal.js'
 import { useDashboardContext } from './DashboardContext.js'
+import DashboardImportModals from './DashboardImportModals.js'
 
 export default function DashboardModals() {
   const { t } = useTranslation()
@@ -27,6 +28,7 @@ export default function DashboardModals() {
     isFilterConfigModalOpen,
     filterConfigPortlet,
     deleteConfirmPortletId,
+    deleteConfirmGroupId,
     handlePortletSave,
     handleSaveFilterConfig,
     actions,
@@ -34,6 +36,10 @@ export default function DashboardModals() {
 
   const deletePortletTitle =
     config.portlets.find(p => p.id === deleteConfirmPortletId)?.title || t('dashboard.thisPortlet')
+
+  const deletingGroup = config.groups?.find(group => group.id === deleteConfirmGroupId)
+  const deletingGroupPortletCount =
+    deletingGroup?.cells.reduce((sum, cell) => sum + cell.portletIds.length, 0) ?? 0
 
   return (
     <>
@@ -71,6 +77,17 @@ export default function DashboardModals() {
         portlet={filterConfigPortlet}
       />
 
+      {/* Delete Group Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmGroupId}
+        onClose={actions.closeDeleteConfirm}
+        onConfirm={actions.confirmDelete}
+        title={t('dashboard.group.deleteTitle')}
+        message={t('dashboard.group.deleteConfirm', { count: String(deletingGroupPortletCount) })}
+        confirmText={t('common.actions.delete')}
+        confirmVariant="danger"
+      />
+
       {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={!!deleteConfirmPortletId}
@@ -87,6 +104,9 @@ export default function DashboardModals() {
         confirmText={t('common.actions.delete')}
         confirmVariant="danger"
       />
+
+      {/* Dashboard import confirm / error dialogs (features.dashboardImportExport) */}
+      <DashboardImportModals />
     </>
   )
 }

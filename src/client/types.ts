@@ -114,10 +114,13 @@ export type BuiltInChartType =
   | 'retentionHeatmap'
   | 'retentionCombined'
   | 'boxPlot'
+  | 'dotStrip'
   | 'waterfall'
   | 'candlestick'
+  | 'proportionBar'
   | 'measureProfile'
   | 'gauge'
+  | 'recordsTable'
 
 // Chart type identifier — includes all built-in types plus any string for custom chart plugins.
 // Use BuiltInChartType when you need to narrow to built-ins only.
@@ -131,6 +134,7 @@ export interface AxisFormatConfig {
   decimals?: number           // Decimal places (0-4, undefined = auto)
   customPrefix?: string       // Prefix for 'custom' unit type
   customSuffix?: string       // Suffix for 'custom' unit type
+  currencyCode?: string       // ISO 4217 code for 'currency' unit (default: derived from viewer locale)
 }
 
 // Chart configuration
@@ -147,6 +151,10 @@ export interface ChartAxisConfig {
   // Activity grid chart specific fields
   dateField?: string[] // Time dimension field for activity grid
   valueField?: string[] // Measure field for activity intensity
+
+  // Records table specific fields
+  columns?: string[] // Ordered fields rendered as table columns
+  hiddenColumns?: string[] // Fields fetched for row context (ids, link tokens) but never rendered
   
   // Legacy format (for backward compatibility)
   x?: string // Single dimension field for X axis
@@ -155,6 +163,43 @@ export interface ChartAxisConfig {
   // Dual Y-axis support: per-measure axis assignment (left or right)
   // Default: 'left' for all measures (backward compatible)
   yAxisAssignment?: Record<string, 'left' | 'right'>
+}
+
+/**
+ * How a records-table column renders its value. Chosen per column in the chart
+ * editor — never inferred from the data, so the same field can be a badge in one
+ * dashboard and plain text in another.
+ */
+export type ColumnFormatKind = 'text' | 'number' | 'date' | 'badge' | 'progress'
+
+export interface ColumnFormatConfig {
+  kind: ColumnFormatKind
+  /** Numeric formatting for `kind: 'number'` — reuses the shared axis formatter. */
+  numberFormat?: AxisFormatConfig
+  /** Granularity for `kind: 'date'`. */
+  dateGranularity?: TimeGranularity
+  /**
+   * Value → palette colour index for `kind: 'badge'`. Values with no mapping
+   * render neutral rather than being assigned a guessed colour.
+   */
+  badgeColors?: Array<{ value: string; colorIndex: number }>
+  /** Bounds for `kind: 'progress'` (default 0-100). Values are clamped. */
+  progressMin?: number
+  progressMax?: number
+  /** How a `kind: 'progress'` cell draws: a full-width bar, or a compact ring for narrow columns. */
+  progressStyle?: 'bar' | 'circle'
+  /** Header override; falls back to the field's metadata title. */
+  label?: string
+  align?: 'left' | 'right'
+}
+
+/**
+ * Row-level click-through for the records table. Tokens of the form
+ * `{Cube.field}` are substituted from the row, including hidden columns.
+ */
+export interface RowLinkConfig {
+  urlTemplate: string
+  target?: 'self' | 'blank'
 }
 
 export interface ThresholdBand {
@@ -171,6 +216,8 @@ export interface ChartDisplayConfig {
   stacked?: boolean // Deprecated: use stackType instead
   stackType?: 'none' | 'normal' | 'percent' // Stacking mode: none, normal (sum), or percent (100%)
   connectNulls?: boolean // For Area/Line charts: draw continuous lines through missing data
+  showSummary?: boolean // For Area/Line charts: show a per-series summary band above the plot
+  showPoints?: boolean // For Area/Line charts: draw a marker at every data point (off is clearer on dense series)
   showAllXLabels?: boolean // Force all X-axis category labels to display (interval=0)
   hideHeader?: boolean // Hide portlet header in non-edit mode
   
@@ -184,10 +231,27 @@ export interface ChartDisplayConfig {
   
   // Activity grid specific display options
   showLabels?: boolean
+
+  // Proportion bar
+  showPercentages?: boolean // Show each segment's share beneath the bar
+  sortSegments?: boolean // Order segments largest-first rather than by query order
   fitToWidth?: boolean
+
+  // Dot strip (beeswarm) specific display options
+  showMedianMarker?: boolean // Vertical tick at each band's median
+  showBandStats?: boolean // `n=` and spread badges in the band gutter
+  showExtremeLabels?: boolean // Annotate each band's min/max dot with its identity label
+  dotSize?: 'small' | 'medium' | 'large' // Dot radius, which also drives the beeswarm spacing
+  bandSort?: 'none' | 'valueDesc' | 'valueAsc' | 'count' // Row ordering
 
   // DataTable specific display options
   pivotTimeDimension?: boolean // Pivot time dimension as columns (default: true when time dimension present)
+
+  // Records table specific display options
+  columnFormats?: Record<string, ColumnFormatConfig> // Per-column rendering, keyed by field name
+  columnWidths?: Record<string, number> // Authored column widths in px; viewers may override locally
+  rowLink?: RowLinkConfig // Row click-through template
+  pageSize?: number // Rows per page (25 | 50 | 100)
 
   // Target functionality
   target?: string // Target values as string (single value or comma-separated for spread)
@@ -200,11 +264,13 @@ export interface ChartDisplayConfig {
   formatValue?: (value: number | null | undefined) => string // Custom value formatter function (takes precedence over prefix/suffix/decimals)
   valueColor?: string // Color for the KPI value (legacy)
   valueColorIndex?: number // Index of color from dashboard palette for KPI value
+  layout?: 'auto' | 'compact' // 'auto' scales the value to the portlet box; 'compact' uses a fixed type scale
   
   // KPI Delta specific display options
   positiveColorIndex?: number // Index of color from dashboard palette for positive changes
   negativeColorIndex?: number // Index of color from dashboard palette for negative changes
   showHistogram?: boolean // Whether to show variance histogram
+  showBaseline?: boolean // Show the `previous -> current` sub-line (compact layout)
 
   // KPI time period handling
   useLastCompletePeriod?: boolean // Exclude incomplete current period (e.g., partial week/month)
@@ -344,8 +410,38 @@ export interface DashboardGridSettings {
   minH: number
 }
 
+/**
+ * One cell along a group's main axis. `portletIds` are stacked perpendicular to
+ * the group's `direction`. Cells share the main axis equally and stacks share
+ * the cross axis equally - a group is an evenly divided frame, with no
+ * per-cell sizing to set or drag.
+ */
+export interface PortletGroupCell {
+  portletIds: string[]
+}
+
+/**
+ * A "combination portlet": several portlets snapped together so they render
+ * inside one card. Layout-only - the portlets themselves stay flat in
+ * `DashboardConfig.portlets` and are referenced by id from here.
+ *
+ * Depth is deliberately capped at two (cells along one axis, a stack inside
+ * each). Snapping perpendicular onto an already-stacked portlet joins that
+ * stack rather than creating a third level.
+ */
+export interface PortletGroup {
+  id: string
+  /** When absent or empty, no title bar is rendered. */
+  title?: string
+  direction: 'row' | 'column'
+  cells: PortletGroupCell[]
+}
+
 export interface RowLayoutColumn {
-  portletId: string
+  /** Exactly one of `portletId` / `groupId` is set. */
+  portletId?: string
+  /** Set when this column hosts a PortletGroup instead of a single portlet. */
+  groupId?: string
   w: number
 }
 
@@ -361,6 +457,7 @@ export interface DashboardConfig {
   layoutMode?: DashboardLayoutMode
   grid?: DashboardGridSettings
   rows?: RowLayout[]
+  groups?: PortletGroup[] // Combination portlets (rows layout mode only)
   layouts?: { [key: string]: any } // react-grid-layout layouts
   colorPalette?: string // Name of the color palette to use (defaults to 'default')
   filters?: DashboardFilter[] // Dashboard-level filters that can be applied to portlets
@@ -469,6 +566,12 @@ export interface CubeQuery {
   segments?: string[]
   /** When true, returns raw row-level data without GROUP BY or aggregation */
   ungrouped?: boolean
+  /**
+   * Ask the server for the number of rows the query would return with no
+   * limit/offset, read back via `CubeResultSet.totalCount()`. Costs a second
+   * round trip, so only paginated views set it.
+   */
+  total?: boolean
 }
 
 /**
@@ -520,6 +623,18 @@ export interface CubeApiOptions {
 }
 
 // Result set types
+/**
+ * An unknown member the server rejected, mirroring the server's
+ * `QueryValidationIssue`. `source` is what decides the response: a projected
+ * member can be dropped and the query re-run, whereas dropping a filter would
+ * widen the result set and must stay an error.
+ */
+export interface CubeValidationIssue {
+  source: 'measure' | 'dimension' | 'timeDimension' | 'filter'
+  member: string
+  message: string
+}
+
 export interface CubeResultSet {
   rawData(): any[]
   tablePivot(): any[]
@@ -527,6 +642,8 @@ export interface CubeResultSet {
   annotation(): any
   loadResponse?: any
   cacheInfo?(): { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | undefined
+  /** Rows the query would return without limit/offset — only when `total: true` was asked for. */
+  totalCount?(): number | undefined
 }
 
 // Component props
@@ -567,6 +684,16 @@ export interface AnalyticsPortletProps {
   }) => void
 }
 
+/**
+ * Host-owned dashboard record fields the library does not store in DashboardConfig.
+ * Supplied so the dashboard import/export feature can write them into the export
+ * file and derive a filename; the library never persists them itself.
+ */
+export interface DashboardMeta {
+  name?: string
+  description?: string
+}
+
 export interface AnalyticsDashboardProps {
   config: DashboardConfig
   editable?: boolean
@@ -576,6 +703,14 @@ export interface AnalyticsDashboardProps {
   onSave?: (config: DashboardConfig) => Promise<void> | void
   onSaveThumbnail?: (thumbnailData: string) => Promise<string | void> // Callback to save thumbnail separately (called on edit mode exit)
   onDirtyStateChange?: (isDirty: boolean) => void
+  /** Name/description of the host's dashboard record, written into dashboard exports (features.dashboardImportExport) */
+  dashboardMeta?: DashboardMeta
+  /**
+   * Called after a dashboard import has replaced the config, when the imported file
+   * carries a name. Lets the host rename its dashboard record to match. Optional:
+   * without it an import only replaces the config.
+   */
+  onDashboardMetaChange?: (meta: { name: string; description?: string }) => Promise<void> | void
 }
 
 export interface ChartProps {
@@ -591,6 +726,33 @@ export interface ChartProps {
   onDataPointClick?: (event: import('./types/drill.js').ChartDataPointClickEvent) => void
   /** Whether drill-down is enabled (shows pointer cursor on clickable elements) */
   drillEnabled?: boolean
+
+  /**
+   * Server-side pagination, supplied by hosts that can re-query (the dashboard
+   * portlet). Absent in the AnalysisBuilder preview, the notebook and plugin
+   * hosts, where a chart pages and sorts over the rows it already has.
+   */
+  pagination?: ChartPagination
+}
+
+/**
+ * Paging and sorting state a host drives on the chart's behalf.
+ *
+ * Sort lives here rather than in the chart because with server-side paging a
+ * header click has to re-order the whole result set: sorting only the loaded
+ * page would put the wrong rows on page 1.
+ */
+export interface ChartPagination {
+  page: number
+  pageSize: number
+  pageSizeOptions: number[]
+  /** Total matching rows, once the server has reported one. */
+  total?: number
+  sort?: { column: string; direction: 'asc' | 'desc' }
+  setPage: (page: number) => void
+  setPageSize: (pageSize: number) => void
+  /** Cycles the column asc → desc → unsorted, resetting to the first page. */
+  toggleSort: (column: string) => void
 }
 
 // Thumbnail feature configuration
@@ -609,10 +771,24 @@ export interface XlsExportFeatureConfig {
   filenamePrefix?: string
 }
 
+// Dashboard JSON import/export feature configuration (no extra dependency)
+export interface DashboardImportExportFeatureConfig {
+  enabled: boolean
+  /** Optional prefix for exported filenames (default: none; the file is named after the dashboard) */
+  filenamePrefix?: string
+}
+
 // Features configuration
 export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
   aiEndpoint?: string // Custom AI endpoint (default: '/api/ai/generate')
+  /**
+   * Custom endpoint for AI analysis of EXPLAIN plans, used by the built-in
+   * execution plan panel (default: '/api/ai/explain/analyze').
+   * Set this when the AI routes are mounted under a non-default path.
+   * An `aiEndpoint` passed directly to `useExplainAI()` takes precedence.
+   */
+  aiExplainEndpoint?: string
   showSchemaDiagram?: boolean // Show schema visualization button in AnalysisBuilder results panel (requires @xyflow/react and @dagrejs/dagre)
   useAnalysisBuilder?: boolean // Deprecated - AnalysisBuilder modal is now always used (PortletEditModal was removed)
   editToolbar?: 'floating' | 'top' | 'both' // Which edit toolbar(s) to show: 'floating' only, 'top' only, or 'both' (default: 'both')
@@ -620,6 +796,7 @@ export interface FeaturesConfig {
   thumbnail?: ThumbnailFeatureConfig // Optional dashboard thumbnail capture on save
   manualRefresh?: boolean // When true, queries don't auto-execute on config changes. User must click Refresh. (default: false)
   xlsExport?: XlsExportFeatureConfig // Optional XLSX data export from portlets (requires exceljs)
+  dashboardImportExport?: DashboardImportExportFeatureConfig // Optional dashboard export/import as a JSON file (toolbar buttons)
 }
 
 // Grid layout types (simplified)

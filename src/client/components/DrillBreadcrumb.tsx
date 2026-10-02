@@ -68,7 +68,7 @@ export function DrillBreadcrumb({ path, onNavigate, onLevelClick }: DrillBreadcr
     <div className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 bg-dc-surface-secondary dc:rounded-md dc:text-xs">
       {/* Back button */}
       <button
-        className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded dc:cursor-pointer dc:hover:bg-dc-surface-hover text-dc-text-secondary dc:hover:text-dc-text dc:transition-colors"
+        className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded-sm dc:cursor-pointer dc:hover:bg-dc-surface-hover text-dc-text-secondary dc:hover:text-dc-text dc:transition-colors"
         onClick={onNavigate}
         title="Go back one level"
       >
@@ -80,7 +80,7 @@ export function DrillBreadcrumb({ path, onNavigate, onLevelClick }: DrillBreadcr
 
       {/* Home / root level */}
       <button
-        className="dc:flex dc:items-center dc:gap-1 dc:px-1.5 dc:py-1 dc:rounded dc:cursor-pointer dc:hover:bg-dc-surface-hover text-dc-text-secondary dc:hover:text-dc-text dc:transition-colors"
+        className="dc:flex dc:items-center dc:gap-1 dc:px-1.5 dc:py-1 dc:rounded-sm dc:cursor-pointer dc:hover:bg-dc-surface-hover text-dc-text-secondary dc:hover:text-dc-text dc:transition-colors"
         onClick={() => onLevelClick?.(0)}
         title="Return to top level"
       >
@@ -102,7 +102,7 @@ export function DrillBreadcrumb({ path, onNavigate, onLevelClick }: DrillBreadcr
             ) : (
               // Previous levels (clickable)
               <button
-                className="dc:px-1.5 dc:py-1 dc:rounded dc:cursor-pointer dc:hover:bg-dc-surface-hover text-dc-text-secondary dc:hover:text-dc-text dc:transition-colors"
+                className="dc:px-1.5 dc:py-1 dc:rounded-sm dc:cursor-pointer dc:hover:bg-dc-surface-hover text-dc-text-secondary dc:hover:text-dc-text dc:transition-colors"
                 onClick={() => onLevelClick?.(index + 1)}
                 title={`Navigate to ${safeLabel}`}
               >

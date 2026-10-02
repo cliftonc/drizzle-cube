@@ -270,7 +270,7 @@ describe('ActivityGridChart', () => {
       )
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveStyle({ height: '50vh' })
+      expect(wrapper.style.height).toBe('50vh')
     })
 
     it('should have minHeight of 250px', () => {

@@ -179,6 +179,41 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
   }
 
   /**
+   * Build SQLite tolerant type casting: NULL on unparseable input instead of SQLite's usual
+   * dynamic-typing behaviour. SQLite's CAST-to-numeric applies "prefix" conversion — the
+   * longest numeric prefix of the string is used, or 0 if there is none — so `CAST('n/a' AS
+   * REAL)` silently yields 0.0 rather than erroring or returning NULL.
+   *
+   * SQLite has no REGEXP operator by default (it requires loading an extension, same
+   * limitation regexCondition() works around with GLOB). GLOB's `*`/`?`/`[...]` syntax can't
+   * express "one or more digits" directly, but the standard SQLite idiom for "string contains
+   * only characters from a set" is `NOT x GLOB '*[^set]*'` — true only if no character outside
+   * the set appears anywhere. That's what's used below to validate the trimmed value contains
+   * only the characters a valid decimal/integer/epoch-ms value could use, before attempting
+   * the cast; empty/whitespace-only strings are excluded separately.
+   *
+   * Known limitation: this is a character-set check, not a full grammar check, so a malformed
+   * value that still only uses allowed characters (e.g. '1.2.3' or '+-5') passes the guard and
+   * is then handled by SQLite's own prefix-based numeric parsing (never an error, but not
+   * necessarily NULL either). Clearly non-numeric input (letters, 'n/a', punctuation outside
+   * the allowed set) is reliably rejected to NULL, which is the case this method exists for.
+   */
+  tryCastToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL {
+    switch (targetType) {
+      case 'timestamp':
+        // castToType assumes fieldExpr is a millisecond Unix epoch; only digits (and an
+        // optional leading '-' for pre-1970 epochs) are valid here.
+        return sql`CASE WHEN TRIM(${fieldExpr}) = '' OR TRIM(${fieldExpr}) GLOB '*[^0-9-]*' THEN NULL ELSE datetime(${fieldExpr} / 1000, 'unixepoch') END`
+      case 'decimal':
+        return sql`CASE WHEN TRIM(${fieldExpr}) = '' OR TRIM(${fieldExpr}) GLOB '*[^0-9.+-]*' THEN NULL ELSE CAST(${fieldExpr} AS REAL) END`
+      case 'integer':
+        return sql`CASE WHEN TRIM(${fieldExpr}) = '' OR TRIM(${fieldExpr}) GLOB '*[^0-9+-]*' THEN NULL ELSE CAST(${fieldExpr} AS INTEGER) END`
+      default:
+        throw new Error(`Unsupported cast type: ${targetType}`)
+    }
+  }
+
+  /**
    * SQLite AVG uses IFNULL rather than COALESCE for null-to-zero handling.
    */
   protected nullToZero(expr: SQL): SQL {

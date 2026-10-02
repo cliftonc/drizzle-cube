@@ -149,7 +149,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
             <button
               onClick={handleAddSimpleFilter}
               disabled={!hasFilterableFields}
-              className={`dc:flex dc:items-center dc:space-x-1 dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded focus:outline-hidden dc:focus:ring-2 ${
+              className={`dc:flex dc:items-center dc:space-x-1 dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded-sm focus:outline-hidden dc:focus:ring-2 ${
                 hasFilterableFields
                   ? 'text-dc-accent bg-dc-accent-bg dc:border border-dc-accent hover:bg-dc-accent-bg focus:ring-dc-accent'
                   : 'text-dc-text-muted bg-dc-surface-secondary dc:border border-dc-border dc:cursor-not-allowed'

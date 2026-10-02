@@ -72,7 +72,7 @@ const originalError = console.error
 // MSW and console setup
 beforeAll(() => {
   // Start MSW server - intercept network requests
-  server.listen({ onUnhandledRequest: 'warn' })
+  server.listen({ onUnhandledFrame: 'warn' })
   // Suppress console errors
   console.error = vi.fn()
 })

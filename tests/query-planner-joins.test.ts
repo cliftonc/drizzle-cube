@@ -10,6 +10,7 @@ import { LogicalPlanBuilder } from '../src/server/logical-plan'
 import { getTestSchema } from './helpers/test-database'
 import { createTestCubesForCurrentDatabase, getTestCubes } from './helpers/test-cubes'
 import type { QueryContext, CubeJoin, Cube } from '../src/server/types'
+import { testCastHelpers } from './helpers/query-context'
 
 describe('LogicalPlanner - New Join System', () => {
   let schema: any
@@ -33,7 +34,8 @@ describe('LogicalPlanner - New Join System', () => {
     context = {
       db: {} as any, // Mock database instance
       schema,
-      securityContext: { organisationId: 1 }
+      securityContext: { organisationId: 1 },
+      ...testCastHelpers()
     }
   })
 

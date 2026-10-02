@@ -113,7 +113,7 @@ export interface AgentConfig {
   model?: string
   /** Maximum agentic turns per request (default: 25) */
   maxTurns?: number
-  /** Maximum tokens per response (default: 4096) */
+  /** Maximum tokens per response (default: 8192) */
   maxTokens?: number
   /** Allow X-Agent-Api-Key header to override server apiKey */
   allowClientApiKey?: boolean
@@ -168,8 +168,9 @@ export interface DashboardSavedData {
 export type AgentSSEEvent =
   | { type: 'text_delta'; data: string }
   | { type: 'tool_use_start'; data: { id: string; name: string; input?: unknown } }
-  | { type: 'tool_use_result'; data: { id: string; name: string; result?: unknown; isError?: boolean } }
+  | { type: 'tool_use_result'; data: { id: string; name: string; input?: unknown; result?: unknown; isError?: boolean } }
   | { type: 'add_portlet'; data: PortletBlockData }
+  | { type: 'update_portlet'; data: PortletBlockData }
   | { type: 'add_markdown'; data: MarkdownBlockData }
   | { type: 'dashboard_saved'; data: DashboardSavedData }
   | { type: 'turn_complete'; data: Record<string, never> }

@@ -239,7 +239,7 @@ const DropdownSelector = memo(function DropdownSelector({
           onClick={() => setIsOpen(!isOpen)}
           className={`
             dc:flex dc:items-center dc:justify-between dc:w-full dc:px-2.5 dc:py-1.5 dc:text-sm
-            bg-dc-surface dc:border border-dc-border dc:rounded
+            bg-dc-surface dc:border border-dc-border dc:rounded-sm
             dc:transition-colors hover:border-dc-primary dc:cursor-pointer
             ${isOpen ? 'border-dc-primary dc:ring-1 ring-dc-primary' : ''}
           `}
@@ -254,7 +254,7 @@ const DropdownSelector = memo(function DropdownSelector({
                 tabIndex={0}
                 onClick={handleClear}
                 onKeyDown={(e) => e.key === 'Enter' && handleClear(e as unknown as React.MouseEvent)}
-                className="dc:p-0.5 dc:rounded hover:bg-dc-surface-hover text-dc-text-muted hover:text-dc-text"
+                className="dc:p-0.5 dc:rounded-sm hover:bg-dc-surface-hover text-dc-text-muted hover:text-dc-text"
                 title="Clear"
               >
                 x
@@ -283,7 +283,7 @@ const DropdownSelector = memo(function DropdownSelector({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search..."
-                  className="dc:w-full dc:pl-8 dc:pr-3 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded text-dc-text placeholder:text-dc-text-muted dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
+                  className="dc:w-full dc:pl-8 dc:pr-3 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm text-dc-text placeholder:text-dc-text-muted dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
                 />
               </div>
             </div>
@@ -306,7 +306,7 @@ const DropdownSelector = memo(function DropdownSelector({
                         onClick={() => handleSelect(dim.dimension)}
                         className={`
                           dc:flex dc:items-center dc:justify-between dc:w-full dc:px-3 dc:py-1.5 dc:text-sm
-                          dc:rounded dc:transition-colors
+                          dc:rounded-sm dc:transition-colors
                           ${value === dim.dimension
                             ? 'bg-dc-primary-bg text-dc-primary'
                             : 'text-dc-text hover:bg-dc-surface-hover'

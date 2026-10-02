@@ -7,8 +7,7 @@
 import type { CSSProperties } from 'react'
 import type {
   DashboardConfig,
-  DashboardGridSettings,
-  RowLayoutColumn
+  DashboardGridSettings
 } from '../../types.js'
 
 export const DEFAULT_GRID_SETTINGS: DashboardGridSettings = {
@@ -18,7 +17,15 @@ export const DEFAULT_GRID_SETTINGS: DashboardGridSettings = {
   minH: 1
 }
 
-export const createRowId = () => `row-${Date.now()}`
+// Row maths lives in hooks/dashboard/layoutUtils.ts; re-exported here so the
+// coordinator and the controller/engine share one implementation.
+export {
+  createRowId,
+  equalizeRowColumns,
+  equalizeColumns,
+  adjustRowWidths,
+  adjustInsertIndexForRemovedRow
+} from '../../hooks/dashboard/layoutUtils.js'
 
 export const getGridSettings = (config: DashboardConfig): DashboardGridSettings => ({
   cols: config.grid?.cols ?? DEFAULT_GRID_SETTINGS.cols,
@@ -27,74 +34,6 @@ export const getGridSettings = (config: DashboardConfig): DashboardGridSettings 
   minH: config.grid?.minH ?? DEFAULT_GRID_SETTINGS.minH
 })
 
-export const equalizeRowColumns = (
-  portletIds: string[],
-  gridSettings: DashboardGridSettings
-): RowLayoutColumn[] => {
-  const count = portletIds.length
-  if (count === 0) return []
-
-  const { cols, minW } = gridSettings
-  const minTotal = minW * count
-
-  if (minTotal > cols) {
-    const base = Math.floor(cols / count)
-    const remainder = cols % count
-    return portletIds.map((id, index) => ({
-      portletId: id,
-      w: base + (index < remainder ? 1 : 0)
-    }))
-  }
-
-  const remaining = cols - minTotal
-  const extra = Math.floor(remaining / count)
-  const remainder = remaining % count
-
-  return portletIds.map((id, index) => ({
-    portletId: id,
-    w: minW + extra + (index < remainder ? 1 : 0)
-  }))
-}
-
-export const adjustRowWidths = (
-  columns: RowLayoutColumn[],
-  gridSettings: DashboardGridSettings
-): RowLayoutColumn[] => {
-  if (columns.length === 0) return []
-
-  const { cols, minW } = gridSettings
-  const adjusted = columns.map(column => ({
-    ...column,
-    w: Math.max(minW, column.w)
-  }))
-
-  let total = adjusted.reduce((sum, column) => sum + column.w, 0)
-  if (total === cols) return adjusted
-
-  if (total < cols) {
-    let remaining = cols - total
-    let index = 0
-    while (remaining > 0) {
-      adjusted[index % adjusted.length].w += 1
-      remaining -= 1
-      index += 1
-    }
-    return adjusted
-  }
-
-  let overflow = total - cols
-  for (let index = adjusted.length - 1; index >= 0 && overflow > 0; index -= 1) {
-    const column = adjusted[index]
-    const reducible = Math.max(0, column.w - minW)
-    if (reducible === 0) continue
-    const delta = Math.min(reducible, overflow)
-    column.w -= delta
-    overflow -= delta
-  }
-
-  return adjusted
-}
-
 /**
  * Finds the nearest scrollable ancestor of an element.
  * Used to detect scroll container for lazy loading IntersectionObserver.
@@ -102,6 +41,18 @@ export const adjustRowWidths = (
 export function findScrollableAncestor(element: HTMLElement | null): HTMLElement | null {
   if (!element) return null
 
+  // Two passes, because content height is not a reliable signal at mount time:
+  // this runs from a ref callback, when the dashboard may not have rendered
+  // enough content for the scroller to overflow yet. Requiring `scrollHeight >
+  // clientHeight` therefore returned null ("use viewport") for hosts that scroll
+  // in a div, which silently disabled drag auto-scroll and left the floating
+  // toolbar's visibility listener bound to a window that never scrolls.
+  //
+  // Pass 1 keeps the original, stricter rule so an ancestor that is *actually*
+  // scrolling still wins. Pass 2 falls back to the nearest ancestor that merely
+  // declares vertical scrolling — the host's stated intent, independent of how
+  // much content happens to exist right now.
+  let declaredScroller: HTMLElement | null = null
   let current = element.parentElement
 
   while (current) {
@@ -121,11 +72,18 @@ export function findScrollableAncestor(element: HTMLElement | null): HTMLElement
       return current
     }
 
+    // Remember the nearest vertically-scrollable ancestor as a fallback. Only
+    // the vertical axis: a horizontally scrolling wrapper is not the scroller
+    // these consumers care about.
+    if (!declaredScroller && (overflowY === 'auto' || overflowY === 'scroll')) {
+      declaredScroller = current
+    }
+
     if (current === document.body) break
     current = current.parentElement
   }
 
-  return null // Use viewport
+  return declaredScroller // null = use viewport
 }
 
 /** Inline "Tt" typography icon for Add Text buttons */

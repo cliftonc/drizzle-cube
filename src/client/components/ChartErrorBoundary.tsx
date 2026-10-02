@@ -56,7 +56,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
     })
   }
 
-  render() {
+  render(): ReactNode {
     if (this.state.hasError) {
       // Custom fallback UI
       if (this.props.fallback) {

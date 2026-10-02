@@ -28,7 +28,7 @@ export function PortletConfigRequired({ inViewRef, height }: { inViewRef: Ref<HT
 export function PortletLazyPlaceholder({ inViewRef, height }: { inViewRef: Ref<HTMLDivElement>; height: Height }) {
   return (
     <div ref={inViewRef} className="dc:w-full dc:h-full" style={{ height }}>
-      <div className="dc:w-full dc:h-full dc:animate-pulse bg-dc-surface-secondary dc:rounded" style={{ minHeight: '100px' }} />
+      <div className="dc:w-full dc:h-full dc:animate-pulse bg-dc-surface-secondary dc:rounded-sm" style={{ minHeight: '100px' }} />
     </div>
   )
 }

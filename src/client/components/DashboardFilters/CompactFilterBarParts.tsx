@@ -57,7 +57,7 @@ function AddFilterButton({
     <button
       type="button"
       onClick={onAddFilter}
-      className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border dc:transition-colors"
+      className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded-sm dc:text-xs dc:font-medium dc:border dc:transition-colors"
       style={{
         borderColor: 'var(--dc-border)',
         color: 'var(--dc-text-secondary)',
@@ -134,7 +134,7 @@ function CustomDateButton({
         }}
         title={withTitle ? (activePresetId === 'custom' && dateRangeTooltip ? dateRangeTooltip : 'Custom date range') : undefined}
         className={`
-          dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border
+          dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded-sm dc:text-xs dc:font-medium dc:border
           dc:transition-colors${withTitle ? ' dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-1' : ''}
         `}
         style={{
@@ -188,7 +188,7 @@ function XTDButton({
         }}
         title={withTitle ? (activeXTDId && dateRangeTooltip ? dateRangeTooltip : 'X to Date options') : undefined}
         className={`
-          dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border
+          dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded-sm dc:text-xs dc:font-medium dc:border
           dc:transition-colors${withTitle ? ' dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-1' : ''}
         `}
         style={{
@@ -217,7 +217,7 @@ function XTDButton({
 export function DesktopLayout(props: CompactFilterBarViewProps) {
   const { activePresetId, activeXTDId, nonDateFilters, handlePresetSelect, isEditMode, onAddFilter } = props
   return (
-    <div className="dc:hidden dc:md:flex dc:items-center dc:gap-2 dc:px-3 dc:py-2">
+    <div className="dc:hidden dc:md:flex dc:flex-wrap dc:items-center dc:gap-2 dc:px-3 dc:py-2">
       {/* Filter Icon */}
       <FilterIcon
         className="dc:w-4 dc:h-4 dc:shrink-0"

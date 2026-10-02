@@ -63,7 +63,7 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
       onDragEnd={isDraggable ? onDragEnd : undefined}
     >
       {/* Icon - colored background matching field selector */}
-      <span className={`dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded dc:flex-shrink-0 ${
+      <span className={`dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm dc:flex-shrink-0 ${
         breakdown.isTimeDimension
           ? 'bg-dc-time-dimension text-dc-time-dimension-text'
           : 'bg-dc-dimension text-dc-dimension-text'
@@ -87,7 +87,7 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
           value={breakdown.granularity || 'day'}
           onChange={(e) => onGranularityChange(e.target.value as TimeGranularity)}
           onClick={(e) => e.stopPropagation()}
-          className="dc:text-xs bg-dc-surface dc:border border-dc-border dc:rounded dc:px-2 dc:py-1 text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary dc:flex-shrink-0"
+          className="dc:text-xs bg-dc-surface dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary dc:flex-shrink-0"
         >
           {TIME_GRANULARITIES.map((g) => (
             <option key={g.value} value={g.value}>

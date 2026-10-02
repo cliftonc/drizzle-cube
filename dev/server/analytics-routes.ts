@@ -9,6 +9,7 @@ import type { DrizzleDatabase } from '../../src/server/index.js'
 import { analyticsPages } from './schema.js'
 import type { Schema } from './schema.js'
 import { productivityDashboardConfig } from './dashboard-config.js'
+import { resolveOrganisationId } from './organisation.js'
 
 interface Variables {
   db: DrizzleDatabase<Schema>
@@ -19,9 +20,10 @@ const analyticsApp = new Hono<{ Variables: Variables }>()
 
 // Middleware to ensure organisationId is set
 analyticsApp.use('*', async (c, next) => {
-  // For demo purposes, using a fixed organisation ID
-  // In a real app, this would come from session/auth
-  c.set('organisationId', 1)
+  // Same demo tenant resolution as the cube API, so dashboards belong to the
+  // organisation you are currently viewing as. A real app would read this from
+  // the session.
+  c.set('organisationId', resolveOrganisationId(c))
   await next()
 })
 

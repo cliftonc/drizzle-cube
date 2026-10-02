@@ -7,12 +7,81 @@
  * circular dependency).
  */
 
-import type { SemanticQuery, Cube } from './types/index.js'
-import { resolveCubeReference } from './cube-utils.js'
+import type { SemanticQuery, Cube, Filter, FilterCondition, TimeDimension } from './types/index.js'
 import { getActiveQueryModes } from './query-modes.js'
+import { isResolvableDateRange, isValidDateValue } from './builders/date-time-helpers.js'
+import {
+  isSupportedFilterOperator,
+  SUPPORTED_FILTER_OPERATORS
+} from './builders/filter-operators.js'
+import { LogicalPlanner } from './logical-plan/logical-planner.js'
+import { flattenFilters } from './filter-cache.js'
+import { isFilterOnlyTimeDimension } from './execution/query-normalizer.js'
 import { t } from '../i18n/runtime.js'
 
 type ValidationMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
+
+/**
+ * A member the query references that no cube provides, reported alongside the
+ * human-readable errors.
+ *
+ * The joined error string cannot be split back apart reliably — the per-field
+ * "did you mean" hints contain the same separator — so a caller that wants to
+ * react to a *specific* missing member (a dashboard dropping a column for a
+ * deleted attribute, say) needs this rather than the prose. `source` is the
+ * part that matters: dropping a projected member narrows what is displayed,
+ * whereas dropping a filter would widen the result set, so the two cannot be
+ * treated alike.
+ */
+export interface QueryValidationIssue {
+  source: 'measure' | 'dimension' | 'timeDimension' | 'filter'
+  /** The full `Cube.field` reference as the query wrote it. */
+  member: string
+  message: string
+}
+
+/**
+ * Thrown when a query fails validation during execution.
+ *
+ * Carries the structured issues alongside the joined message so a caller can
+ * react to a specific unknown member — the batch endpoint, which validates
+ * inside execution rather than ahead of it, would otherwise only have prose.
+ */
+export class QueryValidationError extends Error {
+  readonly issues: QueryValidationIssue[]
+
+  constructor(message: string, issues: QueryValidationIssue[]) {
+    super(message)
+    this.name = 'QueryValidationError'
+    this.issues = issues
+  }
+}
+
+export interface QueryValidationResult {
+  isValid: boolean
+  errors: string[]
+  /** Unknown members, when any — see {@link QueryValidationIssue}. */
+  issues: QueryValidationIssue[]
+}
+
+/**
+ * Collects both representations at once so the two can never drift: every
+ * unknown-member error is also recorded structurally.
+ */
+class ValidationErrors {
+  readonly messages: string[] = []
+  readonly issues: QueryValidationIssue[] = []
+
+  push(message: string): void {
+    this.messages.push(message)
+  }
+
+  /** Record an unknown member: prose for humans, structure for callers. */
+  pushMissingMember(source: QueryValidationIssue['source'], member: string, message: string): void {
+    this.messages.push(message)
+    this.issues.push({ source, member, message })
+  }
+}
 
 function getActiveValidationModes(query: SemanticQuery): Exclude<ValidationMode, 'regular'>[] {
   return getActiveQueryModes(query)
@@ -25,17 +94,17 @@ function getActiveValidationModes(query: SemanticQuery): Exclude<ValidationMode,
 export function validateQueryAgainstCubes(
   cubes: Map<string, Cube>,
   query: SemanticQuery
-): { isValid: boolean; errors: string[] } {
-  const errors: string[] = []
+): QueryValidationResult {
+  const errors = new ValidationErrors()
   const activeModes = getActiveValidationModes(query)
   if (activeModes.length > 1) {
     errors.push(t('server.validation.query.multipleQueryModes', { modes: activeModes.join(', ') }))
-    return { isValid: false, errors }
+    return { isValid: false, errors: errors.messages, issues: errors.issues }
   }
 
   if (activeModes.length === 1 && activeModes[0] !== 'comparison') {
     validateSpecialMode(activeModes[0], query, cubes, errors)
-    return { isValid: errors.length === 0, errors }
+    return { isValid: errors.messages.length === 0, errors: errors.messages, issues: errors.issues }
   }
 
   // Track all referenced cubes
@@ -62,8 +131,9 @@ export function validateQueryAgainstCubes(
   }
 
   return {
-    isValid: errors.length === 0,
-    errors
+    isValid: errors.messages.length === 0,
+    errors: errors.messages,
+    issues: errors.issues
   }
 }
 
@@ -72,7 +142,7 @@ function validateSpecialMode(
   mode: Exclude<ValidationMode, 'regular'>,
   query: SemanticQuery,
   cubes: Map<string, Cube>,
-  errors: string[]
+  errors: ValidationErrors
 ): void {
   if (mode === 'comparison') return
   if (mode === 'funnel') validateFunnelMode(query, cubes, errors)
@@ -80,7 +150,7 @@ function validateSpecialMode(
   else if (mode === 'retention') validateRetentionMode(query, cubes, errors)
 }
 
-function validateFunnelMode(query: SemanticQuery, cubes: Map<string, Cube>, errors: string[]): void {
+function validateFunnelMode(query: SemanticQuery, cubes: Map<string, Cube>, errors: ValidationErrors): void {
   // Basic funnel validation here - full validation happens in executor
   // Just ensure the cube referenced by bindingKey exists
   const bindingKey = query.funnel!.bindingKey
@@ -98,7 +168,7 @@ function validateFunnelMode(query: SemanticQuery, cubes: Map<string, Cube>, erro
   }
 }
 
-function validateFlowMode(query: SemanticQuery, cubes: Map<string, Cube>, errors: string[]): void {
+function validateFlowMode(query: SemanticQuery, cubes: Map<string, Cube>, errors: ValidationErrors): void {
   // Basic flow validation here - full validation happens in executor
   // Just ensure the cube referenced by bindingKey exists
   const bindingKey = query.flow!.bindingKey
@@ -110,7 +180,7 @@ function validateFlowMode(query: SemanticQuery, cubes: Map<string, Cube>, errors
   }
 }
 
-function validateRetentionMode(query: SemanticQuery, cubes: Map<string, Cube>, errors: string[]): void {
+function validateRetentionMode(query: SemanticQuery, cubes: Map<string, Cube>, errors: ValidationErrors): void {
   const retention = query.retention!
 
   // Validate cube from time dimension exists
@@ -155,7 +225,7 @@ function suggestionHint(fieldName: string, cubeName: string, candidates: string[
 function validateMeasures(
   query: SemanticQuery,
   cubes: Map<string, Cube>,
-  errors: string[],
+  errors: ValidationErrors,
   referencedCubes: Set<string>
 ): void {
   if (!query.measures) return
@@ -172,13 +242,15 @@ function validateMeasures(
 
     const cube = cubes.get(cubeName)
     if (!cube) {
-      errors.push(t('server.validation.query.cubeNotFoundForMeasure', { cubeName, measure }))
+      errors.pushMissingMember('measure', measure,
+        t('server.validation.query.cubeNotFoundForMeasure', { cubeName, measure }))
       continue
     }
 
     if (!cube.measures[fieldName]) {
       const hint = suggestionHint(fieldName, cubeName, Object.keys(cube.measures))
-      errors.push(t('server.validation.query.measureNotFound', { fieldName, cubeName, hint }))
+      errors.pushMissingMember('measure', measure,
+        t('server.validation.query.measureNotFound', { fieldName, cubeName, hint }))
     }
   }
 }
@@ -186,7 +258,7 @@ function validateMeasures(
 function validateDimensions(
   query: SemanticQuery,
   cubes: Map<string, Cube>,
-  errors: string[],
+  errors: ValidationErrors,
   referencedCubes: Set<string>
 ): void {
   if (!query.dimensions) return
@@ -203,13 +275,15 @@ function validateDimensions(
 
     const cube = cubes.get(cubeName)
     if (!cube) {
-      errors.push(t('server.validation.query.cubeNotFoundForDimension', { cubeName, dimension }))
+      errors.pushMissingMember('dimension', dimension,
+        t('server.validation.query.cubeNotFoundForDimension', { cubeName, dimension }))
       continue
     }
 
     if (!cube.dimensions[fieldName]) {
       const hint = suggestionHint(fieldName, cubeName, Object.keys(cube.dimensions))
-      errors.push(t('server.validation.query.dimensionNotFound', { fieldName, cubeName, hint }))
+      errors.pushMissingMember('dimension', dimension,
+        t('server.validation.query.dimensionNotFound', { fieldName, cubeName, hint }))
     }
   }
 }
@@ -217,7 +291,7 @@ function validateDimensions(
 function validateTimeDimensions(
   query: SemanticQuery,
   cubes: Map<string, Cube>,
-  errors: string[],
+  errors: ValidationErrors,
   referencedCubes: Set<string>
 ): void {
   if (!query.timeDimensions) return
@@ -234,14 +308,60 @@ function validateTimeDimensions(
 
     const cube = cubes.get(cubeName)
     if (!cube) {
-      errors.push(t('server.validation.query.cubeNotFoundForTimeDimension', { cubeName, dimension: timeDimension.dimension }))
+      errors.pushMissingMember('timeDimension', timeDimension.dimension,
+        t('server.validation.query.cubeNotFoundForTimeDimension', { cubeName, dimension: timeDimension.dimension }))
       continue
     }
 
     // timeDimensions reference dimensions
     if (!cube.dimensions[fieldName]) {
-      errors.push(t('server.validation.query.timeDimensionNotFound', { fieldName, cubeName }))
+      errors.pushMissingMember('timeDimension', timeDimension.dimension,
+        t('server.validation.query.timeDimensionNotFound', { fieldName, cubeName }))
     }
+
+    validateTimeDimensionRanges(timeDimension, errors)
+  }
+
+  validateGranularityLessTimeDimensions(query, errors)
+}
+
+/** Relative-range examples quoted in date-range error messages. */
+const RELATIVE_RANGE_EXAMPLES = "'today', 'last 7 days', 'last 3 months', 'this month', 'last quarter', 'next week'"
+
+function pushInvalidDateRange(errors: ValidationErrors, member: string, dateRange: unknown): void {
+  errors.push(t('server.validation.query.invalidDateRange', {
+    dateRange: JSON.stringify(dateRange),
+    member,
+    examples: RELATIVE_RANGE_EXAMPLES
+  }))
+}
+
+/** Reject timeDimension dateRange / compareDateRange entries that would not resolve. */
+function validateTimeDimensionRanges(timeDimension: TimeDimension, errors: ValidationErrors): void {
+  if (timeDimension.dateRange !== undefined && !isResolvableDateRange(timeDimension.dateRange)) {
+    pushInvalidDateRange(errors, timeDimension.dimension, timeDimension.dateRange)
+  }
+  for (const range of timeDimension.compareDateRange ?? []) {
+    if (!isResolvableDateRange(range)) {
+      pushInvalidDateRange(errors, timeDimension.dimension, range)
+    }
+  }
+}
+
+/**
+ * A timeDimension without a granularity is a filter only (Cube.js semantics) —
+ * it restricts the date range but is not selected or grouped. A grouped query
+ * made up solely of such time dimensions would therefore select nothing.
+ */
+function validateGranularityLessTimeDimensions(query: SemanticQuery, errors: ValidationErrors): void {
+  if (query.ungrouped) return
+  if ((query.measures?.length ?? 0) > 0 || (query.dimensions?.length ?? 0) > 0) return
+  const timeDimensions = query.timeDimensions ?? []
+  const filterOnly = timeDimensions.filter(isFilterOnlyTimeDimension)
+  if (filterOnly.length > 0 && filterOnly.length === timeDimensions.length) {
+    errors.push(t('server.validation.query.granularityLessTimeDimensionOnly', {
+      dimension: filterOnly[0].dimension
+    }))
   }
 }
 
@@ -259,7 +379,7 @@ const UNGROUPED_ALLOWED_MEASURE_TYPES = ['sum', 'avg', 'min', 'max', 'number']
 function validateUngroupedConstraints(
   query: SemanticQuery,
   cubes: Map<string, Cube>,
-  errors: string[],
+  errors: ValidationErrors,
   referencedCubes: Set<string>
 ): void {
   const hasDimensions = (query.dimensions && query.dimensions.length > 0) ||
@@ -290,14 +410,14 @@ function validateUngroupedConstraints(
   }
 
   validateUngroupedMeasures(query, cubes, errors)
-  validateUngroupedHasManyJoins(cubes, errors, referencedCubes)
+  validateUngroupedHasManyJoins(query, cubes, errors, referencedCubes)
 }
 
 /** Validate measure types/filters are compatible with ungrouped queries. */
 function validateUngroupedMeasures(
   query: SemanticQuery,
   cubes: Map<string, Cube>,
-  errors: string[]
+  errors: ValidationErrors
 ): void {
   if (!query.measures) return
 
@@ -324,27 +444,33 @@ function validateUngroupedMeasures(
   }
 }
 
-/** Reject hasMany joins between cubes both referenced by an ungrouped query. */
+/**
+ * Reject ungrouped queries whose join path — from the primary cube the planner
+ * would actually choose — traverses a hasMany edge. A cube that merely
+ * *declares* a hasMany back to the primary cube is fine when the path used is
+ * belongsTo/hasOne.
+ */
 function validateUngroupedHasManyJoins(
+  query: SemanticQuery,
   cubes: Map<string, Cube>,
-  errors: string[],
+  errors: ValidationErrors,
   referencedCubes: Set<string>
 ): void {
-  for (const cubeName of referencedCubes) {
-    const cube = cubes.get(cubeName)
-    if (!cube?.joins) continue
+  const cubeNames = [...referencedCubes].filter(name => cubes.has(name))
+  if (cubeNames.length < 2) return
 
-    for (const [joinName, joinDef] of Object.entries(cube.joins)) {
-      if (joinDef.relationship !== 'hasMany') continue
+  const planner = new LogicalPlanner()
+  const primaryCube = planner.analyzePrimaryCube(cubeNames, query, cubes).selectedCube
 
-      // Check if the target cube is also referenced in this query
-      const targetCube = resolveCubeReference(joinDef.targetCube, cubes)
-      if (targetCube && referencedCubes.has(targetCube.name)) {
-        errors.push(
-          `Ungrouped queries are incompatible with hasMany relationships ` +
-          `(${cubeName} → ${joinName} is hasMany)`
-        )
-      }
+  for (const targetCube of cubeNames) {
+    if (targetCube === primaryCube) continue
+    const analysis = planner.analyzeJoinPathForTarget(cubes, primaryCube, targetCube, query)
+    const hasManyStep = analysis.path?.find(step => step.relationship === 'hasMany')
+    if (hasManyStep) {
+      errors.push(
+        `Ungrouped queries are incompatible with hasMany relationships ` +
+        `(${hasManyStep.fromCube} → ${hasManyStep.toCube} is hasMany)`
+      )
     }
   }
 }
@@ -355,7 +481,7 @@ function validateUngroupedHasManyJoins(
 function validateFilter(
   filter: any,
   cubes: Map<string, Cube>,
-  errors: string[],
+  errors: ValidationErrors,
   referencedCubes: Set<string>
 ): void {
   // Handle logical filters (AND/OR)
@@ -363,6 +489,9 @@ function validateFilter(
     const logicalFilters = filter.and || filter.or || []
     for (const subFilter of logicalFilters) {
       validateFilter(subFilter, cubes, errors, referencedCubes)
+    }
+    if (filter.or) {
+      validateOrGroupMemberKinds(filter.or, cubes, errors)
     }
     return
   }
@@ -385,7 +514,8 @@ function validateFilter(
   // Check if cube exists
   const cube = cubes.get(cubeName)
   if (!cube) {
-    errors.push(t('server.validation.query.cubeNotFoundForFilter', { cubeName, member: filter.member }))
+    errors.pushMissingMember('filter', filter.member,
+      t('server.validation.query.cubeNotFoundForFilter', { cubeName, member: filter.member }))
     return
   }
 
@@ -394,7 +524,75 @@ function validateFilter(
     const hint = fieldName === cubeName
       ? `. Did you mean one of: ${[...Object.keys(cube.dimensions), ...Object.keys(cube.measures)].slice(0, 5).map(f => `'${cubeName}.${f}'`).join(', ')}?`
       : ''
-    errors.push(t('server.validation.query.filterFieldNotFound', { fieldName, cubeName, hint }))
+    errors.pushMissingMember('filter', filter.member,
+      t('server.validation.query.filterFieldNotFound', { fieldName, cubeName, hint }))
+  }
+
+  validateFilterOperatorAndValues(filter, errors)
+}
+
+/** Operators whose single value must parse as a date. */
+const SINGLE_DATE_OPERATORS = new Set(['beforeDate', 'afterDate'])
+
+/**
+ * Reject operators the SQL layer cannot build, and date filters whose values
+ * would not resolve — both used to be silently dropped at SQL-build time.
+ */
+function validateFilterOperatorAndValues(filter: FilterCondition, errors: ValidationErrors): void {
+  const { member, operator } = filter
+  if (!isSupportedFilterOperator(operator)) {
+    errors.push(t('server.validation.query.unknownFilterOperator', {
+      operator: String(operator),
+      member,
+      operators: SUPPORTED_FILTER_OPERATORS.join(', ')
+    }))
+    return
+  }
+
+  const values: unknown[] = Array.isArray(filter.values) ? filter.values : []
+
+  if (operator === 'inDateRange') {
+    const range = filter.dateRange ?? (values.length === 1 ? values[0] : values)
+    if (filter.dateRange === undefined && values.length === 0) {
+      errors.push(t('server.validation.query.inDateRangeMissingRange', { member }))
+    } else if (!isResolvableDateRange(range)) {
+      pushInvalidDateRange(errors, member, range)
+    }
+    return
+  }
+
+  if (SINGLE_DATE_OPERATORS.has(operator) && values.length > 0 && !isValidDateValue(values[0])) {
+    errors.push(t('server.validation.query.invalidDateValue', {
+      member,
+      operator,
+      value: JSON.stringify(values[0])
+    }))
+  }
+}
+
+/**
+ * An OR group mixing measure and dimension filters cannot be expressed: the
+ * dimension branches land in WHERE and the measure branches in HAVING, which
+ * ANDs them together instead of ORing.
+ */
+function validateOrGroupMemberKinds(
+  orFilters: Filter[],
+  cubes: Map<string, Cube>,
+  errors: ValidationErrors
+): void {
+  const measures: string[] = []
+  const dimensions: string[] = []
+  for (const { member } of flattenFilters(orFilters)) {
+    const [cubeName, fieldName] = member.split('.')
+    const cube = cubes.get(cubeName)
+    if (cube?.measures[fieldName]) measures.push(member)
+    else if (cube?.dimensions[fieldName]) dimensions.push(member)
+  }
+  if (measures.length > 0 && dimensions.length > 0) {
+    errors.push(t('server.validation.query.orMixesMeasuresAndDimensions', {
+      measures: measures.join(', '),
+      dimensions: dimensions.join(', ')
+    }))
   }
 }
 

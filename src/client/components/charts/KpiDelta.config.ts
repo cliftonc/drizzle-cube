@@ -1,4 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
+import { kpiLayoutDisplayOption } from '../../charts/chartConfigHelpers.js'
 
 /**
  * Configuration for the KPI Delta chart type.
@@ -30,6 +31,14 @@ export const kpiDeltaConfig: ChartTypeConfig = {
     }
   ],
   displayOptionsConfig: [
+    kpiLayoutDisplayOption,
+    {
+      key: 'showBaseline',
+      label: 'chart.option.showBaseline.label',
+      type: 'boolean',
+      defaultValue: false,
+      description: 'chart.option.showBaseline.description'
+    },
     {
       key: 'prefix',
       label: 'chart.option.prefix.label',

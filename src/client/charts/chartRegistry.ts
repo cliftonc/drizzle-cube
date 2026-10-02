@@ -169,6 +169,13 @@ export const chartRegistry: Record<BuiltInChartType, ChartRegistryEntry> = {
     useCase: 'chart.table.useCase',
     config: async () => (await import('../components/charts/DataTable.config.js')).dataTableConfig,
   },
+  recordsTable: {
+    label: 'chart.recordsTable.label',
+    icon: 'chartRecordsTable',
+    description: 'chart.recordsTable.description',
+    useCase: 'chart.recordsTable.useCase',
+    config: async () => (await import('../components/charts/RecordsTable.config.js')).recordsTableConfig,
+  },
   activityGrid: {
     label: 'chart.activityGrid.label',
     icon: 'chartActivityGrid',
@@ -271,6 +278,14 @@ export const chartRegistry: Record<BuiltInChartType, ChartRegistryEntry> = {
     isAvailable: requiresMeasureAndDimension,
     config: async () => (await import('../components/charts/BoxPlotChart.config.js')).boxPlotChartConfig,
   },
+  dotStrip: {
+    label: 'chart.dotStrip.label',
+    icon: 'chartDotStrip',
+    description: 'chart.dotStrip.description',
+    useCase: 'chart.dotStrip.useCase',
+    isAvailable: requiresMeasureAndDimension,
+    config: async () => (await import('../components/charts/DotStripChart.config.js')).dotStripChartConfig,
+  },
   waterfall: {
     label: 'chart.waterfall.label',
     icon: 'chartWaterfall',
@@ -303,6 +318,14 @@ export const chartRegistry: Record<BuiltInChartType, ChartRegistryEntry> = {
     },
     dependencies: RECHARTS_DEP,
     config: async () => (await import('../components/charts/MeasureProfileChart.config.js')).measureProfileChartConfig,
+  },
+  proportionBar: {
+    label: 'chart.proportionBar.label',
+    icon: 'chartProportionBar',
+    description: 'chart.proportionBar.description',
+    useCase: 'chart.proportionBar.useCase',
+    isAvailable: requiresMeasureAndDimension,
+    config: async () => (await import('../components/charts/ProportionBarChart.config.js')).proportionBarChartConfig,
   },
   gauge: {
     label: 'chart.gauge.label',

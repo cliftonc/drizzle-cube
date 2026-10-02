@@ -2,6 +2,7 @@
  * Presentational pieces for DashboardListPage: a single dashboard card and the
  * empty state. Extracted to flatten the list page component.
  */
+import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardThumbnailPlaceholder } from '@drizzle-cube/client'
 import type { AnalyticsPage } from '../types'
@@ -30,10 +31,13 @@ interface DashboardListToolbarProps {
   atLimit: boolean
   onCreateExample: () => void
   onNew: () => void
+  /** Create a dashboard from a drizzle-cube dashboard export (.json) */
+  onImport: (file: File) => void
 }
 
-export function DashboardListToolbar({ createPending, atLimit, onCreateExample, onNew }: DashboardListToolbarProps) {
+export function DashboardListToolbar({ createPending, atLimit, onCreateExample, onNew, onImport }: DashboardListToolbarProps) {
   const createExampleLabel = createPending ? 'Creating...' : 'Create Example'
+  const importInputRef = useRef<HTMLInputElement>(null)
   return (
     <div className="mb-6">
       <div>
@@ -52,6 +56,24 @@ export function DashboardListToolbar({ createPending, atLimit, onCreateExample, 
           >
             {createExampleLabel}
           </button>
+          <button
+            onClick={() => importInputRef.current?.click()}
+            disabled={atLimit}
+            className="inline-flex items-center justify-center rounded-md border border-dc-border bg-dc-surface px-4 py-2 text-sm font-medium text-dc-text shadow-2xs hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-dc-primary focus:ring-offset-2 focus:ring-offset-dc-surface disabled:opacity-50 w-full sm:w-auto"
+          >
+            Import Dashboard
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) onImport(file)
+            }}
+          />
           <button
             onClick={onNew}
             disabled={atLimit}

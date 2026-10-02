@@ -161,6 +161,32 @@ export class MySQLAdapter extends BaseDatabaseAdapter {
   }
 
   /**
+   * Build MySQL tolerant type casting: NULL on unparseable input instead of MySQL's usual
+   * lenient-but-wrong behaviour. `CAST(x AS DECIMAL/SIGNED)` parses a leading numeric prefix
+   * (or returns 0 with a warning if there's no numeric prefix at all) rather than erroring —
+   * so a dirty value like 'n/a' silently becomes 0. `CAST(x AS DATETIME)` on a string that
+   * merely looks date-shaped but is calendar-invalid can, depending on sql_mode, raise an
+   * error (strict mode, the MySQL 8 default) rather than returning NULL. Guard all three with
+   * REGEXP so we only ever attempt the cast on input that already looks like the target type;
+   * anything else short-circuits to NULL first.
+   *
+   * The timestamp guard only validates ISO 8601 *shape* — it will not catch calendar-invalid
+   * dates like 2024-02-30, which could still error under strict SQL mode.
+   */
+  tryCastToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL {
+    switch (targetType) {
+      case 'timestamp':
+        return sql`CASE WHEN ${fieldExpr} REGEXP ${this.timestampTryCastPattern()} THEN CAST(${fieldExpr} AS DATETIME) ELSE NULL END`
+      case 'decimal':
+        return sql`CASE WHEN ${fieldExpr} REGEXP ${this.decimalTryCastPattern()} THEN CAST(${fieldExpr} AS DECIMAL(10,2)) ELSE NULL END`
+      case 'integer':
+        return sql`CASE WHEN ${fieldExpr} REGEXP ${this.integerTryCastPattern()} THEN CAST(${fieldExpr} AS SIGNED INTEGER) ELSE NULL END`
+      default:
+        throw new Error(`Unsupported cast type: ${targetType}`)
+    }
+  }
+
+  /**
    * MySQL AVG/STDDEV/VARIANCE use IFNULL (no COALESCE-for-zero idiom mismatch,
    * but IFNULL is the MySQL-idiomatic null guard).
    */

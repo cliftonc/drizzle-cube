@@ -72,6 +72,9 @@ export function BarSeries({
       dataKey={seriesKey}
       yAxisId={axisId}
       stackId={stackId}
+      // Soften the top corners of standalone bars. Stacked bars keep square
+      // corners so segments still butt up against each other cleanly.
+      radius={stackId ? undefined : [2, 2, 0, 0]}
       fill={baseFill}
       fillOpacity={hoverOpacity(hoveredLegend, seriesKey)}
       cursor={drillEnabled ? 'pointer' : undefined}

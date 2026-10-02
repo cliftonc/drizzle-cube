@@ -28,6 +28,7 @@ import { resolveFilterFieldExpr } from '../cube-utils.js'
 import { hasFunnelMode } from '../query-modes.js'
 import { combineWhere, resolveBindingKeyExpr, bindingKeyErrorsForPrefix, resolveTimeDimensionExpr, asGroupFilter, type GroupFilterParts, type WithSubquery } from './analysis-utils.js'
 import { FilterBuilder } from './filter-builder.js'
+import { NO_VALUE_FILTER_OPERATORS } from './filter-operators.js'
 import { DateTimeBuilder } from './date-time-builder.js'
 import { JoinPathResolver } from '../resolvers/join-path-resolver.js'
 
@@ -577,9 +578,9 @@ export class FunnelQueryBuilder {
     // For date range filters with dateRange property, empty values is OK
     // The FilterBuilder handles dateRange properly
     const hasDateRange = simpleFilter.dateRange !== undefined
-    const needsValues = simpleFilter.operator !== 'set' && simpleFilter.operator !== 'notSet' && !hasDateRange
+    const needsValues = !NO_VALUE_FILTER_OPERATORS.has(simpleFilter.operator) && !hasDateRange
 
-    // Skip filters with empty or undefined values (except for set/notSet and dateRange filters)
+    // Skip filters with empty or undefined values (except for no-value operators and dateRange filters)
     if (needsValues && (!simpleFilter.values || simpleFilter.values.length === 0 || simpleFilter.values[0] === undefined || simpleFilter.values[0] === '')) {
       return null
     }

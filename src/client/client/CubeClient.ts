@@ -3,7 +3,59 @@
  * Replaces @cubejs-client/core with lighter implementation
  */
 
-import type { CubeQuery, CubeApiOptions, CubeResultSet, ExplainResult, ExplainOptions } from '../types.js'
+import type {
+  CubeQuery,
+  CubeApiOptions,
+  CubeResultSet,
+  CubeValidationIssue,
+  ExplainResult,
+  ExplainOptions
+} from '../types.js'
+
+/**
+ * A failed query, carrying the server's structured validation detail when it
+ * sent any. A caller can then react to one dead member — dropping a column for
+ * a deleted attribute, say — instead of only seeing prose.
+ */
+export class CubeQueryError extends Error {
+  readonly status?: number
+  readonly issues?: CubeValidationIssue[]
+
+  constructor(message: string, status?: number, issues?: CubeValidationIssue[]) {
+    super(message)
+    this.name = 'CubeQueryError'
+    this.status = status
+    this.issues = issues
+  }
+}
+
+/**
+ * Turn a failed response into a `CubeQueryError`.
+ *
+ * Every endpoint parsed this the same way inline; the shape is worth having in
+ * one place now that a structured `issues` array can ride along with the
+ * message.
+ */
+async function toQueryError(response: Response, fallback: string): Promise<CubeQueryError> {
+  let message = `${fallback}: ${response.status}`
+  let issues: CubeValidationIssue[] | undefined
+
+  try {
+    const text = await response.text()
+    try {
+      const body = JSON.parse(text)
+      message = body.error ? body.error : `${message} ${text}`
+      if (Array.isArray(body.issues)) issues = body.issues
+    } catch {
+      // Not JSON — the raw text is the best detail available.
+      message += ` ${text}`
+    }
+  } catch {
+    // Body unreadable; the status alone will have to do.
+  }
+
+  return new CubeQueryError(message, response.status, issues)
+}
 
 export class CubeClient {
   private apiUrl: string
@@ -47,25 +99,7 @@ export class CubeClient {
     })
 
     if (!response.ok) {
-      let errorMessage = `Cube query failed: ${response.status}`
-      try {
-        const errorText = await response.text()
-        // Try to parse as JSON first to get structured error
-        try {
-          const errorData = JSON.parse(errorText)
-          if (errorData.error) {
-            errorMessage = errorData.error
-          } else {
-            errorMessage += ` ${errorText}`
-          }
-        } catch {
-          // If not JSON, use the raw text
-          errorMessage += ` ${errorText}`
-        }
-      } catch {
-        // If we can't read the response, just use the status
-      }
-      throw new Error(errorMessage)
+      throw await toQueryError(response, 'Cube query failed')
     }
 
     const result = await response.json()
@@ -82,7 +116,7 @@ export class CubeClient {
     })
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch meta: ${response.status}`)
+      throw await toQueryError(response, 'Failed to fetch meta')
     }
 
     return response.json()
@@ -105,7 +139,7 @@ export class CubeClient {
     })
 
     if (!response.ok) {
-      throw new Error(`SQL generation failed: ${response.status}`)
+      throw await toQueryError(response, 'SQL generation failed')
     }
 
     return response.json()
@@ -122,23 +156,7 @@ export class CubeClient {
     })
 
     if (!response.ok) {
-      let errorMessage = `Dry run failed: ${response.status}`
-      try {
-        const errorText = await response.text()
-        try {
-          const errorData = JSON.parse(errorText)
-          if (errorData.error) {
-            errorMessage = errorData.error
-          } else {
-            errorMessage += ` ${errorText}`
-          }
-        } catch {
-          errorMessage += ` ${errorText}`
-        }
-      } catch {
-        // If we can't read the response, just use the status
-      }
-      throw new Error(errorMessage)
+      throw await toQueryError(response, 'Dry run failed')
     }
 
     return response.json()
@@ -160,23 +178,7 @@ export class CubeClient {
     })
 
     if (!response.ok) {
-      let errorMessage = `Explain failed: ${response.status}`
-      try {
-        const errorText = await response.text()
-        try {
-          const errorData = JSON.parse(errorText)
-          if (errorData.error) {
-            errorMessage = errorData.error
-          } else {
-            errorMessage += ` ${errorText}`
-          }
-        } catch {
-          errorMessage += ` ${errorText}`
-        }
-      } catch {
-        // If we can't read the response, just use the status
-      }
-      throw new Error(errorMessage)
+      throw await toQueryError(response, 'Explain failed')
     }
 
     return response.json()
@@ -204,23 +206,7 @@ export class CubeClient {
     })
 
     if (!response.ok) {
-      let errorMessage = `Batch query failed: ${response.status}`
-      try {
-        const errorText = await response.text()
-        try {
-          const errorData = JSON.parse(errorText)
-          if (errorData.error) {
-            errorMessage = errorData.error
-          } else {
-            errorMessage += ` ${errorText}`
-          }
-        } catch {
-          errorMessage += ` ${errorText}`
-        }
-      } catch {
-        // If we can't read the response, just use the status
-      }
-      throw new Error(errorMessage)
+      throw await toQueryError(response, 'Batch query failed')
     }
 
     const batchResponse = await response.json()
@@ -279,6 +265,18 @@ class ResultSet implements CubeResultSet {
       return this.loadResponse.results[0].annotation || {}
     }
     return this.loadResponse.annotation || {}
+  }
+
+  /**
+   * Rows the query would return with no limit/offset, when it asked for a
+   * total. Undefined otherwise — a paginated view distinguishes "not requested"
+   * from a genuine zero.
+   */
+  totalCount(): number | undefined {
+    if (this.loadResponse.results && this.loadResponse.results[0]) {
+      return this.loadResponse.results[0].total
+    }
+    return this.loadResponse.total
   }
 
   /**

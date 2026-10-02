@@ -29,6 +29,7 @@ import {
 } from '../stores/analysisBuilderStore.js'
 import { validateMultiQueryConfig, type MultiQueryValidationResult } from '../utils/multiQueryValidation.js'
 import { buildCubeQuery } from '../components/AnalysisBuilder/utils/index.js'
+import { isRecordGrainChart } from '../charts/chartConfigRegistry.js'
 import { getAllChartAvailability, getSmartChartDefaults } from '../shared/chartDefaults.js'
 import { getColorPalette, type ColorPalette } from '../utils/colorPalettes.js'
 import type {
@@ -75,20 +76,26 @@ export function useAnalysisState(options: UseAnalysisStateOptions = {}) {
   const isMultiQueryMode = isMultiQueryModeGetter()
   const mergeKeys = getMergeKeys()
 
+  // A records-style chart lists rows, so its query has to stay ungrouped —
+  // otherwise editing one here silently rebuilds it as an aggregate.
+  const isRecordGrain = useAnalysisBuilderStore(
+    (state) => isRecordGrainChart(state.charts[state.analysisType]?.chartType ?? '')
+  )
+
   // Build current query from active state
   const currentQuery = useMemo(() => {
     const current = queryStates[activeQueryIndex] || queryState
-    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order, false, current.limit)
-  }, [queryStates, activeQueryIndex, queryState])
+    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order, false, current.limit, isRecordGrain)
+  }, [queryStates, activeQueryIndex, queryState, isRecordGrain])
 
   // Build all queries (respect merge mode for shared breakdowns)
   const allQueries = useMemo(() => {
     const q1Breakdowns = queryStates[0]?.breakdowns || []
     return queryStates.map((qs, index) => {
       const breakdowns = mergeStrategy === 'merge' && index > 0 ? q1Breakdowns : qs.breakdowns
-      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order, false, qs.limit)
+      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order, false, qs.limit, isRecordGrain)
     })
-  }, [queryStates, mergeStrategy])
+  }, [queryStates, mergeStrategy, isRecordGrain])
 
   // Build multi-query config from queries
   const multiQueryConfig = useMemo((): MultiQueryConfig | null => {

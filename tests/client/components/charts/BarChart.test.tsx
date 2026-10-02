@@ -99,7 +99,7 @@ describe('BarChart', () => {
       )
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveStyle({ height: '50vh' })
+      expect(wrapper.style.height).toBe('50vh')
     })
   })
 
@@ -634,7 +634,7 @@ describe('BarChart', () => {
   })
 
   describe('showAllXLabels', () => {
-    it('should render with all X labels shown by default', () => {
+    it('should render by default (labels thinned unless opted in)', () => {
       render(<BarChart data={mockData} chartConfig={basicChartConfig} />)
       expect(screen.getByTestId('chart-container')).toBeInTheDocument()
     })

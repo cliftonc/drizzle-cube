@@ -22,6 +22,7 @@ import {
 import type { LayoutItem, Layout } from 'react-grid-layout'
 import type { UseDashboardActions } from '../../hooks/useDashboardHook.js'
 import type { DashboardDisplayMode } from '../../hooks/useResponsiveDashboard.js'
+import type { DashboardImportExportState } from '../../hooks/dashboard/useDashboardImportExport.js'
 import type { ColorPalette } from '../../utils/colorPalettes.js'
 import type {
   DashboardConfig,
@@ -32,7 +33,9 @@ import type {
   DashboardLayoutMode,
   DashboardGridSettings,
   RowLayout,
-  FeaturesConfig
+  PortletGroup,
+  FeaturesConfig,
+  DashboardMeta
 } from '../../types.js'
 
 /**
@@ -60,6 +63,10 @@ export interface DashboardProviderProps {
   dashboardModes?: DashboardLayoutMode[]
   /** When true, DashboardToolbar renders nothing (both the top bar and floating toolbar) */
   hideToolbar?: boolean
+  /** Name/description of the host's dashboard record, written into exports (features.dashboardImportExport) */
+  dashboardMeta?: DashboardMeta
+  /** Called after an import replaced the config when the file carries a name, so the host can rename its record */
+  onDashboardMetaChange?: (meta: { name: string; description?: string }) => Promise<void> | void
   children: ReactNode
 }
 
@@ -79,6 +86,7 @@ export interface DashboardContextValue {
   onConfigChange?: (config: DashboardConfig) => void
   onDashboardFiltersChange?: (filters: DashboardFilter[]) => void
   hideToolbar?: boolean
+  dashboardMeta?: DashboardMeta
 
   // ---- Store state (from useDashboard) ----
   isEditMode: boolean
@@ -90,6 +98,7 @@ export interface DashboardContextValue {
   isFilterConfigModalOpen: boolean
   filterConfigPortlet: PortletConfig | null
   deleteConfirmPortletId: string | null
+  deleteConfirmGroupId: string | null
   draftRows: RowLayout[] | null
   isDraggingPortlet: boolean
   isInitialized: boolean
@@ -99,8 +108,11 @@ export interface DashboardContextValue {
   canChangeLayoutMode: boolean
   selectedFilter: DashboardFilter | null
   resolvedRows: RowLayout[]
+  resolvedGroups: PortletGroup[]
   layoutMode: DashboardLayoutMode
   allowedModes: DashboardLayoutMode[]
+  /** Modes the toggle should offer; a subset of allowedModes. */
+  selectableModes: DashboardLayoutMode[]
 
   // ---- Actions ----
   actions: UseDashboardActions
@@ -119,6 +131,8 @@ export interface DashboardContextValue {
 
   // ---- Features ----
   features: FeaturesConfig
+  /** Dashboard JSON export/import flow (features.dashboardImportExport); `enabled` is false when the feature is off */
+  importExport: DashboardImportExportState
 
   // ---- Refs (attached by the consuming pieces) ----
   editBarRef: MutableRefObject<HTMLDivElement | null>

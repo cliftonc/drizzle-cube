@@ -59,6 +59,10 @@ export class DateTimeBuilder {
     if (!dateRange) return null
 
     if (Array.isArray(dateRange)) {
+      // A one-element array (['last 7 days'], ['2024-01-15']) is a single expression
+      if (dateRange.length === 1 && typeof dateRange[0] === 'string') {
+        return this.buildStringDateRangeCondition(fieldExpr, dateRange[0])
+      }
       return this.buildArrayDateRangeCondition(fieldExpr, dateRange)
     }
 
@@ -138,8 +142,7 @@ export class DateTimeBuilder {
   }
 
   /**
-   * Parse relative date range expressions like "today", "yesterday", "last 7 days", "this month", etc.
-   * Handles all 14 DATE_RANGE_OPTIONS from the client
+   * Parse relative date range expressions like "today", "yesterday", "last 7 days", "this month", "next week", etc.
    */
   parseRelativeDateRange(dateRange: string): { start: Date; end: Date } | null {
     return parseRelativeDateRangeValue(dateRange)

@@ -48,10 +48,15 @@ import {
   buildToolList,
   getDefaultResources,
   getDefaultPrompts,
-  getMcpAppHtml,
+  injectMcpAppConfig,
   MCP_APP_RESOURCE_URI,
   MCP_APP_MIME_TYPE
 } from './mcp-transport.js'
+// Deliberately static: `getCubeTools().resources` is a synchronous array, so the
+// MCP App HTML must be in hand at construction. This entry (`drizzle-cube/mcp`)
+// is only imported by servers that want MCP, so the blob is expected here —
+// unlike the framework adapters, which load it lazily via `getMcpAppHtml`.
+import { mcpAppHtml } from './mcp-app-html.js'
 
 // Re-export types consumers may need
 export type { MCPPrompt, MCPResource, DiscoverRequest, ValidateRequest, LoadRequest }
@@ -281,7 +286,7 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
   // Per-tool executors. `load` and `chart` share the same query path; `chart`
   // only differs by carrying _meta.ui on its definition.
   const toolHandlers: Record<string, (args: unknown, meta?: unknown) => Promise<MCPToolResult>> = {
-    discover: (args) => runDiscoverTool(handlerDeps, args),
+    discover: (args, meta) => runDiscoverTool(handlerDeps, args, meta),
     validate: (args, meta) => runValidateTool(handlerDeps, args, meta),
     load: (args, meta) => runLoadTool(handlerDeps, args, meta),
     chart: (args, meta) => runLoadTool(handlerDeps, args, meta)
@@ -314,7 +319,7 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
 }
 
 function getMcpAppResources(config?: McpAppConfig): MCPResource[] {
-  const html = getMcpAppHtml(config)
+  const html = injectMcpAppConfig(mcpAppHtml, config)
   if (!html) return []
   return [{
     uri: MCP_APP_RESOURCE_URI,

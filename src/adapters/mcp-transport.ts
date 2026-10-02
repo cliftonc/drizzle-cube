@@ -6,6 +6,10 @@ import {
 } from '../server/ai/mcp-prompts.js'
 import { QUERY_PARAMS_SCHEMA } from '../server/ai/query-schema.js'
 import {
+  RECORDS_TABLE_CHART_CONFIG_SCHEMA,
+  RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA
+} from '../server/ai/chart-schema.js'
+import {
   handleDiscover,
   handleValidate,
   handleLoad,
@@ -26,19 +30,51 @@ export { type MCPPrompt }
 export const MCP_APP_RESOURCE_URI = 'ui://drizzle-cube/visualization.html'
 export const MCP_APP_MIME_TYPE = 'text/html;profile=mcp-app'
 
-// MCP App HTML loaded from generated file (built by scripts/generate-mcp-app-html.ts)
-import { mcpAppHtml } from '../mcp-app/generated-html.js'
+import { MCP_APP_CHART_TYPES } from '../mcp-app/chartTypes.js'
 
-/** Get the bundled MCP App HTML, optionally with locale config injected. Returns empty string if not yet built. */
-export function getMcpAppHtml(config?: McpAppConfig): string {
-  if (!mcpAppHtml || !config) return mcpAppHtml
+/**
+ * Chart types the `chart` tool may be asked for: everything the MCP App can
+ * render, minus the content-only ones that ignore the query the tool requires.
+ * Derived so the model is never offered a type the app would silently fall back
+ * to a table for. `chartTypes.ts` is value-import-free from the client graph, so
+ * this stays a plain string array in the adapters build.
+ */
+const CHART_TOOL_TYPES: string[] = MCP_APP_CHART_TYPES.filter(
+  // `markdown` renders static text and takes no query — nothing for this tool to run.
+  type => type !== 'markdown'
+)
+
+/**
+ * Inject the MCP App locale config into an MCP App HTML document. Pure: the
+ * HTML is passed in, so callers decide how (and whether) to load the blob.
+ * Returns `html` unchanged when it is empty (not yet built) or no config is given.
+ */
+export function injectMcpAppConfig(html: string, config?: McpAppConfig): string {
+  if (!html || !config) return html
   // Escape `</` → `<\/` so the JSON cannot break out of the script block
   const safeJson = JSON.stringify({
     defaultLocale: config.defaultLocale,
     detectBrowserLocale: config.detectBrowserLocale,
   }).replace(/<\//g, '<\\/')
   const script = `<script>window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ = ${safeJson}</script>`
-  return mcpAppHtml.replace('</head>', `${script}</head>`)
+  return html.replace('</head>', `${script}</head>`)
+}
+
+/**
+ * Get the bundled MCP App HTML, optionally with locale config injected.
+ * Returns an empty string if the app is not yet built.
+ *
+ * The ~2 MB HTML blob is loaded with a dynamic `import()` on first use, never at
+ * module load: it is only wanted when `mcp.app` is on and a client actually
+ * lists/reads the visualization resource. Every adapter imports this module, so
+ * a static import here would put the blob in every consumer's server bundle
+ * even with `mcp.enabled: false`. In the published build the specifier is
+ * rewritten to `drizzle-cube/mcp-app-html`, which consumers may alias to a stub
+ * — see `mcp-app-html.ts`.
+ */
+export async function getMcpAppHtml(config?: McpAppConfig): Promise<string> {
+  const { mcpAppHtml } = await import('./mcp-app-html.js')
+  return injectMcpAppConfig(mcpAppHtml, config)
 }
 
 export type JsonRpcId = string | number | null | undefined
@@ -331,7 +367,13 @@ interface McpDispatchState {
   appEnabled?: boolean
   serverName: string
   prompts: MCPPrompt[]
-  resources: MCPResource[]
+  /**
+   * Resolves the resource list for THIS request, including the caller's schema
+   * resource. A thunk rather than an array because the schema resource is the
+   * tenant's cube metadata: it is resolved from the request's security context
+   * on every message, and never cached across requests or sessions.
+   */
+  getResources: () => Promise<MCPResource[]>
   instructions: string
 }
 
@@ -368,9 +410,10 @@ function buildInitializeResult(params: unknown, state: McpDispatchState): unknow
 }
 
 /** Build the `resources/list` result. */
-function buildResourcesList(state: McpDispatchState): unknown {
+async function buildResourcesList(state: McpDispatchState): Promise<unknown> {
+  const resources = await state.getResources()
   return {
-    resources: state.resources.map(({ uri, name, description, mimeType }) => ({
+    resources: resources.map(({ uri, name, description, mimeType }) => ({
       uri,
       name,
       description,
@@ -381,9 +424,10 @@ function buildResourcesList(state: McpDispatchState): unknown {
 }
 
 /** Build the `resources/read` result for the requested (or first) resource. */
-function buildResourceRead(params: unknown, state: McpDispatchState): unknown {
+async function buildResourceRead(params: unknown, state: McpDispatchState): Promise<unknown> {
   const uri = (params as any)?.uri as string | undefined
-  const resource = state.resources.find(r => r.uri === uri) || state.resources[0]
+  const resources = await state.getResources()
+  const resource = resources.find(r => r.uri === uri) || resources[0]
   if (!resource) throw jsonRpcError(-32602, 'resource not found')
   return {
     contents: [
@@ -414,13 +458,19 @@ export async function dispatchMcpMethod(
   ctx: McpDispatchContext
 ): Promise<unknown> {
   const { appEnabled, appConfig } = ctx
+  // The static resources only — the metadata-derived schema resource is added
+  // per request below, under the caller's security context.
   const baseResources = ctx.resources ?? RESOURCES
   const state: McpDispatchState = {
     appEnabled,
     serverName: ctx.serverName ?? 'drizzle-cube',
     prompts: ctx.prompts ?? PROMPTS,
-    // Add MCP App visualization resource when app mode is enabled
-    resources: appEnabled ? [...baseResources, ...getMcpAppResource(appConfig)] : baseResources,
+    getResources: async () => {
+      const securityContext = await ctx.extractSecurityContext(ctx.rawRequest, ctx.rawResponse)
+      const resources = buildMcpResources(ctx.semanticLayer, securityContext, baseResources)
+      // Add MCP App visualization resource when app mode is enabled
+      return appEnabled ? [...resources, ...(await getMcpAppResource(appConfig))] : resources
+    },
     instructions: ctx.instructions ?? getDefaultMcpInstructions()
   }
 
@@ -437,13 +487,13 @@ export async function dispatchMcpMethod(
       return executeToolCall(params, ctx)
 
     case 'resources/list':
-      return buildResourcesList(state)
+      return await buildResourcesList(state)
 
     case 'resources/templates/list':
       return { resourceTemplates: [], nextCursor: '' }
 
     case 'resources/read':
-      return buildResourceRead(params, state)
+      return await buildResourceRead(params, state)
 
     case 'prompts/list':
       return {
@@ -578,8 +628,10 @@ Use "load" for data retrieval. Use "chart" to visualise results with an interact
 Same query format as "load", but renders results in the MCP App chart UI.
 Include a "chart" object to control the visualization.
 
-Chart types: bar, line, area, pie, scatter, bubble, radar, treemap, kpiNumber, kpiDelta, table, heatmap, funnel, sankey, sunburst, waterfall, activityGrid, boxPlot
-Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, part-of-whole -> pie, correlation -> scatter/bubble, distribution -> boxPlot`,
+Chart types: ${CHART_TOOL_TYPES.join(', ')}
+Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, part-of-whole -> pie, correlation -> scatter/bubble, distribution -> boxPlot, record-level listing -> recordsTable
+
+recordsTable renders one row per record, so pair it with "ungrouped": true in the query. Its columns are plain text unless you say otherwise: use chart.displayConfig.columnFormats to give each column a kind (number, date, badge, progress), which is what makes the listing readable.`,
       inputSchema: {
         type: 'object',
         required: ['query'],
@@ -595,12 +647,7 @@ Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, p
             properties: {
               type: {
                 type: 'string',
-                enum: [
-                  'bar', 'line', 'area', 'pie', 'scatter', 'bubble', 'radar', 'radialBar',
-                  'treemap', 'table', 'kpiNumber', 'kpiDelta', 'heatmap', 'boxPlot',
-                  'funnel', 'sankey', 'sunburst', 'retentionHeatmap', 'retentionCombined',
-                  'waterfall', 'activityGrid'
-                ],
+                enum: CHART_TOOL_TYPES,
                 description: 'Chart type to render'
               },
               title: {
@@ -619,7 +666,8 @@ Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, p
                     description: 'Dual Y-axis: map measure fields to "left" or "right". Only bar/line/area with 2+ measures of different scales.'
                   },
                   sizeField: { type: 'string', description: 'Bubble chart size field' },
-                  colorField: { type: 'string', description: 'Bubble chart color field' }
+                  colorField: { type: 'string', description: 'Bubble chart color field' },
+                  ...RECORDS_TABLE_CHART_CONFIG_SCHEMA
                 }
               },
               displayConfig: {
@@ -631,7 +679,8 @@ Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, p
                   showTooltip: { type: 'boolean' },
                   stacked: { type: 'boolean' },
                   stackType: { type: 'string', enum: ['none', 'normal', 'percent'] },
-                  orientation: { type: 'string', enum: ['horizontal', 'vertical'] }
+                  orientation: { type: 'string', enum: ['horizontal', 'vertical'] },
+                  ...RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA
                 }
               },
               // Backward-compatible flat aliases (deprecated — use chartConfig instead)
@@ -664,16 +713,22 @@ async function executeToolCall(params: unknown, ctx: McpDispatchContext) {
   const args = p.arguments
   try {
     switch (p.name) {
-      case 'discover':
-        return wrapContent(await handleDiscover(semanticLayer, (args || {}) as DiscoverRequest))
+      case 'discover': {
+        // Discovery reads the caller's cube set, so it needs their context —
+        // there is no longer an unauthenticated view of the schema. A throwing
+        // extractor falls through to the catch below and comes back as an
+        // isError tool result the model can react to.
+        const securityContext = await extractSecurityContext(rawRequest, rawResponse)
+        return wrapContent(await handleDiscover(semanticLayer, securityContext, (args || {}) as DiscoverRequest))
+      }
       case 'validate': {
         const body = (args || {}) as ValidateRequest
         if (!body.query) throw jsonRpcError(-32602, 'query is required')
-        let securityContext: SecurityContext | undefined
-        try {
-          securityContext = await extractSecurityContext(rawRequest, rawResponse)
-        } catch { /* validate works without auth — SQL just won't be included */ }
-        return wrapContent(await handleValidate(semanticLayer, body, securityContext))
+        // Validation is against this caller's cubes. This used to tolerate a
+        // failing extractor and validate against the base set with the SQL
+        // omitted; that is a base-set escape hatch and is gone.
+        const securityContext = await extractSecurityContext(rawRequest, rawResponse)
+        return wrapContent(await handleValidate(semanticLayer, securityContext, body))
       }
       case 'load': {
         const body = (args || {}) as LoadRequest
@@ -722,8 +777,8 @@ function wrapContent(result: unknown) {
 // MCP App visualization resource
 // ---------------------------------------------
 
-function getMcpAppResource(config?: McpAppConfig): MCPResource[] {
-  const html = getMcpAppHtml(config)
+async function getMcpAppResource(config?: McpAppConfig): Promise<MCPResource[]> {
+  const html = await getMcpAppHtml(config)
   if (!html) return []
   return [{
     uri: MCP_APP_RESOURCE_URI,
@@ -855,15 +910,20 @@ const RESOURCES = [
       '```',
       '',
       '### Filter operators',
-      'String: equals, notEquals, contains, notContains, startsWith, endsWith, like, ilike, regex',
+      'String: equals, notEquals, contains, notContains, startsWith, notStartsWith, endsWith, notEndsWith, like, notLike, ilike, regex, notRegex',
       'Numeric: gt, gte, lt, lte, between, notBetween',
       'Set: in, notIn, set, notSet, isEmpty, isNotEmpty',
       'Date: inDateRange, beforeDate, afterDate',
+      'No values: set, notSet, isEmpty, isNotEmpty (omit values)',
+      'Unknown operators are rejected by validation.',
       '',
       '### Time handling',
       '- Aggregated totals: use filters with inDateRange (NOT timeDimensions)',
       '- Time series grouping: use timeDimensions with granularity',
-      '- Both can be combined: inDateRange filter + timeDimensions with granularity',
+      '- A timeDimension without granularity is only a date filter (no time column)',
+      '- inDateRange values: ["last 3 months"] (one relative string) or ["2024-01-01", "2024-03-31"]',
+      '- Relative ranges: today, yesterday, tomorrow, this/last/next week|month|quarter|year, last N days|weeks|months|quarters|years',
+      '- Combine an inDateRange filter with timeDimensions only when they are on DIFFERENT fields',
       '- Period comparison: use compareDateRange in timeDimensions'
     ].join('\n')
   }
@@ -917,21 +977,36 @@ export function resolveMcpInstructions(instructions?: MCPInstructionsResolver): 
   return instructions ?? defaults
 }
 
-export function buildMcpSchemaResource(semanticLayer: SemanticLayerCompiler): MCPResource {
+/**
+ * The `drizzle-cube://schema` resource: this caller's cube metadata as JSON.
+ *
+ * Its body is tenant-specific, so it must be built per request under the
+ * caller's security context. Building it once at handler construction — as this
+ * used to be — would freeze every tenant's view to the base set.
+ */
+export function buildMcpSchemaResource(
+  semanticLayer: SemanticLayerCompiler,
+  securityContext: SecurityContext
+): MCPResource {
   return {
     uri: 'drizzle-cube://schema',
     name: 'Cube Schema',
     description: 'Current cube metadata as JSON',
     mimeType: 'application/json',
-    text: JSON.stringify(semanticLayer.getMetadata(), null, 2)
+    text: JSON.stringify(semanticLayer.getMetadata(securityContext), null, 2)
   }
 }
 
+/**
+ * Static resources plus this caller's schema resource. Call per request, never
+ * at setup time — see {@link buildMcpSchemaResource}.
+ */
 export function buildMcpResources(
   semanticLayer: SemanticLayerCompiler,
+  securityContext: SecurityContext,
   resources?: MCPResourceResolver
 ): MCPResource[] {
-  const schemaResource = buildMcpSchemaResource(semanticLayer)
+  const schemaResource = buildMcpSchemaResource(semanticLayer, securityContext)
   const baseResources = resolveMcpResources(resources)
     .filter(resource => resource.uri !== schemaResource.uri)
 

@@ -27,7 +27,7 @@ function MissingDependencyFallback(_props: SchemaVisualizationProps) {
         <p className="dc:text-sm text-dc-text-secondary dc:mb-4">
           {t('schema.missingDeps.description')}
         </p>
-        <code className="dc:block dc:px-4 dc:py-2 dc:rounded bg-dc-surface-secondary dc:text-sm dc:font-mono text-dc-text dc:border border-dc-border">
+        <code className="dc:block dc:px-4 dc:py-2 dc:rounded-sm bg-dc-surface-secondary dc:text-sm dc:font-mono text-dc-text dc:border border-dc-border">
           npm install @xyflow/react elkjs
         </code>
       </div>

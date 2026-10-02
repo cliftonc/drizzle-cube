@@ -179,7 +179,7 @@ describe('ScatterChart', () => {
       )
 
       const chartContainer = container.querySelector('[data-testid="chart-container"]')
-      expect(chartContainer).toHaveStyle({ height: '50vh' })
+      expect((chartContainer as HTMLElement).style.height).toBe('50vh')
     })
 
     it('should support legacy chart config format', () => {

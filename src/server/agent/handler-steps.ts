@@ -95,6 +95,7 @@ function finalizeToolInput(block: ContentBlock | undefined, json: string): void 
     block.input = JSON.parse(json)
   } catch {
     block.input = {}
+    block.inputParseError = true
   }
 }
 
@@ -123,10 +124,7 @@ function applyToolUseStart(acc: StreamAccumulator, e: Extract<NormalizedEvent, {
   // Finalize previous tool's input before starting a new one
   // (OpenAI can return multiple tool calls; the handler tracks a single accumulator)
   if (acc.currentBlockIsToolUse && acc.currentToolInputJson) {
-    const prevBlock = acc.contentBlocks[acc.contentBlocks.length - 1]
-    if (prevBlock?.type === 'tool_use') {
-      try { prevBlock.input = JSON.parse(acc.currentToolInputJson) } catch { /* keep {} */ }
-    }
+    finalizeToolInput(acc.contentBlocks[acc.contentBlocks.length - 1], acc.currentToolInputJson)
   }
   acc.contentBlocks.push({ type: 'tool_use', id: e.id, name: e.name, input: {}, ...(e.metadata ? { metadata: e.metadata } : {}) })
   acc.currentToolInputJson = ''
@@ -138,7 +136,10 @@ function applyToolUseEnd(acc: StreamAccumulator, e: Extract<NormalizedEvent, { t
   // Provider-supplied parsed input (OpenAI includes it) — find block by ID
   if (e.id && e.input) {
     const block = acc.contentBlocks.find(b => b.type === 'tool_use' && b.id === e.id)
-    if (block) block.input = e.input
+    if (block) {
+      block.input = e.input
+      if (e.parseError) block.inputParseError = true
+    }
   } else if (acc.currentBlockIsToolUse) {
     // Fallback: parse accumulated JSON for the current (last) tool_use block
     const block = acc.contentBlocks[acc.contentBlocks.length - 1]
@@ -220,6 +221,19 @@ async function* executeToolBlock(
   const toolInput = (block.input || {}) as Record<string, unknown>
   const toolUseId = block.id!
 
+  if (block.inputParseError) {
+    const msg = `Could not parse the arguments you sent for ${toolName} — they were not valid JSON, `
+      + 'so the tool was not run. Call it again with well-formed JSON arguments.'
+    yield {
+      type: 'tool_use_result',
+      data: { id: toolUseId, name: toolName, result: msg, isError: true }
+    }
+    safeObserve(() => observability?.onToolEnd?.({
+      traceId, turn, toolName, toolUseId, isError: true, durationMs: 0,
+    }))
+    return { toolUseId, toolName, content: msg, isError: true }
+  }
+
   const executorFn = executor.get(toolName)
   if (!executorFn) {
     yield {
@@ -240,7 +254,7 @@ async function* executeToolBlock(
 
     yield {
       type: 'tool_use_result',
-      data: { id: toolUseId, name: toolName, result: execResult.result, ...(execResult.isError ? { isError: true } : {}) }
+      data: { id: toolUseId, name: toolName, input: toolInput, result: execResult.result, ...(execResult.isError ? { isError: true } : {}) }
     }
 
     safeObserve(() => observability?.onToolEnd?.({

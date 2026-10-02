@@ -42,6 +42,7 @@ vi.mock('../../../src/mcp-app/McpChartSwitcher', () => ({
     <div>
       <button type="button" onClick={() => onSelect('bar')}>switch-bar</button>
       <button type="button" onClick={() => onSelect('table')}>switch-table</button>
+      <button type="button" onClick={() => onSelect('recordsTable')}>switch-records-table</button>
     </div>
   ),
 }))
@@ -61,6 +62,7 @@ vi.mock('../../../src/client/components/charts/KpiNumber', () => ({ default: cre
 vi.mock('../../../src/client/components/charts/KpiDelta', () => ({ default: createChartMock('kpi-delta-chart') }))
 vi.mock('../../../src/client/components/charts/KpiText', () => ({ default: createChartMock('kpi-text-chart') }))
 vi.mock('../../../src/client/components/charts/DataTable', () => ({ default: createChartMock('data-table-chart') }))
+vi.mock('../../../src/client/components/charts/RecordsTable', () => ({ default: createChartMock('records-table-chart') }))
 vi.mock('../../../src/client/components/charts/RadarChart', () => ({ default: createChartMock('radar-chart') }))
 vi.mock('../../../src/client/components/charts/RadialBarChart', () => ({ default: createChartMock('radial-bar-chart') }))
 vi.mock('../../../src/client/components/charts/BubbleChart', () => ({ default: createChartMock('bubble-chart') }))
@@ -71,12 +73,21 @@ vi.mock('../../../src/client/components/charts/BoxPlotChart', () => ({ default: 
 vi.mock('../../../src/client/components/charts/CandlestickChart', () => ({ default: createChartMock('candlestick-chart') }))
 vi.mock('../../../src/client/components/charts/ActivityGridChart', () => ({ default: createChartMock('activity-grid-chart') }))
 vi.mock('../../../src/client/components/charts/MeasureProfileChart', () => ({ default: createChartMock('measure-profile-chart') }))
+vi.mock('../../../src/client/components/charts/SankeyChart', () => ({ default: createChartMock('sankey-chart') }))
+vi.mock('../../../src/client/components/charts/SunburstChart', () => ({ default: createChartMock('sunburst-chart') }))
+vi.mock('../../../src/client/components/charts/HeatMapChart', () => ({ default: createChartMock('heatmap-chart') }))
+vi.mock('../../../src/client/components/charts/MarkdownChart', () => ({ default: createChartMock('markdown-chart') }))
 
 import { McpApp } from '../../../src/mcp-app/mcp-app'
 
 function readChartConfig(testId: string) {
   const element = screen.getByTestId(testId)
   return JSON.parse(element.getAttribute('data-chart-config') || 'null')
+}
+
+function readDisplayConfig(testId: string) {
+  const element = screen.getByTestId(testId)
+  return JSON.parse(element.getAttribute('data-display-config') || 'null')
 }
 
 describe('McpApp chart switching', () => {
@@ -247,6 +258,131 @@ describe('McpApp chart switching', () => {
       xAxis: ['Orders.status', 'Orders.region', 'Orders.count', 'Orders.revenue', 'Orders.channel'],
       yAxis: [],
       series: [],
+    })
+  })
+
+  it('auto-renders a Sankey chart for flow data with no explicit hint', async () => {
+    render(<McpApp />)
+
+    await waitFor(() => {
+      expect(mockApp.ontoolinput).toBeTypeOf('function')
+    })
+
+    await act(async () => {
+      mockApp.ontoolinput?.({
+        structuredContent: {
+          data: [
+            {
+              nodes: [
+                { id: 'a', name: 'Opened', layer: 0 },
+                { id: 'b', name: 'Merged', layer: 1 },
+              ],
+              links: [{ source: 'a', target: 'b', value: 42 }],
+            },
+          ],
+          query: {},
+        },
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sankey-chart')).toBeInTheDocument()
+    })
+  })
+
+  // The records table lays out `columns`, not x/y axes. Both the load path and
+  // the switcher must carry that field through, or it renders unconfigured.
+  it('passes derived columns to the records table on a manual switch', async () => {
+    render(<McpApp />)
+
+    await waitFor(() => {
+      expect(mockApp.ontoolinput).toBeTypeOf('function')
+    })
+
+    await act(async () => {
+      mockApp.ontoolinput?.({
+        structuredContent: {
+          data: [
+            {
+              'Employees.name': 'Ada',
+              'Employees.department': 'Engineering',
+              'Employees.salary': 120000,
+            },
+          ],
+          query: {
+            dimensions: ['Employees.name', 'Employees.department'],
+            measures: ['Employees.salary'],
+            ungrouped: true,
+          },
+        },
+      })
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'switch-records-table' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('records-table-chart')).toBeInTheDocument()
+    })
+
+    expect(readChartConfig('records-table-chart')).toEqual({
+      columns: ['Employees.name', 'Employees.department', 'Employees.salary'],
+      xAxis: [],
+      yAxis: [],
+      series: [],
+    })
+  })
+
+  it('applies a records-table hint with per-column formats', async () => {
+    render(<McpApp />)
+
+    await waitFor(() => {
+      expect(mockApp.ontoolinput).toBeTypeOf('function')
+    })
+
+    await act(async () => {
+      mockApp.ontoolinput?.({
+        arguments: {
+          chart: {
+            type: 'recordsTable',
+            chartConfig: { columns: ['Employees.name', 'Employees.salary'] },
+            displayConfig: {
+              columnFormats: {
+                'Employees.salary': { kind: 'number', numberFormat: { unit: 'currency' }, align: 'right' },
+              },
+              pageSize: 50,
+            },
+          },
+        },
+        structuredContent: {
+          data: [
+            {
+              'Employees.name': 'Ada',
+              'Employees.department': 'Engineering',
+              'Employees.salary': 120000,
+            },
+          ],
+          query: {
+            dimensions: ['Employees.name', 'Employees.department'],
+            measures: ['Employees.salary'],
+            ungrouped: true,
+          },
+        },
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('records-table-chart')).toBeInTheDocument()
+    })
+
+    expect(readChartConfig('records-table-chart').columns).toEqual([
+      'Employees.name',
+      'Employees.salary',
+    ])
+    expect(readDisplayConfig('records-table-chart')).toEqual({
+      columnFormats: {
+        'Employees.salary': { kind: 'number', numberFormat: { unit: 'currency' }, align: 'right' },
+      },
+      pageSize: 50,
     })
   })
 })

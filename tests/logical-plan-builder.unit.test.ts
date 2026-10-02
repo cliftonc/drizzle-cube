@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { LogicalPlanBuilder } from '../src/server/logical-plan/logical-plan-builder'
 import type { Cube, QueryContext, SemanticQuery } from '../src/server/types'
 import type { LogicalPlanner } from '../src/server/logical-plan/logical-planner'
+import { testCastHelpers } from './helpers/query-context'
 
 function createCube(
   name: string,
@@ -26,7 +27,8 @@ function createContext(): QueryContext {
   return {
     db: {} as any,
     schema: {},
-    securityContext: { organisationId: 1 }
+    securityContext: { organisationId: 1 },
+    ...testCastHelpers()
   }
 }
 

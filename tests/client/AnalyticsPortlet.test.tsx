@@ -577,15 +577,15 @@ describe('AnalyticsPortlet', () => {
   })
 
   describe('skip query charts', () => {
-    it('should not execute query for markdown charts', async () => {
+    // `skipQuery` means the chart does not *require* a query, not that it can
+    // never have one. Markdown is the only type that sets it, and a markdown
+    // portlet with a query renders its content as a data template.
+    it('should not execute query for a markdown portlet with no query', async () => {
       const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
-
-      // The mock for useChartConfig already returns skipQuery: true for markdown
-      // (see mock at top of file)
 
       render(
         <AnalyticsPortlet
-          query={JSON.stringify({ measures: ['Test.count'] })}
+          query={JSON.stringify({})}
           chartType="markdown"
           chartConfig={{ content: 'Hello World' } as ChartAxisConfig}
         />
@@ -593,6 +593,22 @@ describe('AnalyticsPortlet', () => {
 
       const call = (useCubeLoadQuery as any).mock.calls[0]
       expect(call[1]).toMatchObject({ skip: true })
+    })
+
+    it('should execute query for a markdown portlet that has one', async () => {
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
+
+      render(
+        <AnalyticsPortlet
+          query={JSON.stringify({ measures: ['Test.count'] })}
+          chartType="markdown"
+          chartConfig={{ content: 'Hello World' } as ChartAxisConfig}
+          eagerLoad
+        />
+      )
+
+      const call = (useCubeLoadQuery as any).mock.calls[0]
+      expect(call[1]).toMatchObject({ skip: false })
     })
   })
 

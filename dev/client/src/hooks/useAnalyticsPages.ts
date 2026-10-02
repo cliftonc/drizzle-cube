@@ -4,6 +4,11 @@ import type {
   CreateAnalyticsPageRequest, 
   UpdateAnalyticsPageRequest 
 } from '../types'
+import { getJson, retryUnlessRequestFault } from './api'
+
+// Re-exported so pages can ask "is this simply not mine?" without reaching past
+// the hook they already import.
+export { isNotFound } from './api'
 
 const API_BASE = '/api/analytics-pages'
 
@@ -11,14 +16,8 @@ const API_BASE = '/api/analytics-pages'
 export function useAnalyticsPages() {
   return useQuery({
     queryKey: ['analytics-pages'],
-    queryFn: async (): Promise<AnalyticsPage[]> => {
-      const response = await fetch(API_BASE)
-      if (!response.ok) {
-        throw new Error('Failed to fetch analytics pages')
-      }
-      const data = await response.json()
-      return data.data
-    }
+    queryFn: () => getJson<AnalyticsPage[]>(API_BASE, 'Failed to fetch analytics pages'),
+    retry: retryUnlessRequestFault
   })
 }
 
@@ -26,15 +25,9 @@ export function useAnalyticsPages() {
 export function useAnalyticsPage(id: number | string) {
   return useQuery({
     queryKey: ['analytics-pages', id],
-    queryFn: async (): Promise<AnalyticsPage> => {
-      const response = await fetch(`${API_BASE}/${id}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch analytics page')
-      }
-      const data = await response.json()
-      return data.data
-    },
-    enabled: !!id
+    queryFn: () => getJson<AnalyticsPage>(`${API_BASE}/${id}`, 'Failed to fetch analytics page'),
+    enabled: !!id,
+    retry: retryUnlessRequestFault
   })
 }
 
