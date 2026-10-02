@@ -68,6 +68,16 @@ jobs:
       - name: Build server
         run: npm run build:server
 
+      - name: Build MCP app
+        run: npm run build:mcp-app
+
+      - name: Verify checked-in MCP app bundle is up to date
+        run: |
+          git diff --exit-code src/mcp-app/generated-html.ts || {
+            echo "::error file=src/mcp-app/generated-html.ts::Stale MCP app bundle. Run 'npm run build:mcp-app' and commit the result."
+            exit 1
+          }
+
       - name: Build client
         run: npm run build:client
 
