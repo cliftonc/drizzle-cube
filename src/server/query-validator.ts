@@ -10,7 +10,12 @@
 import type { SemanticQuery, Cube, Filter, FilterCondition, TimeDimension } from './types/index.js'
 import { getActiveQueryModes } from './query-modes.js'
 import { isResolvableDateRange, isValidDateValue } from './builders/date-time-helpers.js'
-import { validateInDateRange, inDateRangeDiagnostic } from './builders/in-date-range-validation.js'
+import {
+  validateInDateRange,
+  validateDateRangeInput,
+  inDateRangeDiagnostic,
+  timeDimensionDateRangeDiagnostic
+} from './builders/in-date-range-validation.js'
 import {
   isSupportedFilterOperator,
   SUPPORTED_FILTER_OPERATORS
@@ -337,15 +342,23 @@ function pushInvalidDateRange(errors: ValidationErrors, member: string, dateRang
   }))
 }
 
+/** Reject a timeDimension range the SQL builder would refuse (unparseable, impossible or reversed). */
+function validateTimeDimensionRange(member: string, range: unknown, errors: ValidationErrors): void {
+  if (!isResolvableDateRange(range)) {
+    pushInvalidDateRange(errors, member, range)
+    return
+  }
+  const result = validateDateRangeInput(range)
+  if (!result.valid) errors.push(timeDimensionDateRangeDiagnostic(member, result))
+}
+
 /** Reject timeDimension dateRange / compareDateRange entries that would not resolve. */
 function validateTimeDimensionRanges(timeDimension: TimeDimension, errors: ValidationErrors): void {
-  if (timeDimension.dateRange !== undefined && !isResolvableDateRange(timeDimension.dateRange)) {
-    pushInvalidDateRange(errors, timeDimension.dimension, timeDimension.dateRange)
+  if (timeDimension.dateRange !== undefined) {
+    validateTimeDimensionRange(timeDimension.dimension, timeDimension.dateRange, errors)
   }
   for (const range of timeDimension.compareDateRange ?? []) {
-    if (!isResolvableDateRange(range)) {
-      pushInvalidDateRange(errors, timeDimension.dimension, range)
-    }
+    validateTimeDimensionRange(timeDimension.dimension, range, errors)
   }
 }
 

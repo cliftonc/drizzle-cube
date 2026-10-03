@@ -470,19 +470,19 @@ describe('Filter Edge Cases', () => {
     it('should handle date range with invalid combinations', async () => {
       const invalidRanges = [
         ['2024-12-31', '2024-01-01'], // End before start
-        ['2024-01-01'], // Missing end date
+        ['2024-01-01', '2024-01-31', '2024-02-01'], // Too many dates (a single date is a whole day)
         ['', '2024-01-01'], // Empty start date
         ['2024-01-01', ''], // Empty end date
       ]
 
-      for (const [start, end] of invalidRanges) {
+      for (const values of invalidRanges) {
         const query = TestQueryBuilder.create()
           .measures(['Employees.count'])
           .filters([
-            { 
-              member: 'Employees.createdAt', 
-              operator: 'inDateRange', 
-              values: [start, end].filter(v => v !== undefined)
+            {
+              member: 'Employees.createdAt',
+              operator: 'inDateRange',
+              values
             }
           ])
           .build()
@@ -537,7 +537,7 @@ describe('Filter Edge Cases', () => {
       const edgeCases = [
         { operator: 'equals', values: [] }, // No values
         { operator: 'equals', values: ['a', 'b', 'c'] }, // Too many values
-        { operator: 'inDateRange', values: ['2024-01-01'] }, // Missing end date
+        { operator: 'inDateRange', values: ['2024-01-01', '2024-01-31', '2024-02-01'] }, // Too many dates
         { operator: 'between', values: [100] } // Missing upper bound
       ]
 

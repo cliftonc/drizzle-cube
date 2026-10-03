@@ -61,18 +61,15 @@ describe('Silent query drops', () => {
       expect(generated).toMatch(/<=/)
     })
 
-    it('rejects a single absolute date in values; dateRange selects the whole day', async () => {
+    it('resolves a single absolute date in values to that whole day', async () => {
       const total = await countOf({ measures: ['Productivity.recordCount'] }, 'Productivity.recordCount')
-      expect(validate({ measures: ['Productivity.recordCount'], filters: [
-        { member: 'Productivity.date', operator: 'inDateRange', values: ['2024-01-15'] }
-      ] }).isValid).toBe(false)
       const oneDay = await countOf({
         measures: ['Productivity.recordCount'],
-        filters: [{ member: 'Productivity.date', operator: 'inDateRange', values: [], dateRange: '2024-01-15' }]
+        filters: [{ member: 'Productivity.date', operator: 'inDateRange', values: ['2024-01-15'] }]
       }, 'Productivity.recordCount')
       const oneDayViaDateRange = await countOf({
         measures: ['Productivity.recordCount'],
-        filters: [{ member: 'Productivity.date', operator: 'inDateRange', values: ['2024-01-15', '2024-01-15'] }]
+        filters: [{ member: 'Productivity.date', operator: 'inDateRange', values: [], dateRange: '2024-01-15' }]
       }, 'Productivity.recordCount')
 
       expect(oneDay).toBeGreaterThan(0)
@@ -80,16 +77,16 @@ describe('Silent query drops', () => {
       expect(oneDay).toBe(oneDayViaDateRange)
     })
 
-    it('applies a date tuple when the date cube is pre-aggregated in a CTE', async () => {
+    it('applies a single relative string when the date cube is pre-aggregated in a CTE', async () => {
       const allTime = await run({
         measures: ['Employees.count', 'Productivity.recordCount'],
         dimensions: ['Employees.name'],
-        filters: [{ member: 'Productivity.date', operator: 'inDateRange', values: ['2024-01-15', '2024-01-15'] }]
+        filters: [{ member: 'Productivity.date', operator: 'inDateRange', values: ['2024-01-15'] }]
       })
       const total = allTime.data.reduce((sum, row) => sum + Number(row['Productivity.recordCount'] ?? 0), 0)
       const expected = await countOf({
         measures: ['Productivity.recordCount'],
-        filters: [{ member: 'Productivity.date', operator: 'inDateRange', values: ['2024-01-15', '2024-01-15'] }]
+        filters: [{ member: 'Productivity.date', operator: 'inDateRange', values: ['2024-01-15'] }]
       }, 'Productivity.recordCount')
       const unfiltered = await countOf({ measures: ['Productivity.recordCount'] }, 'Productivity.recordCount')
       expect(expected).toBeGreaterThan(0)

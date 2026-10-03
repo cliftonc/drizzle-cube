@@ -129,13 +129,25 @@ describe('Filter dateRange Feature', () => {
           {
             member: 'Employees.createdAt',
             operator: 'inDateRange',
-            values: ['2020-01-01', '2020-12-31'], // These should be ignored
-            dateRange: 'last 7 days' // This should be used
+            values: ['2020-01-01', '2020-12-31'], // Disagrees with dateRange,
+            dateRange: 'last 7 days' // so the intended range is ambiguous
           }
         ]
       }
 
       await expect(testExecutor.executeQuery(query)).rejects.toThrow(/inDateRange/)
+    })
+
+    it('accepts values that repeat the dateRange (the saved dashboard filter shape)', async () => {
+      const count = async (filter: Record<string, unknown>) => (await testExecutor.executeQuery({
+        measures: ['Employees.count'],
+        filters: [{ member: 'Employees.createdAt', operator: 'inDateRange', ...filter }]
+      } as SemanticQuery)).data[0]['Employees.count']
+      const range = ['2020-01-01', '2030-12-31']
+      const viaDateRange = await count({ values: [], dateRange: range })
+      expect(await count({ values: range, dateRange: range })).toBe(viaDateRange)
+      expect(await count({ values: ['last 12 months'], dateRange: 'last 12 months' }))
+        .toBe(await count({ values: [], dateRange: 'last 12 months' }))
     })
   })
 

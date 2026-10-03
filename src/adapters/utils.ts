@@ -867,20 +867,23 @@ export async function handleValidate(
   const metadata = semanticLayer.getMetadata(securityContext)
   const result = await aiValidateQuery(body.query, metadata)
 
-  const cubeValidation = semanticLayer.validateQuery(body.query, securityContext)
+  // The AI validator's errors carry suggestions, so report those when it has any;
+  // the compiler only adds what the AI validator can't see (it overlaps otherwise).
+  if (!result.isValid) return result
+
+  const query = normalizeQueryFields(
+    (result.correctedQuery ?? body.query) as Record<string, unknown>
+  ) as SemanticQuery
+  const cubeValidation = semanticLayer.validateQuery(query, securityContext)
   if (!cubeValidation.isValid) {
     return {
       ...result,
       isValid: false,
-      errors: [...result.errors, ...cubeValidation.errors.map(message => ({ type: 'invalid_filter' as const, message }))]
+      errors: cubeValidation.errors.map(message => ({ type: 'syntax_error' as const, message }))
     }
   }
-  if (!result.isValid) return result
 
   try {
-    const query = normalizeQueryFields(
-      (result.correctedQuery ?? body.query) as Record<string, unknown>
-    ) as SemanticQuery
     const dryRun = await semanticLayer.dryRun(query, securityContext)
     return { ...result, sql: dryRun }
   } catch (error) {

@@ -44,8 +44,8 @@ export const QUERY_PARAMS_SCHEMA = {
             'arrayContains', 'arrayOverlaps', 'arrayContained'
           ]
         },
-        values: { type: 'array', items: { type: ['string', 'number', 'boolean'] }, description: 'Filter values. Omit for set/notSet/isEmpty/isNotEmpty. inDateRange accepts ONLY a flat two-date array (strings or finite numeric timestamps) or one supported relative expression in a one-item array: ["last 3 months"]. Never nest the two-date array.' },
-        dateRange: { description: 'inDateRange only: alternative to values. A supported relative string, one absolute date string, or flat two-date array. Set values: [] when using dateRange; do not also supply nonempty values.' }
+        values: { type: 'array', items: { type: ['string', 'number', 'boolean'] }, description: 'Filter values. Omit for set/notSet/isEmpty/isNotEmpty. inDateRange accepts ONLY a flat two-date array (strings or finite numeric timestamps): ["2024-01-01", "2024-03-31"], or a one-item array holding one relative expression or one date (that whole day): ["last 3 months"], ["2024-01-15"]. Never nest the two-date array.' },
+        dateRange: { description: 'inDateRange only: alternative to values. A supported relative string, one absolute date string, or flat two-date array. Prefer values: [] when using dateRange; if values are also given they must hold the same range.' }
       },
       required: ['member', 'operator']
     },
@@ -195,10 +195,10 @@ type FilterCondition = {
   member: string                // "CubeName.fieldName"
   operator: FilterOperator
   values?: (string | number | boolean)[]  // omit for set/notSet/isEmpty/isNotEmpty
-                                // inDateRange ONLY: ["last 3 months"] | ["2024-01-01", "2024-03-31"]
+                                // inDateRange ONLY: ["last 3 months"] | ["2024-01-15"] | ["2024-01-01", "2024-03-31"]
                                 // flat, never [[start, end]]; only strings/numbers for dates
-  dateRange?: string | [string, string]  // inDateRange only; use values: [] with this
-                                // relative string, single absolute day, or flat pair; never both inputs
+  dateRange?: string | [string, string]  // inDateRange only; prefer values: [] with this
+                                // relative string, single absolute day, or flat pair; values may only repeat it
 }
 
 type LogicalFilter = { and: Filter[] } | { or: Filter[] }

@@ -26,7 +26,7 @@ import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import { DateTimeBuilder } from './date-time-builder.js'
 import { applyFilterOperator, NO_VALUE_FILTER_OPERATORS } from './filter-operators.js'
 import { asGroupFilter } from './analysis-utils.js'
-import { validateInDateRange, inDateRangeDiagnostic } from './in-date-range-validation.js'
+import { validateInDateRange, dateRangeInputDiagnostic } from './in-date-range-validation.js'
 
 export class FilterBuilder {
   constructor(
@@ -42,11 +42,13 @@ export class FilterBuilder {
     operator: FilterOperator,
     values: any[],
     field?: any,
-    dateRange?: string | string[]
+    dateRangeInput?: string | string[] | null
   ): SQL | null {
+    // `null` has always meant "not provided"; never let it reach the builders as a range.
+    const dateRange = dateRangeInput ?? undefined
     if (operator === 'inDateRange') {
       const result = validateInDateRange(values, dateRange)
-      if (!result.valid) throw new Error(inDateRangeDiagnostic(field?.name ?? 'inDateRange', result))
+      if (!result.valid) throw new Error(dateRangeInputDiagnostic(result))
       if (dateRange === undefined && values.length === 1) {
         return this.dateTimeBuilder.buildDateRangeCondition(fieldExpr, values[0])
       }
@@ -69,7 +71,7 @@ export class FilterBuilder {
         )
       }
 
-      // The dateRange form is exclusive of nonempty values.
+      // Any values present were validated above as the same range.
       return this.dateTimeBuilder.buildDateRangeCondition(fieldExpr, dateRange)
     }
 

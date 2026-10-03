@@ -2261,12 +2261,27 @@ describe('FilterBuilder', () => {
       const fieldExpr = createMockColumn()
       for (const values of [
         ['not a date range'], ['invalid-date', 'also-invalid'],
-        [['2024-01-01', '2024-01-31']], ['2024-01-01'], [],
+        [['2024-01-01', '2024-01-31']], [],
         ['2024-01-01', '2024-01-31', '2024-02-01'], [true, '2024-01-31'],
         ['2024-02-30', '2024-03-01']
       ]) {
-        expect(() => filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', values)).toThrow(/inDateRange/)
+        expect(() => filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', values)).toThrow(/Invalid date range/)
       }
+    })
+
+    it('accepts a single absolute day, a repeated dateRange and a null dateRange', () => {
+      const fieldExpr = sql`created_at`
+      const dialect = new PgDialect()
+      const params = (condition: SQL | null) => dialect.sqlToQuery(condition!).params
+      const wholeDay = ['2024-01-15T00:00:00.000Z', '2024-01-15T23:59:59.999Z']
+      expect(params(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', ['2024-01-15']))).toEqual(wholeDay)
+      const range = ['2024-01-01', '2024-01-31']
+      expect(params(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', range, undefined, range)))
+        .toEqual(params(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', [], undefined, range)))
+      expect(params(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', range, undefined, null)))
+        .toEqual(params(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', range)))
+      expect(() => filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', range, undefined, 'last 7 days'))
+        .toThrow(/values or dateRange/)
     })
 
     it('rejects invalid direct date ranges and supports epoch zero', () => {
@@ -2276,9 +2291,9 @@ describe('FilterBuilder', () => {
         ['2024-12-31', '2024-01-01'],
         ['2024-02-30', '2024-03-01']
       ]) {
-        expect(() => dateTimeBuilder.buildDateRangeCondition(fieldExpr, dateRange)).toThrow(/dateRange/)
+        expect(() => dateTimeBuilder.buildDateRangeCondition(fieldExpr, dateRange)).toThrow(/Invalid date range/)
       }
-      expect(() => dateTimeBuilder.buildDateRangeCondition(fieldExpr, 'not a range')).toThrow(/dateRange/)
+      expect(() => dateTimeBuilder.buildDateRangeCondition(fieldExpr, 'not a range')).toThrow(/Invalid date range/)
       expect(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', [0, 86400])).not.toBeNull()
     })
 

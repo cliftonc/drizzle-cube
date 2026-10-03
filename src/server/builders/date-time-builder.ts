@@ -26,7 +26,7 @@ import {
   normalizeDateValue,
   parseRelativeDateRangeValue
 } from './date-time-helpers.js'
-import { validateDateTuple, inDateRangeDiagnostic } from './in-date-range-validation.js'
+import { validateDateTuple, dateRangeInputDiagnostic } from './in-date-range-validation.js'
 
 export class DateTimeBuilder {
   constructor(private databaseAdapter: DatabaseAdapter) {}
@@ -71,7 +71,7 @@ export class DateTimeBuilder {
       return this.buildStringDateRangeCondition(fieldExpr, dateRange)
     }
 
-    throw new Error(inDateRangeDiagnostic('dateRange', { valid: false, reason: 'shape', input: 'dateRange' }))
+    throw new Error(dateRangeInputDiagnostic({ valid: false, reason: 'shape', input: 'dateRange' }))
   }
 
   private rangeBetween(
@@ -97,13 +97,13 @@ export class DateTimeBuilder {
     dateRange: string[]
   ): SQL {
     const reason = validateDateTuple(dateRange)
-    if (reason) throw new Error(inDateRangeDiagnostic('dateRange', { valid: false, reason, input: 'dateRange' }))
+    if (reason) throw new Error(dateRangeInputDiagnostic({ valid: false, reason, input: 'dateRange' }))
 
     const startDate = this.normalizeDate(dateRange[0])
     let endDate = this.normalizeDate(dateRange[1])
 
     if (startDate === null || endDate === null) {
-      throw new Error(inDateRangeDiagnostic('dateRange', { valid: false, reason: 'invalidDate', input: 'dateRange' }))
+      throw new Error(dateRangeInputDiagnostic({ valid: false, reason: 'invalidDate', input: 'dateRange' }))
     }
 
     // For date-only strings, treat end date as end-of-day (23:59:59.999)
@@ -130,7 +130,7 @@ export class DateTimeBuilder {
     // Handle absolute date (single date)
     const normalizedDate = this.normalizeDate(dateRange)
     if (normalizedDate === null) {
-      throw new Error(inDateRangeDiagnostic('dateRange', { valid: false, reason: 'invalidRelative', input: 'dateRange' }))
+      throw new Error(dateRangeInputDiagnostic({ valid: false, reason: 'invalidRelative', input: 'dateRange' }))
     }
 
     // For single date, create range for the whole day

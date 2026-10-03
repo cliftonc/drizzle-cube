@@ -1036,7 +1036,7 @@ describe('MCP Transport Layer', () => {
         }
         const invalid = await call()
         expect(invalid.isValid).toBe(false)
-        expect(invalid.errors.length).toBeGreaterThan(0)
+        expect(invalid.errors).toHaveLength(1)
         expect(invalid).not.toHaveProperty('sql')
         query.filters = [{ member: 'Employees.createdAt', operator: 'inDateRange', values: ['2024-01-01', '2024-01-31'] }]
         const flat = await call()
@@ -1044,6 +1044,27 @@ describe('MCP Transport Layer', () => {
         expect(flat.sql.sql).toMatch(/where/i)
         query.filters = [{ member: 'Employees.createdAt', operator: 'inDateRange', values: ['last 7 days'] }]
         expect((await call()).isValid).toBe(true)
+      })
+
+      it('reports each problem once, with its own error type', async () => {
+        const response = await dispatchMcpMethod('tools/call', {
+          name: 'validate', arguments: { query: { measures: ['Employees.cout'] } }
+        }, dispatchCtx) as any
+        const parsed = JSON.parse(response.content[0].text)
+        expect(parsed.isValid).toBe(false)
+        expect(parsed.errors.map((e: { type: string }) => e.type)).toEqual(['measure_not_found'])
+      })
+
+      it('rejects a reversed time dimension range that the AI validator does not check', async () => {
+        const response = await dispatchMcpMethod('tools/call', {
+          name: 'validate', arguments: { query: { measures: ['Employees.count'], timeDimensions: [
+            { dimension: 'Employees.createdAt', granularity: 'month', dateRange: ['2024-12-31', '2024-01-01'] }
+          ] } }
+        }, dispatchCtx) as any
+        const parsed = JSON.parse(response.content[0].text)
+        expect(parsed.isValid).toBe(false)
+        expect(parsed).not.toHaveProperty('sql')
+        expect(parsed.errors[0].message).toContain('Employees.createdAt')
       })
 
       it('reports dry-run failures instead of declaring success without SQL', async () => {
