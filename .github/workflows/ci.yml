@@ -341,7 +341,7 @@ jobs:
         run: npm ci
 
       - name: Install React 18
-        run: npm install --no-save react@^18.3.1 react-dom@^18.3.1
+        run: npm install --no-save react@^18.3.1 react-dom@^18.3.1 react-is@^18.3.1
 
       - name: Run client tests (React 18)
         run: npm run test:client
