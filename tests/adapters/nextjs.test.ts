@@ -36,7 +36,8 @@ import {
   createMcpRpcHandler,
   createOptionsHandler,
   type NextAdapterOptions,
-  type NextCorsOptions
+  type NextCorsOptions,
+  type RouteContext
 } from '../../src/adapters/nextjs'
 import {
   createTestSemanticLayer,
@@ -549,6 +550,30 @@ describe('Next.js Adapter', () => {
       await handler(request, routeContext)
       
       expect(capturedRouteContext).toEqual(routeContext)
+    })
+
+    it('should pass Next.js 15+ async route params through to extractSecurityContext', async () => {
+      let resolvedParams: Awaited<RouteContext['params']>
+
+      const customOptions: NextAdapterOptions = {
+        ...adapterOptions,
+        extractSecurityContext: async (_request, context) => {
+          resolvedParams = await context?.params
+          return { organisationId: 1 }
+        }
+      }
+
+      // Next.js 16 calls route handlers with exactly this context shape
+      const handler: (
+        request: NextRequest,
+        context: { params: Promise<{ endpoint: string[] }> }
+      ) => Promise<Response> = createLoadHandler(customOptions)
+
+      const request = createMockNextRequest('POST', { measures: ['Employees.count'] })
+      const response = await handler(request, { params: Promise.resolve({ endpoint: ['load'] }) })
+
+      expect(response.status).toBe(200)
+      expect(resolvedParams).toEqual({ endpoint: ['load'] })
     })
   })
 
