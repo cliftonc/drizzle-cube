@@ -53,7 +53,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
     const updatedFilter = { ...simpleFilter, values: newValues }
     if (simpleFilter.operator === 'inDateRange') {
       const dateValues = newValues.some(value => value !== '') ? newValues : []
-      updatedFilter.values = dateValues
+      updatedFilter.values = []
       if (dateValues.length === 0) {
         delete updatedFilter.dateRange
       } else {

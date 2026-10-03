@@ -2237,30 +2237,35 @@ describe('FilterBuilder', () => {
   })
 
   describe('InDateRange Edge Cases', () => {
-    it('resolves a single inDateRange value like dateRange (whole day / relative range)', () => {
+    it('resolves a relative singleton and flat date tuple', () => {
       const fieldExpr = createMockColumn()
-      expect(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', ['2024-01-01'])).not.toBeNull()
+      expect(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', ['2024-01-01', '2024-01-31'])).not.toBeNull()
       expect(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', ['last 7 days'])).not.toBeNull()
     })
 
-    it('returns null when a single inDateRange value cannot be resolved', () => {
+    it('rejects malformed ranges instead of silently dropping the predicate', () => {
       const fieldExpr = createMockColumn()
-      const result = filterBuilder.buildFilterCondition(
-        fieldExpr,
-        'inDateRange',
-        ['not a date range']
-      )
-      expect(result).toBeNull()
+      for (const values of [
+        ['not a date range'], ['invalid-date', 'also-invalid'],
+        [['2024-01-01', '2024-01-31']], ['2024-01-01'], [],
+        ['2024-01-01', '2024-01-31', '2024-02-01'], [true, '2024-01-31'],
+        ['2024-02-30', '2024-03-01']
+      ]) {
+        expect(() => filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', values)).toThrow(/inDateRange/)
+      }
     })
 
-    it('returns null when inDateRange has invalid dates', () => {
+    it('rejects invalid direct date ranges and supports epoch zero', () => {
       const fieldExpr = createMockColumn()
-      const result = filterBuilder.buildFilterCondition(
-        fieldExpr,
-        'inDateRange',
-        ['invalid-date', 'also-invalid']
-      )
-      expect(result).toBeNull()
+      for (const dateRange of [
+        [['2024-01-01', '2024-01-31']],
+        ['2024-12-31', '2024-01-01'],
+        ['2024-02-30', '2024-03-01']
+      ]) {
+        expect(() => dateTimeBuilder.buildDateRangeCondition(fieldExpr, dateRange)).toThrow(/dateRange/)
+      }
+      expect(() => dateTimeBuilder.buildDateRangeCondition(fieldExpr, 'not a range')).toThrow(/dateRange/)
+      expect(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', [0, 86400])).not.toBeNull()
     })
 
     it('handles inDateRange with datetime strings (not date-only)', () => {

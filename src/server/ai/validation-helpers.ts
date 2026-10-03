@@ -6,6 +6,7 @@
  */
 
 import { t } from '../../i18n/runtime.js'
+import { validateInDateRange, inDateRangeDiagnostic } from '../builders/in-date-range-validation.js'
 import type { TranslationKey } from '../../i18n/types.js'
 import type { CubeMetadata } from '../types/metadata.js'
 import type { SemanticQuery, Filter } from '../types/query.js'
@@ -106,6 +107,10 @@ export function validateMemberFilter(
   findClosestField: (fieldName: string, available: string[]) => { field: string; distance: number } | null
 ): void {
   const member = filter.member
+  if (filter.operator === 'inDateRange') {
+    const result = validateInDateRange(filter.values, filter.dateRange)
+    if (!result.valid) errors.push({ type: 'invalid_filter', field: member, message: inDateRangeDiagnostic(member, result) })
+  }
   const parts = member.split('.')
   if (parts.length !== 2) {
     errors.push({

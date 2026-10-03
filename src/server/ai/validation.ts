@@ -247,12 +247,9 @@ function validateFilters(
 ): void {
   for (const filter of filters) {
     // Handle logical filters (AND/OR)
-    if ('and' in filter && Array.isArray(filter.and)) {
-      validateFilters(filter.and, metadata, errors, corrections)
-      continue
-    }
-    if ('or' in filter && Array.isArray(filter.or)) {
-      validateFilters(filter.or, metadata, errors, corrections)
+    if ('and' in filter || 'or' in filter) {
+      if (Array.isArray(filter.and)) validateFilters(filter.and, metadata, errors, corrections)
+      if (Array.isArray(filter.or)) validateFilters(filter.or, metadata, errors, corrections)
       continue
     }
 

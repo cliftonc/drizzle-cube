@@ -21,6 +21,22 @@ const mockMetadata: CubeMetadata[] = [{
   segments: []
 }]
 
+describe('AI Validation - date filters', () => {
+  it('rejects nested ranges in logical groups and accepts flat and relative values', () => {
+    const filter = (values: unknown[]): SemanticQuery => ({
+      measures: ['PREvents.count'],
+      filters: [{ or: [{ member: 'PREvents.timestamp', operator: 'inDateRange', values }] }]
+    })
+    const invalid = validateQuery(filter([['2024-01-01', '2024-01-31']]), mockMetadata)
+    expect(invalid.isValid).toBe(false)
+    expect(invalid.errors).toEqual(expect.arrayContaining([expect.objectContaining({
+      type: 'invalid_filter', field: 'PREvents.timestamp'
+    })]))
+    expect(validateQuery(filter(['2024-01-01', '2024-01-31']), mockMetadata).isValid).toBe(true)
+    expect(validateQuery(filter(['last 7 days']), mockMetadata).isValid).toBe(true)
+  })
+})
+
 describe('AI Validation - Funnel Queries', () => {
   it('should pass valid funnel query', () => {
     const query: SemanticQuery = {

@@ -463,15 +463,7 @@ describe('Filter Edge Cases', () => {
           ])
           .build()
 
-        // Should handle invalid dates gracefully
-        try {
-          const result = await testExecutor.executeQuery(query)
-          expect(result.data).toBeDefined()
-        } catch (error) {
-          // If error is thrown, it should be a validation error, not a crash
-          expect(error).toBeInstanceOf(Error)
-          expect((error as any).message).toMatch(/date|invalid|format/i)
-        }
+        await expect(testExecutor.executeQuery(query)).rejects.toThrow(/date|invalid|range/i)
       }
     })
 
@@ -495,13 +487,7 @@ describe('Filter Edge Cases', () => {
           ])
           .build()
 
-        // Should handle invalid date ranges appropriately
-        try {
-          const result = await testExecutor.executeQuery(query)
-          expect(result.data).toBeDefined()
-        } catch (error) {
-          expect(error).toBeInstanceOf(Error)
-        }
+        await expect(testExecutor.executeQuery(query)).rejects.toThrow(/date|invalid|range/i)
       }
     })
 
@@ -563,11 +549,15 @@ describe('Filter Edge Cases', () => {
           ])
           .build()
 
-        try {
-          const result = await testExecutor.executeQuery(query)
-          expect(result.data).toBeDefined()
-        } catch (error) {
-          expect(error).toBeInstanceOf(Error)
+        if (operator === 'inDateRange') {
+          await expect(testExecutor.executeQuery(query)).rejects.toThrow(/inDateRange/)
+        } else {
+          try {
+            const result = await testExecutor.executeQuery(query)
+            expect(result.data).toBeDefined()
+          } catch (error) {
+            expect(error).toBeInstanceOf(Error)
+          }
         }
       }
     })

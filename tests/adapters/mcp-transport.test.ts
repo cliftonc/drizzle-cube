@@ -3,7 +3,7 @@
  * Tests for Model Context Protocol transport utilities and JSON-RPC handling
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   negotiateProtocol,
   wantsEventStream,
@@ -39,6 +39,7 @@ import {
 } from '../../src/adapters/mcp-transport'
 import type { MCPResource } from '../../src/adapters/mcp-transport'
 import { createTestSemanticLayer } from '../helpers/test-database'
+import type { SemanticQuery } from '../../src/server/types/query'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
 
@@ -793,6 +794,15 @@ describe('MCP Transport Layer', () => {
         expect(toolNames).toContain('load')
       })
 
+      it('documents flat date values on load and chart tools', async () => {
+        const result = await dispatchMcpMethod('tools/list', {}, dispatchCtx) as any
+        for (const tool of result.tools.filter((tool: { name: string }) => ['load', 'chart'].includes(tool.name))) {
+          const values = tool.inputSchema.properties.query.properties.filters.items.properties.values
+          expect(values.items).not.toHaveProperty('items')
+          expect(values.description).toContain('flat')
+        }
+      })
+
       it('should have input schemas for tools', async () => {
         const result = await dispatchMcpMethod('tools/list', {}, dispatchCtx) as any
 
@@ -1016,6 +1026,41 @@ describe('MCP Transport Layer', () => {
         expect(parsed.sql).toHaveProperty('sql')
       })
 
+      it('rejects nested values without SQL and accepts flat and relative ranges', async () => {
+        const query: SemanticQuery = { measures: ['Employees.count'], filters: [{
+          member: 'Employees.createdAt', operator: 'inDateRange', values: [['2024-01-01', '2024-01-31']]
+        }] }
+        const call = async () => {
+          const response = await dispatchMcpMethod('tools/call', { name: 'validate', arguments: { query } }, dispatchCtx) as any
+          return JSON.parse(response.content[0].text)
+        }
+        const invalid = await call()
+        expect(invalid.isValid).toBe(false)
+        expect(invalid.errors.length).toBeGreaterThan(0)
+        expect(invalid).not.toHaveProperty('sql')
+        query.filters = [{ member: 'Employees.createdAt', operator: 'inDateRange', values: ['2024-01-01', '2024-01-31'] }]
+        const flat = await call()
+        expect(flat.isValid).toBe(true)
+        expect(flat.sql.sql).toMatch(/where/i)
+        query.filters = [{ member: 'Employees.createdAt', operator: 'inDateRange', values: ['last 7 days'] }]
+        expect((await call()).isValid).toBe(true)
+      })
+
+      it('reports dry-run failures instead of declaring success without SQL', async () => {
+        const spy = vi.spyOn(semanticLayer, 'dryRun').mockRejectedValueOnce(new Error('SQL generation failed'))
+        try {
+          const response = await dispatchMcpMethod('tools/call', {
+            name: 'validate', arguments: { query: { measures: ['Employees.count'] } }
+          }, dispatchCtx) as any
+          const parsed = JSON.parse(response.content[0].text)
+          expect(parsed.isValid).toBe(false)
+          expect(parsed.errors[0].message).toContain('SQL generation failed')
+          expect(parsed).not.toHaveProperty('sql')
+        } finally {
+          spy.mockRestore()
+        }
+      })
+
       it('should throw error without query', async () => {
         await expect(
           dispatchMcpMethod('tools/call', {
@@ -1027,6 +1072,14 @@ describe('MCP Transport Layer', () => {
     })
 
     describe('load via tools/call', () => {
+      it('rejects nested inDateRange without executing an unfiltered load', async () => {
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'load', arguments: { query: { measures: ['Employees.count'], filters: [{
+            member: 'Employees.createdAt', operator: 'inDateRange', values: [['2024-01-01', '2024-01-31']]
+          }] } }
+        }, dispatchCtx) as any
+        expect(result.isError).toBe(true)
+      })
       it('should execute query', async () => {
         const result = await dispatchMcpMethod('tools/call', {
           name: 'load',

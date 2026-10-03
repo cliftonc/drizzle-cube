@@ -329,9 +329,12 @@ export class CTEBuilder {
       const [filterCubeName, filterFieldName] = filterCondition.member.split('.')
       if (filterCubeName === cubeName && cube.dimensions?.[filterFieldName] && filterCondition.operator === 'inDateRange') {
         const fieldExpr = this.queryBuilder.buildMeasureExpression({ sql: cube.dimensions[filterFieldName].sql, type: 'number' }, context)
-        const dateCondition = this.queryBuilder.buildDateRangeCondition(
+        const dateCondition = this.queryBuilder.buildFilterConditionPublic(
           fieldExpr,
-          filterCondition.dateRange ?? filterCondition.values
+          filterCondition.operator,
+          filterCondition.values,
+          cube.dimensions[filterFieldName],
+          filterCondition.dateRange
         )
         if (dateCondition) {
           cteTimeFilters.push(dateCondition)

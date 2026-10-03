@@ -29,6 +29,7 @@ import {
 import type { FilterOperator } from '../types/index.js'
 import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import type { DateTimeBuilder } from './date-time-builder.js'
+import { validateInDateRange, inDateRangeDiagnostic } from './in-date-range-validation.js'
 
 /**
  * Context passed to every operator handler. Carries the resolved field
@@ -89,19 +90,14 @@ const handleNotSet: FilterOperatorHandler = ({ fieldExpr }) => isNull(fieldExpr 
 
 const handleInDateRange: FilterOperatorHandler = (ctx) => {
   const { fieldExpr, values, filteredValues, databaseAdapter, dateTimeBuilder } = ctx
-  // A single value is a date-range expression ('last 90 days', 'this month', or one
-  // absolute date) — resolve it exactly like `dateRange` (Cube.js-compatible).
-  if (filteredValues.length === 1 && typeof values[0] === 'string') {
-    return dateTimeBuilder.buildDateRangeCondition(fieldExpr, values[0])
-  }
-  if (filteredValues.length < 2) {
-    return null
-  }
+  const validation = validateInDateRange(values)
+  if (!validation.valid) throw new Error(inDateRangeDiagnostic('inDateRange', validation))
+  if (values.length === 1) return dateTimeBuilder.buildDateRangeCondition(fieldExpr, values[0])
   const startDate = dateTimeBuilder.normalizeDate(filteredValues[0])
   let endDate = dateTimeBuilder.normalizeDate(filteredValues[1])
 
-  if (!startDate || !endDate) {
-    return null
+  if (startDate === null || endDate === null) {
+    throw new Error(inDateRangeDiagnostic('inDateRange', { valid: false, reason: 'invalidDate', input: 'values' }))
   }
 
   // For date-only strings in original values, treat end date as end-of-day

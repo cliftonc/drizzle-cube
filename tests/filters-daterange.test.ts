@@ -122,7 +122,7 @@ describe('Filter dateRange Feature', () => {
       }
     })
 
-    it('should prioritize dateRange over values when both are provided', async () => {
+    it('rejects conflicting dateRange and values', async () => {
       const query: SemanticQuery = {
         measures: ['Employees.count'],
         filters: [
@@ -135,12 +135,21 @@ describe('Filter dateRange Feature', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
-
-      expect(result).toBeDefined()
-      expect(result.data).toBeInstanceOf(Array)
-      // Should use dateRange, not values
+      await expect(testExecutor.executeQuery(query)).rejects.toThrow(/inDateRange/)
     })
+  })
+
+  it('filters with flat values and rejects nested values', async () => {
+    const query: SemanticQuery = { measures: ['Employees.count'], filters: [{
+      member: 'Employees.createdAt', operator: 'inDateRange', values: ['2024-01-01', '2024-12-31']
+    }] }
+    const result = await testExecutor.executeQuery(query)
+    expect(result.data).toHaveLength(1)
+    expect(result.data[0]['Employees.count']).toBeGreaterThan(0)
+    query.filters = [{ member: 'Employees.createdAt', operator: 'inDateRange', values: [['2024-01-01', '2024-12-31']] }]
+    await expect(testExecutor.executeQuery(query)).rejects.toThrow(/inDateRange/)
+    query.filters = [{ member: 'Employees.createdAt', operator: 'inDateRange', values: ['last 7 days'] }]
+    expect((await testExecutor.executeQuery(query)).data).toHaveLength(1)
   })
 
   describe('Relative date range patterns', () => {

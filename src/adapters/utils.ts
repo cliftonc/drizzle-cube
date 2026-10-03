@@ -25,6 +25,7 @@ export { handleDiscover, handleLoad } from '../server/query-handlers.js'
 export type { DiscoverRequest, LoadRequest, DiscoverResponse } from '../server/query-handlers.js'
 export { formatSqlString } from '../server/sql-format.js'
 import { normalizeQueryFields } from '../server/query-handlers.js'
+import { t } from '../i18n/runtime.js'
 export { normalizeQueryFields }
 import type {
   MCPPromptResolver,
@@ -866,17 +867,25 @@ export async function handleValidate(
   const metadata = semanticLayer.getMetadata(securityContext)
   const result = await aiValidateQuery(body.query, metadata)
 
-  if (result.isValid) {
-    try {
-      const query = normalizeQueryFields(
-        (result.correctedQuery ?? body.query) as Record<string, unknown>
-      ) as SemanticQuery
-      const dryRun = await semanticLayer.dryRun(query, securityContext)
-      return { ...result, sql: dryRun }
-    } catch {
-      return result
+  const cubeValidation = semanticLayer.validateQuery(body.query, securityContext)
+  if (!cubeValidation.isValid) {
+    return {
+      ...result,
+      isValid: false,
+      errors: [...result.errors, ...cubeValidation.errors.map(message => ({ type: 'invalid_filter' as const, message }))]
     }
   }
+  if (!result.isValid) return result
 
-  return result
+  try {
+    const query = normalizeQueryFields(
+      (result.correctedQuery ?? body.query) as Record<string, unknown>
+    ) as SemanticQuery
+    const dryRun = await semanticLayer.dryRun(query, securityContext)
+    return { ...result, sql: dryRun }
+  } catch (error) {
+    return { ...result, isValid: false, errors: [...result.errors, {
+      type: 'syntax_error', message: t('server.validation.ai.dryRunFailed', { error: String(error) })
+    }] }
+  }
 }

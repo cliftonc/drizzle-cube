@@ -106,7 +106,7 @@ test.each([{ values: savedRange }, { values: [] }, { values: changedRange }])('s
   fireEvent.change(end, { target: { value: changedRange[1] } })
   await user.click(screen.getByRole('button', { name: 'Save dashboard' }))
   expect(savedFilters()[0].filter).toEqual({
-    member: 'History.snapshotDate', operator: 'inDateRange', values: changedRange, dateRange: changedRange
+    member: 'History.snapshotDate', operator: 'inDateRange', values: [], dateRange: changedRange
   })
   expect(savedFilters()[1]).toEqual(independentFilter)
   await user.click(screen.getByRole('button', { name: 'Reopen dashboard' }))
@@ -150,7 +150,7 @@ test('should preserve the other date while a range is incomplete and finish the 
   fireEvent.change(start, { target: { value: changedRange[0] } })
   fireEvent.change(end, { target: { value: changedRange[1] } })
   await user.click(screen.getByRole('button', { name: 'Save dashboard' }))
-  expect(savedFilters()[0].filter).toMatchObject({ values: changedRange, dateRange: changedRange })
+  expect(savedFilters()[0].filter).toMatchObject({ values: [], dateRange: changedRange })
   expectValidReportQuery()
 })
 
@@ -189,7 +189,7 @@ test('should save and reopen a relative universal range without resolving it to 
   await user.click(screen.getAllByRole('button', { name: '12M' })[0])
   await user.click(screen.getByRole('button', { name: 'Save dashboard' }))
   expect(savedFilters()[0].filter).toEqual({
-    member: '__universal_time__', operator: 'inDateRange', values: ['last 12 months'], dateRange: 'last 12 months'
+    member: '__universal_time__', operator: 'inDateRange', values: [], dateRange: 'last 12 months'
   })
   await user.click(screen.getByRole('button', { name: 'Reopen dashboard' }))
   expect(screen.getByLabelText('Report filters')).toHaveTextContent('last 12 months')

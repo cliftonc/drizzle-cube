@@ -58,25 +58,28 @@ export function isDateOnlyString(value: unknown): value is string {
 }
 
 /** Parse a string/number/Date into a validated Date, or null if invalid. */
-function toValidDate(value: any): Date | null {
+export function toValidDate(value: unknown): Date | null {
   if (value instanceof Date) {
-    return isNaN(value.getTime()) ? null : value
+    return Number.isFinite(value.getTime()) ? value : null
   }
   if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return null
     // Reasonable Unix timestamp in seconds (10 digits) → ms, else assume ms
     const timestamp = value < 10000000000 ? value * 1000 : value
     const date = new Date(timestamp)
     return isNaN(date.getTime()) ? null : date
   }
   if (typeof value === 'string') {
+    if (!value.trim() || value.includes('\x00')) return null
     // Date-only string → parse as UTC midnight to avoid timezone/DST issues
     const parsed = isDateOnlyString(value)
       ? new Date(value + 'T00:00:00Z')
       : new Date(value)
-    return isNaN(parsed.getTime()) ? null : parsed
+    if (!Number.isFinite(parsed.getTime())) return null
+    if (isDateOnlyString(value) && parsed.toISOString().slice(0, 10) !== value.trim()) return null
+    return parsed
   }
-  const parsed = new Date(value)
-  return isNaN(parsed.getTime()) ? null : parsed
+  return null
 }
 
 /**
@@ -87,7 +90,7 @@ export function normalizeDateValue(
   databaseAdapter: DatabaseAdapter,
   value: any
 ): string | number | null {
-  if (!value) return null
+  if (value === null || value === undefined || value === '') return null
   const date = toValidDate(value)
   if (!date) return null
   return dateToEngineValue(databaseAdapter, date)
