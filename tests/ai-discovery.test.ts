@@ -161,4 +161,46 @@ describe('AI Discovery Capabilities', () => {
       }
     })
   })
+
+  // A user-defined (EAV) attribute is addressed by a generated slot name, so its
+  // title is the only thing that says what it is. Discovery matches on that
+  // title, so returning the name alone hands back an opaque identifier.
+  describe('field titles for generated attribute dimensions', () => {
+    const cubeWithAttribute: CubeMetadata = {
+      name: 'Employees',
+      title: 'Employees',
+      description: 'Employee records',
+      measures: [
+        { name: 'Employees.count', title: 'Count', shortTitle: 'Count', type: 'count' }
+      ],
+      dimensions: [
+        { name: 'Employees.name', title: 'Name', shortTitle: 'Name', type: 'string' },
+        { name: 'Employees.createdAt', title: 'Created At', shortTitle: 'Created', type: 'time' },
+        { name: 'Employees.attr_2', title: 'Completion %', shortTitle: 'Completion', type: 'number' }
+      ],
+      segments: []
+    }
+
+    it('returns the title of a field whose name does not say what it is', () => {
+      const results = discoverCubes([cubeWithAttribute], { topic: 'completion' })
+
+      expect(results[0].suggestedDimensions).toContain('Employees.attr_2')
+      expect(results[0].fieldTitles).toEqual({ 'Employees.attr_2': 'Completion %' })
+    })
+
+    it('does not repeat a title the field name already carries', () => {
+      const results = discoverCubes([cubeWithAttribute], {})
+      const titles = results[0].fieldTitles ?? {}
+
+      expect(Object.keys(titles)).toEqual(['Employees.attr_2'])
+      expect(titles['Employees.name']).toBeUndefined()
+      expect(titles['Employees.createdAt']).toBeUndefined()
+    })
+
+    it('omits the map entirely for cubes whose names are self-describing', () => {
+      const results = discoverCubes([mockCubeWithoutEventStream], { topic: 'employees' })
+
+      expect(results[0].fieldTitles).toBeUndefined()
+    })
+  })
 })

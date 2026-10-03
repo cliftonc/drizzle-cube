@@ -15,11 +15,14 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { getIcon } from '../icons/index.js'
+import { useTranslation } from '../hooks/useTranslation.js'
 import { COLOR_PALETTES } from '../utils/colorPalettes.js'
 import type { DashboardLayoutMode } from '../types.js'
 
 const EditIcon = getIcon('edit')
 const CheckIcon = getIcon('check')
+const DownloadIcon = getIcon('download')
+const UploadIcon = getIcon('upload')
 const GridIcon = getIcon('segment')
 const RowsIcon = getIcon('table')
 const AddIcon = getIcon('add')
@@ -40,6 +43,8 @@ interface FloatingEditToolbarProps {
   position: 'left' | 'right'
   /** Whether currently in edit mode */
   isEditMode: boolean
+  /** Whether the dashboard can be edited at all; when false only the export action is offered (default true) */
+  canEdit?: boolean
   /** Toggle edit mode on/off */
   onEditModeToggle: () => void
   /** Current layout mode */
@@ -58,12 +63,17 @@ interface FloatingEditToolbarProps {
   onAddPortlet: () => void
   /** Add new text portlet */
   onAddText?: () => void
+  /** Export the dashboard as JSON (features.dashboardImportExport); button hidden when absent */
+  onExportDashboard?: () => void
+  /** Import a dashboard JSON file, replacing this one; button hidden when absent, edit mode only */
+  onImportDashboard?: () => void
 }
 
 export default function FloatingEditToolbar({
   isEditBarVisible,
   position,
   isEditMode,
+  canEdit = true,
   onEditModeToggle,
   layoutMode,
   onLayoutModeChange,
@@ -72,8 +82,11 @@ export default function FloatingEditToolbar({
   currentPalette,
   onPaletteChange,
   onAddPortlet,
-  onAddText
+  onAddText,
+  onExportDashboard,
+  onImportDashboard
 }: FloatingEditToolbarProps) {
+  const { t } = useTranslation()
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
   const paletteRef = useRef<HTMLDivElement>(null)
 
@@ -121,13 +134,36 @@ export default function FloatingEditToolbar({
         boxShadow: 'var(--dc-shadow-lg)'
       }}
     >
-      {/* Edit Toggle */}
-      <ToolbarButton
-        icon={isEditMode ? CheckIcon : EditIcon}
-        tooltip={isEditMode ? 'Finish Editing' : 'Edit Dashboard'}
-        isActive={isEditMode}
-        onClick={onEditModeToggle}
-      />
+      {/* Edit Toggle - omitted on a read-only dashboard */}
+      {canEdit && (
+        <ToolbarButton
+          icon={isEditMode ? CheckIcon : EditIcon}
+          tooltip={isEditMode ? 'Finish Editing' : 'Edit Dashboard'}
+          isActive={isEditMode}
+          onClick={onEditModeToggle}
+        />
+      )}
+
+      {/* Export / Import - export in any mode, import only while editing */}
+      {(onExportDashboard || (isEditMode && onImportDashboard)) && (
+        <>
+          {canEdit && <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />}
+          {onExportDashboard && (
+            <ToolbarButton
+              icon={DownloadIcon}
+              tooltip={t('dashboard.export.tooltip')}
+              onClick={onExportDashboard}
+            />
+          )}
+          {isEditMode && onImportDashboard && (
+            <ToolbarButton
+              icon={UploadIcon}
+              tooltip={t('dashboard.import.tooltip')}
+              onClick={onImportDashboard}
+            />
+          )}
+        </>
+      )}
 
       {/* Layout Mode Switcher - only in edit mode with multiple modes */}
       {isEditMode && allowedModes.length > 1 && (

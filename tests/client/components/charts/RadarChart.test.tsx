@@ -17,7 +17,7 @@ import RadarChart from '../../../../src/client/components/charts/RadarChart'
 
 // Mock ChartContainer to bypass the dimension check and render children immediately
 vi.mock('../../../../src/client/components/charts/ChartContainer', () => ({
-  default: ({ children, height }: { children: React.ReactElement; height?: string | number }) => {
+  default: ({ children, height }: { children: React.ReactElement<{ width?: number; height?: number }>; height?: string | number }) => {
     const heightStyle = typeof height === 'number' ? `${height}px` : (height || '100%')
     return (
       <div style={{ height: heightStyle, width: '100%' }} data-testid="chart-container">
@@ -199,7 +199,7 @@ describe('RadarChart', () => {
       )
 
       const chartContainer = container.querySelector('[data-testid="chart-container"]')
-      expect(chartContainer).toHaveStyle({ height: '50vh' })
+      expect((chartContainer as HTMLElement).style.height).toBe('50vh')
     })
   })
 

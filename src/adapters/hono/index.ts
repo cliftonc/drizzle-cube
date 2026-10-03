@@ -245,7 +245,7 @@ export function createCubeRoutes(
   app.post(`${basePath}/load`, (c) => httpHandler.handleLoadPost(createHonoPort(c), baseContext(c)))
   app.get(`${basePath}/load`, (c) => httpHandler.handleLoadGet(createHonoPort(c), baseContext(c)))
   app.post(`${basePath}/batch`, (c) => httpHandler.handleBatchPost(createHonoPort(c), baseContext(c)))
-  app.get(`${basePath}/meta`, (c) => httpHandler.handleMetaGet(createHonoPort(c)))
+  app.get(`${basePath}/meta`, (c) => httpHandler.handleMetaGet(createHonoPort(c), baseContext(c)))
   app.post(`${basePath}/sql`, (c) => httpHandler.handleSqlPost(createHonoPort(c), baseContext(c)))
   app.get(`${basePath}/sql`, (c) => httpHandler.handleSqlGet(createHonoPort(c), baseContext(c)))
   app.post(`${basePath}/dry-run`, (c) => httpHandler.handleDryRunPost(createHonoPort(c), baseContext(c)))

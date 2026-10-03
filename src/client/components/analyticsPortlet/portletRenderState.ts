@@ -23,6 +23,13 @@ export interface PortletRenderStateParams {
   hasChartConfig: boolean
   hasMandatoryFields: boolean
   shouldSkipQuery: boolean
+  /**
+   * Whether the chart has something to show even with no rows — true for the
+   * content-first types, meaning those whose config sets `skipQuery`. A
+   * markdown narrative whose whole job is to say "no incidents this week" must
+   * survive an empty result rather than being replaced by the no-data view.
+   */
+  rendersWithoutData: boolean
   eagerLoad: boolean
   isVisible: boolean
   isLoading: boolean
@@ -75,7 +82,8 @@ export function resolvePortletRenderKind(p: PortletRenderStateParams): PortletRe
 
   if (p.error) return 'error'
 
-  if (!hasValidDataForMode(p)) return 'no-data'
+  // A content-first chart renders its own copy whether or not rows came back.
+  if (!hasValidDataForMode(p)) return p.rendersWithoutData ? 'chart' : 'no-data'
 
   return 'chart'
 }

@@ -76,7 +76,9 @@ const features = {
     format: 'png' as const
   },
   // XLSX data export from portlets (requires exceljs)
-  xlsExport: { enabled: true }
+  xlsExport: { enabled: true },
+  // Dashboard export/import as a JSON file (toolbar buttons)
+  dashboardImportExport: { enabled: true }
 }
 
 function App() {

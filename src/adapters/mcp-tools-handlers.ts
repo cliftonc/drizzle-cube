@@ -24,15 +24,26 @@ export interface CubeToolHandlerDeps {
   wrapError: (error: unknown) => MCPToolResult
 }
 
-/** Execute the `discover` tool. */
-export function runDiscoverTool(
+/**
+ * Execute the `discover` tool. Reads the caller's cube set, so it resolves a
+ * security context first — discovery has no unauthenticated mode.
+ */
+export async function runDiscoverTool(
   deps: CubeToolHandlerDeps,
-  args: unknown
+  args: unknown,
+  meta?: unknown
 ): Promise<MCPToolResult> {
-  return handleDiscover(deps.semanticLayer, (args || {}) as DiscoverRequest).then(deps.wrapContent)
+  const securityContext = await deps.getSecurityContext(meta)
+  return deps.wrapContent(
+    await handleDiscover(deps.semanticLayer, securityContext, (args || {}) as DiscoverRequest)
+  )
 }
 
-/** Execute the `validate` tool — security context is optional (SQL omitted without auth). */
+/**
+ * Execute the `validate` tool. The security context is required: validation is
+ * against the caller's cube set, so a caller whose context cannot be resolved
+ * gets an error rather than a base-set answer with the SQL omitted.
+ */
 export async function runValidateTool(
   deps: CubeToolHandlerDeps,
   args: unknown,
@@ -42,11 +53,8 @@ export async function runValidateTool(
   if (!body.query) {
     return deps.wrapError('query is required')
   }
-  let securityContext: SecurityContext | undefined
-  try {
-    securityContext = await deps.getSecurityContext(meta) as SecurityContext
-  } catch { /* validate works without auth — SQL just won't be included */ }
-  return deps.wrapContent(await handleValidate(deps.semanticLayer, body, securityContext))
+  const securityContext = await deps.getSecurityContext(meta)
+  return deps.wrapContent(await handleValidate(deps.semanticLayer, securityContext, body))
 }
 
 /**

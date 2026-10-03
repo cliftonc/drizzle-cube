@@ -11,8 +11,7 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"],
-    "baseUrl": "."
+    "types": ["node"]
   },
   "include": [
     "server/**/*.ts",

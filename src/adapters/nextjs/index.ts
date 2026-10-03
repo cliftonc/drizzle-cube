@@ -80,9 +80,12 @@ export interface NextCorsOptions {
 
 export interface NextAdapterOptions {
   /**
-   * Array of cube definitions to register
+   * Array of cube definitions to register.
+   * Required unless `semanticLayer` is provided — `createSemanticLayer` returns
+   * an injected compiler untouched, so a caller managing their own (which
+   * per-tenant cube sets require) supplies no cubes here.
    */
-  cubes: Cube[]
+  cubes?: Cube[]
 
   /**
    * Drizzle database instance (REQUIRED)
@@ -413,10 +416,10 @@ export function createLoadHandler(
 export function createMetaHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { httpHandler, corsHeaders } = createNextCore(options)
+  const { httpHandler, corsHeaders, baseContext } = createNextCore(options)
 
-  return async function metaHandler(request: NextRequest, _context?: RouteContext) {
-    return httpHandler.handleMetaGet(createNextPort(request, corsHeaders(request)))
+  return async function metaHandler(request: NextRequest, context?: RouteContext) {
+    return httpHandler.handleMetaGet(createNextPort(request, corsHeaders(request)), baseContext(request, context))
   }
 }
 
@@ -502,12 +505,12 @@ export function createExplainHandler(
 export function createDiscoverHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { cors } = getLocaleAwareRequestOptions(options)
+  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
 
-  return async function discoverHandler(request: NextRequest, _context?: RouteContext) {
+  return async function discoverHandler(request: NextRequest, context?: RouteContext) {
     try {
       if (request.method !== 'POST') {
         return NextResponse.json(
@@ -517,7 +520,9 @@ export function createDiscoverHandler(
       }
 
       const body = await request.json() as DiscoverRequest
-      const result = await handleDiscover(semanticLayer, body)
+      // Discovery returns the caller's cube set, so it is scoped by their context.
+      const securityContext = await extractSecurityContext(request, context)
+      const result = await handleDiscover(semanticLayer, securityContext, body)
 
       return NextResponse.json(result, {
         headers: cors ? getCorsHeaders(request, cors) : {}
@@ -544,12 +549,12 @@ export function createDiscoverHandler(
 export function createSuggestHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { cors } = getLocaleAwareRequestOptions(options)
+  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
 
-  return async function suggestHandler(request: NextRequest, _context?: RouteContext) {
+  return async function suggestHandler(request: NextRequest, context?: RouteContext) {
     try {
       if (request.method !== 'POST') {
         return NextResponse.json(
@@ -566,7 +571,9 @@ export function createSuggestHandler(
         )
       }
 
-      const result = await handleSuggest(semanticLayer, body)
+      // Suggestions are derived from cube metadata — scoped to this caller.
+      const securityContext = await extractSecurityContext(request, context)
+      const result = await handleSuggest(semanticLayer, securityContext, body)
 
       return NextResponse.json(result, {
         headers: cors ? getCorsHeaders(request, cors) : {}
@@ -593,12 +600,12 @@ export function createSuggestHandler(
 export function createValidateHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { cors } = getLocaleAwareRequestOptions(options)
+  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
 
-  return async function validateHandler(request: NextRequest, _context?: RouteContext) {
+  return async function validateHandler(request: NextRequest, context?: RouteContext) {
     try {
       if (request.method !== 'POST') {
         return NextResponse.json(
@@ -615,7 +622,9 @@ export function createValidateHandler(
         )
       }
 
-      const result = await handleValidate(semanticLayer, body)
+      // Validation is against this caller's cubes; the context is required.
+      const securityContext = await extractSecurityContext(request, context)
+      const result = await handleValidate(semanticLayer, securityContext, body)
 
       return NextResponse.json(result, {
         headers: cors ? getCorsHeaders(request, cors) : {}

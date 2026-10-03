@@ -21,10 +21,17 @@ export default defineConfig({
     // DuckDB/Databend need threads pool to avoid overwhelming the database
     // Other databases can use the default forks pool
     pool: useSingleThreadPool ? 'threads' : 'forks',
-    // Databend single-node is memory-hungry and crashes under concurrent load
-    // Limit to 1 worker to serialize test file execution
-    ...(isDatabend ? { maxThreads: 1, minThreads: 1 } : {}),
-    ...(isSnowflake ? { maxThreads: 1, minThreads: 1 } : {}),
+    // Serialize test file execution for the engines that cannot take concurrent
+    // workers:
+    // - Databend single-node is memory-hungry and crashes under concurrent load
+    // - Snowflake is rate-limited and remote
+    // - DuckDB's native prepared-statement execution is not safe across worker
+    //   threads: the same workload over 8 threads produces ~1% "Failed to execute
+    //   prepared statement" errors, versus ~0.03% on a single thread
+    //
+    // This must be maxWorkers. Vitest 4 ignores the maxThreads/minThreads keys
+    // this previously used, so the limit silently never applied.
+    ...(useSingleThreadPool ? { maxWorkers: 1 } : {}),
     // Retry failed tests for DuckDB only (handles intermittent prepared statement errors)
     retry: isDuckDB ? 2 : 0,
     env: {

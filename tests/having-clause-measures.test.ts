@@ -194,7 +194,9 @@ describe('HAVING Clause for Measure Filters', () => {
       expect(validation.isValid).toBe(true)
     })
 
-    it('should handle OR logic with mixed dimension and measure filters', async () => {
+    it('should reject OR logic mixing dimension and measure filters', async () => {
+      // WHERE (dimension) and HAVING (measure) can only be ANDed together, so an OR
+      // across them cannot be expressed — it used to silently become an AND.
       const query = TestQueryBuilder.create()
         .measures(['Employees.count'])
         .dimensions(['Employees.departmentId'])
@@ -208,23 +210,7 @@ describe('HAVING Clause for Measure Filters', () => {
         ])
         .build()
 
-      const sqlResult = await executor.generateSQL(
-        cubes.get('Employees')!, 
-        query, 
-        testSecurityContexts.org1
-      )
-
-      // Should have both WHERE and HAVING clauses
-      expect(sqlResult.sql.toLowerCase()).toContain('where')
-      expect(sqlResult.sql.toLowerCase()).toContain('having')
-      
-      // Verify query executes correctly
-      const { validation } = await testExecutor.validateQuery(
-        query,
-        ['Employees.count', 'Employees.departmentId']
-      )
-
-      expect(validation.isValid).toBe(true)
+      await expect(testExecutor.executeQuery(query)).rejects.toThrow(/cannot mix measure filters/)
     })
   })
 

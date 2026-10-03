@@ -22,6 +22,7 @@ import { FilterBuilder } from '../src/server/builders/filter-builder'
 import { DateTimeBuilder } from '../src/server/builders/date-time-builder'
 import type { DatabaseAdapter, WindowFunctionType, WindowFunctionConfig } from '../src/server/adapters/base-adapter'
 import type { TimeGranularity, QueryContext, Cube, PhysicalQueryPlan } from '../src/server/types'
+import { testCastHelpers } from './helpers/query-context'
 
 // ============================================
 // Mock Database Adapters
@@ -202,7 +203,8 @@ function createMockQueryContext(): QueryContext {
   return {
     db: {} as any,
     schema: {} as any,
-    securityContext: { organisationId: 'org-1' }
+    securityContext: { organisationId: 'org-1' },
+    ...testCastHelpers()
   }
 }
 
@@ -2235,12 +2237,18 @@ describe('FilterBuilder', () => {
   })
 
   describe('InDateRange Edge Cases', () => {
-    it('returns null when inDateRange has fewer than 2 values', () => {
+    it('resolves a single inDateRange value like dateRange (whole day / relative range)', () => {
+      const fieldExpr = createMockColumn()
+      expect(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', ['2024-01-01'])).not.toBeNull()
+      expect(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', ['last 7 days'])).not.toBeNull()
+    })
+
+    it('returns null when a single inDateRange value cannot be resolved', () => {
       const fieldExpr = createMockColumn()
       const result = filterBuilder.buildFilterCondition(
         fieldExpr,
         'inDateRange',
-        ['2024-01-01'] // Only 1 value
+        ['not a date range']
       )
       expect(result).toBeNull()
     })

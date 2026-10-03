@@ -32,10 +32,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -54,10 +54,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -67,6 +67,16 @@ jobs:
 
       - name: Build server
         run: npm run build:server
+
+      - name: Build MCP app
+        run: npm run build:mcp-app
+
+      - name: Verify checked-in MCP app bundle is up to date
+        run: |
+          git diff --exit-code src/mcp-app/generated-html.ts || {
+            echo "::error file=src/mcp-app/generated-html.ts::Stale MCP app bundle. Run 'npm run build:mcp-app' and commit the result."
+            exit 1
+          }
 
       - name: Build client
         run: npm run build:client
@@ -81,7 +91,7 @@ jobs:
         run: npm run check:exports
 
       - name: Cache build artifacts
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: dist/
           key: ${{ runner.os }}-build-${{ github.sha }}
@@ -108,10 +118,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -135,7 +145,7 @@ jobs:
 
     services:
       mysql:
-        image: mysql:9.7
+        image: mysql:26.7
         env:
           MYSQL_ROOT_PASSWORD: test
           MYSQL_DATABASE: drizzle_cube_test
@@ -151,10 +161,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -178,10 +188,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -194,39 +204,28 @@ jobs:
         env:
           TEST_DB_TYPE: sqlite
 
-  # test-duckdb:
-  #   runs-on: ubuntu-latest
+  test-duckdb:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-test == 'true'
+    runs-on: ubuntu-latest
 
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v6
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
 
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v6
-  #       with:
-  #         node-version: '24'
-  #         cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
 
-  #     # The @leonardovida-md/drizzle-neo-duckdb package has a bug - it includes
-  #     # @duckdb/node-bindings-darwin-arm64 as a hard dependency instead of optional.
-  #     # We work around this by adding an npm override to replace it with an empty package.
-  #     # The @duckdb/node-api package correctly brings in Linux bindings via optionalDeps.
-  #     - name: Patch package.json for Linux DuckDB support
-  #       run: |
-  #         node -e "
-  #           const pkg = require('./package.json');
-  #           pkg.overrides = pkg.overrides || {};
-  #           pkg.overrides['@duckdb/node-bindings-darwin-arm64'] = 'npm:empty-npm-package@1.0.0';
-  #           require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-  #         "
+      - name: Install dependencies
+        run: npm ci
 
-  #     - name: Install dependencies
-  #       run: npm install
-
-  #     - name: Run tests (DuckDB)
-  #       run: npm run test:server
-  #       env:
-  #         TEST_DB_TYPE: duckdb
+      - name: Run tests (DuckDB)
+        run: npm run test:server
+        env:
+          TEST_DB_TYPE: duckdb
 
   test-databend:
     needs: detect-changes
@@ -251,10 +250,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -279,10 +278,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'
@@ -307,10 +306,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: 'npm'

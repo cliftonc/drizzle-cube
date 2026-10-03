@@ -24,7 +24,7 @@ import type {
 import { resolveFilterFieldExpr } from '../cube-utils.js'
 import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import { DateTimeBuilder } from './date-time-builder.js'
-import { applyFilterOperator } from './filter-operators.js'
+import { applyFilterOperator, NO_VALUE_FILTER_OPERATORS } from './filter-operators.js'
 import { asGroupFilter } from './analysis-utils.js'
 
 export class FilterBuilder {
@@ -64,6 +64,20 @@ export class FilterBuilder {
       return this.dateTimeBuilder.buildDateRangeCondition(fieldExpr, dateRange)
     }
 
+    // Operators that take no values (set/notSet/isEmpty/isNotEmpty) must not be
+    // dropped by the empty-values guards below.
+    if (NO_VALUE_FILTER_OPERATORS.has(operator)) {
+      return applyFilterOperator(operator, {
+        fieldExpr,
+        values: values ?? [],
+        filteredValues: [],
+        value: undefined,
+        field,
+        databaseAdapter: this.databaseAdapter,
+        dateTimeBuilder: this.dateTimeBuilder
+      })
+    }
+
     // Handle empty values
     if (!values || values.length === 0) {
       // For empty equals filter, return condition that matches nothing
@@ -82,8 +96,8 @@ export class FilterBuilder {
       return true
     }).map(this.databaseAdapter.convertFilterValue)
 
-    // For certain operators, we need at least one non-empty value
-    if (filteredValues.length === 0 && !['set', 'notSet'].includes(operator)) {
+    // Every remaining operator needs at least one non-empty value
+    if (filteredValues.length === 0) {
       // For empty equals filter, return condition that matches nothing
       if (operator === 'equals') {
         return this.databaseAdapter.buildBooleanLiteral(false)

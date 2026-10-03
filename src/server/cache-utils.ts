@@ -31,12 +31,17 @@ export interface CacheKeyConfig {
  * @param query - The semantic query to cache
  * @param securityContext - Security context for tenant isolation
  * @param config - Cache key configuration
+ * @param cubeSetKey - Identifies the cube definitions behind the result. Always
+ *   included when present: `includeSecurityContext: false` and a custom
+ *   `securityContextSerializer` can each hash two tenants identically, so the
+ *   security-context hash alone cannot keep differing cube sets apart.
  * @returns Deterministic cache key string
  */
 export function generateCacheKey(
   query: SemanticQuery,
   securityContext: SecurityContext,
-  config: CacheKeyConfig = {}
+  config: CacheKeyConfig = {},
+  cubeSetKey?: string
 ): string {
   const prefix = config.keyPrefix ?? 'drizzle-cube:'
 
@@ -53,6 +58,10 @@ export function generateCacheKey(
       : JSON.stringify(sortObject(securityContext))
     const ctxHash = strongHash(ctxString)
     key += `:ctx:${ctxHash}`
+  }
+
+  if (cubeSetKey) {
+    key += `:cubes:${cubeSetKey}`
   }
 
   return key
@@ -77,6 +86,13 @@ export function normalizeQuery(query: SemanticQuery): SemanticQuery {
     offset: query.offset,
     order: query.order ? sortObject(query.order) : undefined,
     fillMissingDatesValue: query.fillMissingDatesValue,
+    // Grouped and ungrouped runs of otherwise-identical queries return
+    // structurally different data (aggregates vs raw rows), so they must not
+    // share a cache entry.
+    ungrouped: query.ungrouped,
+    // The cached QueryResult carries `total` (or not), so the two shapes are
+    // distinct entries rather than one served for both.
+    total: query.total,
     // Include funnel config in cache key for proper cache invalidation
     funnel: query.funnel ? normalizeFunnelConfig(query.funnel) : undefined,
     // Include flow config in cache key for proper cache invalidation

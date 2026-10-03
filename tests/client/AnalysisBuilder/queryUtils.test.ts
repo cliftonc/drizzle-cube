@@ -7,136 +7,16 @@ import { describe, it, expect } from 'vitest'
 import type { MetricItem, BreakdownItem } from '../../../src/client/components/AnalysisBuilder/types'
 import type { Filter } from '../../../src/client/types'
 
-// Import the functions we're testing from index.tsx
-// These will be moved to utils/queryUtils.ts during refactoring
-// For now, we copy the implementations here to establish the test contract
-
-/**
- * Convert metrics and breakdowns to CubeQuery format
- * Handles comparison mode for time dimensions
- */
-function buildCubeQuery(
-  metrics: MetricItem[],
-  breakdowns: BreakdownItem[],
-  filters: Filter[],
-  order?: Record<string, 'asc' | 'desc'>
-) {
-  // Find time dimensions with comparison enabled
-  const comparisonFields = breakdowns
-    .filter((b) => b.isTimeDimension && b.enableComparison)
-    .map((b) => b.field)
-
-  // Remove date filters for comparison-enabled time dimensions
-  let filteredFilters = filters
-  for (const field of comparisonFields) {
-    filteredFilters = removeComparisonDateFilter(filteredFilters, field)
-  }
-
-  const query: any = {
-    measures: metrics.map((m) => m.field),
-    dimensions: breakdowns.filter((b) => !b.isTimeDimension).map((b) => b.field),
-    timeDimensions: breakdowns
-      .filter((b) => b.isTimeDimension)
-      .map((b) => {
-        const td: any = {
-          dimension: b.field,
-          granularity: b.granularity || 'day'
-        }
-
-        // If comparison is enabled, build compareDateRange from the ORIGINAL filter
-        if (b.enableComparison) {
-          const compareDateRange = buildCompareDateRangeFromFilter(b.field, filters)
-          if (compareDateRange) {
-            td.compareDateRange = compareDateRange
-          }
-        }
-
-        return td
-      }),
-    filters: filteredFilters.length > 0 ? filteredFilters : undefined,
-    order: order && Object.keys(order).length > 0 ? order : undefined
-  }
-
-  // Clean up empty arrays
-  if (query.measures?.length === 0) delete query.measures
-  if (query.dimensions?.length === 0) delete query.dimensions
-  if (query.timeDimensions?.length === 0) delete query.timeDimensions
-
-  return query
-}
-
-/**
- * Find date filter for a specific time dimension field
- */
-function findDateFilterForField(
-  filters: Filter[],
-  field: string
-): { dateRange: string | string[] } | undefined {
-  for (const filter of filters) {
-    if ('type' in filter && 'filters' in filter) {
-      const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
-      const nested = findDateFilterForField(groupFilter.filters, field)
-      if (nested) return nested
-    } else if ('member' in filter) {
-      const simple = filter as { member: string; operator?: string; dateRange?: string | string[] }
-      if (simple.member === field && simple.operator === 'inDateRange' && simple.dateRange) {
-        return { dateRange: simple.dateRange }
-      }
-    }
-  }
-  return undefined
-}
-
-/**
- * Remove date filter for a specific field from filters array
- */
-function removeComparisonDateFilter(filters: Filter[], field: string): Filter[] {
-  return filters.reduce<Filter[]>((acc, filter) => {
-    if ('type' in filter && 'filters' in filter) {
-      const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
-      const cleanedSubFilters = removeComparisonDateFilter(groupFilter.filters, field)
-      if (cleanedSubFilters.length > 0) {
-        acc.push({ type: groupFilter.type, filters: cleanedSubFilters } as Filter)
-      }
-    } else if ('member' in filter) {
-      const simple = filter as { member: string; operator?: string; dateRange?: string | string[] }
-      if (!(simple.member === field && simple.operator === 'inDateRange')) {
-        acc.push(filter)
-      }
-    } else {
-      acc.push(filter)
-    }
-    return acc
-  }, [])
-}
-
-/**
- * Build compareDateRange for a time dimension based on its date filter
- * Stub for now - actual implementation uses date-utils
- */
-function buildCompareDateRangeFromFilter(
-  _timeDimensionField: string,
-  _filters: Filter[]
-): [string, string][] | undefined {
-  // This will use parseDateRange and calculatePriorPeriod from date-utils
-  // For testing, we just verify the function is called correctly
-  return undefined
-}
-
-/**
- * Check if a query has any content
- */
-function hasQueryContent(
-  metrics: MetricItem[],
-  breakdowns: BreakdownItem[],
-  filters: Filter[]
-): boolean {
-  return metrics.length > 0 || breakdowns.length > 0 || filters.length > 0
-}
-
-// =============================================================================
-// Tests
-// =============================================================================
+// The real implementations, not copies. This file used to redefine each
+// function locally "until the refactoring lands" — which meant it asserted
+// nothing about the shipped code, and quietly went on passing while the real
+// `buildCubeQuery` changed.
+import {
+  buildCubeQuery,
+  hasQueryContent
+} from '../../../src/client/components/AnalysisBuilder/utils/queryUtils'
+import { removeComparisonDateFilter } from '../../../src/client/components/AnalysisBuilder/utils/filterUtils'
+import { findDateFilterForField } from '../../../src/client/shared/filters/filterOperations'
 
 describe('queryUtils', () => {
   describe('buildCubeQuery', () => {
@@ -478,6 +358,26 @@ describe('queryUtils', () => {
       const breakdowns: BreakdownItem[] = [{ id: '1', field: 'Employees.department', isTimeDimension: false }]
       const filters: Filter[] = [{ member: 'Employees.isActive', operator: 'equals', values: ['true'] }]
       expect(hasQueryContent(metrics, breakdowns, filters)).toBe(true)
+    })
+  })
+
+  describe('record-grain queries', () => {
+    const breakdowns: BreakdownItem[] = [
+      { id: '1', field: 'Employees.name', isTimeDimension: false }
+    ]
+
+    it('leaves ungrouped unset for an ordinary chart', () => {
+      // An explicit `false` would be a distinct cache key from an absent flag,
+      // and it serialises away with the rest of the undefined keys on save.
+      expect(buildCubeQuery([], breakdowns, []).ungrouped).toBeUndefined()
+    })
+
+    it('sets ungrouped for a record-grain chart', () => {
+      // Editing a records-table portlet in the builder rebuilds its query from
+      // metrics and breakdowns; without this the saved query becomes grouped,
+      // which Postgres rejects outright for generated attribute dimensions.
+      expect(buildCubeQuery([], breakdowns, [], undefined, false, 25, true))
+        .toMatchObject({ ungrouped: true, limit: 25 })
     })
   })
 })

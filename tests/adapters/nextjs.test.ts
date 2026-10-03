@@ -778,8 +778,13 @@ describe('Next.js Adapter', () => {
       try {
         createCubeHandlers(adapterOptions)
 
+        // `cubes` is optional now that a pre-built `semanticLayer` may be passed
+        // instead; narrow rather than assert, so a fixture change fails loudly.
+        const { cubes } = adapterOptions
+        if (!cubes) throw new Error('test fixture must define cubes')
+
         // Cube registration runs once, not once per handler.
-        expect(spy.mock.calls.length).toBe(adapterOptions.cubes.length)
+        expect(spy.mock.calls.length).toBe(cubes.length)
         // All registrations target one and the same compiler instance.
         expect(new Set(spy.mock.contexts).size).toBe(1)
       } finally {

@@ -34,6 +34,12 @@ export interface ContentBlock {
   input?: Record<string, unknown>
   /** Provider-specific metadata (e.g. Gemini thoughtSignature) */
   metadata?: Record<string, unknown>
+  /**
+   * Set when the tool-call arguments could not be parsed as JSON. The handler
+   * returns an error tool_result instead of executing the tool with an empty
+   * input — running on `{}` silently produced empty notebook blocks.
+   */
+  inputParseError?: boolean
 }
 
 export interface ToolResult {
@@ -52,7 +58,7 @@ export type NormalizedEvent =
   | { type: 'text_delta'; text: string }
   | { type: 'tool_use_start'; id: string; name: string; metadata?: Record<string, unknown> }
   | { type: 'tool_input_delta'; json: string }
-  | { type: 'tool_use_end'; id?: string; input?: Record<string, unknown> }
+  | { type: 'tool_use_end'; id?: string; input?: Record<string, unknown>; parseError?: boolean }
   | { type: 'message_meta'; inputTokens?: number; outputTokens?: number; stopReason: string }
 
 /**
@@ -83,6 +89,13 @@ export interface LLMProvider {
 
   /** Return true if the stop reason means the model wants to continue (tool use). */
   shouldContinue(stopReason: string): boolean
+
+  /**
+   * Return true if the stop reason means the response was cut off by the output
+   * token limit rather than finished. Without this the loop breaks silently and
+   * the notebook just stops mid-analysis.
+   */
+  isTruncated(stopReason: string): boolean
 
   /** Format a provider-specific error into a user-friendly message. */
   formatError(error: unknown): string

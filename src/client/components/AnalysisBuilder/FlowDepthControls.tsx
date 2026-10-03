@@ -87,7 +87,7 @@ const FlowDepthControls = memo(function FlowDepthControls({
 
       {/* Performance warning for high depth */}
       {showWarning && (
-        <div className="dc:mt-3 dc:px-3 dc:py-2 bg-dc-warning-bg dc:rounded dc:border border-dc-warning dc:text-xs text-dc-warning">
+        <div className="dc:mt-3 dc:px-3 dc:py-2 bg-dc-warning-bg dc:rounded-sm dc:border border-dc-warning dc:text-xs text-dc-warning">
           {t('flow.depth.performanceWarning')}
         </div>
       )}

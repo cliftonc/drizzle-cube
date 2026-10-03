@@ -1,4 +1,5 @@
-import type { CubeQuery, CubeResultSet } from '../types.js'
+import type { CubeQuery, CubeResultSet, CubeValidationIssue } from '../types.js'
+import { CubeQueryError } from './CubeClient.js'
 
 /**
  * Represents a queued query with its resolver/rejector
@@ -84,7 +85,10 @@ export class BatchCoordinator {
 
         // Check if this specific query had an error
         if (result && 'error' in result && result.error) {
-          item.reject(new Error(result.error as string))
+          // Keep any structured validation detail the batch response carried,
+          // so a caller can drop one dead member rather than fail the portlet.
+          const issues = (result as { issues?: CubeValidationIssue[] }).issues
+          item.reject(new CubeQueryError(result.error as string, 400, issues))
         } else {
           item.resolve(result)
         }

@@ -306,6 +306,9 @@ describe('AnalysisDisplayConfigPanel', () => {
               label: 'Content',
               type: 'string',
               placeholder: 'Enter markdown content',
+              description: 'chart.markdown.contentDescription',
+              docsUrl: 'https://knap.md/variables',
+              docsLabel: 'chart.markdown.contentDocsLabel',
             },
           ],
         },
@@ -323,10 +326,43 @@ describe('AnalysisDisplayConfigPanel', () => {
       expect(textarea.tagName).toBe('TEXTAREA')
     })
 
-    it('should show note about headers, lists and links', () => {
+    it('should note that content is a template when a query is attached', () => {
       render(<AnalysisDisplayConfigPanel {...defaultProps} />)
 
-      expect(screen.getByText('(only headers, lists and links)')).toBeInTheDocument()
+      expect(
+        screen.getByText('Markdown, or a data template when a query is attached')
+      ).toBeInTheDocument()
+    })
+
+    // The variable and filter syntax is Knap's, so the panel links to its
+    // reference rather than trying to restate a template language in help text.
+    // The Chart tab renders it instead, and showing it in both places would
+    // give the same field two inputs.
+    it('should not render an option the chart tab has claimed', () => {
+      mockedUseChartConfig.mockReturnValue({
+        config: {
+          dropZones: [],
+          displayOptionsConfig: [
+            { key: 'content', label: 'Markdown Content', type: 'string', placement: 'chart' },
+            { key: 'fontSize', label: 'Font Size', type: 'string' },
+          ],
+        },
+        loading: false,
+        loaded: true,
+      })
+
+      render(<AnalysisDisplayConfigPanel {...defaultProps} />)
+
+      expect(screen.queryByText('Markdown Content')).not.toBeInTheDocument()
+      expect(screen.getByText('Font Size')).toBeInTheDocument()
+    })
+
+    it('should link to the template syntax reference', () => {
+      render(<AnalysisDisplayConfigPanel {...defaultProps} />)
+
+      const link = screen.getByRole('link', { name: 'Template syntax reference' })
+      expect(link).toHaveAttribute('href', 'https://knap.md/variables')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })
   })
 

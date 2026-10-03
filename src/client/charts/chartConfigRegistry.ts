@@ -8,6 +8,7 @@ import { radarChartConfig } from '../components/charts/RadarChart.config.js'
 import { radialBarChartConfig } from '../components/charts/RadialBarChart.config.js'
 import { treemapChartConfig } from '../components/charts/TreeMapChart.config.js'
 import { dataTableConfig } from '../components/charts/DataTable.config.js'
+import { recordsTableConfig } from '../components/charts/RecordsTable.config.js'
 import { activityGridChartConfig } from '../components/charts/ActivityGridChart.config.js'
 import { kpiNumberConfig } from '../components/charts/KpiNumber.config.js'
 import { kpiDeltaConfig } from '../components/charts/KpiDelta.config.js'
@@ -20,9 +21,11 @@ import { heatmapChartConfig } from '../components/charts/HeatMapChart.config.js'
 import { retentionHeatmapConfig } from '../components/charts/RetentionHeatmap.config.js'
 import { retentionCombinedConfig } from '../components/charts/RetentionCombinedChart.config.js'
 import { boxPlotChartConfig } from '../components/charts/BoxPlotChart.config.js'
+import { dotStripChartConfig } from '../components/charts/DotStripChart.config.js'
 import { waterfallChartConfig } from '../components/charts/WaterfallChart.config.js'
 import { candlestickChartConfig } from '../components/charts/CandlestickChart.config.js'
 import { measureProfileChartConfig } from '../components/charts/MeasureProfileChart.config.js'
+import { proportionBarChartConfig } from '../components/charts/ProportionBarChart.config.js'
 import { gaugeChartConfig } from '../components/charts/GaugeChart.config.js'
 import type { BuiltInChartType } from '../types.js'
 import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs.js'
@@ -47,6 +50,7 @@ const baseConfigs: Record<BuiltInChartType, ChartTypeConfig> = {
   radialBar: radialBarChartConfig,
   treemap: treemapChartConfig,
   table: dataTableConfig,
+  recordsTable: recordsTableConfig,
   activityGrid: activityGridChartConfig,
   kpiNumber: kpiNumberConfig,
   kpiDelta: kpiDeltaConfig,
@@ -59,9 +63,11 @@ const baseConfigs: Record<BuiltInChartType, ChartTypeConfig> = {
   retentionHeatmap: retentionHeatmapConfig,
   retentionCombined: retentionCombinedConfig,
   boxPlot: boxPlotChartConfig,
+  dotStrip: dotStripChartConfig,
   waterfall: waterfallChartConfig,
   candlestick: candlestickChartConfig,
   measureProfile: measureProfileChartConfig,
+  proportionBar: proportionBarChartConfig,
   gauge: gaugeChartConfig,
 }
 
@@ -78,6 +84,16 @@ export const chartConfigRegistry: ChartConfigRegistry = Object.fromEntries(
     composeChartConfig(chartRegistry[type], baseConfigs[type]),
   ])
 )
+
+/**
+ * Whether a chart lists records rather than aggregates, and so needs an
+ * `ungrouped` query.
+ *
+ * Reads the eager registry so the query builders need no chart-type switch.
+ */
+export function isRecordGrainChart(chartType: string): boolean {
+  return chartConfigRegistry[chartType]?.recordGrain === true
+}
 
 /**
  * Register a custom chart config into the registry.

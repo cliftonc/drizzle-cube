@@ -23,6 +23,7 @@ import type { LayoutItem } from 'react-grid-layout'
 import type {
   PortletConfig,
   RowLayout,
+  PortletGroup,
   ChartType,
   ChartAxisConfig,
   ChartDisplayConfig,
@@ -91,6 +92,8 @@ export interface DashboardStoreState {
   filterConfigPortlet: PortletConfig | null
   /** Portlet ID pending delete confirmation (null = no confirmation active) */
   deleteConfirmPortletId: string | null
+  /** Group ID pending delete confirmation (null = no confirmation active) */
+  deleteConfirmGroupId: string | null
   /** Whether text portlet modal is open */
   isTextModalOpen: boolean
   /** Portlet being edited in text modal (null = adding new) */
@@ -101,6 +104,8 @@ export interface DashboardStoreState {
   // =========================================================================
   /** Draft row layout during drag operations (rows mode) */
   draftRows: RowLayout[] | null
+  /** Draft group layout during drag/resize operations (rows mode) */
+  draftGroups: PortletGroup[] | null
   /** Whether a portlet is currently being dragged */
   isDraggingPortlet: boolean
   /** Last known layout for change detection */
@@ -156,6 +161,8 @@ export interface DashboardStoreActions {
   closeTextModal: () => void
   /** Open delete confirmation for a portlet */
   openDeleteConfirm: (portletId: string) => void
+
+  openDeleteGroupConfirm: (groupId: string) => void
   /** Close delete confirmation */
   closeDeleteConfirm: () => void
 
@@ -164,6 +171,8 @@ export interface DashboardStoreActions {
   // =========================================================================
   /** Set draft rows during drag operations */
   setDraftRows: (rows: RowLayout[] | null) => void
+
+  setDraftGroups: (groups: PortletGroup[] | null) => void
   /** Set whether a portlet is being dragged */
   setIsDraggingPortlet: (isDragging: boolean) => void
   /** Set last known layout for change detection */
@@ -224,11 +233,13 @@ const createDefaultState = (): DashboardStoreState => ({
   isFilterConfigModalOpen: false,
   filterConfigPortlet: null,
   deleteConfirmPortletId: null,
+  deleteConfirmGroupId: null,
   isTextModalOpen: false,
   editingTextPortlet: null,
 
   // Layout state
   draftRows: null,
+  draftGroups: null,
   isDraggingPortlet: false,
   lastKnownLayout: [],
   isInitialized: false,
@@ -333,16 +344,21 @@ function createStoreActions(
       }),
 
     openDeleteConfirm: (portletId: string) =>
-      set({ deleteConfirmPortletId: portletId }),
+      set({ deleteConfirmPortletId: portletId, deleteConfirmGroupId: null }),
+
+    openDeleteGroupConfirm: (groupId: string) =>
+      set({ deleteConfirmGroupId: groupId, deleteConfirmPortletId: null }),
 
     closeDeleteConfirm: () =>
-      set({ deleteConfirmPortletId: null }),
+      set({ deleteConfirmPortletId: null, deleteConfirmGroupId: null }),
 
     // =================================================================
     // Layout Actions
     // =================================================================
 
     setDraftRows: (rows) => set({ draftRows: rows }),
+
+    setDraftGroups: (groups) => set({ draftGroups: groups }),
 
     setIsDraggingPortlet: (isDragging) => set({ isDraggingPortlet: isDragging }),
 
@@ -531,6 +547,7 @@ export const selectModalState = (state: DashboardStore) => ({
  */
 export const selectLayoutState = (state: DashboardStore) => ({
   draftRows: state.draftRows,
+  draftGroups: state.draftGroups,
   isDraggingPortlet: state.isDraggingPortlet,
   lastKnownLayout: state.lastKnownLayout,
   isInitialized: state.isInitialized,
@@ -569,6 +586,7 @@ export const selectModalActions = (state: DashboardStore) => ({
   openFilterConfigModal: state.openFilterConfigModal,
   closeFilterConfigModal: state.closeFilterConfigModal,
   openDeleteConfirm: state.openDeleteConfirm,
+  openDeleteGroupConfirm: state.openDeleteGroupConfirm,
   closeDeleteConfirm: state.closeDeleteConfirm,
 })
 
@@ -577,6 +595,7 @@ export const selectModalActions = (state: DashboardStore) => ({
  */
 export const selectLayoutActions = (state: DashboardStore) => ({
   setDraftRows: state.setDraftRows,
+  setDraftGroups: state.setDraftGroups,
   setIsDraggingPortlet: state.setIsDraggingPortlet,
   setLastKnownLayout: state.setLastKnownLayout,
   setIsInitialized: state.setIsInitialized,
@@ -614,6 +633,7 @@ export const selectAllActions = (state: DashboardStore) => ({
   openFilterConfigModal: state.openFilterConfigModal,
   closeFilterConfigModal: state.closeFilterConfigModal,
   openDeleteConfirm: state.openDeleteConfirm,
+  openDeleteGroupConfirm: state.openDeleteGroupConfirm,
   closeDeleteConfirm: state.closeDeleteConfirm,
   // Layout
   setDraftRows: state.setDraftRows,

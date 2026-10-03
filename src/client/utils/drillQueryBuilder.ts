@@ -589,12 +589,31 @@ function buildDetailsQuery(
 
   // Add filter for the clicked data point
   if (xAxisDimension && xValue !== undefined && xValue !== null && xValue !== '') {
-    const xFilter: Filter = {
-      member: xAxisDimension,
-      operator: 'equals',
-      values: [String(xValue)]
+    const timeDimension = query.timeDimensions?.find(td => td.dimension === xAxisDimension)
+    const bucketRange = timeDimension?.granularity
+      ? getDetailsBucketRange(String(xValue), timeDimension.granularity)
+      : null
+    if (bucketRange && !isTargetTimeDimension) {
+      // The category axis must not include empty months from the original date range.
+      newQuery.timeDimensions = newQuery.timeDimensions?.map(td =>
+        td.dimension === xAxisDimension ? { ...td, fillMissingDates: false } : td
+      )
     }
-    newQuery.filters = [...(newQuery.filters || []), xFilter]
+    const xFilters: Filter[] = bucketRange
+      ? [
+          // Date operators normalize timestamps across engines. Avoid inDateRange,
+          // which also changes the server's inferred gap-filling range.
+          {
+            type: 'or',
+            filters: [
+              { member: xAxisDimension, operator: 'afterDate', values: [bucketRange[0]] },
+              { member: xAxisDimension, operator: 'equals', values: [bucketRange[0]] }
+            ]
+          },
+          { member: xAxisDimension, operator: 'beforeDate', values: [bucketRange[1]] }
+        ]
+      : [{ member: xAxisDimension, operator: 'equals', values: [String(xValue)] }]
+    newQuery.filters = [...(newQuery.filters || []), ...xFilters]
   }
 
   // Generate chart config that maps the selected dimension to xAxis
@@ -622,6 +641,74 @@ function buildDetailsQuery(
       chartConfig
     }
   }
+}
+
+/**
+ * Get UTC boundaries for the clicked Details bucket, with an exclusive end.
+ * @param periodValue - The clicked time bucket value.
+ * @param granularity - The source time dimension's granularity.
+ * @returns Bucket boundaries, or null when the bucket cannot be resolved.
+ */
+function getDetailsBucketRange(periodValue: string, granularity: string): [string, string] | null {
+  const quarter = /^(\d{4})-Q([1-4])$/.exec(periodValue)
+  let normalizedValue = quarter
+    ? `${quarter[1]}-${String((Number(quarter[2]) - 1) * 3 + 1).padStart(2, '0')}-01`
+    : periodValue.replace(' ', 'T')
+  if (normalizedValue.includes('T') && !/(Z|[+-]\d{2}:?\d{2})$/i.test(normalizedValue)) {
+    normalizedValue += 'Z'
+  }
+  const date = new Date(normalizedValue)
+  if (isNaN(date.getTime())) return null
+
+  const year = date.getUTCFullYear()
+  const month = date.getUTCMonth()
+  const day = date.getUTCDate()
+  const hour = date.getUTCHours()
+  const minute = date.getUTCMinutes()
+  const second = date.getUTCSeconds()
+  let start: number
+  let end: number
+
+  switch (granularity) {
+    case 'year':
+      start = Date.UTC(year, 0, 1)
+      end = Date.UTC(year + 1, 0, 1)
+      break
+    case 'quarter': {
+      const firstMonth = Math.floor(month / 3) * 3
+      start = Date.UTC(year, firstMonth, 1)
+      end = Date.UTC(year, firstMonth + 3, 1)
+      break
+    }
+    case 'month':
+      start = Date.UTC(year, month, 1)
+      end = Date.UTC(year, month + 1, 1)
+      break
+    case 'week':
+      // Preserve the week boundary reported by the query engine.
+      start = Date.UTC(year, month, day)
+      end = Date.UTC(year, month, day + 7)
+      break
+    case 'day':
+      start = Date.UTC(year, month, day)
+      end = Date.UTC(year, month, day + 1)
+      break
+    case 'hour':
+      start = Date.UTC(year, month, day, hour)
+      end = Date.UTC(year, month, day, hour + 1)
+      break
+    case 'minute':
+      start = Date.UTC(year, month, day, hour, minute)
+      end = Date.UTC(year, month, day, hour, minute + 1)
+      break
+    case 'second':
+      start = Date.UTC(year, month, day, hour, minute, second)
+      end = Date.UTC(year, month, day, hour, minute, second + 1)
+      break
+    default:
+      return null
+  }
+  return [new Date(start).toISOString(), new Date(end).toISOString()]
 }
 
 /**

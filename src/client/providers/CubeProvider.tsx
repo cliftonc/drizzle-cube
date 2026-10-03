@@ -27,6 +27,21 @@ import { setDebugMode } from '../../i18n/runtime.js'
 
 const DEFAULT_API_OPTIONS: CubeApiOptions = { apiUrl: '/cubejs-api/v1' }
 
+/** Retries left to a request that failed for a reason retrying might fix. */
+const MAX_RETRIES = 3
+
+/**
+ * A 4xx is the server's verdict on the request itself — an invalid query, an
+ * unknown member, a missing dashboard. Retrying it cannot change the answer; it
+ * only delays the error by the backoff (~7s over three attempts), which is the
+ * difference between a widget reporting a bad query at once and appearing to
+ * hang. 5xx and network failures are still retried.
+ */
+function isRequestFault(error: unknown): boolean {
+  const status = (error as { status?: number } | null)?.status
+  return typeof status === 'number' && status >= 400 && status < 500
+}
+
 export const createCubeQueryClient = () => new QueryClient({
   defaultOptions: {
     queries: {
@@ -34,8 +49,7 @@ export const createCubeQueryClient = () => new QueryClient({
       staleTime: 5 * 60 * 1000,
       // GC time: 15 minutes
       gcTime: 15 * 60 * 1000,
-      // Retry failed queries up to 3 times
-      retry: 3,
+      retry: (failureCount, error) => !isRequestFault(error) && failureCount < MAX_RETRIES,
       // Don't refetch on window focus by default (can be overridden per-query)
       refetchOnWindowFocus: false,
     },

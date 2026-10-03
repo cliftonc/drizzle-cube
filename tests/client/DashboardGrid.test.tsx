@@ -4,6 +4,7 @@
  */
 
 import React from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import DashboardGrid from '../../src/client/components/DashboardGrid'
@@ -48,11 +49,16 @@ vi.mock('../../src/client/providers/CubeApiProvider', () => ({
 /**
  * Test wrapper that provides all required context providers
  */
+// The dashboard import/export flow uses TanStack mutations, so the tree needs a QueryClient
+const testQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+
 function TestWrapper({ children }: { children: React.ReactNode }) {
   return (
-    <DashboardStoreProvider>
-      {children}
-    </DashboardStoreProvider>
+    <QueryClientProvider client={testQueryClient}>
+      <DashboardStoreProvider>
+        {children}
+      </DashboardStoreProvider>
+    </QueryClientProvider>
   )
 }
 

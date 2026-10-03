@@ -134,7 +134,7 @@ export default function DashboardFilterConfigModal({
                 value={localLabel}
                 onChange={(e) => setLocalLabel(e.target.value)}
                 placeholder="Enter filter label"
-                className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
+                className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
               />
             </div>
 
@@ -220,7 +220,7 @@ export default function DashboardFilterConfigModal({
           <div className="dc:flex dc:items-center dc:justify-between dc:p-4 dc:border-t border-dc-border">
             <button
               onClick={onDelete}
-              className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-danger hover:bg-dc-danger-bg dc:rounded dc:transition-colors"
+              className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-danger hover:bg-dc-danger-bg dc:rounded-sm dc:transition-colors"
             >
               {t('dashboardFilter.deleteFilter')}
             </button>
@@ -233,7 +233,7 @@ export default function DashboardFilterConfigModal({
               </button>
               <button
                 onClick={handleSave}
-                className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-primary-content bg-dc-primary hover:bg-dc-primary-hover dc:rounded dc:transition-colors"
+                className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-primary-content bg-dc-primary hover:bg-dc-primary-hover dc:rounded-sm dc:transition-colors"
               >
                 {t('common.actions.done')}
               </button>

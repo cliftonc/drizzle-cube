@@ -278,7 +278,7 @@ describe('DataTable', () => {
       const { container } = render(<DataTable data={mockData} height="50vh" />)
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveStyle({ height: '50vh' })
+      expect(wrapper.style.height).toBe('50vh')
     })
   })
 })

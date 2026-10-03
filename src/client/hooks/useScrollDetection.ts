@@ -42,7 +42,7 @@ export function useScrollDetection(
   { threshold = 20, debounceMs = 150, container }: UseScrollDetectionOptions = {}
 ) {
   const [isScrolled, setIsScrolled] = useState(false)
-  const timeoutRef = useRef<number>()
+  const timeoutRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     // Note: containerRef is intentionally not in deps - refs are stable and we access .current inside

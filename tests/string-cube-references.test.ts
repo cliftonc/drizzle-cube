@@ -310,7 +310,7 @@ describe('String Cube References', () => {
       compiler.registerCube(empCube)
       compiler.registerCube(deptCube)
 
-      const meta = compiler.getMetadata()
+      const meta = compiler.getMetadata(securityContext)
       const empMeta = meta.find(m => m.name === 'Employees')
 
       expect(empMeta).toBeDefined()

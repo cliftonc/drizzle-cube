@@ -16,6 +16,7 @@ import {
   type ResolvedMeasures
 } from '../../src/server/template-substitution'
 import type { Cube, QueryContext } from '../../src/server/types/cube'
+import { testCastHelpers } from '../helpers/query-context'
 
 /**
  * Helper to create a mock cube for testing
@@ -35,7 +36,8 @@ function createMockCube(name: string): Cube {
 function createMockQueryContext(): QueryContext {
   return {
     db: {} as any,
-    securityContext: { organisationId: 'test-org' }
+    securityContext: { organisationId: 'test-org' },
+    ...testCastHelpers()
   }
 }
 

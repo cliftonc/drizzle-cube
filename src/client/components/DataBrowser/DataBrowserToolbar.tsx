@@ -57,7 +57,7 @@ export default function DataBrowserToolbar({
       {/* Filter toggle */}
       <button
         onClick={onToggleFilterBar}
-        className={`dc:flex dc:items-center dc:gap-1.5 dc:px-2.5 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:border dc:transition-colors ${
+        className={`dc:flex dc:items-center dc:gap-1.5 dc:px-2.5 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded-sm dc:border dc:transition-colors ${
           showFilterBar
             ? 'border-dc-accent bg-dc-accent-bg text-dc-accent'
             : 'border-dc-border bg-dc-surface text-dc-text dc:hover:bg-dc-surface-hover'
@@ -75,7 +75,7 @@ export default function DataBrowserToolbar({
       {/* Columns button */}
       <button
         onClick={onToggleColumnPicker}
-        className="dc:flex dc:items-center dc:gap-1.5 dc:px-2.5 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:border border-dc-border bg-dc-surface text-dc-text dc:hover:bg-dc-surface-hover dc:transition-colors"
+        className="dc:flex dc:items-center dc:gap-1.5 dc:px-2.5 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded-sm dc:border border-dc-border bg-dc-surface text-dc-text dc:hover:bg-dc-surface-hover dc:transition-colors"
       >
         <ColumnsIcon className="dc:w-3.5 dc:h-3.5" />
         {t('dataBrowser.toolbar.columns')}
@@ -92,7 +92,7 @@ export default function DataBrowserToolbar({
       {/* Refresh */}
       <button
         onClick={onRefresh}
-        className="dc:p-1 dc:rounded dc:hover:bg-dc-surface-hover dc:transition-colors"
+        className="dc:p-1 dc:rounded-sm dc:hover:bg-dc-surface-hover dc:transition-colors"
         title="Refresh"
       >
         <RefreshIcon className={`dc:w-3.5 dc:h-3.5 text-dc-text-muted ${isFetching ? 'dc:animate-spin' : ''}`} />
@@ -102,7 +102,7 @@ export default function DataBrowserToolbar({
       <select
         value={pageSize}
         onChange={(e) => onPageSizeChange(Number(e.target.value))}
-        className="dc:text-xs dc:px-1.5 dc:py-1 dc:rounded dc:border border-dc-border bg-dc-surface text-dc-text dc:outline-none"
+        className="dc:text-xs dc:px-1.5 dc:py-1 dc:rounded-sm dc:border border-dc-border bg-dc-surface text-dc-text dc:outline-none"
       >
         <option value={20}>20</option>
         <option value={50}>50</option>
@@ -114,7 +114,7 @@ export default function DataBrowserToolbar({
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={!hasPrevPage}
-          className="dc:p-1 dc:rounded dc:hover:bg-dc-surface-hover dc:disabled:opacity-30 dc:disabled:cursor-not-allowed dc:transition-colors"
+          className="dc:p-1 dc:rounded-sm dc:hover:bg-dc-surface-hover dc:disabled:opacity-30 dc:disabled:cursor-not-allowed dc:transition-colors"
         >
           <ChevronLeftIcon className="dc:w-4 dc:h-4 text-dc-text-muted" />
         </button>
@@ -124,7 +124,7 @@ export default function DataBrowserToolbar({
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={!hasNextPage}
-          className="dc:p-1 dc:rounded dc:hover:bg-dc-surface-hover dc:disabled:opacity-30 dc:disabled:cursor-not-allowed dc:transition-colors"
+          className="dc:p-1 dc:rounded-sm dc:hover:bg-dc-surface-hover dc:disabled:opacity-30 dc:disabled:cursor-not-allowed dc:transition-colors"
         >
           <ChevronRightIcon className="dc:w-4 dc:h-4 text-dc-text-muted" />
         </button>

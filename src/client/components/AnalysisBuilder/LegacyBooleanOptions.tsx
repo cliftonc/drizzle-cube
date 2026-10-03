@@ -29,7 +29,7 @@ const LEGACY_OPTIONS: LegacyOptionSpec[] = [
   { key: 'showGrid', labelKey: 'display.showGrid', defaultChecked: true },
   { key: 'showTooltip', labelKey: 'display.showTooltip', defaultChecked: true },
   { key: 'stacked', labelKey: 'display.stacked', defaultChecked: false },
-  { key: 'showAllXLabels', labelKey: 'chart.option.showAllXLabels.label', defaultChecked: true },
+  { key: 'showAllXLabels', labelKey: 'chart.option.showAllXLabels.label', defaultChecked: false },
   { key: 'hideHeader', labelKey: 'display.hideHeader', defaultChecked: false }
 ]
 
@@ -52,7 +52,7 @@ const LegacyBooleanOptions = memo(function LegacyBooleanOptions({
             onChange={(e) =>
               onDisplayConfigChange({ ...displayConfig, [spec.key]: e.target.checked })
             }
-            className="dc:rounded border-dc-border focus:ring-dc-accent"
+            className="dc:rounded-sm border-dc-border focus:ring-dc-accent"
             style={{ color: 'var(--dc-primary)' }}
           />
           <span className="dc:text-sm text-dc-text">{t(spec.labelKey)}</span>

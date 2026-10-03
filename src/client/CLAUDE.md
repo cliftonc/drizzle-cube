@@ -138,6 +138,7 @@ src/client/
 │   ├── dashboard/                 Dashboard layout hooks
 │   │   ├── useDashboardController.ts, useGridLayoutEngine.ts
 │   │   ├── useRowLayoutEngine.ts, layoutUtils.ts
+│   │   ├── useDashboardImportExport.ts  Export/import flow (features.dashboardImportExport)
 │   ├── useAnalysisBuilderHook.ts  AnalysisBuilder public facade (useAnalysisBuilder)
 │   ├── useAnalysisState.ts        State: store reads/derivation, query specs, chart config, UI state
 │   ├── useAnalysisQuery.ts        Query: execution only (5 TanStack hooks, mode routing, hasDebounced)
@@ -194,6 +195,7 @@ src/client/
     ├── colorPalettes.ts           Color palette definitions
     ├── comparisonUtils.ts         Time comparison utilities
     ├── configMigration.ts         Config version migration
+    ├── dashboardExport.ts         Dashboard JSON export envelope + import validation
     ├── drillQueryBuilder.ts       Drill-down query construction
     ├── filterUtils.ts             Filter manipulation
     ├── funnelExecution.ts, funnelValidation.ts  Funnel helpers

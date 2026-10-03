@@ -1,4 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
+import { kpiLayoutDisplayOption } from '../../charts/chartConfigHelpers.js'
 
 /**
  * Configuration for the KPI Number chart type.
@@ -21,6 +22,7 @@ export const kpiNumberConfig: ChartTypeConfig = {
     }
   ],
   displayOptionsConfig: [
+    kpiLayoutDisplayOption,
     {
       key: 'target',
       label: 'chart.runtime.tooltip.targetValue',

@@ -39,9 +39,8 @@ export const gaugeChartConfig: ChartTypeConfig = {
     {
       key: 'thresholds',
       label: 'chart.configText.threshold_bands',
-      type: 'string',
-      placeholder: '[{"value":0.33,"color":"#22c55e"},{"value":0.66,"color":"#f59e0b"},{"value":1,"color":"#ef4444"}]',
-      description: 'chart.configText.array_of_value_0_1_fraction_color_bands_shown_as_outer_arc_markers',
+      type: 'thresholdBands',
+      description: 'chart.gauge.thresholds.description',
     },
     {
       key: 'showCenterLabel',

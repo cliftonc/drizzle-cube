@@ -4,6 +4,7 @@ import { resolve } from 'path'
 import dts from 'vite-plugin-dts'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { cjsTypesMarker } from './vite.cjs-marker'
+import { cssTypeStubs } from './vite.css-types'
 
 const chartModuleNames = new Set([
   'ActivityGridChart',
@@ -71,6 +72,9 @@ export default defineConfig({
       entryRoot: 'src/client'
     }),
     cjsTypesMarker(),
+    cssTypeStubs([
+      { from: 'src/client/styles.d.css.ts', to: 'dist/client/styles.d.css.ts' }
+    ]),
     visualizer({
       filename: 'dist/client-bundle-stats.html',
       open: false,

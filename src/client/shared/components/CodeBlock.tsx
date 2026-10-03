@@ -92,7 +92,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
           {headerRight}
           <button
             onClick={handleCopy}
-            className="dc:px-2 dc:py-1 dc:text-xs dc:rounded hover:bg-dc-surface-secondary dc:border border-dc-border dc:transition-colors dc:flex dc:items-center dc:gap-1.5"
+            className="dc:px-2 dc:py-1 dc:text-xs dc:rounded-sm hover:bg-dc-surface-secondary dc:border border-dc-border dc:transition-colors dc:flex dc:items-center dc:gap-1.5"
             title={copied ? 'Copied!' : 'Copy to clipboard'}
           >
             {copied ? (
@@ -112,7 +112,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
 
       {/* Code block with syntax highlighting */}
       <div
-        className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:overflow-auto"
+        className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:overflow-auto"
         style={height ? { height, minHeight: height, maxHeight: height } : { maxHeight }}
       >
         <pre className="dc:p-3 dc:text-xs dc:m-0">

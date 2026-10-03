@@ -268,6 +268,12 @@ semanticLayer.registerCube(departmentsCube)
 export { schema }
 ```
 
+Every Next.js handler creator accepts this pre-configured `semanticLayer`
+instead of `cubes` — this is how a Next.js app opts into
+[per-tenant cube sets](https://www.drizzle-cube.dev/semantic-layer/cube-sets/) via
+`semanticLayer.registerCubeSet(...)`, since the app must own the compiler to
+call it.
+
 ## API Reference
 
 ### Route Handler Functions
@@ -291,7 +297,15 @@ export { loadHandler as GET, loadHandler as POST }
 
 #### `createMetaHandler(options)`
 
-Creates a route handler for metadata retrieval (`/meta` endpoint).
+Creates a route handler for metadata retrieval (`/meta` endpoint). Tenant-scoped:
+this route resolves `extractSecurityContext` like every other route and
+returns only that tenant's cubes. If your extractor throws for unauthenticated
+requests, anonymous `/meta` calls now fail — return `SINGLE_TENANT_CONTEXT`
+(from `drizzle-cube/server`) from your extractor if you genuinely want public
+metadata. drizzle-cube now sets `Cache-Control: private, no-store` on every
+REST response (`/load`, `/sql`, `/dry-run`, `/batch`, `/explain` included), so
+`/meta` must not be cached in a shared cache/CDN keyed on URL alone. See
+[per-tenant cube sets](https://www.drizzle-cube.dev/semantic-layer/cube-sets/).
 
 ```typescript
 const metaHandler = createMetaHandler({
@@ -365,7 +379,10 @@ export { meta as GET }                // In meta/route.ts
 
 ```typescript
 interface NextAdapterOptions<TSchema> {
-  semanticLayer: SemanticLayerCompiler<TSchema>  // Semantic layer instance with registered cubes
+  semanticLayer?: SemanticLayerCompiler<TSchema> // Pre-configured semantic layer. Provide this instead of
+                                                  // `cubes` when your app needs per-tenant cube sets — the
+                                                  // app must own the compiler to call `registerCubeSet`
+                                                  // (see drizzle-cube.dev/semantic-layer/cube-sets)
   drizzle: DrizzleDatabase<TSchema>              // Fully connected Drizzle database instance
   schema?: TSchema                               // Database schema for type inference (recommended)
   extractSecurityContext: (request: NextRequest, context?: RouteContext) => SecurityContext | Promise<SecurityContext>
@@ -616,8 +633,12 @@ import { semanticLayer } from '@/lib/cube-config'
 import { DashboardClient } from './dashboard-client'
 
 export default async function DashboardPage() {
+  // getMetadata/executeMultiCubeQuery require a SecurityContext — cube contents
+  // and data are tenant-scoped, so there is no context-free overload.
+  const securityContext = { organisationId: 'org-123' }
+
   // Get metadata on server-side for faster initial load
-  const metadata = semanticLayer.getMetadata()
+  const metadata = semanticLayer.getMetadata(securityContext)
   
   // Optionally, pre-fetch some data
   const initialData = await semanticLayer.executeMultiCubeQuery({
@@ -628,7 +649,7 @@ export default async function DashboardPage() {
       granularity: 'month',
       dateRange: 'last 12 months'
     }]
-  }, { organisationId: 'org-123' })
+  }, securityContext)
   
   return (
     <div>
@@ -732,14 +753,18 @@ const handlers = createCubeHandlers({
 // app/api/cubejs/v1/meta/route.ts
 import { unstable_cache } from 'next/cache'
 
+// Metadata is per-tenant — never cache it under a static key. Passing
+// securityContext as an argument makes unstable_cache key on it, so each
+// tenant gets its own cache entry.
 const getCachedMetadata = unstable_cache(
-  async () => semanticLayer.getMetadata(),
+  async (securityContext: SecurityContext) => semanticLayer.getMetadata(securityContext),
   ['cube-metadata'],
   { revalidate: 3600 } // Cache for 1 hour
 )
 
-export async function GET() {
-  const metadata = await getCachedMetadata()
+export async function GET(request: NextRequest) {
+  const securityContext = await getContext(request)
+  const metadata = await getCachedMetadata(securityContext)
   return NextResponse.json({ cubes: metadata })
 }
 ```

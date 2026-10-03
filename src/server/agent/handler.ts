@@ -62,7 +62,7 @@ export async function* handleAgentChat(options: {
   const model = options.modelOverride || agentConfig.model || DEFAULT_MODELS[providerName] || 'claude-sonnet-4-6'
   const baseURL = options.baseURLOverride || agentConfig.baseURL
   const maxTurns = agentConfig.maxTurns || 25
-  const maxTokens = agentConfig.maxTokens || 4096
+  const maxTokens = agentConfig.maxTokens || 8192
 
   // Create the LLM provider
   let provider
@@ -83,8 +83,12 @@ export async function* handleAgentChat(options: {
   const tools = getToolDefinitions()
   const executor = createToolExecutor({ semanticLayer, securityContext })
 
-  // Build system prompt from cube metadata + optional per-request context
-  const metadata = semanticLayer.getMetadata()
+  // Build system prompt from cube metadata + optional per-request context.
+  // The metadata is the caller's cube set: the chat handler is always given the
+  // request's security context (adapters resolve it from `extractSecurityContext`
+  // before opening the SSE stream), so the agent only ever sees this tenant's
+  // cubes in its system prompt.
+  const metadata = semanticLayer.getMetadata(securityContext)
   let systemPrompt = buildAgentSystemPrompt(metadata)
   if (options.systemContext) {
     systemPrompt += `\n\n## User Context\n\n${options.systemContext}`
@@ -139,6 +143,13 @@ export async function* handleAgentChat(options: {
 
       // Push the complete assistant message into conversation history
       messages.push({ role: 'assistant', content: contentBlocks })
+
+      // Cut off by the output token limit rather than finished. Without this the
+      // loop just breaks and the notebook stops mid-analysis with no explanation.
+      if (provider.isTruncated(stopReason)) {
+        yield { type: 'error', data: { message: t('server.errors.agentResponseTruncated') } }
+        break
+      }
 
       // If the model didn't request tool use, we're done
       if (!provider.shouldContinue(stopReason)) {

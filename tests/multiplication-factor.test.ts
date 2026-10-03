@@ -18,6 +18,7 @@ import { describe, it, expect } from 'vitest'
 import { LogicalPlanner } from '../src/server/logical-plan/logical-planner'
 import type { Cube, QueryContext, SemanticQuery } from '../src/server/types'
 import type { JoinRef } from '../src/server/logical-plan'
+import { testCastHelpers } from './helpers/query-context'
 
 // Helper to create minimal cube definitions for unit testing
 function createTestCube(
@@ -45,7 +46,8 @@ function createContext(): QueryContext {
   return {
     db: {} as any,
     schema: {},
-    securityContext: { organisationId: 'test-org' }
+    securityContext: { organisationId: 'test-org' },
+    ...testCastHelpers()
   }
 }
 

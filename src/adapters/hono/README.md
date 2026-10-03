@@ -202,8 +202,9 @@ const cubeApp = createCubeApp({
 
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
-| `cubes` | `Cube[]` | ✅ | - | Array of cube definitions to register |
-| `drizzle` | `DrizzleDatabase` | ✅ | - | Fully connected Drizzle database instance |
+| `cubes` | `Cube[]` | ✅ unless `semanticLayer` provided | - | Array of cube definitions to register |
+| `semanticLayer` | `SemanticLayerCompiler` | ❌ | - | Pre-configured semantic layer. Provide this instead of `cubes` when your app needs [per-tenant cube sets](https://www.drizzle-cube.dev/semantic-layer/cube-sets/) — the app must own the compiler to call `registerCubeSet` |
+| `drizzle` | `DrizzleDatabase` | ✅ unless `semanticLayer` provided | - | Fully connected Drizzle database instance |
 | `schema` | `TSchema` | ⚠️ | - | Database schema for type inference (recommended) |
 | `extractSecurityContext` | `Function` | ✅ | - | Extract security context from HTTP requests (called for every request) |
 | `engineType` | `'postgres'\|'mysql'\|'sqlite'` | ❌ | auto-detected | Database engine type |
@@ -374,7 +375,15 @@ Execute analytical queries.
 Execute queries via GET with query string parameter.
 
 ### `GET /cubejs-api/v1/meta`
-Get cube metadata and schema information.
+Get cube metadata and schema information. Tenant-scoped: this route resolves
+`extractSecurityContext` like every other route and returns only that tenant's
+cubes. If your extractor throws for unauthenticated requests, anonymous
+`/meta` calls now fail — return `SINGLE_TENANT_CONTEXT` (from `drizzle-cube/server`)
+from your extractor if you genuinely want public metadata. drizzle-cube now
+sets `Cache-Control: private, no-store` on every REST response (`/load`,
+`/sql`, `/dry-run`, `/batch`, `/explain` included), so `/meta` must not be
+cached in a shared cache/CDN keyed on URL alone. See
+[per-tenant cube sets](https://www.drizzle-cube.dev/semantic-layer/cube-sets/).
 
 **Response:**
 ```json
@@ -535,6 +544,37 @@ compatibility_date = "2024-01-01"
 DATABASE_URL = "your-database-url"
 JWT_SECRET = "your-jwt-secret"
 ```
+
+#### Bundle size: the MCP App HTML
+
+The MCP App (the interactive chart UI served to MCP clients when `mcp.app` is
+enabled) is a ~2 MB single-file HTML document (~560 KB gzip). The adapter never
+loads it at import time — it is fetched with a dynamic `import()` of
+`drizzle-cube/mcp-app-html` the first time an MCP client lists or reads the
+visualization resource — so it costs nothing at startup and is never evaluated
+when `mcp.enabled: false` or `mcp.app` is off.
+
+Wrangler still bundles it as a separate module and counts it towards the
+Worker size limit. If you do not use the MCP App, alias the subpath to a stub to
+drop it from the upload entirely:
+
+```toml
+# wrangler.toml
+[alias]
+"drizzle-cube/mcp-app-html" = "./src/mcp-app-html-stub.ts"
+```
+
+```typescript
+// src/mcp-app-html-stub.ts
+export const mcpAppHtml = ''
+```
+
+(With the Cloudflare Vite plugin use Vite's `resolve.alias` for the same
+mapping instead of wrangler's `alias`.) Measured on a minimal Hono Worker with
+`mcp.enabled: false`, this takes the bundle from ~834 KB to ~282 KB gzip.
+
+Only do this when `mcp.app` is off: with the stub in place the app resource is
+simply absent, so the `chart` tool would have nothing to render.
 
 ```typescript
 // src/index.ts

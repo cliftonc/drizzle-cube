@@ -72,14 +72,14 @@ export default function AnalysisAIPanel({
           {hasGeneratedQuery && (
             <button
               onClick={onAccept}
-              className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium text-white bg-dc-success dc:hover:opacity-80 dc:rounded dc:transition-colors"
+              className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium text-white bg-dc-success dc:hover:opacity-80 dc:rounded-sm dc:transition-colors"
             >
               {t('analysis.ai.button.accept')}
             </button>
           )}
           <button
             onClick={onCancel}
-            className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover dc:border border-dc-border dc:rounded dc:transition-colors"
+            className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover dc:border border-dc-border dc:rounded-sm dc:transition-colors"
           >
             {hasGeneratedQuery ? t('analysis.ai.button.cancel') : t('analysis.ai.button.close')}
           </button>

@@ -7,8 +7,9 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { 
   createTestDatabaseExecutor
 } from './helpers/test-database'
-import { 
-  SemanticLayerCompiler
+import {
+  SemanticLayerCompiler,
+  SINGLE_TENANT_CONTEXT
 } from '../src/server'
 import type { 
   Cube, 
@@ -43,7 +44,7 @@ describe('Error Handling - Invalid Query Structures', () => {
     it('should reject completely empty query object', () => {
       const query: SemanticQuery = {}
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain('Query must reference at least one cube through measures, dimensions, or filters')
     })
@@ -55,7 +56,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         filters: []
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain('Query must reference at least one cube through measures, dimensions, or filters')
     })
@@ -66,7 +67,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         dimensions: null as any
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors.length).toBeGreaterThan(0)
     })
@@ -77,7 +78,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         dimensions: ['Employees.name'] // Valid dimension to ensure query isn't empty
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       // Should still be valid since dimensions are provided
       expect(result.isValid).toBe(true)
     })
@@ -89,7 +90,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         measures: ['NonExistentCube.count', 'AnotherFakeCube.sum']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Cube 'NonExistentCube' not found (referenced in measure 'NonExistentCube.count')")
       expect(result.errors).toContain("Cube 'AnotherFakeCube' not found (referenced in measure 'AnotherFakeCube.sum')")
@@ -100,7 +101,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         measures: ['Employees.nonExistentMeasure', 'Employees.anotherFakeMeasure']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Measure 'nonExistentMeasure' not found on cube 'Employees'")
       expect(result.errors).toContain("Measure 'anotherFakeMeasure' not found on cube 'Employees'")
@@ -111,7 +112,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         dimensions: ['Employees.fakeField', 'Departments.anotherFakeField']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Dimension 'fakeField' not found on cube 'Employees'")
       expect(result.errors).toContain("Dimension 'anotherFakeField' not found on cube 'Departments'")
@@ -126,7 +127,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("TimeDimension 'nonExistentDate' not found on cube 'Employees' (must be a dimension with time type)")
     })
@@ -140,7 +141,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(true)
       expect(result.errors).toHaveLength(0)
     })
@@ -158,7 +159,7 @@ describe('Error Handling - Invalid Query Structures', () => {
       }
       
       // This will cause a runtime error when trying to split undefined
-      expect(() => compiler.validateQuery(query)).toThrow()
+      expect(() => compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)).toThrow()
     })
 
     it('should reject filters without member property', () => {
@@ -170,7 +171,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         } as any] // Missing member property
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain('Filter must have a member field')
     })
@@ -185,7 +186,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Filter field 'nonExistentField' not found on cube 'Employees' (must be a dimension or measure)")
     })
@@ -218,7 +219,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       // Should contain errors for both non-existent field and non-existent cube
       expect(result.errors.some((error: any) => error.includes('nonExistentField'))).toBe(true)
@@ -234,7 +235,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         offset: 10
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(true)
       expect(result.errors).toHaveLength(0)
     })
@@ -248,7 +249,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(true)
       expect(result.errors).toHaveLength(0)
     })
@@ -264,7 +265,7 @@ describe('Error Handling - Invalid Query Structures', () => {
       }
       
       // Current validation system doesn't check data types, so this passes validation
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(true) // Validation only checks field existence
     })
   })
@@ -275,7 +276,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         measures: ['InvalidFormat', '', 'TooManyDots.Field.Extra']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Invalid measure format: InvalidFormat. Expected format: 'CubeName.fieldName'")
       expect(result.errors).toContain("Invalid measure format: . Expected format: 'CubeName.fieldName'")
@@ -288,7 +289,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         dimensions: ['NoDotsAtAll', 'Too.Many.Dots.Here', '.StartsWithDot', 'EndsWithDot.']
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Invalid dimension format: NoDotsAtAll. Expected format: 'CubeName.fieldName'")
       expect(result.errors.some((error: any) => error.includes('Too.Many.Dots.Here'))).toBe(true)
@@ -306,7 +307,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Invalid filter member format: InvalidFilterFormat. Expected format: 'CubeName.fieldName'")
     })
@@ -320,7 +321,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors.some((error: any) => error.includes('InvalidTimeDimensionFormat'))).toBe(true)
     })
@@ -337,7 +338,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         ]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Cube 'InvalidCube' not found (referenced in measure 'InvalidCube.count')")
       expect(result.errors).toContain("Measure 'invalidField' not found on cube 'Employees'")
@@ -355,7 +356,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Filter field 'nonExistentField' not found on cube 'Productivity' (must be a dimension or measure)")
     })
@@ -368,7 +369,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         measures: [`Employees.${longFieldName}`]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain(`Measure '${longFieldName}' not found on cube 'Employees'`)
     })
@@ -387,7 +388,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         measures: specialFieldNames.map(field => `Employees.${field}`)
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       // All should be invalid field names
       specialFieldNames.forEach(fieldName => {
@@ -408,7 +409,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         dimensions: unicodeFields.map(field => `Employees.${field}`)
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       unicodeFields.forEach(fieldName => {
         expect(result.errors).toContain(`Dimension '${fieldName}' not found on cube 'Employees'`)
@@ -427,7 +428,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         }]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Filter field 'nonExistentField' not found on cube 'Employees' (must be a dimension or measure)")
     })
@@ -469,7 +470,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         filters: [createNestedFilter(5)]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Filter field 'nonExistentField' not found on cube 'Employees' (must be a dimension or measure)")
       // Should also contain errors for nested fields
@@ -486,7 +487,7 @@ describe('Error Handling - Invalid Query Structures', () => {
       }
       
       // These will cause runtime errors when validation tries to iterate
-      expect(() => compiler.validateQuery(query)).toThrow()
+      expect(() => compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)).toThrow()
     })
 
     it('should handle query with nested objects where arrays expected', () => {
@@ -496,7 +497,7 @@ describe('Error Handling - Invalid Query Structures', () => {
       }
       
       // These will cause runtime errors when validation tries to iterate
-      expect(() => compiler.validateQuery(query)).toThrow()
+      expect(() => compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)).toThrow()
     })
 
     it('should handle malformed filter objects that cause runtime errors', () => {
@@ -511,7 +512,7 @@ describe('Error Handling - Invalid Query Structures', () => {
       }
       
       // These will cause runtime errors during validation
-      expect(() => compiler.validateQuery(query)).toThrow()
+      expect(() => compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)).toThrow()
     })
 
     it('should handle filters with invalid structure gracefully where possible', () => {
@@ -524,7 +525,7 @@ describe('Error Handling - Invalid Query Structures', () => {
         } as any]
       }
       
-      const result = compiler.validateQuery(query)
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain('Filter must have a member field')
     })
