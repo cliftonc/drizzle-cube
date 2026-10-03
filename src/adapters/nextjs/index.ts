@@ -180,8 +180,15 @@ export interface NextAdapterOptions {
   semanticLayer?: SemanticLayerCompiler
 }
 
+export type RouteParams = Record<string, string | string[] | undefined>
+
 export interface RouteContext {
-  params?: Record<string, string | string[]>
+  /**
+   * Dynamic route segment params. Next.js 15+ passes these as a Promise
+   * (synchronous access was removed in Next.js 16), so always `await` them —
+   * awaiting also works for the plain object passed by older versions.
+   */
+  params?: Promise<RouteParams> | RouteParams
 }
 
 export type RouteHandler = (
