@@ -84,13 +84,20 @@ export default function PortletFilterConfigModal({
 
   // Reachable, type-compatible field options per simple filter member.
   // Keyed by the filter's own member so filters sharing a member share options.
+  // Universal time filters (placeholder member) can be pinned to any reachable
+  // time dimension, so they narrow portlets without time dimensions.
   const fieldOptionsByMember = useMemo(() => {
     const result = new Map<string, ReturnType<typeof getReachableDimensionOptions>>()
     if (!schema || !portlet) return result
 
     dashboardFilters.forEach(df => {
-      if (df.isUniversalTime) return
       if (!('member' in df.filter) || !df.filter.member) return
+      if (df.isUniversalTime) {
+        if (!result.has(df.filter.member)) {
+          result.set(df.filter.member, getReachableDimensionOptions(schema, portlet, { type: 'time' }))
+        }
+        return
+      }
       if (result.has(df.filter.member)) return
       result.set(
         df.filter.member,
@@ -177,7 +184,7 @@ export default function PortletFilterConfigModal({
                 const entry = selectedEntries.find(e => e.filterId === filter.id)
                 const isSelected = !!entry
                 const isSimpleFilter = !!filter.filter && 'member' in filter.filter && !!filter.filter.member
-                const canRemap = isSelected && isSimpleFilter && !filter.isUniversalTime
+                const canRemap = isSelected && isSimpleFilter
                 const fieldOptions = canRemap
                   ? fieldOptionsByMember.get((filter.filter as { member: string }).member) || []
                   : []
@@ -243,7 +250,9 @@ export default function PortletFilterConfigModal({
                             className="dc:w-full dc:text-sm dc:rounded-md dc:border border-dc-border bg-dc-surface text-dc-text dc:px-2 dc:py-1.5 dc:focus:ring-2 focus:ring-dc-primary"
                           >
                             <option value="">
-                              {t('portlet.filterConfig.applyToFieldDefault', { field: (filter.filter as { member: string }).member })}
+                              {filter.isUniversalTime
+                                ? t('portlet.filterConfig.applyToTimeDimensionsDefault')
+                                : t('portlet.filterConfig.applyToFieldDefault', { field: (filter.filter as { member: string }).member })}
                             </option>
                             {overrideIsStale && entry?.member && (
                               <option value={entry.member}>{entry.member}</option>

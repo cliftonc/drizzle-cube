@@ -4,7 +4,7 @@ import AnalyticsPortlet from './AnalyticsPortlet.js'
 import type { ColorPalette } from '../utils/colorPalettes.js'
 import { useDashboardStore, type PortletDebugDataEntry } from '../stores/dashboardStore.js'
 import { ensureAnalysisConfig } from '../utils/configMigration.js'
-import { mappingIncludesFilter } from '../utils/filterUtils.js'
+import { mappingIncludesFilter, getUnreachableUniversalTimeFilters } from '../utils/filterUtils.js'
 import { arePropsEqual, type DashboardPortletCardProps } from './dashboardPortletCard/propsEqual.js'
 import { resolveEffectiveFilterField } from './dashboardPortletCard/filterField.js'
 import { usePortletCardActions } from './dashboardPortletCard/usePortletCardActions.js'
@@ -146,6 +146,15 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
     dashboardFilterMapping: portlet.dashboardFilterMapping
   }), [isInSelectionMode, hasSelectedFilter, selectedFilterId, dashboardFilters, portlet.dashboardFilterMapping])
 
+  // Universal date filters mapped here that cannot narrow this portlet (no
+  // time dimension and not pinned to a field) - flagged in the header so the
+  // portlet never quietly shows all-time values under a narrower date control
+  const unreachableDateFilterLabels = useMemo(
+    () => getUnreachableUniversalTimeFilters(renderQuery, dashboardFilters, portlet.dashboardFilterMapping)
+      .map(df => df.label),
+    [renderQuery, dashboardFilters, portlet.dashboardFilterMapping]
+  )
+
   const mergedContainerClassName = buildContainerClassName({
     isTransparent,
     isMarkdownAutoHeight,
@@ -247,6 +256,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           xlsExportAvailable={xlsExportAvailable}
           exportInProgress={exportInProgress}
           showCacheBustIndicator={showCacheBustIndicator}
+          unreachableDateFilterLabels={unreachableDateFilterLabels}
           icons={icons}
           onRefresh={(options) => callbacks.onRefresh(portlet.id, options)}
           onHoverRefreshChange={setIsHoveringRefresh}

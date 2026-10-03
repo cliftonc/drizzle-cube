@@ -299,6 +299,7 @@ export function buildAgentSystemPrompt(metadata: CubeMetadata[]): string {
     '',
     '### Dashboard Filters',
     '- ALWAYS include a universal date filter with `isUniversalTime: true`',
+    '- A universal date filter only reaches portlets through their `timeDimensions`. For KPI or breakdown portlets without a time dimension, map it as `{ filterId, member: "<Cube.timeField>" }` so it filters that field instead of leaving the portlet unfiltered',
     '- Add dimension filters for key fields used across portlets (e.g., department, status, region)',
     '- Use human-readable labels (e.g., "Department" not "Employees.departmentName")',
     '- Map filters to portlets using `dashboardFilterMapping` — list the filter IDs that apply',

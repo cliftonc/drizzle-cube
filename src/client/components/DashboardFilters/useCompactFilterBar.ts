@@ -15,6 +15,16 @@ import {
   XTD_OPTIONS
 } from '../shared/utils.js'
 
+/**
+ * Find the dashboard filter the date control is bound to: the universal time
+ * filter when present, otherwise the first simple `inDateRange` filter.
+ */
+export function findDateControlFilter(filters: DashboardFilter[]): DashboardFilter | undefined {
+  return filters.find(df => df.isUniversalTime) ?? filters.find(df =>
+    'member' in df.filter && (df.filter as SimpleFilter).operator === 'inDateRange'
+  )
+}
+
 export function useCompactFilterBar(
   dashboardFilters: DashboardFilter[],
   onDashboardFiltersChange: (filters: DashboardFilter[]) => void
@@ -40,15 +50,16 @@ export function useCompactFilterBar(
   const customButtonRef = useRef<HTMLButtonElement>(null)
   const xtdButtonRef = useRef<HTMLButtonElement>(null)
 
-  // Find universal time filter
-  const universalTimeFilter = useMemo(() => {
-    return localFilters.find(df => df.isUniversalTime)
-  }, [localFilters])
+  // The filter the date control drives: the universal time filter if there is
+  // one, otherwise the first plain inDateRange filter. Binding to a plain filter
+  // lets a dashboard declare a single date filter that narrows every portlet
+  // mapped to it, including KPIs and breakdowns without time dimensions.
+  const dateControlFilter = useMemo(() => findDateControlFilter(localFilters), [localFilters])
 
-  // Get current date range from universal time filter
+  // Get current date range from the bound date filter
   const currentDateRange = useMemo(() => {
-    if (!universalTimeFilter) return null
-    const filter = universalTimeFilter.filter as SimpleFilter
+    if (!dateControlFilter) return null
+    const filter = dateControlFilter.filter as SimpleFilter
     // Handle both dateRange property and values array
     if (filter.dateRange) return filter.dateRange
     if (filter.values && filter.values.length > 0) {
@@ -60,7 +71,7 @@ export function useCompactFilterBar(
       return filter.values
     }
     return null
-  }, [universalTimeFilter])
+  }, [dateControlFilter])
 
   // Detect active preset from current date range
   const activePresetId = useMemo(() => {
@@ -74,7 +85,9 @@ export function useCompactFilterBar(
     return XTD_OPTIONS.find(opt => opt.id === preset)?.id || null
   }, [currentDateRange])
 
-  // Get non-date filters (exclude universal time filter)
+  // Get non-date filters (exclude universal time filter). A plain inDateRange
+  // filter bound to the date control keeps its chip, which names its field and
+  // allows clearing or editing either endpoint.
   const nonDateFilters = useMemo(() => {
     return localFilters.filter(df => !df.isUniversalTime)
   }, [localFilters])
@@ -86,10 +99,10 @@ export function useCompactFilterBar(
 
   // Handle date range change (preset, custom, or XTD)
   const handleDateRangeChange = useCallback((newDateRange: string | string[]) => {
-    if (universalTimeFilter) {
-      // Update existing filter
+    if (dateControlFilter) {
+      // Update the bound filter, whichever kind it is
       const updatedFilters = localFilters.map(df => {
-        if (df.id === universalTimeFilter.id) {
+        if (df.id === dateControlFilter.id) {
           return {
             ...df,
             filter: {
@@ -104,7 +117,7 @@ export function useCompactFilterBar(
       setLocalFilters(updatedFilters)
       onDashboardFiltersChange(updatedFilters)
     } else {
-      // Create new universal time filter
+      // No date filter yet - create a universal time filter
       const newFilter: DashboardFilter = {
         id: generateFilterId(),
         label: 'Date Range',
@@ -120,7 +133,7 @@ export function useCompactFilterBar(
       setLocalFilters(updatedFilters)
       onDashboardFiltersChange(updatedFilters)
     }
-  }, [localFilters, universalTimeFilter, onDashboardFiltersChange, generateFilterId])
+  }, [localFilters, dateControlFilter, onDashboardFiltersChange, generateFilterId])
 
   // Handle preset selection
   const handlePresetSelect = useCallback((presetValue: string) => {

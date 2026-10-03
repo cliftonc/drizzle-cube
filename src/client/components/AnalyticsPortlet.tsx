@@ -9,6 +9,7 @@ import { useScrollContainer } from '../providers/ScrollContainerContext.js'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
 import type { AnalyticsPortletProps } from '../types.js'
 import { hasRunnableQuery, parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
+import { getRegularDashboardFilters } from '../utils/filterUtils.js'
 import { usePortletDrillState } from './analyticsPortlet/usePortletDrillState.js'
 import { usePortletPagination } from './analyticsPortlet/usePortletPagination.js'
 import { usePortletDeadMembers } from './analyticsPortlet/usePortletDeadMembers.js'
@@ -64,10 +65,11 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   const { config: chartTypeConfig } = useChartConfig(chartType)
   const shouldSkipQuery = chartTypeConfig.skipQuery === true && !hasRunnableQuery(query)
 
-  // Memoize regular filters to prevent array recreation on every render
+  // Memoize regular filters to prevent array recreation on every render.
+  // Universal time filters pinned to a field by the mapping count as regular.
   const regularFilters = useMemo(() => {
-    return dashboardFilters?.filter(df => !df.isUniversalTime)
-  }, [dashboardFilters])
+    return getRegularDashboardFilters(dashboardFilters, dashboardFilterMapping)
+  }, [dashboardFilters, dashboardFilterMapping])
 
   // Parse query from JSON string, merge dashboard filters, and detect query type
   // Supports: CubeQuery, MultiQueryConfig, ServerFunnelQuery, ServerFlowQuery, and ServerRetentionQuery formats

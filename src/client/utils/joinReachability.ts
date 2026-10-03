@@ -134,7 +134,7 @@ export interface ReachableDimensionGroup {
 export function getReachableDimensionOptions(
   meta: CubeMeta | null,
   portlet: PortletConfig,
-  options?: { sameTypeAs?: string }
+  options?: { sameTypeAs?: string; type?: string }
 ): ReachableDimensionGroup[] {
   if (!meta?.cubes) return []
 
@@ -144,8 +144,8 @@ export function getReachableDimensionOptions(
   const reachable = getReachableCubes(meta, startCubes)
 
   // Resolve the type of the reference dimension, if provided and known
-  let requiredType: string | undefined
-  if (options?.sameTypeAs) {
+  let requiredType: string | undefined = options?.type
+  if (!requiredType && options?.sameTypeAs) {
     for (const cube of meta.cubes) {
       const match = cube.dimensions?.find(d => d.name === options.sameTypeAs)
       if (match) {

@@ -156,6 +156,33 @@ export function getApplicableDashboardFilters(
 }
 
 /**
+ * Whether a dashboard filter is applied to a portlet as a regular filter.
+ *
+ * Non-universal filters always are. A universal time filter normally reaches a
+ * portlet through its timeDimensions, but when the portlet's mapping pins it to
+ * a field (a member override) it becomes a plain inDateRange filter on that
+ * field - which is how a KPI or breakdown without time dimensions is narrowed
+ * by the dashboard date control.
+ */
+export function isAppliedAsRegularFilter(
+  dashboardFilter: DashboardFilter,
+  filterMapping: DashboardFilterMapping | undefined
+): boolean {
+  return !dashboardFilter.isUniversalTime || !!getMappingMemberOverride(filterMapping, dashboardFilter.id)
+}
+
+/**
+ * Dashboard filters that reach a portlet through its `filters` (as opposed to
+ * universal time filters applied to its timeDimensions).
+ */
+export function getRegularDashboardFilters(
+  dashboardFilters: DashboardFilter[] | undefined,
+  filterMapping: DashboardFilterMapping | undefined
+): DashboardFilter[] | undefined {
+  return dashboardFilters?.filter(df => isAppliedAsRegularFilter(df, filterMapping))
+}
+
+/**
  * Filter format for merge operation:
  * - 'server': Returns {and: [...]} or {or: [...]} format (for API queries)
  * - 'client': Returns {type: 'and', filters: [...]} format (for UI components)
@@ -366,6 +393,59 @@ function getDateRangeFromFilter(filter: SimpleFilter): string[] | string | undef
 }
 
 /**
+ * Universal time filters mapped to a portlet that apply through its
+ * timeDimensions - i.e. mapped without a member override.
+ */
+export function getTimeDimensionUniversalFilters(
+  dashboardFilters: DashboardFilter[] | undefined,
+  filterMapping: DashboardFilterMapping | undefined
+): DashboardFilter[] {
+  return (dashboardFilters ?? []).filter(df =>
+    df.isUniversalTime &&
+    mappingIncludesFilter(filterMapping, df.id) &&
+    !getMappingMemberOverride(filterMapping, df.id)
+  )
+}
+
+/**
+ * Universal time filters mapped to a portlet that cannot narrow it: they apply
+ * only through timeDimensions, but some query in the portlet has none. Such a
+ * portlet would otherwise silently render all-time values while the dashboard
+ * date control shows a narrower range.
+ *
+ * Only plain and multi-query portlets are checked; funnel, flow and retention
+ * queries handle dashboard time filters separately.
+ */
+export function getUnreachableUniversalTimeFilters(
+  query: string,
+  dashboardFilters: DashboardFilter[] | undefined,
+  filterMapping: DashboardFilterMapping | undefined
+): DashboardFilter[] {
+  const candidates = getTimeDimensionUniversalFilters(dashboardFilters, filterMapping)
+  if (candidates.length === 0) return []
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(query)
+  } catch {
+    return []
+  }
+  if (!parsed || typeof parsed !== 'object') return []
+
+  const queries: unknown[] = 'queries' in parsed && Array.isArray(parsed.queries)
+    ? parsed.queries
+    : ('funnel' in parsed || 'flow' in parsed || 'retention' in parsed) ? [] : [parsed]
+
+  const someQueryLacksTimeDimensions = queries.some(q => {
+    if (!q || typeof q !== 'object') return false
+    const timeDimensions = 'timeDimensions' in q ? q.timeDimensions : undefined
+    return !Array.isArray(timeDimensions) || timeDimensions.length === 0
+  })
+
+  return someQueryLacksTimeDimensions ? candidates : []
+}
+
+/**
  * Apply universal time filters to a portlet's timeDimensions
  * Universal time filters apply their dateRange to ALL time dimensions in the portlet
  *
@@ -390,8 +470,8 @@ export function applyUniversalTimeFilters(
   }
 
   // Find applicable universal time filters that have valid date ranges
-  const universalTimeFilters = dashboardFilters
-    ?.filter(df => df.isUniversalTime && mappingIncludesFilter(filterMapping, df.id))
+  // (pinned ones are applied as regular filters instead)
+  const universalTimeFilters = getTimeDimensionUniversalFilters(dashboardFilters, filterMapping)
     ?.filter(df => {
       // Must be a SimpleFilter with a valid dateRange
       if (!('member' in df.filter)) return false

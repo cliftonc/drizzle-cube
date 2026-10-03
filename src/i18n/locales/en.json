@@ -1591,6 +1591,8 @@
   "portlet.filterConfig.applyToFieldDefault": "Default ({field})",
   "portlet.filterConfig.mappedTo": "Mapped to {field}",
   "portlet.filterConfig.mappedFieldMissing": "The mapped field \"{field}\" is no longer available in the schema",
+  "portlet.filterConfig.applyToTimeDimensionsDefault": "Default (the portlet's time dimensions)",
+  "portlet.dateFilterNotApplied": "The dashboard date filter \"{label}\" does not narrow this portlet because it has no time dimension. Map the filter to a date field in the portlet's filter settings.",
   "textPortlet.editText": "Edit Text",
   "textPortlet.addText": "Add Text",
   "textPortlet.markdownContent": "Markdown Content",
