@@ -94,7 +94,7 @@ export function useCompactFilterBar(
             ...df,
             filter: {
               ...(df.filter as SimpleFilter),
-              values: Array.isArray(newDateRange) ? newDateRange : [newDateRange],
+              values: [],
               dateRange: newDateRange
             }
           }
@@ -112,7 +112,7 @@ export function useCompactFilterBar(
         filter: {
           member: '__universal_time__',
           operator: 'inDateRange',
-          values: Array.isArray(newDateRange) ? newDateRange : [newDateRange],
+          values: [],
           dateRange: newDateRange
         }
       }

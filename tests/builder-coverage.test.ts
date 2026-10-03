@@ -16,6 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
+import { PgDialect } from 'drizzle-orm/pg-core'
 
 import { MeasureBuilder } from '../src/server/builders/measure-builder'
 import { FilterBuilder } from '../src/server/builders/filter-builder'
@@ -1739,6 +1740,19 @@ describe('FilterBuilder', () => {
   })
 
   describe('Date Normalization', () => {
+    it('builds a same-day timed start with a date-only end through both range paths', () => {
+      const fieldExpr = sql`created_at`
+      const range = ['2024-01-15T12:00:00Z', '2024-01-15']
+      const dialect = new PgDialect()
+      const expected = ['2024-01-15T12:00:00.000Z', '2024-01-15T23:59:59.999Z']
+      const fromValues = filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', range)
+      const fromDateRange = dateTimeBuilder.buildDateRangeCondition(fieldExpr, range)
+      expect(fromValues).toBeDefined()
+      expect(fromDateRange).toBeDefined()
+      expect(dialect.sqlToQuery(fromValues!).params).toEqual(expected)
+      expect(dialect.sqlToQuery(fromDateRange!).params).toEqual(expected)
+    })
+
     it('treats date-only end date as end-of-day in inDateRange', () => {
       const fieldExpr = createMockColumn()
       const result = filterBuilder.buildFilterCondition(
@@ -2237,30 +2251,50 @@ describe('FilterBuilder', () => {
   })
 
   describe('InDateRange Edge Cases', () => {
-    it('resolves a single inDateRange value like dateRange (whole day / relative range)', () => {
+    it('resolves a relative singleton and flat date tuple', () => {
       const fieldExpr = createMockColumn()
-      expect(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', ['2024-01-01'])).not.toBeNull()
+      expect(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', ['2024-01-01', '2024-01-31'])).not.toBeNull()
       expect(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', ['last 7 days'])).not.toBeNull()
     })
 
-    it('returns null when a single inDateRange value cannot be resolved', () => {
+    it('rejects malformed ranges instead of silently dropping the predicate', () => {
       const fieldExpr = createMockColumn()
-      const result = filterBuilder.buildFilterCondition(
-        fieldExpr,
-        'inDateRange',
-        ['not a date range']
-      )
-      expect(result).toBeNull()
+      for (const values of [
+        ['not a date range'], ['invalid-date', 'also-invalid'],
+        [['2024-01-01', '2024-01-31']], [],
+        ['2024-01-01', '2024-01-31', '2024-02-01'], [true, '2024-01-31'],
+        ['2024-02-30', '2024-03-01']
+      ]) {
+        expect(() => filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', values)).toThrow(/Invalid date range/)
+      }
     })
 
-    it('returns null when inDateRange has invalid dates', () => {
+    it('accepts a single absolute day, a repeated dateRange and a null dateRange', () => {
+      const fieldExpr = sql`created_at`
+      const dialect = new PgDialect()
+      const params = (condition: SQL | null) => dialect.sqlToQuery(condition!).params
+      const wholeDay = ['2024-01-15T00:00:00.000Z', '2024-01-15T23:59:59.999Z']
+      expect(params(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', ['2024-01-15']))).toEqual(wholeDay)
+      const range = ['2024-01-01', '2024-01-31']
+      expect(params(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', range, undefined, range)))
+        .toEqual(params(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', [], undefined, range)))
+      expect(params(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', range, undefined, null)))
+        .toEqual(params(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', range)))
+      expect(() => filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', range, undefined, 'last 7 days'))
+        .toThrow(/values or dateRange/)
+    })
+
+    it('rejects invalid direct date ranges and supports epoch zero', () => {
       const fieldExpr = createMockColumn()
-      const result = filterBuilder.buildFilterCondition(
-        fieldExpr,
-        'inDateRange',
-        ['invalid-date', 'also-invalid']
-      )
-      expect(result).toBeNull()
+      for (const dateRange of [
+        [['2024-01-01', '2024-01-31']],
+        ['2024-12-31', '2024-01-01'],
+        ['2024-02-30', '2024-03-01']
+      ]) {
+        expect(() => dateTimeBuilder.buildDateRangeCondition(fieldExpr, dateRange)).toThrow(/Invalid date range/)
+      }
+      expect(() => dateTimeBuilder.buildDateRangeCondition(fieldExpr, 'not a range')).toThrow(/Invalid date range/)
+      expect(filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', [0, 86400])).not.toBeNull()
     })
 
     it('handles inDateRange with datetime strings (not date-only)', () => {

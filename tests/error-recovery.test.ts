@@ -215,9 +215,8 @@ describe('Error Recovery Tests', () => {
         ]
       }
 
-      // Should return empty results or handle gracefully
-      const result = await testExecutor.executeQuery(query)
-      expect(result.data).toBeDefined()
+      // A reversed range is invalid, not an empty (or unfiltered) query.
+      await expect(testExecutor.executeQuery(query)).rejects.toThrow(/date range|dateRange/i)
     })
 
     it('should handle single date in dateRange', async () => {

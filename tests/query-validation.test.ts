@@ -154,6 +154,57 @@ describe('Query Validation', () => {
   })
 
   describe('Filters validation', () => {
+    it('rejects nested inDateRange values even inside logical groups', () => {
+      const query: SemanticQuery = {
+        measures: ['Employees.count'],
+        filters: [{ and: [{ member: 'Employees.createdAt', operator: 'inDateRange', values: [['2024-01-01', '2024-01-31']] }] }]
+      }
+      const result = compiler.validateQuery(query, SINGLE_TENANT_CONTEXT)
+      expect(result.isValid).toBe(false)
+      expect(result.errors.join(' ')).toContain('Employees.createdAt')
+      expect(result.issues).toEqual([])
+    })
+
+    it('validates flat, relative and malformed date ranges', () => {
+      const check = (values: unknown[], dateRange?: string | string[]) => compiler.validateQuery({
+        measures: ['Employees.count'],
+        filters: [{ member: 'Employees.createdAt', operator: 'inDateRange', values, dateRange }]
+      }, SINGLE_TENANT_CONTEXT)
+      expect(check(['2024-01-01', '2024-01-31']).isValid).toBe(true)
+      // A date-only end includes the whole day, even when the start has a time.
+      expect(check(['2024-01-15T12:00:00Z', '2024-01-15']).isValid).toBe(true)
+      expect(check(['2024-01-16T00:00:00Z', '2024-01-15']).isValid).toBe(false)
+      expect(check(['last 7 days']).isValid).toBe(true)
+      expect(check(['2024-01-15']).isValid).toBe(true)
+      expect(check([], '2024-01-15').isValid).toBe(true)
+      // Saved dashboard filters repeat the range in values; only a disagreement is rejected.
+      expect(check(['2024-01-01', '2024-01-31'], ['2024-01-01', '2024-01-31']).isValid).toBe(true)
+      expect(check(['last 7 days'], 'last 7 days').isValid).toBe(true)
+      expect(check(['2024-01-01', '2024-01-31'], null as unknown as string).isValid).toBe(true)
+      for (const values of [[], ['2024-02-30', '2024-03-01'],
+        ['2024-12-31', '2024-01-01'], ['2024-01-01', '2024-02-01', '2024-03-01'],
+        [null, '2024-01-31'], [true, '2024-01-31']]) {
+        const result = check(values)
+        expect(result.isValid).toBe(false)
+        expect(result.issues).toEqual([])
+      }
+      expect(check(['last 7 days'], 'today').isValid).toBe(false)
+    })
+
+    it('rejects time dimension ranges the SQL builder would refuse', () => {
+      const check = (dateRange: string | string[]) => compiler.validateQuery({
+        measures: ['Employees.count'],
+        timeDimensions: [{ dimension: 'Employees.createdAt', granularity: 'month', dateRange }]
+      }, SINGLE_TENANT_CONTEXT)
+      const reversed = check(['2024-12-31', '2024-01-01'])
+      expect(reversed.isValid).toBe(false)
+      expect(reversed.errors.join(' ')).toContain('Employees.createdAt')
+      expect(check(['2024-01-01', '2024-12-31']).isValid).toBe(true)
+      // A one-element array is a single expression, as the builder treats it.
+      expect(check(['last 30 days']).isValid).toBe(true)
+      expect(check(['2024-01-15']).isValid).toBe(true)
+    })
+
     it('should pass validation for filter on existing dimension', () => {
       const query: SemanticQuery = {
         measures: ['Employees.count'],

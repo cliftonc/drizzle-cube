@@ -11,6 +11,12 @@ import type { SemanticQuery, Cube, Filter, FilterCondition, TimeDimension } from
 import { getActiveQueryModes } from './query-modes.js'
 import { isResolvableDateRange, isValidDateValue } from './builders/date-time-helpers.js'
 import {
+  validateInDateRange,
+  validateDateRangeInput,
+  inDateRangeDiagnostic,
+  timeDimensionDateRangeDiagnostic
+} from './builders/in-date-range-validation.js'
+import {
   isSupportedFilterOperator,
   SUPPORTED_FILTER_OPERATORS
 } from './builders/filter-operators.js'
@@ -336,15 +342,23 @@ function pushInvalidDateRange(errors: ValidationErrors, member: string, dateRang
   }))
 }
 
+/** Reject a timeDimension range the SQL builder would refuse (unparseable, impossible or reversed). */
+function validateTimeDimensionRange(member: string, range: unknown, errors: ValidationErrors): void {
+  if (!isResolvableDateRange(range)) {
+    pushInvalidDateRange(errors, member, range)
+    return
+  }
+  const result = validateDateRangeInput(range)
+  if (!result.valid) errors.push(timeDimensionDateRangeDiagnostic(member, result))
+}
+
 /** Reject timeDimension dateRange / compareDateRange entries that would not resolve. */
 function validateTimeDimensionRanges(timeDimension: TimeDimension, errors: ValidationErrors): void {
-  if (timeDimension.dateRange !== undefined && !isResolvableDateRange(timeDimension.dateRange)) {
-    pushInvalidDateRange(errors, timeDimension.dimension, timeDimension.dateRange)
+  if (timeDimension.dateRange !== undefined) {
+    validateTimeDimensionRange(timeDimension.dimension, timeDimension.dateRange, errors)
   }
   for (const range of timeDimension.compareDateRange ?? []) {
-    if (!isResolvableDateRange(range)) {
-      pushInvalidDateRange(errors, timeDimension.dimension, range)
-    }
+    validateTimeDimensionRange(timeDimension.dimension, range, errors)
   }
 }
 
@@ -510,6 +524,11 @@ function validateFilter(
   }
 
   referencedCubes.add(cubeName)
+  // Check the shape even if the referenced cube has since been removed.
+  if (filter.operator === 'inDateRange') {
+    const result = validateInDateRange(filter.values, filter.dateRange)
+    if (!result.valid) errors.push(inDateRangeDiagnostic(filter.member, result))
+  }
 
   // Check if cube exists
   const cube = cubes.get(cubeName)
@@ -551,15 +570,7 @@ function validateFilterOperatorAndValues(filter: FilterCondition, errors: Valida
 
   const values: unknown[] = Array.isArray(filter.values) ? filter.values : []
 
-  if (operator === 'inDateRange') {
-    const range = filter.dateRange ?? (values.length === 1 ? values[0] : values)
-    if (filter.dateRange === undefined && values.length === 0) {
-      errors.push(t('server.validation.query.inDateRangeMissingRange', { member }))
-    } else if (!isResolvableDateRange(range)) {
-      pushInvalidDateRange(errors, member, range)
-    }
-    return
-  }
+  if (operator === 'inDateRange') return
 
   if (SINGLE_DATE_OPERATORS.has(operator) && values.length > 0 && !isValidDateValue(values[0])) {
     errors.push(t('server.validation.query.invalidDateValue', {

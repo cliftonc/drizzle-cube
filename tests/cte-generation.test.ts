@@ -130,6 +130,12 @@ describe('CTE Generation Tests', () => {
       // Single aggregate row
       expect(result.data).toHaveLength(1)
       expect(result.data[0]['Productivity.recordCount']).toBeGreaterThanOrEqual(0)
+      const nested = TestQueryBuilder.create().measures(['Employees.count', 'Productivity.recordCount'])
+        .filters([{ member: 'Productivity.date', operator: 'inDateRange', values: [['2024-01-01', '2024-12-31']] }]).build()
+      await expect(testExecutor.executeQuery(nested)).rejects.toThrow(/inDateRange/)
+      const relative = TestQueryBuilder.create().measures(['Employees.count', 'Productivity.recordCount'])
+        .filters([{ member: 'Productivity.date', operator: 'inDateRange', values: ['last 7 days'] }]).build()
+      expect((await testExecutor.executeQuery(relative)).data).toHaveLength(1)
     })
 
     it('should handle AND filters in CTE propagation', async () => {

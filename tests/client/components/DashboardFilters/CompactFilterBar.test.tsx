@@ -271,7 +271,7 @@ describe('CompactFilterBar', () => {
 
       expect(props.onDashboardFiltersChange).toHaveBeenCalled()
       const newFilters = props.onDashboardFiltersChange.mock.calls[0][0]
-      expect(newFilters[0].filter.values).toEqual(['2024-01-01', '2024-01-31'])
+      expect(newFilters[0].filter).toMatchObject({ values: [], dateRange: ['2024-01-01', '2024-01-31'] })
     })
 
     it('should close custom dropdown when close button clicked', async () => {
@@ -337,7 +337,7 @@ describe('CompactFilterBar', () => {
 
       expect(props.onDashboardFiltersChange).toHaveBeenCalled()
       const newFilters = props.onDashboardFiltersChange.mock.calls[0][0]
-      expect(newFilters[0].filter.values).toContain('YTD')
+      expect(newFilters[0].filter).toMatchObject({ values: [], dateRange: 'YTD' })
     })
 
     it('should close XTD dropdown when close button clicked', async () => {
@@ -474,7 +474,7 @@ describe('CompactFilterBar', () => {
           expect.objectContaining({
             isUniversalTime: true,
             filter: expect.objectContaining({
-              values: expect.arrayContaining(['last 30 days'])
+              values: [], dateRange: 'last 30 days'
             })
           })
         ])
