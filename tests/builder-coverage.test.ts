@@ -16,6 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
+import { PgDialect } from 'drizzle-orm/pg-core'
 
 import { MeasureBuilder } from '../src/server/builders/measure-builder'
 import { FilterBuilder } from '../src/server/builders/filter-builder'
@@ -1739,6 +1740,19 @@ describe('FilterBuilder', () => {
   })
 
   describe('Date Normalization', () => {
+    it('builds a same-day timed start with a date-only end through both range paths', () => {
+      const fieldExpr = sql`created_at`
+      const range = ['2024-01-15T12:00:00Z', '2024-01-15']
+      const dialect = new PgDialect()
+      const expected = ['2024-01-15T12:00:00.000Z', '2024-01-15T23:59:59.999Z']
+      const fromValues = filterBuilder.buildFilterCondition(fieldExpr, 'inDateRange', range)
+      const fromDateRange = dateTimeBuilder.buildDateRangeCondition(fieldExpr, range)
+      expect(fromValues).toBeDefined()
+      expect(fromDateRange).toBeDefined()
+      expect(dialect.sqlToQuery(fromValues!).params).toEqual(expected)
+      expect(dialect.sqlToQuery(fromDateRange!).params).toEqual(expected)
+    })
+
     it('treats date-only end date as end-of-day in inDateRange', () => {
       const fieldExpr = createMockColumn()
       const result = filterBuilder.buildFilterCondition(

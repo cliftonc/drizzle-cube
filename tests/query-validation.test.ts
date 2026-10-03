@@ -171,6 +171,9 @@ describe('Query Validation', () => {
         filters: [{ member: 'Employees.createdAt', operator: 'inDateRange', values, dateRange }]
       }, SINGLE_TENANT_CONTEXT)
       expect(check(['2024-01-01', '2024-01-31']).isValid).toBe(true)
+      // A date-only end includes the whole day, even when the start has a time.
+      expect(check(['2024-01-15T12:00:00Z', '2024-01-15']).isValid).toBe(true)
+      expect(check(['2024-01-16T00:00:00Z', '2024-01-15']).isValid).toBe(false)
       expect(check(['last 7 days']).isValid).toBe(true)
       expect(check([], '2024-01-15').isValid).toBe(true)
       for (const values of [[], ['2024-01-01'], ['2024-02-30', '2024-03-01'],

@@ -1,5 +1,5 @@
 import { t } from '../../i18n/runtime.js'
-import { parseRelativeDateRangeValue, toValidDate } from './date-time-helpers.js'
+import { isDateOnlyString, parseRelativeDateRangeValue, toValidDate } from './date-time-helpers.js'
 
 export type DateRangeReason = 'missing' | 'shape' | 'invalidDate' | 'invalidRelative' | 'reverseOrder' | 'conflict'
 export type DateRangeValidation = { valid: true } | { valid: false; reason: DateRangeReason; input: 'values' | 'dateRange'; value?: string }
@@ -17,6 +17,8 @@ export function validateDateTuple(value: unknown): DateRangeReason | null {
   const start = toValidDate(value[0])
   const end = toValidDate(value[1])
   if (!start || !end || !value.every(isRealCalendarDate)) return 'invalidDate'
+  // The SQL builders include the entire end day for date-only strings.
+  if (isDateOnlyString(value[1])) end.setUTCHours(23, 59, 59, 999)
   if (start.getTime() > end.getTime()) return 'reverseOrder'
   return null
 }
