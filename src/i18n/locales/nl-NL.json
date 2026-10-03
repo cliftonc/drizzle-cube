@@ -1591,6 +1591,8 @@
   "portlet.filterConfig.applyToFieldDefault": "Standaard ({field})",
   "portlet.filterConfig.mappedTo": "Gekoppeld aan {field}",
   "portlet.filterConfig.mappedFieldMissing": "Het gekoppelde veld \"{field}\" is niet meer beschikbaar in het schema",
+  "portlet.filterConfig.applyToTimeDimensionsDefault": "Standaard (de tijdsdimensies van de portlet)",
+  "portlet.dateFilterNotApplied": "Het dashboard-datumfilter \"{label}\" beperkt deze portlet niet omdat deze geen tijdsdimensie heeft. Koppel het filter aan een datumveld in de filterinstellingen van de portlet.",
   "textPortlet.editText": "Bewerken Tekst",
   "textPortlet.addText": "Voeg Tekst",
   "textPortlet.markdownContent": "Markdown Content",

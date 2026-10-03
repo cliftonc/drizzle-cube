@@ -4,6 +4,7 @@
  */
 
 import React, { type CSSProperties } from 'react'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import type { PortletConfig } from '../../types.js'
 import DebugModal from '../DebugModal.js'
 import { getIcon } from '../../icons/registry.js'
@@ -26,6 +27,8 @@ interface PortletCardHeaderProps {
   xlsExportAvailable: boolean
   exportInProgress: boolean
   showCacheBustIndicator: boolean
+  /** Labels of mapped dashboard date filters that cannot narrow this portlet */
+  unreachableDateFilterLabels?: string[]
   icons: CardIcons
   onRefresh: (options?: { bustCache?: boolean }) => void
   onHoverRefreshChange: (hovering: boolean) => void
@@ -66,12 +69,29 @@ function CacheIndicator({ cachedAt }: { cachedAt: string }) {
   )
 }
 
+function UnreachableDateFilterIndicator({ labels }: { labels: string[] }) {
+  const { t } = useTranslation()
+  const WarningIcon = getIcon('warning')
+  const message = labels.map(label => t('portlet.dateFilterNotApplied', { label })).join('\n')
+  return (
+    <span
+      className="dc:p-1 text-dc-warning dc:shrink-0"
+      title={message}
+      aria-label={message}
+      role="img"
+      data-testid="portlet-date-filter-not-applied"
+    >
+      <WarningIcon style={ICON_STYLE} />
+    </span>
+  )
+}
+
 export default function PortletCardHeader(props: PortletCardHeaderProps) {
   const {
     portlet, className, headerStyle, restHeaderProps, headerOnClick,
     editable, isEditMode, isInSelectionMode, debugData,
     copyAvailable, copySuccess, xlsExportAvailable, exportInProgress, showCacheBustIndicator,
-    icons, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
+    unreachableDateFilterLabels, icons, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
     onOpenFilterConfig, onDuplicate, onEdit, onDelete
   } = props
 
@@ -88,6 +108,9 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
     >
       <div className="dc:flex dc:items-center dc:gap-2 dc:flex-1 dc:min-w-0">
         <h3 className="dc:font-semibold dc:text-sm text-dc-text dc:truncate">{portlet.title}</h3>
+        {unreachableDateFilterLabels && unreachableDateFilterLabels.length > 0 && (
+          <UnreachableDateFilterIndicator labels={unreachableDateFilterLabels} />
+        )}
         {editable && isEditMode && debugData && (
           <div {...STOP_HANDLERS}>
             <DebugModal

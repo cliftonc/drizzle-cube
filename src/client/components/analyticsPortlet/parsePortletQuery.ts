@@ -25,7 +25,7 @@ import {
   getApplicableDashboardFilters,
   mergeDashboardAndPortletFilters,
   applyUniversalTimeFilters,
-  mappingIncludesFilter
+  getTimeDimensionUniversalFilters
 } from '../../utils/filterUtils.js'
 
 export interface ParsedPortletQuery {
@@ -111,10 +111,9 @@ function applyUniversalTimeToFunnel(
   dashboardFilters: DashboardFilter[] | undefined,
   dashboardFilterMapping: DashboardFilterMapping | undefined
 ): void {
-  const universalTimeFilters = dashboardFilters?.filter(df =>
-    df.isUniversalTime && mappingIncludesFilter(dashboardFilterMapping, df.id)
-  )
-  if (!universalTimeFilters || universalTimeFilters.length === 0 || modifiedFunnel.funnel.steps.length === 0) {
+  // Pinned universal filters arrive with the regular filters instead
+  const universalTimeFilters = getTimeDimensionUniversalFilters(dashboardFilters, dashboardFilterMapping)
+  if (universalTimeFilters.length === 0 || modifiedFunnel.funnel.steps.length === 0) {
     return
   }
 
@@ -182,7 +181,7 @@ export function parsePortletQuery(params: ParsePortletQueryParams): ParsedPortle
   try {
     const parsed = JSON.parse(query)
 
-    // Get applicable dashboard filters (excluding universal time filters - they apply to timeDimensions)
+    // Get applicable dashboard filters (universal time filters apply to timeDimensions unless pinned to a field)
     const applicableFilters = getApplicableDashboardFilters(regularFilters, dashboardFilterMapping)
 
     // ServerRetentionQuery format { retention: {...} }

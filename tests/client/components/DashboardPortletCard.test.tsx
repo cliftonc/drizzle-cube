@@ -666,4 +666,60 @@ describe('DashboardPortletCard', () => {
       expect(screen.getByTestId('analytics-portlet')).toHaveAttribute('data-height', 'auto')
     })
   })
+
+  describe('unreachable dashboard date filter indicator', () => {
+    const universalFilter = {
+      id: 'date',
+      label: 'Date Range',
+      isUniversalTime: true,
+      filter: { member: '__universal_time__', operator: 'inDateRange' as const, values: [], dateRange: 'last 7 days' }
+    }
+
+    it('warns when a mapped universal date filter cannot reach a portlet without time dimensions', () => {
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ dashboardFilterMapping: ['date'] })
+
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...props} dashboardFilters={[universalFilter]} />
+        </TestWrapper>
+      )
+
+      expect(screen.getByTestId('portlet-date-filter-not-applied')).toHaveAttribute(
+        'title',
+        expect.stringContaining('"Date Range" does not narrow this portlet')
+      )
+    })
+
+    it('does not warn once the universal date filter is pinned to a field', () => {
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ dashboardFilterMapping: [{ filterId: 'date', member: 'Sales.createdAt' }] })
+
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...props} dashboardFilters={[universalFilter]} />
+        </TestWrapper>
+      )
+
+      expect(screen.queryByTestId('portlet-date-filter-not-applied')).not.toBeInTheDocument()
+    })
+
+    it('does not warn when the portlet has a time dimension', () => {
+      const props = createDefaultProps()
+      const analysisConfig = createMockAnalysisConfig()
+      analysisConfig.query = {
+        measures: ['Sales.total'],
+        timeDimensions: [{ dimension: 'Sales.createdAt', granularity: 'day' }]
+      }
+      props.portlet = createMockPortlet({ analysisConfig, dashboardFilterMapping: ['date'] })
+
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...props} dashboardFilters={[universalFilter]} />
+        </TestWrapper>
+      )
+
+      expect(screen.queryByTestId('portlet-date-filter-not-applied')).not.toBeInTheDocument()
+    })
+  })
 })
