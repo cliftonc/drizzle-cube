@@ -319,3 +319,29 @@ jobs:
 
       - name: Run client tests
         run: npm run test:client
+
+  # The package supports React 18 and 19 (peer range), but dev/test runs on 19.
+  # Re-run the client suite on React 18 so 19-only APIs can't slip in.
+  test-client-react18:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-test == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install React 18
+        run: npm install --no-save react@^18.3.1 react-dom@^18.3.1
+
+      - name: Run client tests (React 18)
+        run: npm run test:client
