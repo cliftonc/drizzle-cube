@@ -1,0 +1,27 @@
+#!/bin/sh
+# Block pushes whose checked-in MCP app bundle is stale.
+#
+# src/mcp-app/generated-html.ts is generated from client code and committed;
+# CI's build job fails if it does not match a fresh `npm run build:mcp-app`.
+# The build takes about a second, so check here instead of waiting for CI.
+#
+# Bypass in an emergency with `git push --no-verify`.
+
+BUNDLE=src/mcp-app/generated-html.ts
+
+if [ ! -d node_modules ]; then
+  echo "pre-push: node_modules missing - skipping MCP app bundle check" >&2
+  exit 0
+fi
+
+if ! npm run --silent build:mcp-app >/dev/null 2>&1; then
+  echo "pre-push: 'npm run build:mcp-app' failed - run it to see why" >&2
+  exit 1
+fi
+
+if ! git diff --quiet HEAD -- "$BUNDLE"; then
+  echo "pre-push: $BUNDLE is stale (CI will fail)." >&2
+  echo "          It has been regenerated - commit it and push again:" >&2
+  echo "            git add $BUNDLE && git commit -m 'chore(mcp-app): regenerate checked-in bundle'" >&2
+  exit 1
+fi

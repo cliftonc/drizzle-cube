@@ -53,6 +53,10 @@ Each engine has a dedicated executor in `src/server/executors/`. Auto-detection 
 | Quality | `npm run lint` | ESLint |
 | Quality | `npm run lint:fix` | ESLint with auto-fix |
 
+### Checked-in MCP app bundle
+
+`src/mcp-app/generated-html.ts` is generated from client code **and committed**. Any client, i18n or shared change can make it stale, and CI's `build` job fails when it is. Run `npm run build:mcp-app` (≈1s; `npm run build` includes it) and commit the result before pushing. A `pre-push` hook in `.githooks/` enforces this — `npm install` enables it via the `prepare` script (`git config core.hooksPath .githooks`).
+
 ### Testing in a constrained environment (CI sandboxes, agents, containers)
 
 **`npm test` is NOT the command to run when Docker is unavailable.** The default engine is PostgreSQL, so the root Vitest config's `globalSetup` tries to connect to the `docker-compose.yml` Postgres and the whole run fails before a single test executes. The same applies to `npm run test:postgres` and `npm run test:mysql`. A failure from these commands means "no database", not "the code is broken" — do not report it as a test failure, and do not try to fix the code in response to it.
