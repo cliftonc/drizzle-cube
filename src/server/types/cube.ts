@@ -231,9 +231,10 @@ export interface Dimension {
 
   /**
    * Default for `fillMissingDates` when a query does not set it on this time
-   * dimension. Set `false` when a missing time bucket means the value is
-   * unknown, so gap filling must not show it as the fill value.
-   * Defaults to `true`. Only applies when type is 'time'.
+   * dimension. Set `true` when a missing time bucket means zero (or the
+   * query's `fillMissingDatesValue`), so charts show a continuous series.
+   * Defaults to `false`: the server returns only the observed rows.
+   * Only applies when type is 'time'.
    */
   fillMissingDates?: boolean
 }

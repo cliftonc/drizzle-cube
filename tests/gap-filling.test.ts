@@ -311,6 +311,13 @@ describe('Gap Filling', () => {
         dimensions: { date: { name: 'date', type: 'time', fillMissingDates: false } }
       } as unknown as Cube
     ]])
+    const salesCubesWithFill = new Map([[
+      'Sales',
+      {
+        name: 'Sales',
+        dimensions: { date: { name: 'date', type: 'time', fillMissingDates: true } }
+      } as unknown as Cube
+    ]])
 
     it('should skip filling when fillMissingDates is false', () => {
       const data = [
@@ -330,7 +337,7 @@ describe('Gap Filling', () => {
       expect(result).toHaveLength(1) // Not filled
     })
 
-    it('should fill by default (fillMissingDates defaults to true)', () => {
+    it('should not fill by default (fillMissingDates defaults to false)', () => {
       const data = [
         { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }
       ]
@@ -341,11 +348,64 @@ describe('Gap Filling', () => {
           dimension: 'Sales.date',
           granularity: 'day',
           dateRange: ['2024-01-01', '2024-01-03']
-          // fillMissingDates not specified - should default to true
+          // fillMissingDates not specified - defaults to false
         }]
       }, ['Sales.revenue'])
 
-      expect(result).toHaveLength(3) // Filled
+      expect(result).toEqual(data) // Only the observed row
+    })
+
+    it('should fill when the query enables fillMissingDates', () => {
+      const data = [
+        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }
+      ]
+
+      const result = applyGapFilling(data, {
+        measures: ['Sales.revenue'],
+        timeDimensions: [{
+          dimension: 'Sales.date',
+          granularity: 'day',
+          dateRange: ['2024-01-01', '2024-01-03'],
+          fillMissingDates: true
+        }]
+      }, ['Sales.revenue'])
+
+      expect(result).toHaveLength(3)
+    })
+
+    it('should fill when the cube time dimension enables fillMissingDates', () => {
+      const data = [
+        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }
+      ]
+
+      const result = applyGapFilling(data, {
+        measures: ['Sales.revenue'],
+        timeDimensions: [{
+          dimension: 'Sales.date',
+          granularity: 'day',
+          dateRange: ['2024-01-01', '2024-01-03']
+        }]
+      }, ['Sales.revenue'], salesCubesWithFill)
+
+      expect(result).toHaveLength(3)
+    })
+
+    it('should skip filling when the query disables fillMissingDates over the cube time dimension default', () => {
+      const data = [
+        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }
+      ]
+
+      const result = applyGapFilling(data, {
+        measures: ['Sales.revenue'],
+        timeDimensions: [{
+          dimension: 'Sales.date',
+          granularity: 'day',
+          dateRange: ['2024-01-01', '2024-01-03'],
+          fillMissingDates: false
+        }]
+      }, ['Sales.revenue'], salesCubesWithFill)
+
+      expect(result).toHaveLength(1)
     })
 
     it('should skip filling when the cube time dimension disables fillMissingDates', () => {
@@ -427,6 +487,7 @@ describe('Gap Filling', () => {
         measures: ['Sales.revenue'],
         timeDimensions: [{
           dimension: 'Sales.date',
+          fillMissingDates: true,
           granularity: 'day'
           // No dateRange on timeDimension — it's on the filter
         }],
@@ -453,6 +514,7 @@ describe('Gap Filling', () => {
         measures: ['Sales.revenue'],
         timeDimensions: [{
           dimension: 'Sales.date',
+          fillMissingDates: true,
           granularity: 'month'
         }],
         filters: [{
@@ -477,6 +539,7 @@ describe('Gap Filling', () => {
         measures: ['Sales.revenue'],
         timeDimensions: [{
           dimension: 'Sales.date',
+          fillMissingDates: true,
           granularity: 'day'
         }],
         filters: [{
@@ -503,6 +566,7 @@ describe('Gap Filling', () => {
         measures: ['Sales.revenue'],
         timeDimensions: [{
           dimension: 'Sales.date',
+          fillMissingDates: true,
           granularity: 'day'
         }],
         filters: [{
@@ -526,6 +590,7 @@ describe('Gap Filling', () => {
         measures: ['Sales.revenue'],
         timeDimensions: [{
           dimension: 'Sales.date',
+          fillMissingDates: true,
           granularity: 'day',
           dateRange: ['2024-01-01', '2024-01-02'] // Narrower range on timeDimension
         }],
@@ -549,6 +614,7 @@ describe('Gap Filling', () => {
         measures: ['Sales.revenue'],
         timeDimensions: [{
           dimension: 'Sales.date',
+          fillMissingDates: true,
           granularity: 'day',
           dateRange: ['2024-01-01', '2024-01-02']
         }],
@@ -566,9 +632,9 @@ describe('Gap Filling', () => {
         .measures(['Productivity.recordCount', 'Productivity.totalLinesOfCode'])
         .timeDimensions([{
           dimension: 'Productivity.date',
+          fillMissingDates: true,
           granularity: 'day',
           dateRange: ['2024-01-01', '2024-01-07']
-          // fillMissingDates defaults to true
         }])
         .order({ 'Productivity.date': 'asc' })
         .build()
@@ -625,38 +691,53 @@ describe('Gap Filling', () => {
       expect(unfilledResult.data.length).toBeLessThanOrEqual(31)
     })
 
+    it('should not fill gaps when neither the query nor the cube enables fillMissingDates', async () => {
+      const result = await testExecutor.executeQuery(
+        TestQueryBuilder.create()
+          .measures(['Productivity.recordCount'])
+          .timeDimensions([{
+            dimension: 'Productivity.date',
+            granularity: 'day',
+            dateRange: ['2030-01-01', '2030-01-07']
+          }])
+          .build()
+      )
+
+      expect(result.data).toHaveLength(0)
+    })
+
     it('should use the fillMissingDates default of the cube time dimension', async () => {
       const productivity = cubes.get('Productivity')!
-      const noFillCubes = new Map(cubes)
-      noFillCubes.set('Productivity', {
+      const fillCubes = new Map(cubes)
+      fillCubes.set('Productivity', {
         ...productivity,
         dimensions: {
           ...productivity.dimensions,
-          date: { ...productivity.dimensions.date, fillMissingDates: false }
+          date: { ...productivity.dimensions.date, fillMissingDates: true }
         }
       })
-      const noFillExecutor = new TestExecutor(queryExecutor, noFillCubes, testSecurityContexts.org1)
+      const fillExecutor = new TestExecutor(queryExecutor, fillCubes, testSecurityContexts.org1)
       const timeDimension = {
         dimension: 'Productivity.date',
         granularity: 'day' as const,
         dateRange: ['2030-01-01', '2030-01-07']
       }
 
-      const defaultResult = await noFillExecutor.executeQuery(
+      const defaultResult = await fillExecutor.executeQuery(
         TestQueryBuilder.create()
           .measures(['Productivity.recordCount'])
           .timeDimensions([timeDimension])
           .build()
       )
-      const overrideResult = await noFillExecutor.executeQuery(
+      const overrideResult = await fillExecutor.executeQuery(
         TestQueryBuilder.create()
           .measures(['Productivity.recordCount'])
-          .timeDimensions([{ ...timeDimension, fillMissingDates: true }])
+          .timeDimensions([{ ...timeDimension, fillMissingDates: false }])
           .build()
       )
 
-      expect(defaultResult.data).toHaveLength(0)
-      expect(overrideResult.data).toHaveLength(7)
+      expect(defaultResult.data).toHaveLength(7)
+      expect(overrideResult.data).toHaveLength(0)
     })
 
     it('should fill gaps with custom fill value', async () => {
@@ -664,6 +745,7 @@ describe('Gap Filling', () => {
         measures: ['Productivity.recordCount'],
         timeDimensions: [{
           dimension: 'Productivity.date',
+          fillMissingDates: true,
           granularity: 'day',
           dateRange: ['2024-01-01', '2024-01-03']
         }],
@@ -689,6 +771,7 @@ describe('Gap Filling', () => {
         .dimensions(['Employees.departmentId'])
         .timeDimensions([{
           dimension: 'Productivity.date',
+          fillMissingDates: true,
           granularity: 'day',
           dateRange: ['2024-01-01', '2024-01-03']
         }])
@@ -717,6 +800,7 @@ describe('Gap Filling', () => {
         .measures(['Productivity.recordCount'])
         .timeDimensions([{
           dimension: 'Productivity.date',
+          fillMissingDates: true,
           granularity: 'month',
           dateRange: ['2024-01-01', '2024-06-30']
         }])
@@ -734,6 +818,7 @@ describe('Gap Filling', () => {
         .measures(['Productivity.recordCount'])
         .timeDimensions([{
           dimension: 'Productivity.date',
+          fillMissingDates: true,
           granularity: 'week',
           dateRange: ['2024-01-01', '2024-01-28']
         }])
@@ -760,6 +845,7 @@ describe('Gap Filling', () => {
         .measures(['Productivity.recordCount'])
         .timeDimensions([{
           dimension: 'Productivity.date',
+          fillMissingDates: true,
           granularity: 'year',
           dateRange: ['2022-01-01', '2024-12-31']
         }])
@@ -779,6 +865,7 @@ describe('Gap Filling', () => {
         .measures(['Productivity.recordCount'])
         .timeDimensions([{
           dimension: 'Productivity.date',
+          fillMissingDates: true,
           granularity: 'day',
           dateRange: ['2024-01-15', '2024-01-15']
         }])
@@ -794,6 +881,7 @@ describe('Gap Filling', () => {
         .measures(['Productivity.recordCount'])
         .timeDimensions([{
           dimension: 'Productivity.date',
+          fillMissingDates: true,
           granularity: 'day',
           dateRange: ['2030-01-01', '2030-01-03'] // Future dates - no data
         }])
@@ -814,6 +902,7 @@ describe('Gap Filling', () => {
         .measures(['Productivity.recordCount'])
         .timeDimensions([{
           dimension: 'Productivity.date',
+          fillMissingDates: true,
           granularity: 'month',
           dateRange: ['2024-01-01', '2024-01-31']
         }])
@@ -830,6 +919,7 @@ describe('Gap Filling', () => {
         .measures(['Productivity.recordCount'])
         .timeDimensions([{
           dimension: 'Productivity.date',
+          fillMissingDates: true,
           granularity: 'quarter',
           dateRange: ['2024-01-01', '2024-12-31']
         }])

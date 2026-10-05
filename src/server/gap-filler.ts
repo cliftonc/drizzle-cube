@@ -348,14 +348,15 @@ export function parseDateRange(dateRange: string | string[] | undefined): [Date,
 
 /**
  * Resolve whether a time dimension is gap filled. The query option wins, then
- * the `fillMissingDates` default of the cube dimension, then true.
+ * the `fillMissingDates` default of the cube dimension, then false: the server
+ * returns only the observed rows unless a query or a cube turns filling on.
  */
 function shouldFillTimeDimension(td: TimeDimension, cubes?: Map<string, Cube>): boolean {
   if (td.fillMissingDates !== undefined) {
     return td.fillMissingDates
   }
   const [cubeName, dimensionName] = td.dimension.split('.')
-  return cubes?.get(cubeName)?.dimensions[dimensionName]?.fillMissingDates ?? true
+  return cubes?.get(cubeName)?.dimensions[dimensionName]?.fillMissingDates ?? false
 }
 
 /**
