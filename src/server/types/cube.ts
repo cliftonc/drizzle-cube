@@ -228,6 +228,14 @@ export interface Dimension {
    * @example ['year', 'quarter', 'month', 'day'] for a custom subset
    */
   granularities?: TimeGranularity[]
+
+  /**
+   * Default for `fillMissingDates` when a query does not set it on this time
+   * dimension. Set `false` when a missing time bucket means the value is
+   * unknown, so gap filling must not show it as the fill value.
+   * Defaults to `true`. Only applies when type is 'time'.
+   */
+  fillMissingDates?: boolean
 }
 
 /**

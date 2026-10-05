@@ -565,7 +565,7 @@ export class QueryExecutor {
     const data = await this.dbExecutor.execute(builtQuery, numericFields)
 
     // Normalise time-dimension date values (adapter-specific) and apply gap filling
-    const filledData = postProcessResultRows(data, query, this.databaseAdapter)
+    const filledData = postProcessResultRows(data, query, this.databaseAdapter, cubes)
 
     // Generate annotations for UI
     const annotation = buildAnnotations(physicalPlan, query)

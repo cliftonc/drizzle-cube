@@ -4,7 +4,7 @@
  * applies time-series gap filling. Extracted from QueryExecutor.
  */
 
-import type { SemanticQuery } from '../types/index.js'
+import type { SemanticQuery, Cube } from '../types/index.js'
 import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import { applyGapFilling } from '../gap-filler.js'
 
@@ -14,11 +14,13 @@ import { applyGapFilling } from '../gap-filler.js'
  * @param data Raw rows from the database executor
  * @param query The semantic query (for timeDimensions + measures)
  * @param databaseAdapter Adapter used to convert engine-specific date results
+ * @param cubes Cube definitions, for the time dimension `fillMissingDates` default
  */
 export function postProcessResultRows(
   data: unknown,
   query: SemanticQuery,
-  databaseAdapter: DatabaseAdapter
+  databaseAdapter: DatabaseAdapter,
+  cubes: Map<string, Cube>
 ): Record<string, unknown>[] {
   // Process time dimension results
   const mappedData = Array.isArray(data) ? data.map(row => {
@@ -48,5 +50,5 @@ export function postProcessResultRows(
 
   // Apply gap filling for time series if requested
   const measureNames = query.measures || []
-  return applyGapFilling(mappedData, query, measureNames)
+  return applyGapFilling(mappedData, query, measureNames, cubes)
 }

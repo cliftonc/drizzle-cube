@@ -19,15 +19,16 @@ import {
 
 describe('Gap Filling', () => {
   let testExecutor: TestExecutor
+  let queryExecutor: QueryExecutor
   let cubes: Map<string, Cube>
   let close: () => void
 
   beforeAll(async () => {
     const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
-    const executor = new QueryExecutor(dbExecutor)
+    queryExecutor = new QueryExecutor(dbExecutor)
     close = cleanup
     cubes = await getTestCubes(['Productivity', 'Employees'])
-    testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
+    testExecutor = new TestExecutor(queryExecutor, cubes, testSecurityContexts.org1)
   })
 
   afterAll(() => {
@@ -303,6 +304,14 @@ describe('Gap Filling', () => {
   })
 
   describe('Unit Tests - applyGapFilling', () => {
+    const salesCubesWithoutFill = new Map([[
+      'Sales',
+      {
+        name: 'Sales',
+        dimensions: { date: { name: 'date', type: 'time', fillMissingDates: false } }
+      } as unknown as Cube
+    ]])
+
     it('should skip filling when fillMissingDates is false', () => {
       const data = [
         { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }
@@ -337,6 +346,41 @@ describe('Gap Filling', () => {
       }, ['Sales.revenue'])
 
       expect(result).toHaveLength(3) // Filled
+    })
+
+    it('should skip filling when the cube time dimension disables fillMissingDates', () => {
+      const data = [
+        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }
+      ]
+
+      const result = applyGapFilling(data, {
+        measures: ['Sales.revenue'],
+        timeDimensions: [{
+          dimension: 'Sales.date',
+          granularity: 'day',
+          dateRange: ['2024-01-01', '2024-01-03']
+        }]
+      }, ['Sales.revenue'], salesCubesWithoutFill)
+
+      expect(result).toHaveLength(1)
+    })
+
+    it('should fill when the query enables fillMissingDates over the cube time dimension default', () => {
+      const data = [
+        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }
+      ]
+
+      const result = applyGapFilling(data, {
+        measures: ['Sales.revenue'],
+        timeDimensions: [{
+          dimension: 'Sales.date',
+          granularity: 'day',
+          dateRange: ['2024-01-01', '2024-01-03'],
+          fillMissingDates: true
+        }]
+      }, ['Sales.revenue'], salesCubesWithoutFill)
+
+      expect(result).toHaveLength(3)
     })
 
     it('should skip when no granularity', () => {
@@ -579,6 +623,40 @@ describe('Gap Filling', () => {
       // Filled should have 31 days, unfilled should have <= 31
       expect(filledResult.data).toHaveLength(31)
       expect(unfilledResult.data.length).toBeLessThanOrEqual(31)
+    })
+
+    it('should use the fillMissingDates default of the cube time dimension', async () => {
+      const productivity = cubes.get('Productivity')!
+      const noFillCubes = new Map(cubes)
+      noFillCubes.set('Productivity', {
+        ...productivity,
+        dimensions: {
+          ...productivity.dimensions,
+          date: { ...productivity.dimensions.date, fillMissingDates: false }
+        }
+      })
+      const noFillExecutor = new TestExecutor(queryExecutor, noFillCubes, testSecurityContexts.org1)
+      const timeDimension = {
+        dimension: 'Productivity.date',
+        granularity: 'day' as const,
+        dateRange: ['2030-01-01', '2030-01-07']
+      }
+
+      const defaultResult = await noFillExecutor.executeQuery(
+        TestQueryBuilder.create()
+          .measures(['Productivity.recordCount'])
+          .timeDimensions([timeDimension])
+          .build()
+      )
+      const overrideResult = await noFillExecutor.executeQuery(
+        TestQueryBuilder.create()
+          .measures(['Productivity.recordCount'])
+          .timeDimensions([{ ...timeDimension, fillMissingDates: true }])
+          .build()
+      )
+
+      expect(defaultResult.data).toHaveLength(0)
+      expect(overrideResult.data).toHaveLength(7)
     })
 
     it('should fill gaps with custom fill value', async () => {

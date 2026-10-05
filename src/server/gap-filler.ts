@@ -4,7 +4,8 @@
  * Follows Cube.js naming conventions (fillMissingDates) but implements server-side.
  */
 
-import type { SemanticQuery, Filter, FilterCondition } from './types/query.js'
+import type { SemanticQuery, Filter, FilterCondition, TimeDimension } from './types/query.js'
+import type { Cube } from './types/cube.js'
 import type { TimeGranularity } from './types/core.js'
 import { parseRelativeDateRange } from '../shared/date-utils.js'
 
@@ -346,17 +347,31 @@ export function parseDateRange(dateRange: string | string[] | undefined): [Date,
 }
 
 /**
+ * Resolve whether a time dimension is gap filled. The query option wins, then
+ * the `fillMissingDates` default of the cube dimension, then true.
+ */
+function shouldFillTimeDimension(td: TimeDimension, cubes?: Map<string, Cube>): boolean {
+  if (td.fillMissingDates !== undefined) {
+    return td.fillMissingDates
+  }
+  const [cubeName, dimensionName] = td.dimension.split('.')
+  return cubes?.get(cubeName)?.dimensions[dimensionName]?.fillMissingDates ?? true
+}
+
+/**
  * Apply gap filling to query result data based on query configuration
  *
  * @param data - Original query result data
  * @param query - The semantic query
  * @param measures - List of measure names in the result
+ * @param cubes - Cube definitions, for the time dimension `fillMissingDates` default
  * @returns Data with gaps filled (if applicable)
  */
 export function applyGapFilling(
   data: Record<string, unknown>[],
   query: SemanticQuery,
-  measures: string[]
+  measures: string[],
+  cubes?: Map<string, Cube>
 ): Record<string, unknown>[] {
   // Check if we have time dimensions to fill
   if (!query.timeDimensions || query.timeDimensions.length === 0) {
@@ -365,8 +380,7 @@ export function applyGapFilling(
 
   // Find time dimensions that need gap filling
   const timeDimensionsToFill = query.timeDimensions.filter(td => {
-    // fillMissingDates defaults to true
-    const shouldFill = td.fillMissingDates !== false
+    const shouldFill = shouldFillTimeDimension(td, cubes)
 
     // Must have granularity to fill gaps
     // dateRange can come from the timeDimension itself OR from a matching inDateRange filter
