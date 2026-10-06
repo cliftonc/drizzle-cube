@@ -5,10 +5,11 @@
  * the component flat. No behaviour change.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDrillInteraction } from '../../hooks/useDrillInteraction.js'
 import { useCubeMeta } from '../../providers/CubeMetaContext.js'
 import type { ChartAxisConfig, CubeQuery, DashboardFilter, DashboardFilterMapping } from '../../types.js'
+import { parsePortletDrillViewState, type PortletDrillViewState } from './drillViewState.js'
 
 export interface UsePortletDrillStateParams {
   queryObject: CubeQuery | null
@@ -19,6 +20,8 @@ export interface UsePortletDrillStateParams {
   isFunnelMode: boolean
   isFlowMode: boolean
   isRetentionMode: boolean
+  /** Drill view state to start from (`PortletViewState.drill`). Read one time, on mount. */
+  initialDrill?: unknown
 }
 
 export function usePortletDrillState(params: UsePortletDrillStateParams) {
@@ -30,15 +33,21 @@ export function usePortletDrillState(params: UsePortletDrillStateParams) {
     isMultiQuery,
     isFunnelMode,
     isFlowMode,
-    isRetentionMode
+    isRetentionMode,
+    initialDrill
   } = params
 
-  // Track the current drilled query (null means using the original/parsed query)
-  const [drilledQuery, setDrilledQuery] = useState<CubeQuery | null>(null)
-
-  // Reset drilled query when the base query changes (e.g., dashboard filters change)
   const queryObjectJson = queryObject ? JSON.stringify(queryObject) : null
-  const previousQueryObjectJson = useRef<string | null>(null)
+
+  // A start state applies only to the base query it was taken from
+  const [initialDrillState] = useState(() => parsePortletDrillViewState(initialDrill, queryObjectJson))
+
+  // Track the current drilled query (null means using the original/parsed query)
+  const [drilledQuery, setDrilledQuery] = useState<CubeQuery | null>(initialDrillState?.drilledQuery ?? null)
+
+  // Reset drilled query when the base query changes (e.g., dashboard filters change).
+  // Starts at the mount-time query, so the first run keeps a start drill state.
+  const previousQueryObjectJson = useRef<string | null>(queryObjectJson)
   useEffect(() => {
     if (queryObjectJson !== previousQueryObjectJson.current) {
       previousQueryObjectJson.current = queryObjectJson
@@ -65,8 +74,15 @@ export function usePortletDrillState(params: UsePortletDrillStateParams) {
     chartConfig,
     dashboardFilters,
     dashboardFilterMapping,
-    enabled: !isMultiQuery && !isFunnelMode && !isFlowMode && !isRetentionMode && !!activeQuery
+    enabled: !isMultiQuery && !isFunnelMode && !isFlowMode && !isRetentionMode && !!activeQuery,
+    initialState: initialDrillState ?? undefined
   })
+
+  // What a new instance needs to start at this drill level; undefined at the root
+  const drillViewState = useMemo<PortletDrillViewState | undefined>(() => {
+    if (!drilledQuery || !queryObjectJson) return undefined
+    return { version: 1, baseQuery: queryObjectJson, drilledQuery, ...drill.state }
+  }, [drilledQuery, queryObjectJson, drill.state])
 
   // Handle navigating back to root - restore the original query
   const handleNavigateBack = useCallback(() => {
@@ -89,6 +105,7 @@ export function usePortletDrillState(params: UsePortletDrillStateParams) {
   return {
     drill,
     activeQuery,
+    drillViewState,
     handleNavigateBack,
     handleNavigateToLevel
   }

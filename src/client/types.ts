@@ -676,6 +676,12 @@ export interface AnalyticsPortletProps {
   title?: string
   colorPalette?: ColorPalette  // Complete palette with both colors and gradient
   loadingComponent?: ReactNode // Custom loading indicator (defaults to LoadingIndicator)
+  /**
+   * The chart starts with this view state instead of the default state. Read
+   * one time, on mount. Pass the `viewState` of a PortletExpandPayload without
+   * changes; a state with an unknown shape gives the default state.
+   */
+  initialViewState?: PortletViewState
   onDebugDataReady?: (debugData: {
     chartConfig: ChartAxisConfig
     displayConfig: ChartDisplayConfig
@@ -783,6 +789,15 @@ export interface ChartProps {
    * hosts, where a chart pages and sorts over the rows it already has.
    */
   pagination?: ChartPagination
+
+  /**
+   * State that the chart component reported with `onViewStateChange` in another
+   * instance. Read it one time, on mount, and check its shape before use: on
+   * an unknown shape, use the default state.
+   */
+  initialViewState?: unknown
+  /** Report the state that the chart keeps in its own instance, for example its page */
+  onViewStateChange?: (state: unknown) => void
 }
 
 /**
@@ -1061,6 +1076,7 @@ export type {
   DrillResult,
   UseDrillInteractionOptions,
   DrillInteraction,
+  DrillInteractionState,
   DrillMenuProps,
   DrillBreadcrumbProps,
 } from './types/drill.js'

@@ -3,11 +3,11 @@
  * Simplified version with minimal dependencies
  */
 
-import React, { useEffect, useMemo, useState, forwardRef, useImperativeHandle } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useScrollContainer } from '../providers/ScrollContainerContext.js'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
-import type { AnalyticsPortletProps, AnalyticsPortletRef } from '../types.js'
+import type { AnalyticsPortletProps, AnalyticsPortletRef, PortletViewState } from '../types.js'
 import { hasRunnableQuery, parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
 import { getRegularDashboardFilters } from '../utils/filterUtils.js'
 import { usePortletDrillState } from './analyticsPortlet/usePortletDrillState.js'
@@ -33,8 +33,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   title: _title,
   colorPalette,
   loadingComponent,
+  initialViewState,
   onDebugDataReady
 }, ref) => {
+  // The start view state is read one time, on mount, like the chart components do
+  const [startViewState] = useState(() => initialViewState)
+
   // Lazy loading: Use IntersectionObserver to detect when portlet is visible
   // Get scroll container from context (null = viewport, element = container scroll)
   const scrollContainer = useScrollContainer()
@@ -93,7 +97,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   })
 
   // Drill-down state, active query, and navigation handlers
-  const { drill, activeQuery, handleNavigateBack, handleNavigateToLevel } = usePortletDrillState({
+  const { drill, activeQuery, drillViewState, handleNavigateBack, handleNavigateToLevel } = usePortletDrillState({
     queryObject: liveQuery,
     chartConfig,
     dashboardFilters,
@@ -101,8 +105,16 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     isMultiQuery,
     isFunnelMode,
     isFlowMode,
-    isRetentionMode
+    isRetentionMode,
+    initialDrill: startViewState?.drill
   })
+
+  // The chart component reports its own state (for example its page). A ref
+  // keeps the latest report, so a report does not render the portlet again.
+  const chartViewStateRef = useRef<unknown>(startViewState?.chart)
+  const handleChartViewStateChange = useCallback((state: unknown) => {
+    chartViewStateRef.current = state
+  }, [])
 
   // Server-side paging + sorting, layered over whichever query is active. Only
   // engaged for chart types that page; every other type gets `activeQuery` back
@@ -148,7 +160,15 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   }, [error])
 
   // Expose refresh and the view state through ref
-  useImperativeHandle(ref, () => ({ refresh, getViewState: () => ({}) }), [refresh])
+  useImperativeHandle(ref, () => ({
+    refresh,
+    getViewState: () => {
+      const viewState: PortletViewState = {}
+      if (drillViewState) viewState.drill = drillViewState
+      if (chartViewStateRef.current !== undefined) viewState.chart = chartViewStateRef.current
+      return viewState
+    }
+  }), [refresh, drillViewState])
 
   // The total only exists once a response carrying it has arrived, so it is
   // merged in here rather than fed back into the pagination hook.
@@ -264,6 +284,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         isDrillEnabled={isDrillEnabled}
         onNavigateBack={handleNavigateBack}
         onNavigateToLevel={handleNavigateToLevel}
+        initialViewState={startViewState?.chart}
+        onViewStateChange={handleChartViewStateChange}
       />
     </div>
   )
