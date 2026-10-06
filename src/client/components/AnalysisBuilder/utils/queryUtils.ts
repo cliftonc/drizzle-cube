@@ -25,7 +25,8 @@ export function buildCubeQuery(
    * `ChartTypeConfig.recordGrain`. Without this, editing a records-table
    * portlet in the builder silently rebuilds its query as a grouped one.
    */
-  ungrouped: boolean = false
+  ungrouped: boolean = false,
+  fillMissingDatesValue?: number | null
 ): CubeQuery {
   // Find time dimensions with comparison enabled
   const comparisonFields = breakdowns
@@ -57,7 +58,8 @@ export function buildCubeQuery(
           compareDateRange?: [string, string][]
         } = {
           dimension: b.field,
-          granularity: b.granularity || 'day'
+          granularity: b.granularity || 'day',
+          ...(b.fillMissingDates !== undefined && { fillMissingDates: b.fillMissingDates })
         }
 
         // If comparison is enabled, build compareDateRange from the ORIGINAL filter
@@ -75,7 +77,8 @@ export function buildCubeQuery(
     limit: limit ?? undefined,
     // Set only when true: an explicit `false` is a distinct cache key from an
     // absent flag, and every other chart wants it absent.
-    ungrouped: ungrouped || undefined
+    ungrouped: ungrouped || undefined,
+    ...(fillMissingDatesValue !== undefined && { fillMissingDatesValue })
   }
 
   // Clean up empty arrays

@@ -60,6 +60,10 @@ export function cleanQuery(query: CubeQuery): CubeQuery {
     cleanedQuery.segments = query.segments
   }
 
+  if (query.fillMissingDatesValue !== undefined) {
+    cleanedQuery.fillMissingDatesValue = query.fillMissingDatesValue
+  }
+
   return cleanedQuery
 }
 
@@ -110,6 +114,7 @@ function copyQueryScalars(query: any, target: CubeQuery): void {
   if (query.dimensions) target.dimensions = Array.isArray(query.dimensions) ? query.dimensions : []
   if (query.timeDimensions) target.timeDimensions = Array.isArray(query.timeDimensions) ? query.timeDimensions : []
   if (query.order) target.order = query.order
+  if (query.fillMissingDatesValue !== undefined) target.fillMissingDatesValue = query.fillMissingDatesValue
   if (query.limit) target.limit = query.limit
   if (query.offset) target.offset = query.offset
   if (query.segments) target.segments = Array.isArray(query.segments) ? query.segments : []

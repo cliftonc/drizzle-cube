@@ -92,6 +92,7 @@ function breakdownsToQuery(
       } = {
         dimension: b.field,
         granularity: b.granularity || 'day',
+        ...(b.fillMissingDates !== undefined && { fillMissingDates: b.fillMissingDates }),
       }
 
       // If comparison is enabled, calculate and include compareDateRange
@@ -141,6 +142,10 @@ function stateToCubeQuery(state: AnalysisBuilderState): CubeQuery {
     query.limit = state.limit
   }
 
+  if (state.fillMissingDatesValue !== undefined) {
+    query.fillMissingDatesValue = state.fillMissingDatesValue
+  }
+
   return query
 }
 
@@ -187,6 +192,7 @@ function queryToBreakdowns(query: CubeQuery): BreakdownItem[] {
         granularity: td.granularity,
         isTimeDimension: true,
         enableComparison: hasComparison,
+        ...(td.fillMissingDates !== undefined && { fillMissingDates: td.fillMissingDates }),
       })
     }
   }
@@ -204,6 +210,7 @@ function cubeQueryToState(query: CubeQuery): AnalysisBuilderState {
     filters: (query.filters as Filter[]) || [],
     order: query.order,
     limit: query.limit,
+    ...(query.fillMissingDatesValue !== undefined && { fillMissingDatesValue: query.fillMissingDatesValue }),
     validationStatus: 'idle',
     validationError: null,
   }

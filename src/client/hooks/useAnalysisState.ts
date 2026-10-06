@@ -85,7 +85,7 @@ export function useAnalysisState(options: UseAnalysisStateOptions = {}) {
   // Build current query from active state
   const currentQuery = useMemo(() => {
     const current = queryStates[activeQueryIndex] || queryState
-    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order, false, current.limit, isRecordGrain)
+    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order, false, current.limit, isRecordGrain, current.fillMissingDatesValue)
   }, [queryStates, activeQueryIndex, queryState, isRecordGrain])
 
   // Build all queries (respect merge mode for shared breakdowns)
@@ -93,7 +93,7 @@ export function useAnalysisState(options: UseAnalysisStateOptions = {}) {
     const q1Breakdowns = queryStates[0]?.breakdowns || []
     return queryStates.map((qs, index) => {
       const breakdowns = mergeStrategy === 'merge' && index > 0 ? q1Breakdowns : qs.breakdowns
-      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order, false, qs.limit, isRecordGrain)
+      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order, false, qs.limit, isRecordGrain, qs.fillMissingDatesValue)
     })
   }, [queryStates, mergeStrategy, isRecordGrain])
 

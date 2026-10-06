@@ -437,5 +437,27 @@ describe('useCubeLoadQuery', () => {
         expect(result.current.rawData).toEqual(observed)
       })
     })
+
+    it('fills missing buckets with the query fillMissingDatesValue', async () => {
+      // Echo the sent query, as the server does, so the chart fills from it
+      server.use(
+        http.get('*/cubejs-api/v1/load', ({ request }) => HttpResponse.json({
+          query: JSON.parse(new URL(request.url).searchParams.get('query') || '{}'),
+          data: observed,
+          annotation: { measures: {}, dimensions: {}, timeDimensions: {} }
+        }))
+      )
+      const { wrapper } = createHookWrapper()
+      const query: CubeQuery = { ...timeQuery, fillMissingDatesValue: null }
+      const { result } = renderHook(() => useCubeLoadQuery(query, { debounceMs: 0, gapFill: {} }), { wrapper })
+
+      await waitFor(() => {
+        expect(result.current.rawData).toHaveLength(3)
+      })
+      expect(result.current.resultSet?.rawData()[1]).toEqual({
+        'Employees.createdAt': '2026-08-02T00:00:00.000Z',
+        'Employees.count': null
+      })
+    })
   })
 })

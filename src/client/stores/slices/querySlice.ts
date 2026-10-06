@@ -150,6 +150,7 @@ export const createQuerySlice: StateCreator<
         metrics: [...currentState.metrics],
         breakdowns: [...currentState.breakdowns],
         filters: [...currentState.filters],
+        ...(currentState.fillMissingDatesValue !== undefined && { fillMissingDatesValue: currentState.fillMissingDatesValue }),
       }
       return {
         queryStates: [...state.queryStates, newState],
@@ -574,7 +575,7 @@ export const createQuerySlice: StateCreator<
     const current = state.queryStates[state.activeQueryIndex] || createInitialState()
     // Records-style charts list rows, so their query must stay ungrouped.
     const ungrouped = isRecordGrainChart(state.charts[state.analysisType]?.chartType ?? '')
-    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order, false, current.limit, ungrouped)
+    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order, false, current.limit, ungrouped, current.fillMissingDatesValue)
   },
 
   buildAllQueries: () => {
@@ -587,7 +588,7 @@ export const createQuerySlice: StateCreator<
       const breakdowns =
         state.mergeStrategy === 'merge' && index > 0 ? q1Breakdowns : qs.breakdowns
 
-      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order, false, qs.limit, ungrouped)
+      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order, false, qs.limit, ungrouped, qs.fillMissingDatesValue)
     })
   },
 
