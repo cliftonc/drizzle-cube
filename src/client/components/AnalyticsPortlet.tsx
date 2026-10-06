@@ -147,7 +147,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     isRetentionMode,
     shouldSkipQuery,
     eagerLoad,
-    isVisible
+    isVisible,
+    displayConfig
   })
 
   useEffect(() => {

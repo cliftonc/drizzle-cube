@@ -1,6 +1,7 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 import {
   connectNullsDisplayOption,
+  fillMissingDatesDisplayOption,
   targetDisplayOption,
   leftYAxisFormatDisplayOption,
   rightYAxisFormatDisplayOption,
@@ -50,6 +51,7 @@ export const lineChartConfig: ChartTypeConfig = {
     showSummaryDisplayOption,
     showPointsDisplayOption(),
     connectNullsDisplayOption,
+    fillMissingDatesDisplayOption,
     targetDisplayOption,
     {
       key: 'priorPeriodStyle',

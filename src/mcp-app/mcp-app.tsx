@@ -44,6 +44,7 @@ import McpChartSwitcher from './McpChartSwitcher.js'
 import { autoSelectChartType, deriveChartConfig, type ChartSelection } from './chartAutoSelect.js'
 import { isMcpAppChartType, type McpAppChartType } from './chartTypes.js'
 import { parseLoadResult, type LoadResult } from './parseLoadResult.js'
+import { fillChartRows } from '../client/utils/gapFilling.js'
 import { applyHostContext, applyFallbackTheme } from './theme-bridge.js'
 import './global.css'
 
@@ -219,7 +220,16 @@ export function McpApp() {
         return
       }
 
-      const parsed = outcome.result
+      // The server returns observed rows only; fill time gaps for the chart
+      // as the dashboard does (issue #1368)
+      const parsed = outcome.result.query
+        ? {
+          ...outcome.result,
+          data: fillChartRows(outcome.result.data, outcome.result.query, outcome.result.annotation, {
+            fillMissingDates: hint?.displayConfig?.fillMissingDates
+          })
+        }
+        : outcome.result
       setResult(parsed)
       setError(null)
 

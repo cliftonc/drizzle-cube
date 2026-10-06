@@ -3,7 +3,8 @@ import {
   stackTypeDisplayOption,
   targetDisplayOption,
   leftYAxisFormatDisplayOption,
-  rightYAxisFormatDisplayOption
+  rightYAxisFormatDisplayOption,
+  fillMissingDatesDisplayOption
 } from '../../charts/chartConfigHelpers.js'
 
 /**
@@ -47,6 +48,7 @@ export const barChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     stackTypeDisplayOption('chart.configText.how_to_stack_multiple_bar_series'),
     targetDisplayOption,
+    fillMissingDatesDisplayOption,
     leftYAxisFormatDisplayOption,
     rightYAxisFormatDisplayOption
   ]

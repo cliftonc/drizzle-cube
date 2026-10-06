@@ -355,6 +355,7 @@ export function useAnalysisBuilder(
     serverFlowQuery: state.serverFlowQuery,
     serverRetentionQuery: state.serverRetentionQuery,
     retentionValidation: state.retentionValidation,
+    fillMissingDates: state.displayConfig.fillMissingDates,
   })
 
   // 3. Effects — init/URL, AI, share, chart auto-switch (reads State + Query).

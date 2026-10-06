@@ -12,6 +12,7 @@ export * from './periodUtils.js'
 export * from './pivotUtils.js'
 export * from './syntaxHighlighting.js'
 export * from './comparisonUtils.js'
+export * from './gapFilling.js'
 
 // Thumbnail utilities (requires html2canvas peer dependency)
 export { captureThumbnail, isThumbnailCaptureAvailable } from './thumbnail.js'

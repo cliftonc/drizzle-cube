@@ -228,6 +228,19 @@ export interface Dimension {
    * @example ['year', 'quarter', 'month', 'day'] for a custom subset
    */
   granularities?: TimeGranularity[]
+
+  /**
+   * Whether missing time buckets are filled for this time dimension when a
+   * query or chart does not say. Only applies when type is 'time'.
+   *
+   * - Server: a query that omits `fillMissingDates` is filled only when this is
+   *   `true`. Unset means observed rows only (the Cube.js default).
+   * - Charts: fill gaps by default, like Cube.js. Set `false` where a missing
+   *   bucket means "no data" rather than zero, e.g. daily snapshot tables.
+   *
+   * A query's or chart's own `fillMissingDates` always wins.
+   */
+  fillMissingDates?: boolean
 }
 
 /**

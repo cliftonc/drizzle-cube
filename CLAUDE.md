@@ -10,7 +10,7 @@ src/client/      # React analytics dashboard components                       �
 src/adapters/    # Framework adapters (Express, Fastify, Hono, Next.js)       → src/adapters/CLAUDE.md
 src/i18n/        # Internationalization runtime and locale files               → src/i18n/CLAUDE.md
 src/cli/         # CLI tool — `npx drizzle-cube charts init|list`            → src/cli/CLAUDE.md
-src/shared/      # Shared utilities (date-range parsing)
+src/shared/      # Shared utilities (date-range parsing, gap filling)
 tests/           # Multi-database testing infrastructure                      → tests/CLAUDE.md
 dev/             # Development environment: example server, Docker Compose, migrations, seed
 .claude/         # Agent skills

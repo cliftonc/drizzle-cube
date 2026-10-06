@@ -49,6 +49,23 @@ export const connectNullsDisplayOption: DisplayOptionConfig = {
   description: 'chart.option.connectNulls.description'
 }
 
+/**
+ * Gap-filling control for time-series charts (issue #1368). `auto` follows the
+ * query, then the cube time dimension's `fillMissingDates`, then fills.
+ */
+export const fillMissingDatesDisplayOption: DisplayOptionConfig = {
+  key: 'fillMissingDates',
+  label: 'chart.option.fillMissingDates.label',
+  type: 'buttonGroup',
+  defaultValue: 'auto',
+  options: [
+    { value: 'auto', label: 'chart.option.fillMissingDates.auto' },
+    { value: true, label: 'chart.option.fillMissingDates.on' },
+    { value: false, label: 'chart.option.fillMissingDates.off' }
+  ],
+  description: 'chart.option.fillMissingDates.description'
+}
+
 /** Left Y-axis numeric format control (dual-axis charts). */
 export const leftYAxisFormatDisplayOption: DisplayOptionConfig = {
   key: 'leftYAxisFormat',
