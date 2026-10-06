@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useState, forwardRef, useImperativeHandle } 
 import { useInView } from 'react-intersection-observer'
 import { useScrollContainer } from '../providers/ScrollContainerContext.js'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
-import type { AnalyticsPortletProps } from '../types.js'
+import type { AnalyticsPortletProps, AnalyticsPortletRef } from '../types.js'
 import { hasRunnableQuery, parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
 import { getRegularDashboardFilters } from '../utils/filterUtils.js'
 import { usePortletDrillState } from './analyticsPortlet/usePortletDrillState.js'
@@ -18,14 +18,6 @@ import { usePortletDebugData } from './analyticsPortlet/usePortletDebugData.js'
 import { resolvePortletRenderKind } from './analyticsPortlet/portletRenderState.js'
 import { PortletChartView } from './analyticsPortlet/PortletChartView.js'
 import { PortletStateView } from './analyticsPortlet/PortletStates.js'
-
-interface RefreshOptions {
-  bustCache?: boolean
-}
-
-interface AnalyticsPortletRef {
-  refresh: (options?: RefreshOptions) => void
-}
 
 // Memoize component to prevent re-renders when props haven't changed
 const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(({
@@ -155,8 +147,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     setDeadMemberError(error ?? null)
   }, [error])
 
-  // Expose refresh function through ref
-  useImperativeHandle(ref, () => ({ refresh }), [refresh])
+  // Expose refresh and the view state through ref
+  useImperativeHandle(ref, () => ({ refresh, getViewState: () => ({}) }), [refresh])
 
   // The total only exists once a response carrying it has arrived, so it is
   // merged in here rather than fed back into the pagination hook.

@@ -4,7 +4,7 @@
  */
 
 import type { HTMLAttributes, ReactNode, ComponentType, CSSProperties } from 'react'
-import type { ChartType, DashboardFilter, DashboardLayoutMode, PortletConfig } from '../../types.js'
+import type { AnalyticsPortletRef, ChartType, DashboardFilter, DashboardLayoutMode, PortletConfig, PortletExpandPayload } from '../../types.js'
 import type { PortletCardVariant } from './cardStyles.js'
 import type { ColorPalette } from '../../utils/colorPalettes.js'
 
@@ -21,7 +21,7 @@ export interface DashboardPortletCardProps {
   containerProps?: HTMLAttributes<HTMLDivElement>
   headerProps?: HTMLAttributes<HTMLDivElement>
   setPortletRef: (portletId: string, element: HTMLDivElement | null) => void
-  setPortletComponentRef: (portletId: string, element: { refresh: (options?: { bustCache?: boolean }) => void } | null) => void
+  setPortletComponentRef: (portletId: string, element: AnalyticsPortletRef | null) => void
   callbacks: {
     onToggleFilter: (portletId: string, filterId: string) => void
     onRefresh: (portletId: string, options?: { bustCache?: boolean }) => void
@@ -37,6 +37,8 @@ export interface DashboardPortletCardProps {
     CopyIcon: ComponentType<{ className?: string; style?: CSSProperties }>
     FilterIcon: ComponentType<{ className?: string; style?: CSSProperties }>
   }
+  /** When set, the card shows an Expand button in view mode */
+  onPortletExpand?: (payload: PortletExpandPayload) => void
 }
 
 export type { ChartType }
@@ -64,7 +66,7 @@ export function shallowEqualObjects<T extends object>(
 const SCALAR_KEYS = ['editable', 'layoutMode', 'configEagerLoad', 'variant'] as const
 const REF_KEYS = [
   'portlet', 'dashboardFilters', 'colorPalette', 'loadingComponent', 'callbacks', 'icons',
-  'setPortletRef', 'setPortletComponentRef'
+  'setPortletRef', 'setPortletComponentRef', 'onPortletExpand'
 ] as const
 
 // Custom comparison function to handle containerProps/headerProps object recreation

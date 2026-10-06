@@ -710,6 +710,35 @@ export interface DashboardMeta {
   description?: string
 }
 
+/**
+ * View state of one chart instance: state that the chart keeps in its own
+ * instance and that the dashboard config does not store. The host only
+ * carries it from one chart instance to another; it does not read it.
+ */
+export interface PortletViewState {
+  /** Drill-down state of the portlet. */
+  drill?: unknown
+  /** State that the chart component reports with `onViewStateChange`. */
+  chart?: unknown
+}
+
+/** What a card gives the host when the user clicks its Expand button. */
+export interface PortletExpandPayload {
+  portletId: string
+  title: string
+  /** The resolved properties that the card gives to `AnalyticsPortlet`. */
+  chartProps: AnalyticsPortletProps
+  /** The view state of the card chart when the user clicked Expand. */
+  viewState: PortletViewState
+}
+
+/** Imperative handle of `AnalyticsPortlet`. */
+export interface AnalyticsPortletRef {
+  refresh: (options?: { bustCache?: boolean }) => void
+  /** Returns the current view state of this chart instance. */
+  getViewState: () => PortletViewState
+}
+
 export interface AnalyticsDashboardProps {
   config: DashboardConfig
   editable?: boolean
@@ -727,6 +756,11 @@ export interface AnalyticsDashboardProps {
    * without it an import only replaces the config.
    */
   onDashboardMetaChange?: (meta: { name: string; description?: string }) => Promise<void> | void
+  /**
+   * When set, each card that shows actions shows an Expand button in view
+   * mode. The host decides what the button opens.
+   */
+  onPortletExpand?: (payload: PortletExpandPayload) => void
 }
 
 export interface ChartProps {

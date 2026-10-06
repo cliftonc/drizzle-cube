@@ -7,7 +7,7 @@ import React, { createRef } from 'react'
 import { render, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AnalyticsPortlet from '../../src/client/components/AnalyticsPortlet'
-import type { CubeResultSet, ChartAxisConfig } from '../../src/client/types'
+import type { AnalyticsPortletRef, CubeResultSet, ChartAxisConfig } from '../../src/client/types'
 
 // Mock react-intersection-observer
 let mockInView = true
@@ -366,7 +366,7 @@ describe('AnalyticsPortlet', () => {
 
   describe('refresh mechanism', () => {
     it('should expose refresh function through ref', async () => {
-      const ref = createRef<{ refresh: () => void }>()
+      const ref = createRef<AnalyticsPortletRef>()
       mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(
@@ -383,7 +383,7 @@ describe('AnalyticsPortlet', () => {
     })
 
     it('should invalidate cache when refresh is called', async () => {
-      const ref = createRef<{ refresh: () => void }>()
+      const ref = createRef<AnalyticsPortletRef>()
       mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(

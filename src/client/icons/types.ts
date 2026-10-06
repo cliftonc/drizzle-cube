@@ -55,6 +55,7 @@ export interface IconRegistry {
   share: IconDefinition
   expand: IconDefinition
   collapse: IconDefinition
+  maximize: IconDefinition
   search: IconDefinition
   menu: IconDefinition
   run: IconDefinition

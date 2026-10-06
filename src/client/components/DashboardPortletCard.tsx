@@ -1,5 +1,13 @@
-import React, { useCallback, useMemo, type ReactNode } from 'react'
-import type { ChartType, DashboardFilter, DashboardFilterMapping } from '../types.js'
+import React, { useCallback, useMemo, useRef, type ReactNode } from 'react'
+import type {
+  AnalyticsPortletProps,
+  AnalyticsPortletRef,
+  ChartAxisConfig,
+  ChartDisplayConfig,
+  ChartType,
+  DashboardFilter,
+  DashboardFilterMapping
+} from '../types.js'
 import AnalyticsPortlet from './AnalyticsPortlet.js'
 import type { ColorPalette } from '../utils/colorPalettes.js'
 import { useDashboardStore, type PortletDebugDataEntry } from '../stores/dashboardStore.js'
@@ -16,7 +24,7 @@ import { buildContainerClassName, buildHeaderClassName, buildContainerStyle, res
 interface PortletChartBodyProps {
   isTransparent: boolean
   setChartContainerRef: (el: HTMLDivElement | null) => void
-  setPortletComponentRef: (el: { refresh: (options?: { bustCache?: boolean }) => void } | null) => void
+  setPortletComponentRef: (el: AnalyticsPortletRef | null) => void
   renderQuery: string
   renderChartType: ChartType
   renderChartConfig: unknown
@@ -87,7 +95,8 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   setPortletRef,
   setPortletComponentRef,
   callbacks,
-  icons
+  icons,
+  onPortletExpand
 }: DashboardPortletCardProps) {
   // Normalize portlet to ensure analysisConfig exists (on-the-fly migration from legacy format)
   const normalizedPortlet = useMemo(() => ensureAnalysisConfig(portlet), [portlet])
@@ -188,9 +197,47 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
     setPortletRef(portlet.id, el)
   }, [portlet.id, setPortletRef])
 
-  const handleSetPortletComponentRef = useCallback((el: { refresh: (options?: { bustCache?: boolean }) => void } | null) => {
+  // The card keeps its own handle on the chart too, so Expand can read the
+  // chart's view state at click time.
+  const portletComponentRef = useRef<AnalyticsPortletRef | null>(null)
+  const handleSetPortletComponentRef = useCallback((el: AnalyticsPortletRef | null) => {
+    portletComponentRef.current = el
     setPortletComponentRef(portlet.id, el)
   }, [portlet.id, setPortletComponentRef])
+
+  const eagerLoad = portlet.eagerLoad ?? configEagerLoad ?? false
+
+  // Expand hands the host the exact properties this card gives AnalyticsPortlet,
+  // so a chart that the host renders from them shows the same data and shares
+  // the card's query cache entry. Only offered in view mode: edit mode and
+  // filter selection mode own the card actions.
+  const handleExpand = useMemo(() => {
+    if (!onPortletExpand || isEditMode || isInSelectionMode) return undefined
+    return () => {
+      const chartProps: AnalyticsPortletProps = {
+        query: renderQuery,
+        chartType: renderChartType,
+        chartConfig: renderChartConfig as ChartAxisConfig | undefined,
+        displayConfig: renderDisplayConfig as ChartDisplayConfig | undefined,
+        dashboardFilters,
+        dashboardFilterMapping: portlet.dashboardFilterMapping,
+        eagerLoad,
+        title: portlet.title,
+        colorPalette,
+        loadingComponent
+      }
+      onPortletExpand({
+        portletId: portlet.id,
+        title: portlet.title,
+        chartProps,
+        viewState: portletComponentRef.current?.getViewState() ?? {}
+      })
+    }
+  }, [
+    onPortletExpand, isEditMode, isInSelectionMode, renderQuery, renderChartType,
+    renderChartConfig, renderDisplayConfig, dashboardFilters, portlet.dashboardFilterMapping,
+    eagerLoad, portlet.title, portlet.id, colorPalette, loadingComponent
+  ])
 
   const handleSetChartContainerRef = useCallback((el: HTMLDivElement | null) => {
     chartContainerRef.current = el
@@ -266,6 +313,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           onDuplicate={() => callbacks.onDuplicate(portlet.id)}
           onEdit={() => callbacks.onEdit(portlet)}
           onDelete={() => callbacks.onDelete(portlet.id)}
+          onExpand={handleExpand}
         />
       )}
 
@@ -279,7 +327,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
         renderDisplayConfig={renderDisplayConfig}
         dashboardFilters={dashboardFilters}
         dashboardFilterMapping={portlet.dashboardFilterMapping}
-        eagerLoad={portlet.eagerLoad ?? configEagerLoad ?? false}
+        eagerLoad={eagerLoad}
         title={portlet.title}
         isMarkdownAutoHeight={isMarkdownAutoHeight}
         colorPalette={colorPalette}

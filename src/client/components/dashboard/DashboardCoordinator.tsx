@@ -79,6 +79,7 @@ export default function DashboardCoordinator({
   hideToolbar,
   dashboardMeta,
   onDashboardMetaChange,
+  onPortletExpand,
   children
 }: DashboardProviderProps) {
   // Get features from context for conditional rendering
@@ -912,6 +913,7 @@ export default function DashboardCoordinator({
       setPortletRef={handleSetPortletRef}
       setPortletComponentRef={handleSetPortletComponentRef}
       icons={portletIcons}
+      onPortletExpand={onPortletExpand}
     />
   ), [
     editable,
@@ -923,7 +925,8 @@ export default function DashboardCoordinator({
     portletCallbacks,
     handleSetPortletRef,
     handleSetPortletComponentRef,
-    portletIcons
+    portletIcons,
+    onPortletExpand
   ])
 
   // Generate grid layout from portlets - only use for lg (desktop) breakpoint
