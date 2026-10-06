@@ -2,6 +2,7 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 import {
   stackTypeDisplayOption,
   connectNullsDisplayOption,
+  fillMissingDatesDisplayOption,
   targetDisplayOption,
   leftYAxisFormatDisplayOption,
   rightYAxisFormatDisplayOption,
@@ -51,6 +52,7 @@ export const areaChartConfig: ChartTypeConfig = {
     showPointsDisplayOption(false),
     stackTypeDisplayOption('chart.configText.how_to_stack_multiple_area_series'),
     connectNullsDisplayOption,
+    fillMissingDatesDisplayOption,
     targetDisplayOption,
     leftYAxisFormatDisplayOption,
     rightYAxisFormatDisplayOption

@@ -288,8 +288,9 @@ export class QueryExecutor {
     // Execute query for each period in parallel
     const periodResultPromises = periodQueries.map(async (periodQuery, periodIndex) => {
       // Execute using the standard path (this.execute handles the rest)
-      // Note: We call executeStandardQuery to avoid recursion
-      const result = await this.executeStandardQuery(cubes, periodQuery, securityContext)
+      // Note: We call executeStandardQuery to avoid recursion. Periods are
+      // gap-filled by default so each period has a row per bucket to align on.
+      const result = await this.executeStandardQuery(cubes, periodQuery, securityContext, undefined, true)
 
       return { result, period: periods[periodIndex] }
     })
@@ -522,12 +523,15 @@ export class QueryExecutor {
    * @param cacheKey - When provided (and a cache provider is configured), the
    *   fresh result is written to the cache. Pass `undefined` to skip caching
    *   (e.g. comparison period sub-queries cache at the comparison level).
+   * @param fillByDefault - Gap-fill time dimensions that neither the query nor
+   *   the cube configures. Only comparison period sub-queries pass `true`.
    */
   private async executeStandardQuery(
     cubes: Map<string, Cube>,
     query: SemanticQuery,
     securityContext: SecurityContext,
-    cacheKey?: string | undefined
+    cacheKey?: string | undefined,
+    fillByDefault = false
   ): Promise<QueryResult> {
     // A timeDimension without granularity is a filter only (Cube.js semantics)
     query = normalizeFilterOnlyTimeDimensions(query)
@@ -565,7 +569,7 @@ export class QueryExecutor {
     const data = await this.dbExecutor.execute(builtQuery, numericFields)
 
     // Normalise time-dimension date values (adapter-specific) and apply gap filling
-    const filledData = postProcessResultRows(data, query, this.databaseAdapter)
+    const filledData = postProcessResultRows(data, query, this.databaseAdapter, cubes, fillByDefault)
 
     // Generate annotations for UI
     const annotation = buildAnnotations(physicalPlan, query)

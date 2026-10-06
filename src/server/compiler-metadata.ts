@@ -106,7 +106,10 @@ export function buildDimensionMetadata(cube: Cube): DimensionMetadata[] {
       format: undefined, // Dimension doesn't have format field
       description: dimension.description,
       synonyms: dimension.synonyms,
-      granularities
+      granularities,
+      ...(dimension.type === 'time' && dimension.fillMissingDates !== undefined && {
+        fillMissingDates: dimension.fillMissingDates
+      })
     })
   }
 

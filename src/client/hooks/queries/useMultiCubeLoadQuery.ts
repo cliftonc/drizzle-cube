@@ -12,11 +12,36 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useCubeApi } from '../../providers/CubeApiProvider.js'
-import type { MultiQueryConfig, CubeResultSet } from '../../types.js'
+import type { MultiQueryConfig, CubeQuery, CubeResultSet } from '../../types.js'
 import { cleanQueryForServer } from '../../shared/utils.js'
 import { mergeQueryResults } from '../../utils/multiQueryUtils.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
+import { withChartGapFilling, type ChartGapFillOptions } from '../../utils/gapFilling.js'
+
+type MultiQueryServerConfig = MultiQueryConfig & { queries: CubeQuery[] }
+
+/**
+ * Gap-fill each successful query's result set for a chart, then re-derive the
+ * merged and per-query data from the filled rows.
+ */
+function fillMultiQueryData(
+  resultSets: CubeResultSet[],
+  errors: (Error | null)[],
+  config: MultiQueryServerConfig,
+  gapFill: ChartGapFillOptions
+): { resultSets: CubeResultSet[]; data: unknown[]; perQueryData: (unknown[] | null)[] } {
+  const filled = resultSets.map((rs, i) => (errors[i] || !rs ? rs : withChartGapFilling(rs, gapFill)))
+  const successful = filled.filter((_, i) => !errors[i])
+  const successfulQueries = config.queries.filter((_, i) => !errors[i])
+  return {
+    resultSets: filled,
+    data: successful.length > 0
+      ? mergeQueryResults(successful, successfulQueries, config.mergeStrategy, config.mergeKeys, config.queryLabels)
+      : [],
+    perQueryData: filled.map((rs, i) => (errors[i] ? null : rs.rawData()))
+  }
+}
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300
@@ -57,6 +82,12 @@ export interface UseMultiCubeLoadQueryOptions {
    * @default true
    */
   keepPreviousData?: boolean
+  /**
+   * Fill missing time buckets for a chart (Cube.js-style, client-side). When
+   * set, each query's rows are gap-filled per `ChartGapFillOptions` before
+   * merging. Omit for raw rows.
+   */
+  gapFill?: ChartGapFillOptions
 }
 
 export interface UseMultiCubeLoadQueryResult {
@@ -121,7 +152,11 @@ export function useMultiCubeLoadQuery(
     resetResultSetOnChange: _resetResultSetOnChange = true,
     staleTime = 60 * 1000,
     keepPreviousData = true,
+    gapFill,
   } = options
+  // Primitives, so an inline `gapFill` object doesn't re-merge on every render
+  const gapFillEnabled = !!gapFill
+  const gapFillMissingDates = gapFill?.fillMissingDates
 
   // Silence unused variable warning - used for future functionality
   void _resetResultSetOnChange
@@ -206,6 +241,7 @@ export function useMultiCubeLoadQuery(
         perQueryData,
         errors,
         firstError: errors.find((e) => e !== null) || null,
+        config: serverConfig,
       }
     },
     enabled: !!serverConfig && !skip,
@@ -252,6 +288,7 @@ export function useMultiCubeLoadQuery(
               perQueryData,
               errors,
               firstError: errors.find((e) => e !== null) || null,
+              config: serverConfig,
             }
           },
         })
@@ -263,11 +300,22 @@ export function useMultiCubeLoadQuery(
     }
   }
 
+  // Gap-fill for a chart when asked. Uses the config the result was fetched
+  // with, so placeholder data from a previous config merges consistently.
+  const filledResult = useMemo(() => {
+    const result = queryResult.data
+    if (!result || !gapFillEnabled) return result
+    return {
+      ...result,
+      ...fillMultiQueryData(result.resultSets, result.errors, result.config, { fillMissingDates: gapFillMissingDates })
+    }
+  }, [queryResult.data, gapFillEnabled, gapFillMissingDates])
+
   // Extract data from query result
-  const data = queryResult.data?.data ?? null
-  const resultSets = queryResult.data?.resultSets ?? null
-  const perQueryData = queryResult.data?.perQueryData ?? null
-  const errors = queryResult.data?.errors ?? []
+  const data = filledResult?.data ?? null
+  const resultSets = filledResult?.resultSets ?? null
+  const perQueryData = filledResult?.perQueryData ?? null
+  const errors = filledResult?.errors ?? []
   const error = queryResult.data?.firstError ?? queryResult.error
 
   return {

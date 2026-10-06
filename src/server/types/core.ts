@@ -183,6 +183,8 @@ export interface TimeDimensionAnnotation {
   shortTitle: string
   type: string
   granularity?: TimeGranularity
+  /** The cube time dimension's `fillMissingDates`, when it declares one */
+  fillMissingDates?: boolean
 }
 
 /**

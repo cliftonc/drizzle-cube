@@ -47,7 +47,7 @@ src/server/
 ├── database-utils.ts        createDatabaseAdapter, getSupportedEngines
 ├── cache-utils.ts           generateCacheKey, normalizeQuery, fnv1aHash
 ├── filter-cache.ts          FilterCacheManager, flattenFilters
-├── gap-filler.ts            generateTimeBuckets, fillTimeSeriesGaps, applyGapFilling
+├── gap-filler.ts            applyServerGapFilling — opt-in policy; bucket logic in src/shared/gap-filler.ts (docs/gap-filling.md)
 ├── template-substitution.ts substituteTemplate, validateTemplateSyntax
 ├── index.ts                 Public API re-exports
 │

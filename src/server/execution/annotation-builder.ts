@@ -121,7 +121,10 @@ function buildTimeDimensionAnnotations(
         title: dimension.title || fieldName,
         shortTitle: dimension.title || fieldName,
         type: dimension.type,
-        granularity: timeDim.granularity
+        granularity: timeDim.granularity,
+        ...(dimension.fillMissingDates !== undefined && {
+          fillMissingDates: dimension.fillMissingDates
+        })
       }
     }
   }

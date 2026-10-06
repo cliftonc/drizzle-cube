@@ -28,6 +28,8 @@ export interface CubeMetaDimension {
   type: string
   /** Supported granularities for time dimensions (for time-based drill-down) */
   granularities?: TimeGranularity[]
+  /** The cube time dimension's gap-filling default, when it declares one */
+  fillMissingDates?: boolean
 }
 
 // Legacy type alias for backward compatibility
@@ -216,6 +218,7 @@ export interface ChartDisplayConfig {
   stacked?: boolean // Deprecated: use stackType instead
   stackType?: 'none' | 'normal' | 'percent' // Stacking mode: none, normal (sum), or percent (100%)
   connectNulls?: boolean // For Area/Line charts: draw continuous lines through missing data
+  fillMissingDates?: boolean | 'auto' // Fill missing time buckets: 'auto'/unset follows the cube time dimension (default on)
   showSummary?: boolean // For Area/Line charts: show a per-series summary band above the plot
   showPoints?: boolean // For Area/Line charts: draw a marker at every data point (off is clearer on dense series)
   showAllXLabels?: boolean // Force all X-axis category labels to display (interval=0)

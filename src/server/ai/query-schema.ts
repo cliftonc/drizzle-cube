@@ -67,7 +67,7 @@ export const QUERY_PARAMS_SCHEMA = {
         },
         fillMissingDates: {
           type: 'boolean',
-          description: 'Fill gaps in time series with fillMissingDatesValue (default: true). Requires granularity + dateRange.'
+          description: 'Fill gaps in time series with fillMissingDatesValue. Default: off (observed rows only) unless the cube time dimension enables it. Requires granularity + dateRange.'
         },
         compareDateRange: {
           type: 'array',

@@ -150,7 +150,8 @@ export interface TimeDimension {
   /**
    * Fill missing dates in time series with the fill value.
    * Requires both granularity and dateRange to be set.
-   * Default: true (enabled)
+   * Default: the cube time dimension's `fillMissingDates`, else false — the
+   * server returns observed rows only and charts fill gaps client-side.
    */
   fillMissingDates?: boolean
   /**

@@ -380,6 +380,10 @@ export {
   validateMergeKey
 } from './utils/multiQueryUtils.js'
 
+// Chart-side gap filling (issue #1368)
+export { fillChartRows, withChartGapFilling } from './utils/gapFilling.js'
+export type { ChartGapFillOptions } from './utils/gapFilling.js'
+
 // Funnel utilities
 export {
   validateFunnelConfig,

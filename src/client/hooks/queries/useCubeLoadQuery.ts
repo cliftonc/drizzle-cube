@@ -21,6 +21,7 @@ import type { QueryWarning } from '../../shared/types.js'
 import { cleanQueryForServer } from '../../shared/utils.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
+import { withChartGapFilling, type ChartGapFillOptions } from '../../utils/gapFilling.js'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300
@@ -61,6 +62,12 @@ export interface UseCubeLoadQueryOptions {
    * @default true
    */
   keepPreviousData?: boolean
+  /**
+   * Fill missing time buckets for a chart (Cube.js-style, client-side). The
+   * server returns observed rows only; when set, the returned result set's rows
+   * are gap-filled per `ChartGapFillOptions`. Omit for raw rows.
+   */
+  gapFill?: ChartGapFillOptions
 }
 
 /** Options for the refetch function */
@@ -136,7 +143,11 @@ export function useCubeLoadQuery(
     resetResultSetOnChange = true,
     staleTime = 60 * 1000,
     keepPreviousData = true,
+    gapFill,
   } = options
+  // Primitives, so an inline `gapFill` object doesn't re-wrap on every render
+  const gapFillEnabled = !!gapFill
+  const gapFillMissingDates = gapFill?.fillMissingDates
 
   const { cubeApi, batchCoordinator, enableBatching } = useCubeApi()
   const queryClient = useQueryClient()
@@ -245,15 +256,23 @@ export function useCubeLoadQuery(
     }
   }, [manualRefresh, shouldExecute, queryResult.isSuccess, queryResult.isFetching, serverQuery, currentQueryKey])
 
+  // The fetched result set, gap-filled for a chart when asked. The cached
+  // result stays raw, so changing the chart setting never refetches.
+  const fetchedResultSet = useMemo(() => {
+    if (!queryResult.data) return null
+    if (!gapFillEnabled) return queryResult.data
+    return withChartGapFilling(queryResult.data, { fillMissingDates: gapFillMissingDates })
+  }, [queryResult.data, gapFillEnabled, gapFillMissingDates])
+
   // Extract raw data from result set
   const rawData = useMemo(() => {
-    if (!queryResult.data) return null
+    if (!fetchedResultSet) return null
     try {
-      return queryResult.data.rawData()
+      return fetchedResultSet.rawData()
     } catch {
       return null
     }
-  }, [queryResult.data])
+  }, [fetchedResultSet])
 
   // Extract warnings from result set
   const warnings = useMemo((): QueryWarning[] | undefined => {
@@ -298,10 +317,10 @@ export function useCubeLoadQuery(
   const resultSet = useMemo(() => {
     if (resetResultSetOnChange && isDebouncing) {
       // Keep showing old data while debouncing
-      return queryResult.data ?? null
+      return fetchedResultSet
     }
-    return queryResult.data ?? null
-  }, [queryResult.data, isDebouncing, resetResultSetOnChange])
+    return fetchedResultSet
+  }, [fetchedResultSet, isDebouncing, resetResultSetOnChange])
 
   return {
     resultSet,
