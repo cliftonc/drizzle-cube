@@ -56,7 +56,6 @@ const defaultProps = {
   rows: [] as RowLayout[],
   portlets: [] as PortletConfig[],
   gridSettings: defaultGridSettings,
-  gridWidth: 1200,
   canEdit: false,
   isDragging: false,
   onRowResize: vi.fn(),
@@ -265,15 +264,12 @@ describe('RowManagedLayout', () => {
           {...defaultProps}
           rows={rows}
           portlets={[portlet]}
-          gridWidth={1200}
         />
       )
 
       const columnWrapper = container.querySelector('.dc-row-layout-column-wrapper') as HTMLElement
-      // With gridWidth=1200, cols=12, one column, no gaps
-      // unitWidth = 1200 / 12 = 100
-      // width = 6 * 100 = 600
-      expect(columnWrapper.style.maxWidth).toBe('600px')
+      // 6 of 12 cols, one column so no gaps
+      expect(columnWrapper.style.maxWidth).toBe('calc(0.5 * (100% - 0px))')
     })
 
     it('should account for column gaps between columns', () => {
@@ -293,16 +289,13 @@ describe('RowManagedLayout', () => {
           {...defaultProps}
           rows={rows}
           portlets={[portlet1, portlet2]}
-          gridWidth={1200}
         />
       )
 
-      // With 2 columns, 1 gap of 16px
-      // rowContentWidth = 1200 - (2-1) * 16 - 0 - 0 = 1184
-      // unitWidth = 1184 / 12 = 98.67
-      // Each column width = 6 * 98.67 = ~592
-      const columnWrappers = container.querySelectorAll('.dc-row-layout-column-wrapper')
+      // 2 columns share the row less 1 gap of 16px
+      const columnWrappers = container.querySelectorAll<HTMLElement>('.dc-row-layout-column-wrapper')
       expect(columnWrappers).toHaveLength(2)
+      expect(columnWrappers[0].style.maxWidth).toBe('calc(0.5 * (100% - 16px))')
     })
 
     it('should use gridSettings cols in calculation', () => {
@@ -321,36 +314,12 @@ describe('RowManagedLayout', () => {
           rows={rows}
           portlets={[portlet]}
           gridSettings={customGridSettings}
-          gridWidth={1200}
         />
       )
 
       const columnWrapper = container.querySelector('.dc-row-layout-column-wrapper') as HTMLElement
-      // unitWidth = 1200 / 24 = 50
-      // width = 6 * 50 = 300
-      expect(columnWrapper.style.maxWidth).toBe('300px')
-    })
-
-    it('should use fallback width when gridWidth is 0', () => {
-      const portlet = createTestPortlet({ id: 'p1' })
-      const rows: RowLayout[] = [
-        createTestRow({
-          columns: [{ portletId: 'p1', w: 6 }]
-        })
-      ]
-
-      const { container } = render(
-        <RowManagedLayout
-          {...defaultProps}
-          rows={rows}
-          portlets={[portlet]}
-          gridWidth={0}
-        />
-      )
-
-      // Should fallback to cols * rowHeight = 12 * 80 = 960
-      const columnWrapper = container.querySelector('.dc-row-layout-column-wrapper') as HTMLElement
-      expect(columnWrapper).toBeInTheDocument()
+      // 6 of 24 cols
+      expect(columnWrapper.style.maxWidth).toBe('calc(0.25 * (100% - 0px))')
     })
   })
 
@@ -1453,6 +1422,33 @@ describe('RowManagedLayout - groups and snap bands', () => {
       const sections = container.querySelectorAll('.dc-dashboard-section')
       expect(sections).toHaveLength(1)
       expect(sections[0].querySelectorAll('.dc-row-layout-row-wrapper')).toHaveLength(2)
+    })
+
+    it('sizes section columns as a share of the row, so the section inset narrows them', () => {
+      const rows: RowLayout[] = [
+        createTestRow({ id: 'row-header', h: 3, columns: [{ portletId: 'header-1', w: 12 }] }),
+        createTestRow({
+          id: 'row-body',
+          h: 4,
+          columns: [
+            { portletId: 'p1', w: 6 },
+            { portletId: 'p2', w: 6 }
+          ]
+        })
+      ]
+
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          canEdit={false}
+          rows={rows}
+          portlets={[headerPortlet(), bodyPortlet, createTestPortlet({ id: 'p2' })]}
+        />
+      )
+
+      const body = container.querySelector('[data-portlet-id="p1"]') as HTMLElement
+      expect(body.style.flexBasis).toMatch(/^calc\(0\.5 ?\* ?\(100% - 16px\)\)$/)
+      expect(body.style.maxWidth).toBe('calc(0.5 * (100% - 16px))')
     })
 
     it('renders no section in edit mode, so the drop and resize handles keep their gap', () => {

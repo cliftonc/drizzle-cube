@@ -1024,7 +1024,6 @@ export default function DashboardCoordinator({
       portlets={config.portlets}
       groups={resolvedGroups}
       gridSettings={gridSettings}
-      gridWidth={gridWidth}
       canEdit={canEdit}
       isDragging={isDraggingPortlet}
       onRowResize={startRowResize}
@@ -1039,7 +1038,7 @@ export default function DashboardCoordinator({
       renderPortlet={renderPortletCard}
       renderGroup={renderGroupCard}
     />
-  ), [resolvedRows, resolvedGroups, config.portlets, gridSettings, gridWidth, canEdit, isDraggingPortlet, startRowResize, startColumnResize, handlePortletDragStart, handlePortletDragEnd, handleRowDrop, handleNewRowDrop, handleSnapDrop, draggingPortletId, draggingGroupId, renderPortletCard, renderGroupCard])
+  ), [resolvedRows, resolvedGroups, config.portlets, gridSettings, canEdit, isDraggingPortlet, startRowResize, startColumnResize, handlePortletDragStart, handlePortletDragEnd, handleRowDrop, handleNewRowDrop, handleSnapDrop, draggingPortletId, draggingGroupId, renderPortletCard, renderGroupCard])
 
   const renderActiveLayout = useCallback((): ReactNode => (
     layoutMode === 'rows' ? renderRowContent() : renderGridContent()

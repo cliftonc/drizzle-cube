@@ -41,7 +41,6 @@ describe('group drag source resolution', () => {
         portlets={portlets}
         groups={[group]}
         gridSettings={GRID}
-        gridWidth={1200}
         canEdit
         isDragging={false}
         onRowResize={vi.fn()}
@@ -87,7 +86,6 @@ describe('group drag source resolution', () => {
         portlets={portlets}
         groups={[group]}
         gridSettings={GRID}
-        gridWidth={1200}
         canEdit
         isDragging={false}
         onRowResize={vi.fn()}
@@ -134,7 +132,6 @@ describe('group drag source resolution', () => {
         portlets={portlets}
         groups={[group]}
         gridSettings={GRID}
-        gridWidth={1200}
         canEdit
         isDragging={false}
         onRowResize={vi.fn()}

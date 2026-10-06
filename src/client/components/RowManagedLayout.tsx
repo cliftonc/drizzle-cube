@@ -11,7 +11,6 @@ interface RowManagedLayoutProps {
   portlets: PortletConfig[]
   groups?: PortletGroup[]
   gridSettings: DashboardGridSettings
-  gridWidth: number
   canEdit: boolean
   isDragging: boolean
   onRowResize: (rowIndex: number, event: MouseEvent<HTMLDivElement>) => void
@@ -55,7 +54,6 @@ export default function RowManagedLayout({
   portlets,
   groups = [],
   gridSettings,
-  gridWidth,
   canEdit,
   isDragging,
   onRowResize,
@@ -152,11 +150,9 @@ export default function RowManagedLayout({
   const renderRow = (row: RowLayout, rowIndex: number, inSection: boolean): ReactNode => {
     const autoHeight = isAutoHeightRow(row, portletMap)
     const rowHeight = autoHeight ? undefined : row.h * gridSettings.rowHeight
-    const safeGridWidth = gridWidth || gridSettings.cols * gridSettings.rowHeight
     const paddingLeft = activeDropKey === `row-${rowIndex}-insert-0` ? COLUMN_GAP : 0
     const paddingRight = activeDropKey === `row-${rowIndex}-insert-${row.columns.length}` ? COLUMN_GAP : 0
-    const rowContentWidth = safeGridWidth - (row.columns.length - 1) * COLUMN_GAP - paddingLeft - paddingRight
-    const unitWidth = rowContentWidth / gridSettings.cols
+    const gapsWidth = (row.columns.length - 1) * COLUMN_GAP
 
     return (
       <div key={row.id} className="dc-row-layout-row-wrapper">
@@ -175,7 +171,9 @@ export default function RowManagedLayout({
             if (!group && !portlet) return null
 
             const key = group ? group.id : portlet!.id
-            const width = column.w * unitWidth
+            // A share of the row's own content box, so a section's inset and a
+            // drop zone's padding narrow the columns instead of clipping the last.
+            const width = `calc(${column.w / gridSettings.cols} * (100% - ${gapsWidth}px))`
 
             // Without this the only sign a drag is live is the native ghost:
             // drop zones stay invisible until one is hovered.
@@ -195,8 +193,8 @@ export default function RowManagedLayout({
                 onDragStart={handlePortletDragStart}
                 onDragEnd={handlePortletDragEnd}
                 style={{
-                  flex: `0 0 ${width}px`,
-                  maxWidth: `${width}px`
+                  flex: `0 0 ${width}`,
+                  maxWidth: width
                 }}
               >
                 {group
