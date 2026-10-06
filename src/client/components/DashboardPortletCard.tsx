@@ -285,6 +285,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           onDuplicate={() => callbacks.onDuplicate(portlet.id)}
           onEdit={() => callbacks.onEdit(portlet)}
           onDelete={() => callbacks.onDelete(portlet.id)}
+          onExpand={handleExpand}
         />
       )}
       {variant !== 'groupChild' && (!shouldHideHeader || isEditMode) && (
