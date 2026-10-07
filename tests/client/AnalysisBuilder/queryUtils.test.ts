@@ -379,5 +379,24 @@ describe('queryUtils', () => {
       expect(buildCubeQuery([], breakdowns, [], undefined, false, 25, true))
         .toMatchObject({ ungrouped: true, limit: 25 })
     })
+
+    it('leaves out comparison and date filling, which the server rejects when ungrouped', () => {
+      // A line chart with both options switched to a records table
+      const createdAt: BreakdownItem = {
+        id: '2', field: 'Employees.createdAt', isTimeDimension: true, granularity: 'day',
+        enableComparison: true, fillMissingDates: true
+      }
+      const dateFilter: Filter = {
+        member: 'Employees.createdAt', operator: 'inDateRange', values: [], dateRange: ['2024-01-01', '2024-01-31']
+      }
+
+      expect(buildCubeQuery([], [...breakdowns, createdAt], [dateFilter], undefined, false, 25, true)).toEqual({
+        dimensions: ['Employees.name'],
+        timeDimensions: [{ dimension: 'Employees.createdAt', granularity: 'day' }],
+        filters: [dateFilter],
+        limit: 25,
+        ungrouped: true
+      })
+    })
   })
 })

@@ -24,13 +24,18 @@ export function buildCubeQuery(
    * Record-grain charts list rows rather than aggregates — see
    * `ChartTypeConfig.recordGrain`. Without this, editing a records-table
    * portlet in the builder silently rebuilds its query as a grouped one.
+   *
+   * The server rejects period comparison and date filling on an ungrouped
+   * query, so it leaves both out and keeps the date filter. The breakdowns
+   * keep both settings for when the chart switches back.
    */
   ungrouped: boolean = false,
   fillMissingDatesValue?: number | null
 ): CubeQuery {
   // Find time dimensions with comparison enabled
+  const isComparing = (b: BreakdownItem) => b.isTimeDimension && b.enableComparison && !ungrouped
   const comparisonFields = breakdowns
-    .filter((b) => b.isTimeDimension && b.enableComparison)
+    .filter(isComparing)
     .map((b) => b.field)
 
   // Remove date filters for comparison-enabled time dimensions
@@ -59,11 +64,11 @@ export function buildCubeQuery(
         } = {
           dimension: b.field,
           granularity: b.granularity || 'day',
-          ...(b.fillMissingDates !== undefined && { fillMissingDates: b.fillMissingDates })
+          ...(b.fillMissingDates !== undefined && !ungrouped && { fillMissingDates: b.fillMissingDates })
         }
 
         // If comparison is enabled, build compareDateRange from the ORIGINAL filter
-        if (b.enableComparison) {
+        if (isComparing(b)) {
           const compareDateRange = buildCompareDateRangeFromFilter(b.field, filters)
           if (compareDateRange) {
             td.compareDateRange = compareDateRange
