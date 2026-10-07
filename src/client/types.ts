@@ -724,6 +724,8 @@ export interface DashboardMeta {
 export interface PortletViewState {
   /** Drill-down state of the portlet. */
   drill?: unknown
+  /** Server-side paging and sorting state of the portlet (records table). */
+  pagination?: unknown
   /** State that the chart component reports with `onViewStateChange`. */
   chart?: unknown
 }

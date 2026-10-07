@@ -119,10 +119,11 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   // Server-side paging + sorting, layered over whichever query is active. Only
   // engaged for chart types that page; every other type gets `activeQuery` back
   // unchanged.
-  const { paginatedQuery, pagination } = usePortletPagination({
+  const { paginatedQuery, pagination, viewState: paginationViewState } = usePortletPagination({
     chartType,
     activeQuery,
-    pageSize: displayConfig?.pageSize
+    pageSize: displayConfig?.pageSize,
+    initialState: startViewState?.pagination
   })
 
   // Run all query hooks and derive combined loading/error/data + refresh/retry
@@ -165,10 +166,11 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     getViewState: () => {
       const viewState: PortletViewState = {}
       if (drillViewState) viewState.drill = drillViewState
+      if (paginationViewState) viewState.pagination = paginationViewState
       if (chartViewStateRef.current !== undefined) viewState.chart = chartViewStateRef.current
       return viewState
     }
-  }), [refresh, drillViewState])
+  }), [refresh, drillViewState, paginationViewState])
 
   // The total only exists once a response carrying it has arrived, so it is
   // merged in here rather than fed back into the pagination hook.
