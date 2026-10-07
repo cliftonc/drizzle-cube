@@ -50,6 +50,12 @@ export function cleanQuery(query: CubeQuery): CubeQuery {
     cleanedQuery.total = query.total
   }
 
+  // Record-grain charts (the records table) ask for raw rows; without it the
+  // server groups by every dimension and merges rows with equal values.
+  if (query.ungrouped) {
+    cleanedQuery.ungrouped = query.ungrouped
+  }
+
   if (query.segments && query.segments.length > 0) {
     cleanedQuery.segments = query.segments
   }
