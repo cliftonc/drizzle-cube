@@ -14,6 +14,7 @@ import type {
 } from '../types/analysisConfig.js'
 import { generateId, generateMetricLabel } from '../components/AnalysisBuilder/utils/index.js'
 import { buildCompareDateRangeFromFilter } from '../components/AnalysisBuilder/utils/filterUtils.js'
+import { isRecordGrainChart } from '../charts/chartConfigRegistry.js'
 import type {
   CubeQuery,
   MultiQueryConfig,
@@ -72,10 +73,14 @@ function metricsToMeasures(metrics: MetricItem[]): string[] {
 /**
  * Convert breakdowns to CubeQuery dimensions and timeDimensions
  * Includes compareDateRange for time dimensions with comparison enabled
+ *
+ * The server rejects comparison and date filling on an ungrouped query, so an
+ * ungrouped one leaves both out, as `buildCubeQuery` does.
  */
 function breakdownsToQuery(
   breakdowns: BreakdownItem[],
-  filters: Filter[]
+  filters: Filter[],
+  ungrouped: boolean
 ): {
   dimensions: string[]
   timeDimensions: NonNullable<CubeQuery['timeDimensions']>
@@ -92,11 +97,11 @@ function breakdownsToQuery(
       } = {
         dimension: b.field,
         granularity: b.granularity || 'day',
-        ...(b.fillMissingDates !== undefined && { fillMissingDates: b.fillMissingDates }),
+        ...(b.fillMissingDates !== undefined && !ungrouped && { fillMissingDates: b.fillMissingDates }),
       }
 
       // If comparison is enabled, calculate and include compareDateRange
-      if (b.enableComparison) {
+      if (b.enableComparison && !ungrouped) {
         const compareDateRange = buildCompareDateRangeFromFilter(b.field, filters)
         if (compareDateRange) {
           td.compareDateRange = compareDateRange
@@ -115,10 +120,11 @@ function breakdownsToQuery(
 /**
  * Build a CubeQuery from an AnalysisBuilderState
  */
-function stateToCubeQuery(state: AnalysisBuilderState): CubeQuery {
+function stateToCubeQuery(state: AnalysisBuilderState, ungrouped: boolean): CubeQuery {
   const { dimensions, timeDimensions } = breakdownsToQuery(
     state.breakdowns,
-    state.filters
+    state.filters,
+    ungrouped
   )
 
   const query: CubeQuery = {
@@ -144,6 +150,10 @@ function stateToCubeQuery(state: AnalysisBuilderState): CubeQuery {
 
   if (state.fillMissingDatesValue !== undefined) {
     query.fillMissingDatesValue = state.fillMissingDatesValue
+  }
+
+  if (ungrouped) {
+    query.ungrouped = true
   }
 
   return query
@@ -306,8 +316,12 @@ export const queryModeAdapter: ModeAdapter<QuerySliceState> = {
     charts: Partial<Record<AnalysisType, ChartConfig>>,
     activeView: 'table' | 'chart'
   ): QueryAnalysisConfig {
-    // Build queries from state
-    const queries = state.queryStates.map(stateToCubeQuery)
+    const chart = charts.query || this.getDefaultChartConfig()
+
+    // Records-style charts list rows, so their saved query stays ungrouped,
+    // like the query the builder previews.
+    const ungrouped = isRecordGrainChart(chart.chartType)
+    const queries = state.queryStates.map((qs) => stateToCubeQuery(qs, ungrouped))
 
     // Determine if single or multi-query
     const isSingle = queries.length === 1 && state.mergeStrategy === 'concat'
@@ -325,7 +339,7 @@ export const queryModeAdapter: ModeAdapter<QuerySliceState> = {
       analysisType: 'query',
       activeView,
       charts: {
-        query: charts.query || this.getDefaultChartConfig(),
+        query: chart,
       },
       query,
     }
