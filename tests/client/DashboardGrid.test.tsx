@@ -452,4 +452,31 @@ describe('DashboardGrid', () => {
       expect(capturedGridLayoutProps.width).toBe(1200)
     })
   })
+
+  describe('expand action', () => {
+    it('should show an Expand button on each card and give onPortletExpand the clicked portlet', () => {
+      const onPortletExpand = vi.fn()
+
+      const { getAllByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} onPortletExpand={onPortletExpand} />,
+        { wrapper: TestWrapper }
+      )
+      const buttons = getAllByRole('button', { name: 'Expand' })
+      fireEvent.click(buttons[1])
+
+      expect(buttons).toHaveLength(2)
+      expect(onPortletExpand).toHaveBeenCalledWith(
+        expect.objectContaining({ portletId: 'portlet-1', title: 'Portlet 1', viewState: {} })
+      )
+    })
+
+    it('should not show an Expand button without onPortletExpand', () => {
+      const { queryAllByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} />,
+        { wrapper: TestWrapper }
+      )
+
+      expect(queryAllByRole('button', { name: 'Expand' })).toHaveLength(0)
+    })
+  })
 })
