@@ -235,6 +235,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     retentionChartData
   })
 
+  // A refetch, an error, or an empty result unmounts the chart component. It
+  // mounts again with the start state, so the reported state goes back to it.
+  useEffect(() => {
+    if (renderKind !== 'chart') chartViewStateRef.current = startViewState?.chart
+  }, [renderKind, startViewState])
+
   // Non-chart states (config-required, placeholder, loading, error, no-data)
   if (renderKind !== 'chart') {
     return (
