@@ -44,6 +44,12 @@ export function cleanQuery(query: CubeQuery): CubeQuery {
     cleanedQuery.offset = query.offset
   }
 
+  // Server-side paging asks for the unpaginated row count; without it the
+  // records table pager never learns there is a second page.
+  if (query.total) {
+    cleanedQuery.total = query.total
+  }
+
   if (query.segments && query.segments.length > 0) {
     cleanedQuery.segments = query.segments
   }
