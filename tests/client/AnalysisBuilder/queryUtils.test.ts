@@ -419,5 +419,14 @@ describe('queryUtils', () => {
         ungrouped: true
       })
     })
+
+    it('keeps fillMissingDates: false when ungrouped, which the server accepts', () => {
+      const createdAt: BreakdownItem = {
+        id: '2', field: 'Employees.createdAt', isTimeDimension: true, granularity: 'day', fillMissingDates: false
+      }
+
+      expect(buildCubeQuery([], [...breakdowns, createdAt], [], undefined, false, 25, true).timeDimensions)
+        .toEqual([{ dimension: 'Employees.createdAt', granularity: 'day', fillMissingDates: false }])
+    })
   })
 })

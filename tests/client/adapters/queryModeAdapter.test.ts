@@ -197,17 +197,17 @@ describe('queryModeAdapter', () => {
       expect((config.query as MultiQueryConfig).mergeStrategy).toBe('merge')
     })
 
-    describe('a time breakdown with comparison and date filling on', () => {
+    describe('a time breakdown with comparison and date filling', () => {
       const dateFilter: SimpleFilter = {
         member: 'Employees.createdAt', operator: 'inDateRange', values: [], dateRange: ['2024-01-01', '2024-01-31']
       }
-      const queryState = (field: string): QuerySliceState['queryStates'][number] => ({
+      const queryState = (field: string, fillMissingDates = true): QuerySliceState['queryStates'][number] => ({
         metrics: [],
         breakdowns: [
           { id: '1', field, isTimeDimension: false },
           {
             id: '2', field: 'Employees.createdAt', isTimeDimension: true, granularity: 'day',
-            enableComparison: true, fillMissingDates: true
+            enableComparison: true, fillMissingDates
           }
         ],
         filters: [dateFilter],
@@ -257,6 +257,13 @@ describe('queryModeAdapter', () => {
 
         const query = queryModeAdapter.save(state, chart('recordsTable'), 'chart').query
         expect('queries' in query && query.queries.map((q) => q.ungrouped)).toEqual([true, true])
+      })
+
+      it('keeps fillMissingDates: false through saving and reopening a records table', () => {
+        const state: QuerySliceState = { queryStates: [queryState('Employees.name', false)], activeQueryIndex: 0, mergeStrategy: 'concat' }
+
+        const reopened = queryModeAdapter.load(queryModeAdapter.save(state, chart('recordsTable'), 'chart'))
+        expect(reopened.queryStates[0].breakdowns.find((b) => b.isTimeDimension)?.fillMissingDates).toBe(false)
       })
     })
   })

@@ -74,8 +74,9 @@ function metricsToMeasures(metrics: MetricItem[]): string[] {
  * Convert breakdowns to CubeQuery dimensions and timeDimensions
  * Includes compareDateRange for time dimensions with comparison enabled
  *
- * The server rejects comparison and date filling on an ungrouped query, so an
- * ungrouped one leaves both out, as `buildCubeQuery` does.
+ * The server rejects comparison and `fillMissingDates: true` on an ungrouped
+ * query, so an ungrouped one leaves both out, as `buildCubeQuery` does. It keeps
+ * `fillMissingDates: false`, which the server accepts.
  */
 function breakdownsToQuery(
   breakdowns: BreakdownItem[],
@@ -97,7 +98,7 @@ function breakdownsToQuery(
       } = {
         dimension: b.field,
         granularity: b.granularity || 'day',
-        ...(b.fillMissingDates !== undefined && !ungrouped && { fillMissingDates: b.fillMissingDates }),
+        ...(b.fillMissingDates !== undefined && !(ungrouped && b.fillMissingDates) && { fillMissingDates: b.fillMissingDates }),
       }
 
       // If comparison is enabled, calculate and include compareDateRange

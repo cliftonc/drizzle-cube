@@ -25,9 +25,10 @@ export function buildCubeQuery(
    * `ChartTypeConfig.recordGrain`. Without this, editing a records-table
    * portlet in the builder silently rebuilds its query as a grouped one.
    *
-   * The server rejects period comparison and date filling on an ungrouped
-   * query, so it leaves both out and keeps the date filter. The breakdowns
-   * keep both settings for when the chart switches back.
+   * The server rejects period comparison and `fillMissingDates: true` on an
+   * ungrouped query, so it leaves both out and keeps the date filter. The
+   * breakdowns keep both settings for when the chart switches back. An
+   * explicit `fillMissingDates: false` stays, since the server accepts it.
    */
   ungrouped: boolean = false,
   fillMissingDatesValue?: number | null
@@ -64,7 +65,7 @@ export function buildCubeQuery(
         } = {
           dimension: b.field,
           granularity: b.granularity || 'day',
-          ...(b.fillMissingDates !== undefined && !ungrouped && { fillMissingDates: b.fillMissingDates })
+          ...(b.fillMissingDates !== undefined && !(ungrouped && b.fillMissingDates) && { fillMissingDates: b.fillMissingDates })
         }
 
         // If comparison is enabled, build compareDateRange from the ORIGINAL filter
