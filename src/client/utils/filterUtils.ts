@@ -152,7 +152,23 @@ export function getApplicableDashboardFilters(
   return dashboardFilters
     .filter(df => mappingIncludesFilter(filterMapping, df.id))
     .filter(df => shouldIncludeFilter(df.filter))
-    .map(df => applyMemberOverride(df.filter, getMappingMemberOverride(filterMapping, df.id)))
+    .map(df => applyMemberOverride(clearStaleDateRangeValues(df.filter), getMappingMemberOverride(filterMapping, df.id)))
+}
+
+/**
+ * Drop `values` from an `inDateRange` filter that also has a `dateRange`.
+ * Older filter modals saved the new range in `dateRange` but kept the old
+ * `values`, and the server rejects that pair as a conflict. `dateRange` is the
+ * range the filter bar shows, so it wins.
+ */
+function clearStaleDateRangeValues(filter: Filter): Filter {
+  if ('type' in filter && 'filters' in filter) {
+    return { ...filter, filters: filter.filters.map(clearStaleDateRangeValues) }
+  }
+  if ('member' in filter && filter.operator === 'inDateRange' && filter.dateRange && filter.values?.length) {
+    return { ...filter, values: [] }
+  }
+  return filter
 }
 
 /**

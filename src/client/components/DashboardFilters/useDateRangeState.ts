@@ -6,8 +6,9 @@
  * the effect that syncs those back from the filter's `dateRange`, and the four
  * handlers that translate UI changes into a new `dateRange` on the filter.
  *
- * Behaviour is identical to the previous inline implementation — same effect,
- * same dependency arrays, same handler bodies.
+ * Every handler writes through `setDateRange`, which clears `values`, as
+ * CompactFilterBar does. A range saved in `values` would otherwise conflict
+ * with the new `dateRange`, and the server rejects that filter.
  */
 
 import { useState, useEffect, useCallback, ChangeEvent } from 'react'
@@ -46,6 +47,10 @@ export function useDateRangeState({
     }
   }, [localFilter.dateRange, shouldShowDateRange])
 
+  const setDateRange = useCallback((dateRange: string | string[]) => {
+    setLocalFilter({ ...localFilter, values: [], dateRange })
+  }, [localFilter, setLocalFilter])
+
   // Handle date range type change
   const handleRangeTypeChange = useCallback((newRangeType: DateRangeType) => {
     setRangeType(newRangeType)
@@ -61,32 +66,31 @@ export function useDateRangeState({
       dateRange = convertDateRangeTypeToValue(newRangeType)
     }
 
-    setLocalFilter({ ...localFilter, dateRange } as SimpleFilter)
-  }, [localFilter, numberValue, setLocalFilter, setIsDateRangeDropdownOpen])
+    setDateRange(dateRange)
+  }, [numberValue, setDateRange, setIsDateRangeDropdownOpen])
 
   // Handle number value change for "last N days/weeks/etc"
   const handleNumberValueChange = useCallback((value: number) => {
     setNumberValue(value)
     if (requiresNumberInput(rangeType)) {
-      const dateRange = convertDateRangeTypeToValue(rangeType, value)
-      setLocalFilter({ ...localFilter, dateRange } as SimpleFilter)
+      setDateRange(convertDateRangeTypeToValue(rangeType, value))
     }
-  }, [localFilter, rangeType, setLocalFilter])
+  }, [rangeType, setDateRange])
 
   // Handle custom date range inputs
   const handleCustomStartDate = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const start = e.target.value
     const currentRange = Array.isArray(localFilter.dateRange) ? localFilter.dateRange : [localFilter.dateRange || '', '']
     const end = currentRange[1] || start
-    setLocalFilter({ ...localFilter, dateRange: [start, end] } as SimpleFilter)
-  }, [localFilter, setLocalFilter])
+    setDateRange([start, end])
+  }, [localFilter.dateRange, setDateRange])
 
   const handleCustomEndDate = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const end = e.target.value
     const currentRange = Array.isArray(localFilter.dateRange) ? localFilter.dateRange : ['', localFilter.dateRange || '']
     const start = currentRange[0] || end
-    setLocalFilter({ ...localFilter, dateRange: [start, end] } as SimpleFilter)
-  }, [localFilter, setLocalFilter])
+    setDateRange([start, end])
+  }, [localFilter.dateRange, setDateRange])
 
   return {
     rangeType,

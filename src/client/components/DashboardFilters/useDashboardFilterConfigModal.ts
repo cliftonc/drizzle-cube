@@ -11,8 +11,7 @@
  *
  * The remaining field/operator/save handlers stay here. The return is grouped
  * into sub-objects by concern (`dropdowns`, `values`, `dateRange`, `field`)
- * rather than one flat bag. Behaviour is identical to the previous inline
- * implementation — same state, same effects, same handlers.
+ * rather than one flat bag.
  */
 
 import { useState, useEffect, useCallback, ChangeEvent } from 'react'

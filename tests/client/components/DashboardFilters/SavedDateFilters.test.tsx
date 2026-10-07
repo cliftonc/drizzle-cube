@@ -5,7 +5,9 @@ import { expect, test } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 import CompactFilterBar from '../../../../src/client/components/DashboardFilters/CompactFilterBar'
+import DashboardFilterConfigModal from '../../../../src/client/components/DashboardFilters/DashboardFilterConfigModal'
 import type { DashboardConfig, DashboardFilter } from '../../../../src/client/types'
+import type { MetaResponse } from '../../../../src/client/shared/types'
 import { useDirtyStateTracking } from '../../../../src/client/hooks/useDirtyStateTracking'
 import { getApplicableDashboardFilters } from '../../../../src/client/utils/filterUtils'
 import { validateQueryAgainstCubes } from '../../../../src/server/query-validator'
@@ -194,4 +196,85 @@ test('should save and reopen a relative universal range without resolving it to 
   await user.click(screen.getByRole('button', { name: 'Reopen dashboard' }))
   expect(screen.getByLabelText('Report filters')).toHaveTextContent('last 12 months')
   expect(savedFilters()[1]).toEqual(independentFilter)
+})
+
+const historySchema: MetaResponse = {
+  cubes: [{
+    name: 'History', title: 'History', description: '', segments: [], measures: [],
+    dimensions: [{ name: 'History.snapshotDate', type: 'time', title: 'Snapshot date', shortTitle: 'Snapshot date' }]
+  }]
+}
+
+test.each([
+  {
+    edit: 'preset', values: ['last 7 days'], dateRange: 'last 7 days', expected: 'last 30 days',
+    change: async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: 'Last N days' }))
+      await user.click(screen.getByRole('button', { name: 'Last 30 days' }))
+    }
+  },
+  {
+    edit: 'preset (values only)', values: ['last 7 days'], dateRange: undefined, expected: 'last 30 days',
+    change: async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: 'This month' }))
+      await user.click(screen.getByRole('button', { name: 'Last 30 days' }))
+    }
+  },
+  {
+    edit: 'count', values: ['last 5 days'], dateRange: 'last 5 days', expected: 'last 6 days',
+    change: async () => {
+      fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '6' } })
+    }
+  },
+  {
+    edit: 'start date', values: savedRange, dateRange: savedRange, expected: ['2026-08-15', savedRange[1]],
+    change: async (_user: ReturnType<typeof userEvent.setup>, container: HTMLElement) => {
+      fireEvent.change(dateInputs(container)[0], { target: { value: '2026-08-15' } })
+    }
+  },
+  {
+    edit: 'end date', values: savedRange, dateRange: savedRange, expected: [savedRange[0], changedRange[1]],
+    change: async (_user: ReturnType<typeof userEvent.setup>, container: HTMLElement) => {
+      fireEvent.change(dateInputs(container)[1], { target: { value: changedRange[1] } })
+    }
+  }
+])('should save only the new range when the filter modal edits the $edit of a range saved in values', async ({ values, dateRange, expected, change }) => {
+  const user = userEvent.setup()
+  const edits: DashboardFilter[] = []
+  const { container } = renderWithProviders(
+    <DashboardFilterConfigModal
+      filter={{
+        id: 'history', label: 'History date',
+        filter: { member: 'History.snapshotDate', operator: 'inDateRange', values, dateRange }
+      }}
+      fullSchema={historySchema}
+      filteredSchema={historySchema}
+      isOpen
+      onSave={filter => edits.push(filter)}
+      onDelete={() => {}}
+      onClose={() => {}}
+    />
+  )
+  await change(user, container)
+  await user.click(screen.getByRole('button', { name: 'Done' }))
+  expect(edits[0].filter).toEqual({
+    member: 'History.snapshotDate', operator: 'inDateRange', values: [], dateRange: expected
+  })
+  expect(validateQueryAgainstCubes(historyCubes, {
+    dimensions: ['History.snapshotDate'], filters: JSON.parse(JSON.stringify([edits[0].filter]))
+  })).toMatchObject({ isValid: true, errors: [] })
+})
+
+test('should query only the dateRange of a filter saved with the values of an older range', () => {
+  const saved: DashboardFilter = {
+    id: 'history', label: 'History date',
+    filter: { member: 'History.snapshotDate', operator: 'inDateRange', values: ['last 7 days'], dateRange: 'last 30 days' }
+  }
+  const applied = getApplicableDashboardFilters([saved], ['history'])
+  expect(applied).toEqual([
+    { member: 'History.snapshotDate', operator: 'inDateRange', values: [], dateRange: 'last 30 days' }
+  ])
+  expect(validateQueryAgainstCubes(historyCubes, {
+    dimensions: ['History.snapshotDate'], filters: JSON.parse(JSON.stringify(applied))
+  })).toMatchObject({ isValid: true, errors: [] })
 })
