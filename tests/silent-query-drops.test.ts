@@ -9,7 +9,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { createTestDatabaseExecutor } from './helpers/test-database'
+import { sql } from 'drizzle-orm'
+import { createTestDatabaseExecutor, getTestSchema, skipIfDatabend } from './helpers/test-database'
 import { getTestCubes } from './helpers/test-cubes'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 import { QueryExecutor } from '../src/server/executor'
@@ -232,6 +233,83 @@ describe('Silent query drops', () => {
         timeDimensions: [{ dimension: 'Productivity.date', dateRange: range }]
       })
       expect(result.isValid).toBe(false)
+    })
+  })
+
+  describe('bug 7: a member in dimensions and in a granular timeDimension', () => {
+    const range: [string, string] = ['2024-01-01', '2024-03-31']
+    const monthly: SemanticQuery = {
+      measures: ['Productivity.recordCount'],
+      timeDimensions: [{ dimension: 'Productivity.date', dateRange: range, granularity: 'month' }]
+    }
+
+    it('returns one row per bucket, as without the repeated dimension', async () => {
+      const repeated = await run({ ...monthly, dimensions: ['Productivity.date'] })
+      const plain = await run(monthly)
+
+      expect(plain.data).toHaveLength(3)
+      expect(repeated.data).toEqual(plain.data)
+    })
+
+    it('generates the same SQL as without the repeated dimension', async () => {
+      expect(await dryRun({ ...monthly, dimensions: ['Productivity.date'] })).toEqual(await dryRun(monthly))
+    })
+
+    describe('with a correlated time dimension', () => {
+      // The subquery reads only the CTE join key (employee_id), so the
+      // pre-aggregation CTE can group it on every engine.
+      const member = 'Productivity.employeeCreatedAt'
+      let correlatedCubes: Map<string, Cube>
+
+      beforeAll(async () => {
+        const { employees, productivity } = await getTestSchema()
+        const base = cubes.get('Productivity')!
+        correlatedCubes = new Map(cubes)
+        correlatedCubes.set('Productivity', {
+          ...base,
+          dimensions: {
+            ...base.dimensions,
+            employeeCreatedAt: {
+              name: 'employeeCreatedAt',
+              type: 'time',
+              sql: sql`(SELECT MIN(${employees.createdAt}) FROM ${employees} WHERE ${employees.id} = ${productivity.employeeId})`,
+              correlatesOn: productivity.employeeId
+            }
+          }
+        })
+      })
+
+      const runCorrelated = (query: SemanticQuery) =>
+        executor.execute(correlatedCubes, query, testSecurityContexts.org1)
+      const yearly: SemanticQuery = {
+        measures: ['Productivity.recordCount'],
+        timeDimensions: [{ dimension: member, granularity: 'year' }],
+        order: { [member]: 'asc' }
+      }
+      const buckets = (rows: Record<string, unknown>[]) => rows.map(row => String(row[member]))
+
+      const expectOneRowPerBucket = async (query: SemanticQuery) => {
+        const repeated = await runCorrelated({ ...query, dimensions: [member] })
+        const plain = await runCorrelated(query)
+
+        expect(plain.data.length).toBeGreaterThan(0)
+        expect(new Set(buckets(plain.data)).size).toBe(plain.data.length)
+        expect(repeated.data).toEqual(plain.data)
+      }
+
+      // Databend rejects a correlated subquery in GROUP BY, as in
+      // attribute-dimensions.test.ts. Through a CTE the outer query groups by
+      // the CTE column, so that case runs everywhere.
+      it.skipIf(skipIfDatabend())('returns one row per bucket when read directly', async () => {
+        await expectOneRowPerBucket(yearly)
+      })
+
+      it('returns one row per bucket when read through a pre-aggregation CTE', async () => {
+        const query: SemanticQuery = { ...yearly, measures: ['Employees.count', 'Productivity.recordCount'] }
+        const { sql: generated } = await executor.dryRunSQL(correlatedCubes, query, testSecurityContexts.org1)
+        expect(generated).toMatch(/productivity_agg/i)
+        await expectOneRowPerBucket(query)
+      })
     })
   })
 
