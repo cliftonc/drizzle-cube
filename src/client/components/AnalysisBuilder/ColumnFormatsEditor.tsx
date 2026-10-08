@@ -21,7 +21,7 @@ import type {
   TimeGranularity
 } from '../../types.js'
 
-const KINDS: ColumnFormatKind[] = ['text', 'number', 'date', 'badge', 'progress']
+const KINDS: ColumnFormatKind[] = ['text', 'number', 'date', 'badge', 'progress', 'link']
 
 type ProgressStyle = NonNullable<ColumnFormatConfig['progressStyle']>
 
@@ -190,6 +190,26 @@ function KindControls({
 
   if (format.kind === 'badge') {
     return <BadgeColorRows format={format} colorPalette={colorPalette} onChange={onChange} t={t} />
+  }
+
+  if (format.kind === 'link') {
+    return (
+      <label className="dc:block dc:space-y-1">
+        <span className="dc:text-xs text-dc-text-secondary">
+          {t('chart.recordsTable.columnFormats.linkTemplate')}
+        </span>
+        <input
+          type="text"
+          value={format.linkTemplate ?? ''}
+          onChange={(e) => onChange({ ...format, linkTemplate: e.target.value || undefined })}
+          placeholder={t('chart.recordsTable.columnFormats.linkTemplatePlaceholder')}
+          className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm bg-dc-surface text-dc-text"
+        />
+        <span className="dc:block dc:text-xs text-dc-text-muted">
+          {t('chart.recordsTable.columnFormats.linkTemplateHelp')}
+        </span>
+      </label>
+    )
   }
 
   if (format.kind === 'progress') {

@@ -263,19 +263,24 @@ function Row({ row, columns, columnFormats, colorPalette, href, target, clickabl
       {columns.map(column => {
         const format = columnFormats[column]
         const align = format?.align ?? defaultAlign(format)
+        const cell = renderCellValue(row[column], format)
+        // A link column links its own cells, and that link wins over the row
+        // link and over drill for the cell; the row link still covers the rest.
+        const cellHref = cellLinkUrl(format, cell, row)
         return (
           <td
             key={column}
-            onClick={(event) => onCellClick(row, column, event)}
+            onClick={(event) => { if (!cellHref) onCellClick(row, column, event) }}
             className={`dc:px-3 dc:py-1.5 dc:text-sm text-dc-text dc:overflow-hidden${
               align === 'right' ? ' dc:text-right dc:tabular-nums' : ''
             }`}
           >
             <CellContent
-              cell={renderCellValue(row[column], format)}
+              cell={cell}
               colorPalette={colorPalette}
-              href={href}
-              target={target}
+              href={cellHref ?? href}
+              target={cellHref ? undefined : target}
+              isCellLink={cellHref !== null}
             />
           </td>
         )
@@ -285,19 +290,38 @@ function Row({ row, columns, columnFormats, colorPalette, href, target, clickabl
 }
 
 /**
- * A cell, wrapped in the row's link when one resolves. An unresolvable or
- * unsafe template yields no anchor rather than a dead one.
+ * The URL a `link` column cell opens: its template filled from the row. An
+ * empty cell has nothing to click, and an unresolvable or unsafe template
+ * yields no URL, so the cell falls back to the row link, if there is one.
+ */
+function cellLinkUrl(
+  format: ColumnFormatConfig | undefined,
+  cell: RenderedCell,
+  row: Record<string, unknown>
+): string | null {
+  // A stored config is not validated, so the template may not be a string.
+  if (format?.kind !== 'link' || typeof format.linkTemplate !== 'string' || cell.text === '') return null
+  return buildRowUrl(format.linkTemplate, row)
+}
+
+/**
+ * A cell, wrapped in its link when one resolves: the cell's own link in a
+ * `link` column, otherwise the row's. An unresolvable or unsafe template
+ * yields no anchor rather than a dead one. A row link keeps the cell's look; a
+ * cell link looks like a link, so it stands out from the row around it.
  */
 function CellContent({
   cell,
   colorPalette,
   href,
-  target
+  target,
+  isCellLink
 }: {
   cell: RenderedCell
   colorPalette?: ChartProps['colorPalette']
   href: string | null
   target?: 'self' | 'blank'
+  isCellLink: boolean
 }) {
   const content = <Cell cell={cell} colorPalette={colorPalette} />
   if (!href) return content
@@ -307,7 +331,9 @@ function CellContent({
       href={href}
       target={target === 'blank' ? '_blank' : undefined}
       rel={target === 'blank' ? 'noopener noreferrer' : undefined}
-      className="dc:block dc:no-underline dc:text-inherit hover:dc:underline"
+      className={isCellLink
+        ? 'dc:block dc:no-underline text-dc-accent dc:hover:underline'
+        : 'dc:block dc:no-underline dc:text-inherit dc:hover:underline'}
     >
       {content}
     </a>

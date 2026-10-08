@@ -125,7 +125,8 @@ const EMPTY: RenderedCell = { kind: 'text', text: '' }
  * Every kind degrades to text rather than erroring: a non-numeric value under
  * `number`/`progress` renders as-is (EAV columns legitimately contain 'n/a'),
  * and a badge value with no colour mapping renders neutral rather than being
- * given a guessed colour.
+ * given a guessed colour. A `link` cell renders as text too: its URL needs the
+ * whole row, so the table adds the link around it.
  */
 export function renderCellValue(
   value: unknown,
@@ -143,7 +144,8 @@ const RENDERERS: Record<ColumnFormatKind, CellRenderer> = {
   number: renderNumber,
   date: renderDate,
   badge: renderBadge,
-  progress: renderProgress
+  progress: renderProgress,
+  link: renderText
 }
 
 function renderText(value: unknown): RenderedCell {

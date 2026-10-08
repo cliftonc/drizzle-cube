@@ -172,7 +172,7 @@ export interface ChartAxisConfig {
  * editor — never inferred from the data, so the same field can be a badge in one
  * dashboard and plain text in another.
  */
-export type ColumnFormatKind = 'text' | 'number' | 'date' | 'badge' | 'progress'
+export type ColumnFormatKind = 'text' | 'number' | 'date' | 'badge' | 'progress' | 'link'
 
 export interface ColumnFormatConfig {
   kind: ColumnFormatKind
@@ -193,6 +193,11 @@ export interface ColumnFormatConfig {
   /** Header override; falls back to the field's metadata title. */
   label?: string
   align?: 'left' | 'right'
+  /**
+   * URL template for `kind: 'link'`. Each cell shows its own value and links to
+   * this URL, with `{Cube.field}` tokens filled from the row as for `rowLink`.
+   */
+  linkTemplate?: string
 }
 
 /**

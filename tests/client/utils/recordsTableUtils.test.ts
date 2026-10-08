@@ -96,6 +96,11 @@ describe('renderCellValue', () => {
   it('defaults to text when no format is configured', () => {
     expect(renderCellValue(true, undefined)).toEqual({ kind: 'text', text: 'true' })
   })
+
+  it('renders a link cell as its text, leaving the link to the table', () => {
+    expect(renderCellValue('Ada', { kind: 'link', linkTemplate: '/employees/{Employees.id}' }))
+      .toEqual({ kind: 'text', text: 'Ada' })
+  })
 })
 
 describe('sortRows', () => {
