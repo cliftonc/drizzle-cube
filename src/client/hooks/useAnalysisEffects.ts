@@ -209,6 +209,7 @@ export function useAnalysisEffects(options: UseAnalysisEffectsOptions) {
           filters: newState.filters,
           order: newState.order,
           limit: newState.limit,
+          fillMissingDatesValue: newState.fillMissingDatesValue,
         }
       })
     },
@@ -343,12 +344,14 @@ export function useAnalysisEffects(options: UseAnalysisEffectsOptions) {
             id: generateId(),
             field: td.dimension,
             granularity: td.granularity,
+            ...(td.fillMissingDates !== undefined && { fillMissingDates: td.fillMissingDates }),
             isTimeDimension: true,
           })),
         ],
         filters: cubeQuery.filters || [],
         order: cubeQuery.order || undefined,
         limit: cubeQuery.limit ?? undefined,
+        fillMissingDatesValue: cubeQuery.fillMissingDatesValue,
       }))
 
       // If we were in funnel mode, switch back to query mode

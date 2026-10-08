@@ -60,6 +60,8 @@ export interface BreakdownItem {
   isTimeDimension: boolean
   /** Enable period comparison for time dimensions (compares current filter period vs prior period) */
   enableComparison?: boolean
+  /** Whether to fill missing buckets for this time dimension. */
+  fillMissingDates?: boolean
 }
 
 // ============================================================================
@@ -90,6 +92,8 @@ export interface AnalysisBuilderState {
   order?: Record<string, 'asc' | 'desc'>
   /** Row limit for the query (sent to server) */
   limit?: number
+  /** Value for filled time buckets; `null` leaves a gap. Unset fills with 0. */
+  fillMissingDatesValue?: number | null
 
   // Validation state (client-side query validation)
   validationStatus: ValidationStatus

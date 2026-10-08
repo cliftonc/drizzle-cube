@@ -379,5 +379,54 @@ describe('queryUtils', () => {
       expect(buildCubeQuery([], breakdowns, [], undefined, false, 25, true))
         .toMatchObject({ ungrouped: true, limit: 25 })
     })
+
+    it('keeps comparison and date filling for a grouped chart', () => {
+      const createdAt: BreakdownItem = {
+        id: '2', field: 'Employees.createdAt', isTimeDimension: true, granularity: 'day',
+        enableComparison: true, fillMissingDates: true
+      }
+      const dateFilter: Filter = {
+        member: 'Employees.createdAt', operator: 'inDateRange', values: [], dateRange: ['2024-01-01', '2024-01-31']
+      }
+
+      // compareDateRange carries both periods, so the date filter goes
+      expect(buildCubeQuery([], [...breakdowns, createdAt], [dateFilter])).toEqual({
+        dimensions: ['Employees.name'],
+        timeDimensions: [{
+          dimension: 'Employees.createdAt',
+          granularity: 'day',
+          fillMissingDates: true,
+          compareDateRange: [['2024-01-01', '2024-01-31'], ['2023-12-01', '2023-12-31']]
+        }]
+      })
+    })
+
+    it('leaves out comparison and date filling, which the server rejects when ungrouped', () => {
+      // A line chart with both options switched to a records table
+      const createdAt: BreakdownItem = {
+        id: '2', field: 'Employees.createdAt', isTimeDimension: true, granularity: 'day',
+        enableComparison: true, fillMissingDates: true
+      }
+      const dateFilter: Filter = {
+        member: 'Employees.createdAt', operator: 'inDateRange', values: [], dateRange: ['2024-01-01', '2024-01-31']
+      }
+
+      expect(buildCubeQuery([], [...breakdowns, createdAt], [dateFilter], undefined, false, 25, true)).toEqual({
+        dimensions: ['Employees.name'],
+        timeDimensions: [{ dimension: 'Employees.createdAt', granularity: 'day' }],
+        filters: [dateFilter],
+        limit: 25,
+        ungrouped: true
+      })
+    })
+
+    it('keeps fillMissingDates: false when ungrouped, which the server accepts', () => {
+      const createdAt: BreakdownItem = {
+        id: '2', field: 'Employees.createdAt', isTimeDimension: true, granularity: 'day', fillMissingDates: false
+      }
+
+      expect(buildCubeQuery([], [...breakdowns, createdAt], [], undefined, false, 25, true).timeDimensions)
+        .toEqual([{ dimension: 'Employees.createdAt', granularity: 'day', fillMissingDates: false }])
+    })
   })
 })

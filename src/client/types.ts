@@ -567,6 +567,8 @@ export interface CubeQuery {
   limit?: number
   offset?: number
   segments?: string[]
+  /** Value for filled time buckets; `null` leaves a gap. Unset fills with 0. */
+  fillMissingDatesValue?: number | null
   /** When true, returns raw row-level data without GROUP BY or aggregation */
   ungrouped?: boolean
   /**
