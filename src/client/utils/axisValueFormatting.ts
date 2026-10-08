@@ -152,10 +152,11 @@ function formatCurrency(params: AxisFormatParams): string {
 }
 
 function formatPercent(params: AxisFormatParams): string {
-  const { displayValue, abbreviate, abbreviationSuffix, decimals, locale } = params
+  const { displayValue, abbreviationSuffix, decimals, locale } = params
   // Format as percentage (multiply by 100 if value is 0-1 range, otherwise use as-is)
-  // Assume values > 1 are already percentages, values <= 1 need multiplication
-  const percentValue = Math.abs(displayValue) <= 1 && !abbreviate ? displayValue * 100 : displayValue
+  // Assume values > 1 are already percentages, values <= 1 need multiplication.
+  // An abbreviated value (1000 -> 1K) was above 1 before scaling, so it is never multiplied.
+  const percentValue = Math.abs(displayValue) <= 1 && !abbreviationSuffix ? displayValue * 100 : displayValue
   const formatted = new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
