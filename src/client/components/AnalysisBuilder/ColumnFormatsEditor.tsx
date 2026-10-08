@@ -5,16 +5,19 @@
  * collapsible row per assigned column, each choosing how that column renders.
  *
  * Unlike every other display option, this one is keyed by column, so it needs
- * to know which columns the chart config assigns. It follows the
- * `ThresholdBandsOption` contract: it owns the whole `Record` and always writes
- * a complete replacement value back, never a partial patch.
+ * to know the chart's columns: the ones the chart config assigns, or the ones
+ * the option's `columns` resolver returns for a chart that builds its own. It
+ * follows the `ThresholdBandsOption` contract: it owns the whole `Record` and
+ * always writes a complete replacement value back, never a partial patch.
  */
 
 import { useState } from 'react'
 import { AxisFormatControls } from '../charts/AxisFormatControls.js'
 import { useCubeMeta } from '../../providers/CubeMetaContext.js'
+import type { DisplayOptionConfig } from '../../charts/chartConfigs.js'
 import type {
   ChartAxisConfig,
+  ChartDisplayConfig,
   ColorPalette,
   ColumnFormatConfig,
   ColumnFormatKind,
@@ -32,6 +35,10 @@ const GRANULARITIES: TimeGranularity[] = ['hour', 'day', 'week', 'month', 'quart
 interface ColumnFormatsEditorProps {
   value: Record<string, ColumnFormatConfig>
   chartConfig?: ChartAxisConfig
+  /** The chart's display config, handed to `columns`. */
+  displayConfig?: ChartDisplayConfig
+  /** Lists the columns in place of `chartConfig.columns` — see `DisplayOptionConfig.columns`. */
+  columns?: DisplayOptionConfig['columns']
   colorPalette?: ColorPalette
   onChange: (value: Record<string, ColumnFormatConfig> | undefined) => void
   t: (key: string, params?: Record<string, string | number>) => string
@@ -40,6 +47,8 @@ interface ColumnFormatsEditorProps {
 export default function ColumnFormatsEditor({
   value,
   chartConfig,
+  displayConfig,
+  columns: resolveColumns,
   colorPalette,
   onChange,
   t
@@ -47,7 +56,10 @@ export default function ColumnFormatsEditor({
   const { getFieldLabel } = useCubeMeta()
   const [expanded, setExpanded] = useState<string | null>(null)
 
-  const columns = chartConfig?.columns ?? []
+  // A column listed twice would be one row edited twice, so repeats collapse.
+  const columns = [...new Set((resolveColumns
+    ? resolveColumns({ chartConfig, displayConfig: displayConfig ?? {} })
+    : chartConfig?.columns) ?? [])]
 
   if (columns.length === 0) {
     return (
