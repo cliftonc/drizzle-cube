@@ -466,4 +466,52 @@ describe('Silent query drops', () => {
       expect(result.errors.join(' ')).toContain('hasMany')
     })
   })
+
+  describe('bug 8: ungrouped queries with a query filter on a measure', () => {
+    // A measure filter belongs in HAVING, and ungrouped queries have no HAVING.
+    // The filter used to be skipped, returning every row.
+    const measureFilter: Filter = {
+      member: 'Productivity.totalLinesOfCode', operator: 'gt', values: ['100']
+    }
+    const ungroupedWith = (filters: Filter[]): SemanticQuery => ({
+      ungrouped: true,
+      dimensions: ['Productivity.date'],
+      measures: ['Productivity.totalLinesOfCode'],
+      filters
+    })
+
+    it('rejects a top-level measure filter instead of returning unfiltered rows', async () => {
+      const query = ungroupedWith([measureFilter])
+      const result = validate(query)
+      expect(result.isValid).toBe(false)
+      expect(result.errors.join(' ')).toContain('Productivity.totalLinesOfCode')
+      await expect(run(query)).rejects.toThrow('Productivity.totalLinesOfCode')
+    })
+
+    it('rejects a measure filter nested in a logical group', () => {
+      const result = validate(ungroupedWith([{
+        and: [
+          { member: 'Productivity.linesOfCode', operator: 'gt', values: ['50'] },
+          { or: [measureFilter] }
+        ]
+      }]))
+      expect(result.isValid).toBe(false)
+      expect(result.errors.join(' ')).toContain('Productivity.totalLinesOfCode')
+    })
+
+    it('rejects a filter on a measure that is not selected', () => {
+      const result = validate({
+        ungrouped: true,
+        dimensions: ['Productivity.date'],
+        filters: [measureFilter]
+      })
+      expect(result.isValid).toBe(false)
+    })
+
+    it('still allows dimension filters', () => {
+      expect(validate(ungroupedWith([
+        { member: 'Productivity.linesOfCode', operator: 'gt', values: ['100'] }
+      ])).errors).toEqual([])
+    })
+  })
 })

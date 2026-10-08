@@ -424,6 +424,7 @@ function validateUngroupedConstraints(
   }
 
   validateUngroupedMeasures(query, cubes, errors)
+  validateUngroupedMeasureFilters(query, cubes, errors)
   validateUngroupedHasManyJoins(query, cubes, errors, referencedCubes)
 }
 
@@ -454,6 +455,25 @@ function validateUngroupedMeasures(
         `Measure '${measureName}' has filters which are incompatible with ungrouped queries ` +
         `(measure filters require aggregation)`
       )
+    }
+  }
+}
+
+/**
+ * Reject query filters on measures. They are applied in HAVING, which ungrouped
+ * queries do not have, so the filter would otherwise be skipped silently. A
+ * member that is also a dimension is filtered in WHERE, so it is allowed.
+ */
+function validateUngroupedMeasureFilters(
+  query: SemanticQuery,
+  cubes: Map<string, Cube>,
+  errors: ValidationErrors
+): void {
+  for (const { member } of flattenFilters(query.filters ?? [])) {
+    const [cubeName, fieldName] = member.split('.')
+    const cube = cubes.get(cubeName)
+    if (cube?.measures[fieldName] && !cube.dimensions[fieldName]) {
+      errors.push(t('server.validation.query.ungroupedIncompatibleMeasureFilter', { member }))
     }
   }
 }
