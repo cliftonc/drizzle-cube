@@ -73,6 +73,12 @@ export interface DisplayOptionConfig {
   /** Help text shown below the input */
   description?: string
 
+  /**
+   * Shows the colour band picker on progress columns in a `columnFormats`
+   * option. Set it only when the chart's renderer reads `progressBands`.
+   */
+  progressBands?: boolean
+
   /** Visible rows for a string option's textarea. Defaults to 8. */
   rows?: number
 

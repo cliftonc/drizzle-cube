@@ -121,6 +121,22 @@ describe('getToolDefinitions', () => {
       .toEqual(['text', 'number', 'date', 'badge', 'progress'])
   })
 
+  it('should describe progress colour bands as an array of palette indices', () => {
+    const tools = getToolDefinitions()
+    const addPortlet = tools.find((t) => t.name === 'add_portlet')!
+    const displayConfig = addPortlet.parameters.properties.displayConfig as {
+      properties: Record<string, {
+        additionalProperties?: {
+          properties?: Record<string, { type?: string; items?: { required?: string[] } }>
+        }
+      }>
+    }
+    const progressBands = displayConfig.properties.columnFormats.additionalProperties?.properties?.progressBands
+
+    expect(progressBands?.type).toBe('array')
+    expect(progressBands?.items?.required).toEqual(['value', 'colorIndex'])
+  })
+
   it('should tell the model that recordsTable needs an ungrouped query', () => {
     const tools = getToolDefinitions()
     const addPortlet = tools.find((t) => t.name === 'add_portlet')!

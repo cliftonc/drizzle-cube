@@ -36,7 +36,8 @@ export const recordsTableConfig: ChartTypeConfig = {
       key: 'columnFormats',
       label: 'chart.recordsTable.option.columnFormats.label',
       type: 'columnFormats',
-      description: 'chart.recordsTable.option.columnFormats.description'
+      description: 'chart.recordsTable.option.columnFormats.description',
+      progressBands: true
     },
     {
       key: 'rowLink',

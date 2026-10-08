@@ -173,6 +173,72 @@ describe('RecordsTable — column formats', () => {
     expect(screen.getAllByRole('img')).toHaveLength(2)
   })
 
+  it('fills a progress bar with the palette colour of the band its value falls in', () => {
+    const { container } = render(
+      <RecordsTable
+        data={rows}
+        colorPalette={palette}
+        chartConfig={{ columns: ['Employees.attr_2'] }}
+        displayConfig={{
+          columnFormats: {
+            'Employees.attr_2': {
+              kind: 'progress',
+              progressBands: [{ value: 0, colorIndex: 0 }, { value: 90, colorIndex: 1 }]
+            }
+          }
+        }}
+      />
+    )
+
+    const fills = Array.from(container.querySelectorAll('div[style*="width"]')) as HTMLElement[]
+    expect(fills).toHaveLength(2)
+    expect(fills[0]).toHaveStyle({ width: '68%', backgroundColor: '#ff0000' })
+    expect(fills[1]).toHaveStyle({ width: '95%', backgroundColor: '#00ff00' })
+  })
+
+  it('keeps the default progress colour below every band', () => {
+    const { container } = render(
+      <RecordsTable
+        data={rows}
+        colorPalette={palette}
+        chartConfig={{ columns: ['Employees.attr_2'] }}
+        displayConfig={{
+          columnFormats: {
+            'Employees.attr_2': { kind: 'progress', progressBands: [{ value: 90, colorIndex: 1 }] }
+          }
+        }}
+      />
+    )
+
+    const fills = Array.from(container.querySelectorAll('div[style*="width"]')) as HTMLElement[]
+    expect(fills[0].className).toContain('bg-dc-primary')
+    expect(fills[0].style.backgroundColor).toBe('')
+    expect(fills[1].className).not.toContain('bg-dc-primary')
+  })
+
+  it('strokes a progress ring with its band colour', () => {
+    render(
+      <RecordsTable
+        data={rows}
+        colorPalette={palette}
+        chartConfig={{ columns: ['Employees.attr_2'] }}
+        displayConfig={{
+          columnFormats: {
+            'Employees.attr_2': {
+              kind: 'progress',
+              progressStyle: 'circle',
+              progressBands: [{ value: 90, colorIndex: 2 }]
+            }
+          }
+        }}
+      />
+    )
+
+    const arc = (name: string) => screen.getByRole('img', { name }).querySelectorAll('circle')[1]
+    expect(arc('68')).toHaveAttribute('stroke', 'var(--dc-primary)')
+    expect(arc('95')).toHaveAttribute('stroke', '#0000ff')
+  })
+
   it('formats numbers through the shared axis formatter', () => {
     render(
       <RecordsTable

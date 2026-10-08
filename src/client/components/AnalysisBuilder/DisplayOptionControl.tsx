@@ -397,6 +397,7 @@ function ColumnFormatsOption({ option, displayConfig, chartConfig, colorPalette,
         value={(displayConfig[key] as Record<string, ColumnFormatConfig>) ?? {}}
         chartConfig={chartConfig}
         colorPalette={colorPalette}
+        progressBands={option.progressBands}
         onChange={setValue}
         t={t}
       />

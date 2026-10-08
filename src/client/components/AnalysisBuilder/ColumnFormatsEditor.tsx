@@ -33,6 +33,8 @@ interface ColumnFormatsEditorProps {
   value: Record<string, ColumnFormatConfig>
   chartConfig?: ChartAxisConfig
   colorPalette?: ColorPalette
+  /** Shows the colour band picker on progress columns — see `DisplayOptionConfig.progressBands`. */
+  progressBands?: boolean
   onChange: (value: Record<string, ColumnFormatConfig> | undefined) => void
   t: (key: string, params?: Record<string, string | number>) => string
 }
@@ -41,6 +43,7 @@ export default function ColumnFormatsEditor({
   value,
   chartConfig,
   colorPalette,
+  progressBands = false,
   onChange,
   t
 }: ColumnFormatsEditorProps) {
@@ -79,6 +82,7 @@ export default function ColumnFormatsEditor({
           fallbackLabel={getFieldLabel(column)}
           isOpen={expanded === column}
           colorPalette={colorPalette}
+          showProgressBands={progressBands}
           onToggle={() => setExpanded(expanded === column ? null : column)}
           onChange={(format) => commit(column, format)}
           t={t}
@@ -94,6 +98,7 @@ interface ColumnFormatRowProps {
   fallbackLabel: string
   isOpen: boolean
   colorPalette?: ColorPalette
+  showProgressBands: boolean
   onToggle: () => void
   onChange: (format: ColumnFormatConfig) => void
   t: (key: string, params?: Record<string, string | number>) => string
@@ -105,6 +110,7 @@ function ColumnFormatRow({
   fallbackLabel,
   isOpen,
   colorPalette,
+  showProgressBands,
   onToggle,
   onChange,
   t
@@ -126,7 +132,13 @@ function ColumnFormatRow({
         <div className="dc:px-2 dc:py-2 dc:space-y-2 dc:border-t border-dc-border">
           <KindSelector kind={format.kind} onSelect={(kind) => onChange({ ...format, kind })} t={t} />
 
-          <KindControls format={format} colorPalette={colorPalette} onChange={onChange} t={t} />
+          <KindControls
+            format={format}
+            colorPalette={colorPalette}
+            showProgressBands={showProgressBands}
+            onChange={onChange}
+            t={t}
+          />
 
           <label className="dc:block dc:space-y-1">
             <span className="dc:text-xs text-dc-text-secondary">
@@ -150,11 +162,13 @@ function ColumnFormatRow({
 function KindControls({
   format,
   colorPalette,
+  showProgressBands,
   onChange,
   t
 }: {
   format: ColumnFormatConfig
   colorPalette?: ColorPalette
+  showProgressBands: boolean
   onChange: (format: ColumnFormatConfig) => void
   t: (key: string, params?: Record<string, string | number>) => string
 }) {
@@ -193,19 +207,31 @@ function KindControls({
   }
 
   if (format.kind === 'progress') {
-    return <ProgressControls format={format} onChange={onChange} t={t} />
+    return (
+      <ProgressControls
+        format={format}
+        colorPalette={colorPalette}
+        showBands={showProgressBands}
+        onChange={onChange}
+        t={t}
+      />
+    )
   }
 
   return null
 }
 
-/** How a progress column draws, and the bounds it draws against. */
+/** How a progress column draws, the bounds it draws against, and its colour bands. */
 function ProgressControls({
   format,
+  colorPalette,
+  showBands,
   onChange,
   t
 }: {
   format: ColumnFormatConfig
+  colorPalette?: ColorPalette
+  showBands: boolean
   onChange: (format: ColumnFormatConfig) => void
   t: (key: string) => string
 }) {
@@ -233,6 +259,9 @@ function ProgressControls({
           onChange={(progressMax) => onChange({ ...format, progressMax })}
         />
       </div>
+      {showBands && (
+        <ProgressBandRows format={format} colorPalette={colorPalette} onChange={onChange} t={t} />
+      )}
     </div>
   )
 }
@@ -345,24 +374,12 @@ function BadgeColorRows({
               &times;
             </button>
           </div>
-          <div className="dc:flex dc:flex-wrap dc:gap-1">
-            {palette.map((color, colorIndex) => (
-              <button
-                key={colorIndex}
-                type="button"
-                onClick={() => update(entries.map((row, i) => (i === index ? { ...row, colorIndex } : row)))}
-                title={color}
-                aria-label={`${t('chart.recordsTable.columnFormats.badgeColour')} ${colorIndex + 1}`}
-                className={`dc:w-6 dc:h-6 dc:rounded-sm dc:border-2 dc:cursor-pointer dc:transition-transform dc:hover:scale-110 ${
-                  entry.colorIndex === colorIndex ? 'dc:ring-2 dc:ring-offset-1 dc:scale-110' : ''
-                }`}
-                style={{
-                  backgroundColor: color,
-                  borderColor: entry.colorIndex === colorIndex ? 'var(--dc-primary)' : 'var(--dc-border)'
-                }}
-              />
-            ))}
-          </div>
+          <PaletteSwatches
+            palette={palette}
+            selected={entry.colorIndex}
+            label={t('chart.recordsTable.columnFormats.badgeColour')}
+            onSelect={(colorIndex) => update(entries.map((row, i) => (i === index ? { ...row, colorIndex } : row)))}
+          />
         </div>
       ))}
       <button
@@ -372,6 +389,132 @@ function BadgeColorRows({
       >
         {t('chart.recordsTable.columnFormats.badgeAdd')}
       </button>
+    </div>
+  )
+}
+
+/** Step between a new progress band and the one before it. */
+const PROGRESS_BAND_STEP = 25
+
+/**
+ * Colour bands for a progress column. Each band starts at its value and runs up
+ * to the next one, so a row is a threshold rather than a range, and the order
+ * the rows are written in does not matter. Colours are palette indices, as for
+ * badges.
+ */
+function ProgressBandRows({
+  format,
+  colorPalette,
+  onChange,
+  t
+}: {
+  format: ColumnFormatConfig
+  colorPalette?: ColorPalette
+  onChange: (format: ColumnFormatConfig) => void
+  t: (key: string) => string
+}) {
+  // A config written by an agent may carry something other than an array, or
+  // an entry that is not a band; see `BadgeColorRows`. Such entries are left
+  // out, and the next edit writes the cleaned array back.
+  const bands = Array.isArray(format.progressBands)
+    ? format.progressBands.filter(band => band !== null && typeof band === 'object')
+    : []
+  const palette = colorPalette?.colors ?? []
+  // The text of the band being typed in. A number input reports '' for a
+  // partial entry such as '-', so that text is held here until it parses
+  // rather than committing 0 or snapping the field back mid-keystroke.
+  const [draft, setDraft] = useState<{ index: number; text: string } | null>(null)
+
+  const update = (next: Array<{ value: number; colorIndex: number }>) =>
+    onChange({ ...format, progressBands: next.length > 0 ? next : undefined })
+
+  const editValue = (index: number, text: string) => {
+    setDraft({ index, text })
+    const value = Number(text)
+    if (text.trim() === '' || !Number.isFinite(value)) return
+    update(bands.map((band, i) => (i === index ? { ...band, value } : band)))
+  }
+
+  // A new band starts a step above the last one, so it is not born tied with it.
+  const nextValue = bands.length > 0 ? (Number(bands[bands.length - 1].value) || 0) + PROGRESS_BAND_STEP : 0
+
+  return (
+    <div className="dc:space-y-1">
+      <span className="dc:text-xs text-dc-text-secondary">{t('chart.recordsTable.columnFormats.progressBandColours')}</span>
+      {bands.map((band, index) => (
+        <div key={index} className="dc:space-y-1 dc:border border-dc-border dc:rounded-sm dc:p-1.5">
+          <div className="dc:flex dc:items-center dc:gap-2">
+            <input
+              type="number"
+              value={draft?.index === index ? draft.text : band.value}
+              onChange={(e) => editValue(index, e.target.value)}
+              onBlur={() => setDraft(null)}
+              placeholder={t('chart.recordsTable.columnFormats.progressBandValue')}
+              aria-label={t('chart.recordsTable.columnFormats.progressBandValue')}
+              className="dc:flex-1 dc:min-w-0 dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm bg-dc-surface text-dc-text"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(null)
+                update(bands.filter((_, i) => i !== index))
+              }}
+              title={t('chart.recordsTable.columnFormats.progressBandRemove')}
+              aria-label={t('chart.recordsTable.columnFormats.progressBandRemove')}
+              className="dc:px-2 dc:py-1 dc:text-sm dc:shrink-0 dc:rounded-sm text-dc-danger hover:bg-dc-danger-bg dc:cursor-pointer"
+            >
+              &times;
+            </button>
+          </div>
+          <PaletteSwatches
+            palette={palette}
+            selected={band.colorIndex}
+            label={t('chart.recordsTable.columnFormats.progressBandColour')}
+            onSelect={(colorIndex) => update(bands.map((row, i) => (i === index ? { ...row, colorIndex } : row)))}
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => update([...bands, { value: nextValue, colorIndex: bands.length % Math.max(1, palette.length) }])}
+        className="dc:text-xs dc:px-2 dc:py-1 dc:rounded-sm dc:border border-dc-border text-dc-text-secondary hover:bg-dc-surface-hover dc:cursor-pointer"
+      >
+        {t('chart.recordsTable.columnFormats.progressBandAdd')}
+      </button>
+    </div>
+  )
+}
+
+/** One button per palette colour, with the selected one ringed. */
+function PaletteSwatches({
+  palette,
+  selected,
+  label,
+  onSelect
+}: {
+  palette: string[]
+  selected: number | undefined
+  label: string
+  onSelect: (colorIndex: number) => void
+}) {
+  return (
+    <div className="dc:flex dc:flex-wrap dc:gap-1">
+      {palette.map((color, colorIndex) => (
+        <button
+          key={colorIndex}
+          type="button"
+          onClick={() => onSelect(colorIndex)}
+          title={color}
+          aria-label={`${label} ${colorIndex + 1}`}
+          className={`dc:w-6 dc:h-6 dc:rounded-sm dc:border-2 dc:cursor-pointer dc:transition-transform dc:hover:scale-110 ${
+            selected === colorIndex ? 'dc:ring-2 dc:ring-offset-1 dc:scale-110' : ''
+          }`}
+          style={{
+            backgroundColor: color,
+            borderColor: selected === colorIndex ? 'var(--dc-primary)' : 'var(--dc-border)'
+          }}
+        />
+      ))}
     </div>
   )
 }
