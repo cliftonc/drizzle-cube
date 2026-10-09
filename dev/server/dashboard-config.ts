@@ -690,7 +690,17 @@ export function buildRecordsDashboardConfig(
     }
   }
   if (completion) {
-    columnFormats[completion] = { kind: 'progress', progressMin: 0, progressMax: 100 }
+    columnFormats[completion] = {
+      kind: 'progress',
+      progressMin: 0,
+      progressMax: 100,
+      // Red below 50, yellow from 50, green from 80.
+      progressBands: [
+        { value: 0, colorIndex: 3 },
+        { value: 50, colorIndex: 2 },
+        { value: 80, colorIndex: 1 }
+      ]
+    }
   }
   if (owner) {
     columnFormats[owner] = { kind: 'text' }

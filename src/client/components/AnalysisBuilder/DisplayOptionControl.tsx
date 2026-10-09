@@ -400,6 +400,7 @@ function ColumnFormatsOption({ option, displayConfig, chartConfig, colorPalette,
         displayConfig={displayConfig}
         columns={option.columns}
         colorPalette={colorPalette}
+        progressBands={option.progressBands}
         onChange={setValue}
         t={t}
       />
