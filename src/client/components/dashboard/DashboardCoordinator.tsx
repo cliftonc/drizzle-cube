@@ -37,6 +37,7 @@ import { useResponsiveDashboard } from '../../hooks/useResponsiveDashboard.js'
 import { ScrollContainerProvider } from '../../providers/ScrollContainerContext.js'
 import { useDashboard } from '../../hooks/useDashboardHook.js'
 import { useDashboardImportExport } from '../../hooks/dashboard/useDashboardImportExport.js'
+import { useDashboardStore } from '../../stores/dashboardStore.js'
 import type {
   PortletConfig,
   PortletGroup,
@@ -891,8 +892,12 @@ export default function DashboardCoordinator({
     handleOpenFilterConfig,
   ])
 
-  // features.portletExpand shows the Expand button; the host handler decides what it opens
-  const portletExpandHandler = features.portletExpand ? onPortletExpand : undefined
+  // features.portletExpand shows the Expand button. A host handler replaces the
+  // built-in Expand modal; without one, the button opens that modal.
+  const openExpandedPortlet = useDashboardStore(state => state.openExpandedPortlet)
+  const portletExpandHandler = features.portletExpand
+    ? (onPortletExpand ?? openExpandedPortlet)
+    : undefined
 
   // Memoize renderPortletCard to prevent unnecessary re-renders of DashboardPortletCard
   const renderPortletCard = useCallback((

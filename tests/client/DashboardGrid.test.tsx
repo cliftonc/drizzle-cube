@@ -5,7 +5,7 @@
 
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, fireEvent, act } from '@testing-library/react'
+import { render, fireEvent, act, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import DashboardGrid from '../../src/client/components/DashboardGrid'
 import { DashboardStoreProvider } from '../../src/client/stores/dashboardStore'
@@ -484,15 +484,58 @@ describe('DashboardGrid', () => {
       expect(queryAllByRole('button', { name: 'Expand' })).toHaveLength(0)
     })
 
-    it('should not show an Expand button without onPortletExpand', () => {
+    it('should not open the built-in Expand modal when the dashboard gets onPortletExpand', () => {
+      mockFeatures = { portletExpand: true }
+      const onPortletExpand = vi.fn()
+
+      const { getAllByRole, queryByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} onPortletExpand={onPortletExpand} />,
+        { wrapper: TestWrapper }
+      )
+      fireEvent.click(getAllByRole('button', { name: 'Expand' })[0])
+
+      expect(onPortletExpand).toHaveBeenCalledTimes(1)
+      expect(queryByRole('dialog')).toBeNull()
+    })
+
+    it('should open the built-in Expand modal with the portlet title and chart without onPortletExpand', () => {
       mockFeatures = { portletExpand: true }
 
-      const { queryAllByRole } = render(
+      const { getAllByRole, getAllByTestId, getByRole } = render(
         <DashboardGrid config={createTestConfig(2)} />,
         { wrapper: TestWrapper }
       )
+      const cardQuery = getAllByTestId('analytics-portlet')[1].getAttribute('data-query')
+      fireEvent.click(getAllByRole('button', { name: 'Expand' })[1])
 
-      expect(queryAllByRole('button', { name: 'Expand' })).toHaveLength(0)
+      const dialog = getByRole('dialog', { name: 'Portlet 1' })
+      expect(within(dialog).getByTestId('analytics-portlet').getAttribute('data-query')).toBe(cardQuery)
+    })
+
+    it('should close the built-in Expand modal when the user clicks its close button', () => {
+      mockFeatures = { portletExpand: true }
+
+      const { getAllByRole, getByRole, queryByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} />,
+        { wrapper: TestWrapper }
+      )
+      fireEvent.click(getAllByRole('button', { name: 'Expand' })[0])
+      fireEvent.click(getByRole('button', { name: 'Close modal' }))
+
+      expect(queryByRole('dialog')).toBeNull()
+    })
+
+    it('should close the built-in Expand modal on Escape', () => {
+      mockFeatures = { portletExpand: true }
+
+      const { getAllByRole, queryByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} />,
+        { wrapper: TestWrapper }
+      )
+      fireEvent.click(getAllByRole('button', { name: 'Expand' })[0])
+      fireEvent.keyDown(document.body, { key: 'Escape' })
+
+      expect(queryByRole('dialog')).toBeNull()
     })
   })
 })

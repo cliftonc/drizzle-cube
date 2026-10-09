@@ -63,6 +63,7 @@ describe('DashboardStore', () => {
       expect(state.isFilterConfigModalOpen).toBe(false)
       expect(state.filterConfigPortlet).toBeNull()
       expect(state.deleteConfirmPortletId).toBeNull()
+      expect(state.expandedPortlet).toBeNull()
 
       // Layout state
       expect(state.draftRows).toBeNull()
@@ -308,6 +309,36 @@ describe('DashboardStore', () => {
         store.getState().openDeleteConfirm('portlet-1')
         store.getState().openDeleteConfirm('portlet-2')
         expect(store.getState().deleteConfirmPortletId).toBe('portlet-2')
+      })
+    })
+
+    describe('openExpandedPortlet', () => {
+      it('should keep the payload of the expanded portlet', () => {
+        const payload = {
+          portletId: 'portlet-1',
+          title: 'Test Portlet',
+          chartProps: { query: '{}', chartType: 'bar' as const },
+          viewState: { chart: { page: 2 } }
+        }
+
+        store.getState().openExpandedPortlet(payload)
+
+        expect(store.getState().expandedPortlet).toBe(payload)
+      })
+    })
+
+    describe('closeExpandedPortlet', () => {
+      it('should clear the expanded portlet', () => {
+        store.getState().openExpandedPortlet({
+          portletId: 'portlet-1',
+          title: 'Test Portlet',
+          chartProps: { query: '{}', chartType: 'bar' },
+          viewState: {}
+        })
+
+        store.getState().closeExpandedPortlet()
+
+        expect(store.getState().expandedPortlet).toBeNull()
       })
     })
 

@@ -51,7 +51,7 @@ interface DashboardGridProps {
   dashboardMeta?: DashboardMeta
   /** Called after an import replaced the config when the file carries a name, so the host can rename its record */
   onDashboardMetaChange?: (meta: { name: string; description?: string }) => Promise<void> | void
-  /** Called when the user clicks Expand on a card; features.portletExpand shows the button */
+  /** Replaces the built-in Expand modal; features.portletExpand shows the button */
   onPortletExpand?: (payload: PortletExpandPayload) => void
 }
 

@@ -765,9 +765,9 @@ export interface AnalyticsDashboardProps {
    */
   onDashboardMetaChange?: (meta: { name: string; description?: string }) => Promise<void> | void
   /**
-   * Called when the user clicks Expand on a card. The host decides what the
-   * button opens. Each card that shows actions shows the button in view mode
-   * when `features.portletExpand` is on and this handler is set.
+   * Replaces the built-in Expand modal: the Expand button calls this handler
+   * and does not open the modal. The handler does not show the button;
+   * `features.portletExpand` shows it.
    */
   onPortletExpand?: (payload: PortletExpandPayload) => void
 }
@@ -865,7 +865,7 @@ export interface FeaturesConfig {
   manualRefresh?: boolean // When true, queries don't auto-execute on config changes. User must click Refresh. (default: false)
   xlsExport?: XlsExportFeatureConfig // Optional XLSX data export from portlets (requires exceljs)
   dashboardImportExport?: DashboardImportExportFeatureConfig // Optional dashboard export/import as a JSON file (toolbar buttons)
-  portletExpand?: boolean // Show an Expand button on dashboard cards in view mode; AnalyticsDashboard's onPortletExpand handles the click (default: false)
+  portletExpand?: boolean // Show an Expand button on dashboard cards in view mode. It opens the chart in a built-in modal, or calls AnalyticsDashboard's onPortletExpand when set (default: false)
 }
 
 // Grid layout types (simplified)
