@@ -9,6 +9,9 @@
  * `MarkdownChart` deliberately does NOT use these: its overrides are
  * parameterised by the portlet's accent colour and font size and are rebuilt in
  * a `useMemo`, so it cannot share a static object.
+ *
+ * Both disable raw HTML parsing: model output is untrusted, and markdown-to-jsx's
+ * attribute stripping is not a complete XSS defence. HTML renders as text.
  */
 
 import React from 'react'
@@ -36,6 +39,7 @@ const sharedOverrides = {
 
 /** Notebook canvas blocks — roomy, distinct heading sizes. */
 export const NOTEBOOK_MARKDOWN_OPTIONS = {
+  disableParsingRawHTML: true,
   overrides: {
     h1: { props: { className: 'dc:text-lg dc:font-bold text-dc-text dc:mb-2 dc:mt-3' } },
     h2: { props: { className: 'dc:text-base dc:font-semibold text-dc-text dc:mb-2 dc:mt-3' } },
@@ -56,6 +60,7 @@ export const NOTEBOOK_MARKDOWN_OPTIONS = {
  * weight, and every block margin is tighter to suit an ~85%-width bubble.
  */
 export const CHAT_MARKDOWN_OPTIONS = {
+  disableParsingRawHTML: true,
   overrides: {
     h1: { props: { className: 'dc:font-semibold text-dc-text dc:mt-2 dc:mb-1 dc:first:mt-0' } },
     h2: { props: { className: 'dc:font-semibold text-dc-text dc:mt-2 dc:mb-1 dc:first:mt-0' } },
