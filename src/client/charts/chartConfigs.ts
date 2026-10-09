@@ -1,3 +1,4 @@
+import type { ChartAxisConfig, ChartDisplayConfig } from '../types.js'
 
 /**
  * Configuration for a single axis drop zone in the chart configuration UI
@@ -107,6 +108,18 @@ export interface DisplayOptionConfig {
   
   /** Step value for number inputs */
   step?: number
+
+  /**
+   * The columns a `columnFormats` option lists, in place of
+   * `chartConfig.columns`. A chart that builds columns of its own returns them
+   * here so each one can be formatted — computed columns, say, or the value
+   * field whose format a pivot's columns take. It sees the chart and display
+   * config only, not the result data.
+   */
+  columns?: (context: {
+    chartConfig?: ChartAxisConfig
+    displayConfig: ChartDisplayConfig
+  }) => string[]
 }
 
 /**
