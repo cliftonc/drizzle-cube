@@ -118,7 +118,9 @@ describe('getToolDefinitions', () => {
       expect.arrayContaining(['columnFormats', 'rowLink', 'pageSize'])
     )
     expect(displayConfig.properties.columnFormats.additionalProperties?.properties?.kind?.enum)
-      .toEqual(['text', 'number', 'date', 'badge', 'progress'])
+      .toEqual(['text', 'number', 'date', 'badge', 'progress', 'link'])
+    expect(Object.keys(displayConfig.properties.columnFormats.additionalProperties?.properties ?? {}))
+      .toContain('linkTemplate')
   })
 
   it('should describe progress colour bands as an array of palette indices', () => {

@@ -631,7 +631,7 @@ Include a "chart" object to control the visualization.
 Chart types: ${CHART_TOOL_TYPES.join(', ')}
 Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, part-of-whole -> pie, correlation -> scatter/bubble, distribution -> boxPlot, record-level listing -> recordsTable
 
-recordsTable renders one row per record, so pair it with "ungrouped": true in the query. Its columns are plain text unless you say otherwise: use chart.displayConfig.columnFormats to give each column a kind (number, date, badge, progress), which is what makes the listing readable.`,
+recordsTable renders one row per record, so pair it with "ungrouped": true in the query. Its columns are plain text unless you say otherwise: use chart.displayConfig.columnFormats to give each column a kind (number, date, badge, progress, link), which is what makes the listing readable. A link column needs a linkTemplate such as "/employees/{Employees.id}".`,
       inputSchema: {
         type: 'object',
         required: ['query'],

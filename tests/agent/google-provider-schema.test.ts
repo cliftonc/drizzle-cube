@@ -63,7 +63,7 @@ describe('GoogleProvider.formatTools', () => {
     expect(columnFormats.description).toContain(
       'badgeColors: array of { value: string (required), colorIndex: number (required) }'
     )
-    expect(columnFormats.description).toContain('"text"|"number"|"date"|"badge"|"progress"')
+    expect(columnFormats.description).toContain('"text"|"number"|"date"|"badge"|"progress"|"link"')
   })
 
   it('keeps a numeric enum as prose on the description', () => {

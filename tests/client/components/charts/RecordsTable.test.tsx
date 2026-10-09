@@ -499,6 +499,111 @@ describe('RecordsTable — row links', () => {
   })
 })
 
+describe('RecordsTable — link columns', () => {
+  const nameLink = {
+    'Employees.name': { kind: 'link' as const, linkTemplate: '/employees/{Employees.id}' }
+  }
+
+  it('links each cell of a link column to its filled template and shows the value', () => {
+    render(
+      <RecordsTable
+        data={rows}
+        chartConfig={{ columns: ['Employees.name', 'Employees.attr_1'] }}
+        displayConfig={{ columnFormats: nameLink }}
+      />
+    )
+
+    expect(screen.getByRole('link', { name: 'Ada' })).toHaveAttribute('href', '/employees/1')
+    expect(screen.getByRole('link', { name: 'Linus' })).toHaveAttribute('href', '/employees/3')
+    // Only the link column links; the other cells stay plain.
+    expect(screen.getAllByRole('link')).toHaveLength(3)
+  })
+
+  it('renders no link for an unsafe or unresolvable template', () => {
+    render(
+      <RecordsTable
+        data={rows}
+        chartConfig={{ columns: ['Employees.name', 'Employees.attr_1'] }}
+        displayConfig={{
+          columnFormats: {
+            'Employees.name': { kind: 'link', linkTemplate: 'javascript:alert({Employees.id})' },
+            'Employees.attr_1': { kind: 'link', linkTemplate: '/employees/{Employees.missing}' }
+          }
+        }}
+      />
+    )
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.getByText('Ada')).toBeInTheDocument()
+    expect(screen.getByText('At risk')).toBeInTheDocument()
+  })
+
+  it('does not link an empty cell', () => {
+    render(
+      <RecordsTable
+        data={[{ 'Employees.id': 4, 'Employees.name': null }]}
+        chartConfig={{ columns: ['Employees.name'] }}
+        displayConfig={{ columnFormats: nameLink }}
+      />
+    )
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('gives a link cell its own URL while the row link covers the other cells', () => {
+    render(
+      <RecordsTable
+        data={rows}
+        chartConfig={{ columns: ['Employees.name', 'Employees.attr_1'] }}
+        displayConfig={{
+          columnFormats: nameLink,
+          rowLink: { urlTemplate: '/rows/{Employees.id}', target: 'blank' }
+        }}
+      />
+    )
+
+    const cellLink = screen.getByRole('link', { name: 'Ada' })
+    expect(cellLink).toHaveAttribute('href', '/employees/1')
+    // The row link's new-tab target is the row's, not the cell link's.
+    expect(cellLink).not.toHaveAttribute('target')
+    expect(screen.getByRole('link', { name: 'At risk' })).toHaveAttribute('href', '/rows/1')
+  })
+
+  it('falls back to the row link when a link cell cannot resolve its template', () => {
+    render(
+      <RecordsTable
+        data={rows}
+        chartConfig={{ columns: ['Employees.name'] }}
+        displayConfig={{
+          columnFormats: { 'Employees.name': { kind: 'link', linkTemplate: '/employees/{Employees.missing}' } },
+          rowLink: { urlTemplate: '/rows/{Employees.id}' }
+        }}
+      />
+    )
+
+    expect(screen.getByRole('link', { name: 'Ada' })).toHaveAttribute('href', '/rows/1')
+  })
+
+  it('opens a link cell rather than drilling, while the other cells still drill', () => {
+    const onDataPointClick = vi.fn()
+    render(
+      <RecordsTable
+        data={rows}
+        chartConfig={{ columns: ['Employees.name', 'Employees.attr_1'] }}
+        displayConfig={{ columnFormats: nameLink }}
+        drillEnabled
+        onDataPointClick={onDataPointClick}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('link', { name: 'Ada' }))
+    expect(onDataPointClick).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('At risk'))
+    expect(onDataPointClick).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('RecordsTable — row clicks', () => {
   it('fires onDataPointClick with the whole row when drill is enabled', () => {
     const onDataPointClick = vi.fn()

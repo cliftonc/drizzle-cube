@@ -72,8 +72,8 @@ export const RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA = {
       properties: {
         kind: {
           type: 'string',
-          enum: ['text', 'number', 'date', 'badge', 'progress'],
-          description: 'Required on every entry. text: as-is. number: formatted numeric. date: formatted date. badge: coloured pill for statuses/categories. progress: bar or ring for a bounded value. Use "text" when you only want to set a label.'
+          enum: ['text', 'number', 'date', 'badge', 'progress', 'link'],
+          description: 'Required on every entry. text: as-is. number: formatted numeric. date: formatted date. badge: coloured pill for statuses/categories. progress: bar or ring for a bounded value. link: the value as a link to linkTemplate. Use "text" when you only want to set a label.'
         },
         numberFormat: {
           type: 'object',
@@ -111,7 +111,11 @@ export const RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA = {
           }
         },
         label: { type: 'string', description: 'Header override; defaults to the field title from the cube metadata.' },
-        align: { type: 'string', enum: ['left', 'right'], description: 'Cell alignment. Numbers usually read better right-aligned.' }
+        align: { type: 'string', enum: ['left', 'right'], description: 'Cell alignment. Numbers usually read better right-aligned.' },
+        linkTemplate: {
+          type: 'string',
+          description: 'kind "link": URL with {Cube.field} tokens substituted from the row, including hidden columns (e.g. "/employees/{Employees.id}"). Relative paths and http(s) URLs only. The cell link wins over rowLink for that cell.'
+        }
       }
     }
   },
