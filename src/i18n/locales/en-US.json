@@ -29,6 +29,8 @@
 
   "chart.recordsTable.columnFormats.badgeColours": "Value colors",
   "chart.recordsTable.columnFormats.badgeColour": "Color",
+  "chart.recordsTable.columnFormats.progressBandColours": "Color bands",
+  "chart.recordsTable.columnFormats.progressBandColour": "Color",
 
   "chart.scatter.dropZone.series.empty": "Drop a dimension to color points",
   "chart.bubble.dropZone.colorField.empty": "Drop a field for bubble color (optional)",

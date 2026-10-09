@@ -68,9 +68,14 @@ function headingProps(fontSize: string, level: 1 | 2 | 3, accentColor: string) {
  * The `sanitizer` is markdown-to-jsx's own, named rather than left implicit:
  * template output can carry warehouse values into link and image destinations,
  * so the protocol policy should be visible in our code.
+ *
+ * Raw HTML is never parsed: content can come from a shared dashboard, an
+ * imported file or (via templates) a warehouse value, and markdown-to-jsx's
+ * attribute stripping is not a complete XSS defence. HTML renders as text.
  */
 export function buildMarkdownOptions(accentColor: string, fontSize: string) {
   return {
+    disableParsingRawHTML: true,
     sanitizer: (value: string) => sanitizer(value),
     overrides: {
       h1: headingProps(fontSize, 1, accentColor),

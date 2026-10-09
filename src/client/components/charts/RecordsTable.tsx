@@ -356,17 +356,19 @@ function Cell({ cell, colorPalette }: { cell: RenderedCell; colorPalette?: Chart
   }
 
   if (cell.kind === 'progress') {
+    // The colour of the band the value falls in, when the palette has it.
+    const bandColor = cell.colorIndex !== undefined ? colorPalette?.colors[cell.colorIndex] : undefined
     return (
       <div className="dc:flex dc:items-center dc:gap-2">
         {cell.style === 'circle'
-          ? <ProgressRing fraction={cell.fraction} label={cell.text} />
+          ? <ProgressRing fraction={cell.fraction} label={cell.text} color={bandColor} />
           : (
             // Outlined track, so the full 0-100% extent is visible and a
             // near-complete bar is distinguishable from a complete one.
             <div className="dc:flex-1 dc:h-2 dc:rounded-full dc:overflow-hidden dc:border border-dc-border bg-dc-surface-secondary dc:min-w-[2rem]">
               <div
-                className="dc:h-full dc:rounded-full bg-dc-primary"
-                style={{ width: `${cell.fraction * 100}%` }}
+                className={`dc:h-full dc:rounded-full${bandColor ? '' : ' bg-dc-primary'}`}
+                style={{ width: `${cell.fraction * 100}%`, backgroundColor: bandColor }}
               />
             </div>
           )}
@@ -397,9 +399,10 @@ const RING_RADIUS = RING_CENTRE - RING_STROKE / 2
  *
  * `pathLength` normalises the circumference to 100, which lets the dash offset
  * be the percentage remaining without any 2πr arithmetic. The ring alone
- * carries the value, hence the `img` role and label.
+ * carries the value, hence the `img` role and label. `color` is the band
+ * colour, when the value falls in one.
  */
-function ProgressRing({ fraction, label }: { fraction: number; label: string }) {
+function ProgressRing({ fraction, label, color }: { fraction: number; label: string; color?: string }) {
   return (
     <svg
       role="img"
@@ -423,7 +426,7 @@ function ProgressRing({ fraction, label }: { fraction: number; label: string }) 
           cy={RING_CENTRE}
           r={RING_RADIUS}
           fill="none"
-          stroke="var(--dc-primary)"
+          stroke={color ?? 'var(--dc-primary)'}
           strokeWidth={RING_STROKE}
           strokeLinecap="round"
           pathLength={100}

@@ -190,6 +190,12 @@ export interface ColumnFormatConfig {
   progressMax?: number
   /** How a `kind: 'progress'` cell draws: a full-width bar, or a compact ring for narrow columns. */
   progressStyle?: 'bar' | 'circle'
+  /**
+   * Colour bands for `kind: 'progress'`, as palette colour indices. A cell takes
+   * the colour of the highest band whose value is at or below the cell value;
+   * below every band, or with no bands, it keeps the default colour.
+   */
+  progressBands?: Array<{ value: number; colorIndex: number }>
   /** Header override; falls back to the field's metadata title. */
   label?: string
   align?: 'left' | 'right'

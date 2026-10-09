@@ -123,6 +123,28 @@ describe('getToolDefinitions', () => {
       .toContain('linkTemplate')
   })
 
+  it('should describe progress colour bands as an array of palette indices', () => {
+    const tools = getToolDefinitions()
+    const addPortlet = tools.find((t) => t.name === 'add_portlet')!
+    const displayConfig = addPortlet.parameters.properties.displayConfig as {
+      properties: Record<string, {
+        additionalProperties?: {
+          properties?: Record<string, {
+            type?: string
+            items?: { required?: string[]; properties?: Record<string, { type?: string; minimum?: number }> }
+          }>
+        }
+      }>
+    }
+    const progressBands = displayConfig.properties.columnFormats.additionalProperties?.properties?.progressBands
+
+    expect(progressBands?.type).toBe('array')
+    expect(progressBands?.items?.required).toEqual(['value', 'colorIndex'])
+    // The table skips a band whose colour index is not a whole, non-negative
+    // number, so the schema must not let the model write one.
+    expect(progressBands?.items?.properties?.colorIndex).toMatchObject({ type: 'integer', minimum: 0 })
+  })
+
   it('should tell the model that recordsTable needs an ungrouped query', () => {
     const tools = getToolDefinitions()
     const addPortlet = tools.find((t) => t.name === 'add_portlet')!

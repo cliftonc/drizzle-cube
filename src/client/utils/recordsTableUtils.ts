@@ -106,8 +106,9 @@ export function moveColumn(columns: string[], from: string, to: string): string[
 
 /**
  * A cell resolved to something renderable. `progress` carries its own shape
- * because the component draws a bar or a ring rather than a string; every
- * other kind reduces to text plus, for badges, a colour.
+ * because the component draws a bar or a ring rather than a string, plus the
+ * colour of the band its value falls in; every other kind reduces to text plus,
+ * for badges, a colour.
  *
  * The component only ever sees a `RenderedCell`, so the progress `style` is
  * resolved here rather than being read back out of the column's config.
@@ -115,7 +116,7 @@ export function moveColumn(columns: string[], from: string, to: string): string[
 export type RenderedCell =
   | { kind: 'text'; text: string }
   | { kind: 'badge'; text: string; colorIndex?: number }
-  | { kind: 'progress'; text: string; fraction: number; style: 'bar' | 'circle' }
+  | { kind: 'progress'; text: string; fraction: number; style: 'bar' | 'circle'; colorIndex?: number }
 
 const EMPTY: RenderedCell = { kind: 'text', text: '' }
 
@@ -191,8 +192,30 @@ function renderProgress(value: unknown, format: ColumnFormatConfig | undefined):
     kind: 'progress',
     fraction: progressFraction(num, format),
     style: format?.progressStyle ?? 'bar',
-    text: formatAxisValue(num, format?.numberFormat ?? PROGRESS_NUMBER_FORMAT)
+    text: formatAxisValue(num, format?.numberFormat ?? PROGRESS_NUMBER_FORMAT),
+    colorIndex: progressBandColorIndex(num, format)
   }
+}
+
+/**
+ * The palette index of the band a progress value falls in: the highest band
+ * whose value is at or below it, whatever order the bands were written in.
+ *
+ * Like `badgeColors`, the bands can arrive from an agent tool call or a
+ * hand-edited portlet in another shape, so an entry without a finite `value`
+ * and a whole, non-negative `colorIndex` is skipped. On a tied value, the band
+ * written last wins.
+ */
+function progressBandColorIndex(value: number, format: ColumnFormatConfig | undefined): number | undefined {
+  if (!Array.isArray(format?.progressBands)) return undefined
+
+  let match: { value: number; colorIndex: number } | undefined
+  for (const band of format.progressBands) {
+    if (!band || typeof band.value !== 'number' || !Number.isFinite(band.value)) continue
+    if (!Number.isInteger(band.colorIndex) || band.colorIndex < 0) continue
+    if (band.value <= value && (!match || band.value >= match.value)) match = band
+  }
+  return match?.colorIndex
 }
 
 /** Where a value sits within the column's bounds, as 0-1. */

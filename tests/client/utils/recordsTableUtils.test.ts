@@ -89,6 +89,54 @@ describe('renderCellValue', () => {
       .toMatchObject({ kind: 'progress', style: 'circle' })
   })
 
+  it('colours progress with the highest band at or below the value, whatever the written order', () => {
+    const format = {
+      kind: 'progress' as const,
+      progressBands: [
+        { value: 80, colorIndex: 1 },
+        { value: 0, colorIndex: 3 },
+        { value: 50, colorIndex: 2 }
+      ]
+    }
+    expect(renderCellValue(20, format)).toMatchObject({ colorIndex: 3 })
+    expect(renderCellValue(50, format)).toMatchObject({ colorIndex: 2 })
+    expect(renderCellValue(79.5, format)).toMatchObject({ colorIndex: 2 })
+    expect(renderCellValue('95', format)).toMatchObject({ colorIndex: 1 })
+  })
+
+  it('leaves progress below every band, or without bands, in the default colour', () => {
+    const format = { kind: 'progress' as const, progressBands: [{ value: 50, colorIndex: 2 }] }
+    expect(renderCellValue(10, format)).toMatchObject({ kind: 'progress', colorIndex: undefined })
+    expect(renderCellValue(10, { kind: 'progress' })).toMatchObject({ kind: 'progress', colorIndex: undefined })
+  })
+
+  it('lets the band written last win a tied value', () => {
+    const format = {
+      kind: 'progress' as const,
+      progressBands: [{ value: 50, colorIndex: 1 }, { value: 50, colorIndex: 2 }]
+    }
+    expect(renderCellValue(60, format)).toMatchObject({ colorIndex: 2 })
+  })
+
+  it('ignores progress bands that are not the expected shape', () => {
+    // Agent-written or hand-edited configs: a map, a string bound, a colour
+    // name, a fractional or negative index. None of them may colour a cell.
+    expect(renderCellValue(60, { kind: 'progress', progressBands: { 50: 2 } } as any))
+      .toMatchObject({ kind: 'progress', colorIndex: undefined })
+    expect(renderCellValue(60, {
+      kind: 'progress',
+      progressBands: [
+        { value: '10', colorIndex: 1 },
+        { value: Number.NaN, colorIndex: 1 },
+        { value: 20, colorIndex: 'green' },
+        { value: 30, colorIndex: 1.5 },
+        { value: 40, colorIndex: -1 },
+        null,
+        { value: 0, colorIndex: 0 }
+      ]
+    } as any)).toMatchObject({ kind: 'progress', colorIndex: 0 })
+  })
+
   it('falls back to text for an unparseable progress value', () => {
     expect(renderCellValue('n/a', { kind: 'progress' })).toEqual({ kind: 'text', text: 'n/a' })
   })

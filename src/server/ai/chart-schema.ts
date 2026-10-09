@@ -98,6 +98,18 @@ export const RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA = {
         progressMin: { type: 'number', description: 'kind "progress": lower bound (default 0). Values are clamped.' },
         progressMax: { type: 'number', description: 'kind "progress": upper bound (default 100). Values are clamped.' },
         progressStyle: { type: 'string', enum: ['bar', 'circle'], description: 'kind "progress": full-width bar, or a compact ring for narrow columns.' },
+        progressBands: {
+          type: 'array',
+          description: 'kind "progress": colour bands, as an ARRAY of { value, colorIndex } entries. A cell takes the colour of the highest band whose value is at or below the cell value, so { value: 0, colorIndex: 3 }, { value: 50, colorIndex: 2 }, { value: 80, colorIndex: 1 } reads red below 50, then yellow, then green from 80. Below every band the bar keeps its default colour. colorIndex is a number index into the dashboard palette, never a colour name.',
+          items: {
+            type: 'object',
+            required: ['value', 'colorIndex'],
+            properties: {
+              value: { type: 'number', description: 'Where the band starts, in the column\'s own units' },
+              colorIndex: { type: 'integer', minimum: 0, description: 'Index into the dashboard colour palette' }
+            }
+          }
+        },
         label: { type: 'string', description: 'Header override; defaults to the field title from the cube metadata.' },
         align: { type: 'string', enum: ['left', 'right'], description: 'Cell alignment. Numbers usually read better right-aligned.' },
         linkTemplate: {

@@ -76,6 +76,16 @@ describe('GoogleProvider.formatTools', () => {
     expect(pageSize.description).toContain('25, 50, 100')
   })
 
+  it('tells the model that a progress band colour index is a whole number', () => {
+    const tools = formatAgentTools() as any[]
+    const addPortlet = tools.find(tool => tool.name === 'add_portlet')
+    const columnFormats = addPortlet.parameters.properties.displayConfig.properties.columnFormats
+
+    expect(columnFormats.description).toContain(
+      'progressBands: array of { value: number (required), colorIndex: integer (required) }'
+    )
+  })
+
   it('converts branches inside anyOf, not just top-level properties', () => {
     const tools = formatAgentTools() as any[]
     const saveDashboard = tools.find(tool => tool.name === 'save_as_dashboard')

@@ -384,9 +384,10 @@ function ThresholdBandsOption({ option, displayConfig, setValue, t }: OptionRend
 }
 
 /**
- * Per-column rendering for the records table. Delegates to `ColumnFormatsEditor`
- * so this file stays a dispatcher; like `ThresholdBandsOption` it always writes
- * the complete `Record` back rather than a partial patch.
+ * Per-column rendering for the records table, or for any chart whose option
+ * lists its own columns. Delegates to `ColumnFormatsEditor` so this file stays a
+ * dispatcher; like `ThresholdBandsOption` it always writes the complete `Record`
+ * back rather than a partial patch.
  */
 function ColumnFormatsOption({ option, displayConfig, chartConfig, colorPalette, setValue, t }: OptionRenderProps) {
   const key = option.key as keyof ChartDisplayConfig
@@ -396,7 +397,10 @@ function ColumnFormatsOption({ option, displayConfig, chartConfig, colorPalette,
       <ColumnFormatsEditor
         value={(displayConfig[key] as Record<string, ColumnFormatConfig>) ?? {}}
         chartConfig={chartConfig}
+        displayConfig={displayConfig}
+        columns={option.columns}
         colorPalette={colorPalette}
+        progressBands={option.progressBands}
         onChange={setValue}
         t={t}
       />
