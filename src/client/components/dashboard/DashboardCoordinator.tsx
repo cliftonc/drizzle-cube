@@ -891,6 +891,9 @@ export default function DashboardCoordinator({
     handleOpenFilterConfig,
   ])
 
+  // features.portletExpand shows the Expand button; the host handler decides what it opens
+  const portletExpandHandler = features.portletExpand ? onPortletExpand : undefined
+
   // Memoize renderPortletCard to prevent unnecessary re-renders of DashboardPortletCard
   const renderPortletCard = useCallback((
     portlet: PortletConfig,
@@ -913,7 +916,7 @@ export default function DashboardCoordinator({
       setPortletRef={handleSetPortletRef}
       setPortletComponentRef={handleSetPortletComponentRef}
       icons={portletIcons}
-      onPortletExpand={onPortletExpand}
+      onPortletExpand={portletExpandHandler}
     />
   ), [
     editable,
@@ -926,7 +929,7 @@ export default function DashboardCoordinator({
     handleSetPortletRef,
     handleSetPortletComponentRef,
     portletIcons,
-    onPortletExpand
+    portletExpandHandler
   ])
 
   // Generate grid layout from portlets - only use for lg (desktop) breakpoint

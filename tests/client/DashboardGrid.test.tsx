@@ -9,13 +9,16 @@ import { render, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import DashboardGrid from '../../src/client/components/DashboardGrid'
 import { DashboardStoreProvider } from '../../src/client/stores/dashboardStore'
-import type { DashboardConfig, PortletConfig } from '../../src/client/types'
+import type { DashboardConfig, FeaturesConfig, PortletConfig } from '../../src/client/types'
 import type { DashboardDisplayMode } from '../../src/client/hooks/useResponsiveDashboard'
+
+// Features that both feature hooks return; reset before each test
+let mockFeatures: FeaturesConfig = {}
 
 // Mock CubeProvider context - DashboardGrid uses useCubeFeatures for features
 vi.mock('../../src/client/providers/CubeProvider', () => ({
   useCubeFeatures: vi.fn(() => ({
-    features: {},
+    features: mockFeatures,
     batchCoordinator: null,
     enableBatching: false,
     dashboardModes: ['grid', 'mobile']
@@ -25,7 +28,7 @@ vi.mock('../../src/client/providers/CubeProvider', () => ({
 // Mock CubeFeaturesProvider - DashboardPortletCard uses useCubeFeatures directly
 vi.mock('../../src/client/providers/CubeFeaturesProvider', () => ({
   useCubeFeatures: vi.fn(() => ({
-    features: {},
+    features: mockFeatures,
     dashboardModes: ['grid', 'mobile'],
     updateFeatures: vi.fn()
   })),
@@ -161,6 +164,7 @@ function createTestConfig(portletCount = 2): DashboardConfig {
 describe('DashboardGrid', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFeatures = {}
     capturedGridLayoutProps = null
     mockResponsiveState = {
       containerRef: vi.fn(),
@@ -455,6 +459,7 @@ describe('DashboardGrid', () => {
 
   describe('expand action', () => {
     it('should show an Expand button on each card and give onPortletExpand the clicked portlet', () => {
+      mockFeatures = { portletExpand: true }
       const onPortletExpand = vi.fn()
 
       const { getAllByRole } = render(
@@ -470,7 +475,18 @@ describe('DashboardGrid', () => {
       )
     })
 
+    it('should not show an Expand button when features.portletExpand is off, even with onPortletExpand', () => {
+      const { queryAllByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} onPortletExpand={vi.fn()} />,
+        { wrapper: TestWrapper }
+      )
+
+      expect(queryAllByRole('button', { name: 'Expand' })).toHaveLength(0)
+    })
+
     it('should not show an Expand button without onPortletExpand', () => {
+      mockFeatures = { portletExpand: true }
+
       const { queryAllByRole } = render(
         <DashboardGrid config={createTestConfig(2)} />,
         { wrapper: TestWrapper }
