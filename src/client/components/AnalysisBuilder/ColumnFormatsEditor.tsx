@@ -414,10 +414,12 @@ function ProgressBandRows({
   t: (key: string) => string
 }) {
   // A config written by an agent may carry something other than an array, or
-  // an entry that is not a band; see `BadgeColorRows`. Such entries are left
-  // out, and the next edit writes the cleaned array back.
+  // an entry whose `value` is not a finite number; see `BadgeColorRows`. The
+  // table skips such an entry, so the picker leaves it out too, and the next
+  // edit writes the cleaned array back. An entry with an unusable colour index
+  // stays: picking a swatch repairs it.
   const bands = Array.isArray(format.progressBands)
-    ? format.progressBands.filter(band => band !== null && typeof band === 'object')
+    ? format.progressBands.filter(band => band !== null && typeof band === 'object' && typeof band.value === 'number' && Number.isFinite(band.value))
     : []
   const palette = colorPalette?.colors ?? []
   // The text of the band being typed in. A number input reports '' for a

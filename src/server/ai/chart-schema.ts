@@ -106,7 +106,7 @@ export const RECORDS_TABLE_DISPLAY_CONFIG_SCHEMA = {
             required: ['value', 'colorIndex'],
             properties: {
               value: { type: 'number', description: 'Where the band starts, in the column\'s own units' },
-              colorIndex: { type: 'number', description: 'Index into the dashboard colour palette' }
+              colorIndex: { type: 'integer', minimum: 0, description: 'Index into the dashboard colour palette' }
             }
           }
         },

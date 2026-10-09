@@ -127,7 +127,10 @@ describe('getToolDefinitions', () => {
     const displayConfig = addPortlet.parameters.properties.displayConfig as {
       properties: Record<string, {
         additionalProperties?: {
-          properties?: Record<string, { type?: string; items?: { required?: string[] } }>
+          properties?: Record<string, {
+            type?: string
+            items?: { required?: string[]; properties?: Record<string, { type?: string; minimum?: number }> }
+          }>
         }
       }>
     }
@@ -135,6 +138,9 @@ describe('getToolDefinitions', () => {
 
     expect(progressBands?.type).toBe('array')
     expect(progressBands?.items?.required).toEqual(['value', 'colorIndex'])
+    // The table skips a band whose colour index is not a whole, non-negative
+    // number, so the schema must not let the model write one.
+    expect(progressBands?.items?.properties?.colorIndex).toMatchObject({ type: 'integer', minimum: 0 })
   })
 
   it('should tell the model that recordsTable needs an ungrouped query', () => {

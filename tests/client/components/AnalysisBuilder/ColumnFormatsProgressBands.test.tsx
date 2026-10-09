@@ -156,6 +156,32 @@ describe('ColumnFormatsOption — progress bands', () => {
     ])
   })
 
+  it('leaves out a band whose value is not a finite number, as the table does', () => {
+    renderProgressColumn([
+      { value: '50', colorIndex: 1 },
+      { value: Number.POSITIVE_INFINITY, colorIndex: 2 },
+      { value: 10, colorIndex: 0 }
+    ] as unknown as Array<{ value: number; colorIndex: number }>)
+
+    const inputs = screen.getAllByLabelText('From value') as HTMLInputElement[]
+    expect(inputs.map(input => input.value)).toEqual(['10'])
+  })
+
+  it('starts a new band a step above the last finite band', () => {
+    // A stored 1e309 reads back as Infinity, which would otherwise make every
+    // new band Infinity too.
+    const { onDisplayConfigChange } = renderProgressColumn(
+      JSON.parse('[{ "value": 40, "colorIndex": 0 }, { "value": 1e309, "colorIndex": 1 }]')
+    )
+
+    fireEvent.click(screen.getByText('Add band'))
+
+    expect(bandsOf(onDisplayConfigChange)).toEqual([
+      { value: 40, colorIndex: 0 },
+      { value: 65, colorIndex: 1 }
+    ])
+  })
+
   it('removes the bands entirely when the last one is removed', () => {
     const { onDisplayConfigChange } = renderProgressColumn([{ value: 0, colorIndex: 0 }])
 
