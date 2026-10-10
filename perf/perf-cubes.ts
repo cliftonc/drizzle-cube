@@ -6,9 +6,11 @@
 
 import { eq, sql } from 'drizzle-orm'
 import { defineCube } from '../src/server/cube-utils'
+import { buildAttributeDimensions } from '../src/server/attribute-dimensions'
 import type { Cube, QueryContext } from '../src/server/types'
 import { getTestCubes } from '../tests/helpers/test-cubes'
 import { productivity } from '../tests/helpers/databases/postgres/schema'
+import { PERF_ATTRIBUTES, productivityAttributeValues } from './perf-eav'
 
 export async function getPerfCubes(): Promise<Map<string, Cube>> {
   const cubes = await getTestCubes()
@@ -68,7 +70,22 @@ export async function getPerfCubes(): Promise<Map<string, Cube>> {
           WHEN ${productivity.happinessIndex} <= 8 THEN 'high'
           ELSE 'very_high'
         END`
-      }
+      },
+
+      // Generated EAV dimensions: `attr_1` (Health, string) and `attr_2`
+      // (Completion, numeric with a tolerant cast). Projecting them is cheap;
+      // filtering and ordering by them are proportional to the base table,
+      // which is what the `eav.*` benchmarks measure.
+      ...buildAttributeDimensions({
+        attributes: PERF_ATTRIBUTES,
+        valueTable: productivityAttributeValues,
+        recordKey: productivity.id,
+        foreignKey: productivityAttributeValues.productivityId,
+        attributeKey: productivityAttributeValues.attributeId,
+        valueColumn: productivityAttributeValues.value,
+        security: (ctx: QueryContext) =>
+          eq(productivityAttributeValues.organisationId, ctx.securityContext.organisationId as number)
+      })
     }
   })
 

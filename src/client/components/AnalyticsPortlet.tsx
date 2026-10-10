@@ -3,13 +3,16 @@
  * Simplified version with minimal dependencies
  */
 
-import React, { useMemo, forwardRef, useImperativeHandle } from 'react'
+import React, { useEffect, useMemo, useState, forwardRef, useImperativeHandle } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useScrollContainer } from '../providers/ScrollContainerContext.js'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
 import type { AnalyticsPortletProps } from '../types.js'
-import { parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
+import { hasRunnableQuery, parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
+import { getRegularDashboardFilters } from '../utils/filterUtils.js'
 import { usePortletDrillState } from './analyticsPortlet/usePortletDrillState.js'
+import { usePortletPagination } from './analyticsPortlet/usePortletPagination.js'
+import { usePortletDeadMembers } from './analyticsPortlet/usePortletDeadMembers.js'
 import { usePortletQueryResults } from './analyticsPortlet/usePortletQueryResults.js'
 import { usePortletDebugData } from './analyticsPortlet/usePortletDebugData.js'
 import { resolvePortletRenderKind } from './analyticsPortlet/portletRenderState.js'
@@ -55,14 +58,18 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   // Note: Batching is handled by BatchCoordinator which collects queries for 100ms before flushing
   const isVisible = eagerLoad || inView
 
-  // Check if this chart type skips queries (using lazy-loaded config)
+  // `skipQuery` says the chart does not *require* a query, not that it can
+  // never have one — a markdown portlet with a query renders its content as a
+  // data template. So the query is only skipped when there is nothing to run,
+  // which keeps every existing text portlet on exactly its old path.
   const { config: chartTypeConfig } = useChartConfig(chartType)
-  const shouldSkipQuery = chartTypeConfig.skipQuery === true
+  const shouldSkipQuery = chartTypeConfig.skipQuery === true && !hasRunnableQuery(query)
 
-  // Memoize regular filters to prevent array recreation on every render
+  // Memoize regular filters to prevent array recreation on every render.
+  // Universal time filters pinned to a field by the mapping count as regular.
   const regularFilters = useMemo(() => {
-    return dashboardFilters?.filter(df => !df.isUniversalTime)
-  }, [dashboardFilters])
+    return getRegularDashboardFilters(dashboardFilters, dashboardFilterMapping)
+  }, [dashboardFilters, dashboardFilterMapping])
 
   // Parse query from JSON string, merge dashboard filters, and detect query type
   // Supports: CubeQuery, MultiQueryConfig, ServerFunnelQuery, ServerFlowQuery, and ServerRetentionQuery formats
@@ -81,9 +88,21 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   // Retention mode: ServerRetentionQuery format (cohort retention analysis)
   const isRetentionMode = serverRetentionQuery !== null
 
+  // The failure that identifies dead members only exists after the query has
+  // run, so it is fed back in a render later rather than threaded upward.
+  const [deadMemberError, setDeadMemberError] = useState<unknown>(null)
+
+  // Drop members the model no longer has (a deleted attribute, say) so one
+  // deletion does not take out every dashboard that showed it. Filters are
+  // never pruned — see the hook.
+  const { query: liveQuery, droppedMembers } = usePortletDeadMembers({
+    queryObject,
+    error: deadMemberError
+  })
+
   // Drill-down state, active query, and navigation handlers
   const { drill, activeQuery, handleNavigateBack, handleNavigateToLevel } = usePortletDrillState({
-    queryObject,
+    queryObject: liveQuery,
     chartConfig,
     dashboardFilters,
     dashboardFilterMapping,
@@ -91,6 +110,15 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     isFunnelMode,
     isFlowMode,
     isRetentionMode
+  })
+
+  // Server-side paging + sorting, layered over whichever query is active. Only
+  // engaged for chart types that page; every other type gets `activeQuery` back
+  // unchanged.
+  const { paginatedQuery, pagination } = usePortletPagination({
+    chartType,
+    activeQuery,
+    pageSize: displayConfig?.pageSize
   })
 
   // Run all query hooks and derive combined loading/error/data + refresh/retry
@@ -108,7 +136,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     refresh,
     retry
   } = usePortletQueryResults({
-    activeQuery,
+    activeQuery: paginatedQuery,
     multiQueryConfig,
     serverFunnelQuery,
     serverFlowQuery,
@@ -119,11 +147,23 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     isRetentionMode,
     shouldSkipQuery,
     eagerLoad,
-    isVisible
+    isVisible,
+    displayConfig
   })
+
+  useEffect(() => {
+    setDeadMemberError(error ?? null)
+  }, [error])
 
   // Expose refresh function through ref
   useImperativeHandle(ref, () => ({ refresh }), [refresh])
+
+  // The total only exists once a response carrying it has arrived, so it is
+  // merged in here rather than fed back into the pagination hook.
+  const chartPagination = useMemo(
+    () => (pagination ? { ...pagination, total: resultSet?.totalCount?.() } : undefined),
+    [pagination, resultSet]
+  )
 
   // Send debug data to parent when ready
   usePortletDebugData({
@@ -136,7 +176,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     isFlowMode,
     isRetentionMode,
     queryObject,
-    activeQuery,
+    activeQuery: paginatedQuery,
     serverFunnelQuery,
     serverFlowQuery,
     serverRetentionQuery,
@@ -160,6 +200,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     hasChartConfig: !!chartConfig,
     hasMandatoryFields,
     shouldSkipQuery,
+    rendersWithoutData: chartTypeConfig.skipQuery === true,
     eagerLoad,
     isVisible,
     isLoading,
@@ -224,7 +265,9 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         multiQueryData={multiQueryData}
         flowChartData={flowChartData}
         retentionChartData={retentionChartData}
-        activeQuery={activeQuery}
+        activeQuery={paginatedQuery}
+        pagination={chartPagination}
+        droppedMembers={droppedMembers}
         drill={drill}
         isDrillEnabled={isDrillEnabled}
         onNavigateBack={handleNavigateBack}

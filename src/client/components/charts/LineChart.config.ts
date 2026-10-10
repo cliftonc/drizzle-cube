@@ -1,9 +1,12 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 import {
   connectNullsDisplayOption,
+  fillMissingDatesDisplayOption,
   targetDisplayOption,
   leftYAxisFormatDisplayOption,
-  rightYAxisFormatDisplayOption
+  rightYAxisFormatDisplayOption,
+  showSummaryDisplayOption,
+  showPointsDisplayOption
 } from '../../charts/chartConfigHelpers.js'
 
 /**
@@ -45,7 +48,10 @@ export const lineChartConfig: ChartTypeConfig = {
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'showAllXLabels', 'hideHeader'],
   displayOptionsConfig: [
+    showSummaryDisplayOption,
+    showPointsDisplayOption(),
     connectNullsDisplayOption,
+    fillMissingDatesDisplayOption,
     targetDisplayOption,
     {
       key: 'priorPeriodStyle',

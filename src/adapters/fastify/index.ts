@@ -34,7 +34,9 @@ import {
   primeEventId,
   serializeSseEvent,
   extractBearerToken,
-  buildWwwAuthenticateChallenge
+  buildWwwAuthenticateChallenge,
+  validateOriginHeader,
+  originOptionsFromMcp
 } from '../mcp-transport.js'
 import { ensureLocaleHeader } from '../locale.js'
 import { createCubeHttpHandler, withLocaleFromHeaders, type McpHttpPort } from '../core/index.js'
@@ -68,9 +70,18 @@ function createFastifyPort(request: FastifyRequest, reply: FastifyReply): McpHtt
 
 export interface FastifyAdapterOptions {
   /**
-   * Array of cube definitions to register
+   * Pre-configured SemanticLayerCompiler instance.
+   * When provided, skips creating a new compiler and cube registration (caller
+   * manages it). Required to use per-tenant cube sets, since the caller must own
+   * the compiler to call `registerCubeSet` — see docs/per-tenant-cube-sets.md.
    */
-  cubes: Cube[]
+  semanticLayer?: SemanticLayerCompiler
+
+  /**
+   * Array of cube definitions to register.
+   * Required unless `semanticLayer` is provided.
+   */
+  cubes?: Cube[]
 
   /**
    * Drizzle database instance (REQUIRED)
@@ -181,8 +192,8 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   } = options
 
   // Validate required options
-  if (!cubes || cubes.length === 0) {
-    return done(new Error('At least one cube must be provided in the cubes array'))
+  if (!options.semanticLayer && (!cubes || cubes.length === 0)) {
+    return done(new Error('At least one cube must be provided in the cubes array, or pass a pre-configured semanticLayer'))
   }
 
   // Register CORS plugin if configured
@@ -202,7 +213,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   })
 
   // Create semantic layer and register all cubes
-  const semanticLayer = new SemanticLayerCompiler({
+  const semanticLayer = options.semanticLayer ?? new SemanticLayerCompiler({
     drizzle,
     schema,
     engineType,
@@ -210,10 +221,12 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     rlsSetup: options.rlsSetup
   })
 
-  // Register all provided cubes
-  cubes.forEach(cube => {
-    semanticLayer.registerCube(cube)
-  })
+  // Register cubes only when we created the compiler (not caller-managed)
+  if (!options.semanticLayer && cubes) {
+    cubes.forEach(cube => {
+      semanticLayer.registerCube(cube)
+    })
+  }
 
   // Framework-agnostic core. The base-context thunk returns the pre-locale
   // context; the core does the locale merge. Every REST + MCP handler funnels
@@ -268,7 +281,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   )
 
   fastify.get(`${basePath}/meta`, (request, reply) =>
-    httpHandler.handleMetaGet(createFastifyPort(request, reply))
+    httpHandler.handleMetaGet(createFastifyPort(request, reply), baseContext(request))
   )
 
   fastify.post(`${basePath}/sql`, postOptions, (request, reply) =>
@@ -421,6 +434,11 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     )
 
     fastify.get(`${mcpBasePath}`, async (request: FastifyRequest, reply: FastifyReply) => {
+      const originValidation = validateOriginHeader(request.headers.origin, originOptionsFromMcp(mcp))
+      if (!originValidation.valid) {
+        return reply.status(403).send({ error: originValidation.reason })
+      }
+
       if (mcp.resourceMetadataUrl && !extractBearerToken(request.headers.authorization)) {
         reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
         return reply.status(401).send({ error: 'Bearer token required' })
@@ -453,6 +471,11 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
      * Clients SHOULD send DELETE to terminate sessions
      */
     fastify.delete(`${mcpBasePath}`, async (_request: FastifyRequest, reply: FastifyReply) => {
+      const originValidation = validateOriginHeader(_request.headers.origin, originOptionsFromMcp(mcp))
+      if (!originValidation.valid) {
+        return reply.status(403).send({ error: originValidation.reason })
+      }
+
       if (mcp.resourceMetadataUrl && !extractBearerToken(_request.headers.authorization)) {
         reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
         return reply.status(401).send({ error: 'Bearer token required' })

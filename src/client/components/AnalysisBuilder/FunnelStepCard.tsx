@@ -217,7 +217,7 @@ const FunnelStepCard = memo(function FunnelStepCard({
             onKeyDown={handleNameKeyDown}
             onBlur={handleNameBlur}
             onClick={(e) => e.stopPropagation()}
-            className="dc:flex-1 dc:px-1.5 dc:py-0.5 dc:text-sm dc:font-medium bg-dc-surface dc:border border-dc-primary dc:rounded text-dc-text dc:focus:outline-none"
+            className="dc:flex-1 dc:px-1.5 dc:py-0.5 dc:text-sm dc:font-medium bg-dc-surface dc:border border-dc-primary dc:rounded-sm text-dc-text dc:focus:outline-none"
             placeholder="Step name"
           />
         ) : (
@@ -240,7 +240,7 @@ const FunnelStepCard = memo(function FunnelStepCard({
               e.stopPropagation()
               onRemove()
             }}
-            className="dc:p-1 dc:rounded hover:bg-dc-danger-bg text-dc-text-muted hover:text-dc-error dc:transition-colors"
+            className="dc:p-1 dc:rounded-sm hover:bg-dc-danger-bg text-dc-text-muted hover:text-dc-error dc:transition-colors"
             title="Remove step"
           >
             {CloseIcon && <CloseIcon className="dc:w-4 dc:h-4" />}
@@ -272,7 +272,7 @@ const FunnelStepCard = memo(function FunnelStepCard({
                   onClick={() => setShowTimeDropdown(!showTimeDropdown)}
                   className={`
                     dc:flex dc:items-center dc:justify-between dc:w-full dc:px-2.5 dc:py-1.5 dc:text-sm
-                    bg-dc-surface dc:border border-dc-border dc:rounded
+                    bg-dc-surface dc:border border-dc-border dc:rounded-sm
                     dc:transition-colors hover:border-dc-primary dc:cursor-pointer
                     ${showTimeDropdown ? 'border-dc-primary dc:ring-1 ring-dc-primary' : ''}
                   `}

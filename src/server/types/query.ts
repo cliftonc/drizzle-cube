@@ -41,6 +41,15 @@ export interface SemanticQuery {
   ungrouped?: boolean
 
   /**
+   * Return the number of rows the query would produce with no `limit` or
+   * `offset` applied, as `QueryResult.total`. Matches Cube's `total`.
+   *
+   * Costs a second round trip: the same plan is rebuilt without pagination and
+   * counted, wrapped so a grouped query counts groups rather than base rows.
+   */
+  total?: boolean
+
+  /**
    * Funnel analysis configuration for query-time funnel definition.
    * When specified, the query executes as a funnel analysis instead of
    * standard measures/dimensions aggregation.
@@ -141,7 +150,8 @@ export interface TimeDimension {
   /**
    * Fill missing dates in time series with the fill value.
    * Requires both granularity and dateRange to be set.
-   * Default: true (enabled)
+   * Default: the cube time dimension's `fillMissingDates`, else false — the
+   * server returns observed rows only and charts fill gaps client-side.
    */
   fillMissingDates?: boolean
   /**

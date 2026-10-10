@@ -16,6 +16,7 @@ import KpiNumber from '../client/components/charts/KpiNumber.js'
 import KpiDelta from '../client/components/charts/KpiDelta.js'
 import KpiText from '../client/components/charts/KpiText.js'
 import DataTable from '../client/components/charts/DataTable.js'
+import RecordsTable from '../client/components/charts/RecordsTable.js'
 import RadarChart from '../client/components/charts/RadarChart.js'
 import RadialBarChart from '../client/components/charts/RadialBarChart.js'
 import BubbleChart from '../client/components/charts/BubbleChart.js'
@@ -26,21 +27,32 @@ import BoxPlotChart from '../client/components/charts/BoxPlotChart.js'
 import CandlestickChart from '../client/components/charts/CandlestickChart.js'
 import ActivityGridChart from '../client/components/charts/ActivityGridChart.js'
 import MeasureProfileChart from '../client/components/charts/MeasureProfileChart.js'
+import SankeyChart from '../client/components/charts/SankeyChart.js'
+import SunburstChart from '../client/components/charts/SunburstChart.js'
+import HeatMapChart from '../client/components/charts/HeatMapChart.js'
+import MarkdownChart from '../client/components/charts/MarkdownChart.js'
 
 // Context & types
 import { CubeMetaContext, type CubeMetaContextValue } from '../client/providers/CubeMetaContext.js'
 import type { ChartAxisConfig, ChartDisplayConfig, FieldLabelMap, ChartProps } from '../client/types.js'
+import { isSankeyData } from '../client/types/flow.js'
 
 // Chart type selector (MCP-specific: only shows types with real components)
 import McpChartSwitcher from './McpChartSwitcher.js'
 
 // Auto-selection
-import { autoSelectChartType, deriveChartConfig, type McpChartType } from './chartAutoSelect.js'
+import { autoSelectChartType, deriveChartConfig, type ChartSelection } from './chartAutoSelect.js'
+import { isMcpAppChartType, type McpAppChartType } from './chartTypes.js'
 import { parseLoadResult, type LoadResult } from './parseLoadResult.js'
+import { fillChartRows } from '../client/utils/gapFilling.js'
 import { applyHostContext, applyFallbackTheme } from './theme-bridge.js'
 import './global.css'
 
-const chartComponentMap: Record<string, React.ComponentType<ChartProps>> = {
+// The MCP App is a single inlined HTML bundle, so components are static imports
+// rather than ChartLoader's lazy map. Typed as an exhaustive record over
+// `McpAppChartType`: listing a type in `MCP_APP_CHART_TYPES` without importing its
+// component here is a typecheck error, which is what keeps the two in step.
+const chartComponentMap: Record<McpAppChartType, React.ComponentType<ChartProps>> = {
   bar: BarChart,
   line: LineChart,
   area: AreaChart,
@@ -51,6 +63,7 @@ const chartComponentMap: Record<string, React.ComponentType<ChartProps>> = {
   kpiDelta: KpiDelta,
   kpiText: KpiText,
   table: DataTable,
+  recordsTable: RecordsTable,
   radar: RadarChart,
   radialBar: RadialBarChart,
   bubble: BubbleChart,
@@ -61,6 +74,10 @@ const chartComponentMap: Record<string, React.ComponentType<ChartProps>> = {
   candlestick: CandlestickChart,
   activityGrid: ActivityGridChart,
   measureProfile: MeasureProfileChart,
+  sankey: SankeyChart,
+  sunburst: SunburstChart,
+  heatmap: HeatMapChart,
+  markdown: MarkdownChart,
 }
 
 function buildLabelMapFromAnnotation(annotation: any): FieldLabelMap {
@@ -104,7 +121,8 @@ function fallbackLabel(field: string): string {
 }
 
 interface ChartHint {
-  type?: McpChartType
+  /** Raw type from the host payload — narrowed via `isMcpAppChartType` before use. */
+  type?: string
   title?: string
   chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
@@ -113,11 +131,28 @@ interface ChartHint {
   yAxis?: string[]
 }
 
+/**
+ * The field arrangement a chart component reads, from an auto-derived selection.
+ *
+ * Both the load path and the switcher go through here: a chart that lays out
+ * something other than x/y axes — the records table uses `columns` — would
+ * otherwise render unconfigured on whichever path forgot to copy its field.
+ */
+function toChartAxisConfig(selection: ChartSelection): ChartAxisConfig {
+  return {
+    xAxis: selection.xAxis,
+    yAxis: selection.yAxis,
+    series: selection.series,
+    valueField: selection.valueField,
+    columns: selection.columns,
+  }
+}
+
 /** Normalize a chart hint into chartConfig + displayConfig */
 function normalizeHint(
   hint: ChartHint,
   baseChartConfig: ChartAxisConfig,
-  chartType: McpChartType,
+  chartType: McpAppChartType,
 ): {
   chartConfig: ChartAxisConfig
   displayConfig: ChartDisplayConfig
@@ -150,7 +185,7 @@ type ChartConfigSource = 'auto' | 'hint' | 'manual'
 
 export function McpApp() {
   const [result, setResult] = useState<LoadResult | null>(null)
-  const [chartType, setChartType] = useState<McpChartType>('table')
+  const [chartType, setChartType] = useState<McpAppChartType>('table')
   const [chartConfig, setChartConfig] = useState<ChartAxisConfig>({})
   const [displayConfig, setDisplayConfig] = useState<ChartDisplayConfig>({})
   const [chartConfigSource, setChartConfigSource] = useState<ChartConfigSource>('auto')
@@ -185,20 +220,27 @@ export function McpApp() {
         return
       }
 
-      const parsed = outcome.result
+      // The server returns observed rows only; fill time gaps for the chart
+      // as the dashboard does (issue #1368)
+      const parsed = outcome.result.query
+        ? {
+          ...outcome.result,
+          data: fillChartRows(outcome.result.data, outcome.result.query, outcome.result.annotation, {
+            fillMissingDates: hint?.displayConfig?.fillMissingDates
+          })
+        }
+        : outcome.result
       setResult(parsed)
       setError(null)
 
       const query = parsed.query || {}
       const nextHint = hint || null
       const autoChartType = autoSelectChartType(query, parsed.data)
-      const resolvedChartType = nextHint?.type || autoChartType
+      // A hint type only wins if the app can actually render it; otherwise fall
+      // back to auto-selection rather than rendering an empty frame.
+      const resolvedChartType = isMcpAppChartType(nextHint?.type) ? nextHint.type : autoChartType
       const derivedSelection = deriveChartConfig(query, parsed.data, resolvedChartType)
-      const derivedChartConfig: ChartAxisConfig = {
-        xAxis: derivedSelection.xAxis,
-        yAxis: derivedSelection.yAxis,
-        series: derivedSelection.series,
-      }
+      const derivedChartConfig = toChartAxisConfig(derivedSelection)
 
       chartHintRef.current = nextHint
       setChartHint(nextHint)
@@ -252,17 +294,13 @@ export function McpApp() {
     applyFallbackTheme()
   }, [])
 
-  const handleChartTypeChange = useCallback((ct: McpChartType) => {
+  const handleChartTypeChange = useCallback((ct: McpAppChartType) => {
     if (!result) return
 
     const derivedSelection = deriveChartConfig(result.query || {}, result.data || [], ct)
 
     setChartType(derivedSelection.chartType)
-    setChartConfig({
-      xAxis: derivedSelection.xAxis,
-      yAxis: derivedSelection.yAxis,
-      series: derivedSelection.series,
-    })
+    setChartConfig(toChartAxisConfig(derivedSelection))
     setDisplayConfig({})
     setChartConfigSource('manual')
   }, [result])
@@ -314,6 +352,7 @@ export function McpApp() {
   }
 
   const query = result.query || {}
+  const hasFlowData = isSankeyData(result.data[0])
   const ChartComponent = chartComponentMap[chartType] || DataTable
   const chartTitle = chartHint?.title && chartConfigSource !== 'auto'
     ? chartHint.title
@@ -332,6 +371,7 @@ export function McpApp() {
             selected={chartType}
             query={query}
             rowCount={result.data.length}
+            hasFlowData={hasFlowData}
             onSelect={handleChartTypeChange}
           />
         </div>

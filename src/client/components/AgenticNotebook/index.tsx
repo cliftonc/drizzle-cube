@@ -116,7 +116,7 @@ function CollapsedNotebookStrip({
             return (
               <div
                 key={block.id}
-                className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded"
+                className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-sm"
                 style={
                   isPulsing
                     ? { animation: 'dc-icon-pulse 0.6s ease-in-out 3' }

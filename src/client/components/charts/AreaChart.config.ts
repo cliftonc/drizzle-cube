@@ -2,9 +2,12 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs.js'
 import {
   stackTypeDisplayOption,
   connectNullsDisplayOption,
+  fillMissingDatesDisplayOption,
   targetDisplayOption,
   leftYAxisFormatDisplayOption,
-  rightYAxisFormatDisplayOption
+  rightYAxisFormatDisplayOption,
+  showSummaryDisplayOption,
+  showPointsDisplayOption
 } from '../../charts/chartConfigHelpers.js'
 
 /**
@@ -45,8 +48,11 @@ export const areaChartConfig: ChartTypeConfig = {
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'showAllXLabels', 'hideHeader'],
   displayOptionsConfig: [
+    showSummaryDisplayOption,
+    showPointsDisplayOption(false),
     stackTypeDisplayOption('chart.configText.how_to_stack_multiple_area_series'),
     connectNullsDisplayOption,
+    fillMissingDatesDisplayOption,
     targetDisplayOption,
     leftYAxisFormatDisplayOption,
     rightYAxisFormatDisplayOption

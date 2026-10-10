@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { buildAgentSystemPrompt } from '../../src/server/agent/system-prompt'
+import { AGENT_ALLOWED_CHART_TYPES } from '../../src/server/agent/tools'
 import type { CubeMetadata } from '../../src/server/types'
 
 // ============================================================================
@@ -217,8 +218,34 @@ describe('buildAgentSystemPrompt', () => {
 
   it('should include strong guidance to think about appropriate chart type', () => {
     const prompt = buildAgentSystemPrompt([])
-    expect(prompt).toContain('do NOT default to the first option')
+    expect(prompt).toContain('Do NOT default to the first option')
     expect(prompt).toContain('last resort')
+    expect(prompt).toContain('Vary the chart types across a notebook')
+  })
+
+  // The guide and the tool enum drifted apart once already: recordsTable and
+  // markdown were selectable but never described, so the model never reached
+  // for them. Every allowed type must be named somewhere in the prompt.
+  it('should describe every chart type the agent is allowed to use', () => {
+    const prompt = buildAgentSystemPrompt([])
+    const missing = AGENT_ALLOWED_CHART_TYPES.filter(t => !prompt.includes(`\`${t}\``))
+    expect(missing).toEqual([])
+  })
+
+  it('should not name MCP-only tools the notebook agent cannot call', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).not.toContain('tools/call name=discover')
+    expect(prompt).not.toContain('tools/call name=validate')
+    expect(prompt).not.toContain('tools/call name=load')
+    expect(prompt).toContain('`discover_cubes`')
+    expect(prompt).toContain('`add_portlet`')
+    expect(prompt).toContain('`update_portlet`')
+  })
+
+  it('should ask for analysis breadth rather than one chart per metric', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).toContain('Analysis Depth and Layout')
+    expect(prompt).toContain('4-6 distinct insights')
   })
 
   it('should include analysis-mode-specific chart types in the guide', () => {

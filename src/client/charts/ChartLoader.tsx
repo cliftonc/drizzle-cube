@@ -45,6 +45,7 @@ const chartImportMap: Record<BuiltInChartType, () => Promise<{ default: LazyChar
   treemap: () => import('../components/charts/TreeMapChart.js'),
   bubble: () => import('../components/charts/BubbleChart.js'),
   table: () => import('../components/charts/DataTable.js'),
+  recordsTable: () => import('../components/charts/RecordsTable.js'),
   activityGrid: () => import('../components/charts/ActivityGridChart.js'),
   kpiNumber: () => import('../components/charts/KpiNumber.js'),
   kpiDelta: () => import('../components/charts/KpiDelta.js'),
@@ -57,9 +58,11 @@ const chartImportMap: Record<BuiltInChartType, () => Promise<{ default: LazyChar
   retentionHeatmap: () => import('../components/charts/RetentionHeatmap.js'),
   retentionCombined: () => import('../components/charts/RetentionCombinedChart.js'),
   boxPlot: () => import('../components/charts/BoxPlotChart.js'),
+  dotStrip: () => import('../components/charts/DotStripChart.js'),
   waterfall: () => import('../components/charts/WaterfallChart.js'),
   candlestick: () => import('../components/charts/CandlestickChart.js'),
   measureProfile: () => import('../components/charts/MeasureProfileChart.js'),
+  proportionBar: () => import('../components/charts/ProportionBarChart.js'),
   gauge: () => import('../components/charts/GaugeChart.js'),
 }
 
@@ -114,7 +117,7 @@ function DefaultChartFallback({ height }: { height?: string | number }) {
       className="dc:flex dc:items-center dc:justify-center dc:w-full"
       style={{ height: typeof height === 'number' ? `${height}px` : height || '200px' }}
     >
-      <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded dc:w-full dc:h-full dc:min-h-[100px]" />
+      <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded-sm dc:w-full dc:h-full dc:min-h-[100px]" />
     </div>
   )
 }

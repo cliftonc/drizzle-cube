@@ -20,11 +20,12 @@ import type { ServerFlowQuery } from '../../types/flow.js'
 import { isServerFlowQuery } from '../../types/flow.js'
 import type { ServerRetentionQuery } from '../../types/retention.js'
 import { isServerRetentionQuery } from '../../types/retention.js'
+import { queryHasMembers } from '../../../shared/query-shape.js'
 import {
   getApplicableDashboardFilters,
   mergeDashboardAndPortletFilters,
   applyUniversalTimeFilters,
-  mappingIncludesFilter
+  getTimeDimensionUniversalFilters
 } from '../../utils/filterUtils.js'
 
 export interface ParsedPortletQuery {
@@ -41,6 +42,41 @@ const EMPTY_RESULT: ParsedPortletQuery = {
   serverFunnelQuery: null,
   serverFlowQuery: null,
   serverRetentionQuery: null
+}
+
+/**
+ * Whether a portlet's query string asks for anything the engine could run.
+ *
+ * A chart type marked `skipQuery` does not *require* a query, but it may still
+ * carry one — a markdown portlet with a query renders its content as a data
+ * template. This decides which of the two it is.
+ *
+ * Everything unrunnable reads as "no query": an empty string, `{}` (what the
+ * agent writes for a text portlet), unparseable JSON, or a query whose members
+ * are all empty. The alternate formats count as runnable in their own right.
+ */
+export function hasRunnableQuery(query: string): boolean {
+  if (!query || !query.trim()) return false
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(query)
+  } catch {
+    return false
+  }
+
+  if (!parsed || typeof parsed !== 'object') return false
+
+  if (
+    isMultiQueryConfig(parsed)
+    || isServerFunnelQuery(parsed)
+    || isServerFlowQuery(parsed)
+    || isServerRetentionQuery(parsed)
+  ) {
+    return true
+  }
+
+  return queryHasMembers(parsed as Partial<CubeQuery>)
 }
 
 export interface ParsePortletQueryParams {
@@ -75,10 +111,9 @@ function applyUniversalTimeToFunnel(
   dashboardFilters: DashboardFilter[] | undefined,
   dashboardFilterMapping: DashboardFilterMapping | undefined
 ): void {
-  const universalTimeFilters = dashboardFilters?.filter(df =>
-    df.isUniversalTime && mappingIncludesFilter(dashboardFilterMapping, df.id)
-  )
-  if (!universalTimeFilters || universalTimeFilters.length === 0 || modifiedFunnel.funnel.steps.length === 0) {
+  // Pinned universal filters arrive with the regular filters instead
+  const universalTimeFilters = getTimeDimensionUniversalFilters(dashboardFilters, dashboardFilterMapping)
+  if (universalTimeFilters.length === 0 || modifiedFunnel.funnel.steps.length === 0) {
     return
   }
 
@@ -146,7 +181,7 @@ export function parsePortletQuery(params: ParsePortletQueryParams): ParsedPortle
   try {
     const parsed = JSON.parse(query)
 
-    // Get applicable dashboard filters (excluding universal time filters - they apply to timeDimensions)
+    // Get applicable dashboard filters (universal time filters apply to timeDimensions unless pinned to a field)
     const applicableFilters = getApplicableDashboardFilters(regularFilters, dashboardFilterMapping)
 
     // ServerRetentionQuery format { retention: {...} }

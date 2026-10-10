@@ -40,6 +40,7 @@ import codeBracket from '@iconify-icons/heroicons-outline/code-bracket'
 import swatch from '@iconify-icons/heroicons-outline/swatch'
 import camera from '@iconify-icons/heroicons-outline/camera'
 import arrowDownTray from '@iconify-icons/heroicons-outline/arrow-down-tray'
+import arrowUpTray from '@iconify-icons/heroicons-outline/arrow-up-tray'
 import handThumbUp from '@iconify-icons/heroicons-solid/hand-thumb-up'
 import handThumbDown from '@iconify-icons/heroicons-solid/hand-thumb-down'
 
@@ -67,10 +68,13 @@ import chartLine from '@iconify-icons/tabler/chart-line'
 import chartAreaLine from '@iconify-icons/tabler/chart-area-line'
 import chartPie from '@iconify-icons/tabler/chart-pie'
 import chartDots2 from '@iconify-icons/tabler/chart-dots-2'
+import chartDots3 from '@iconify-icons/tabler/chart-dots-3'
 import chartBubble from '@iconify-icons/tabler/chart-bubble'
 import chartRadar from '@iconify-icons/tabler/chart-radar'
 import radar2 from '@iconify-icons/tabler/radar-2'
 import chartTreemap from '@iconify-icons/tabler/chart-treemap'
+import listDetails from '@iconify-icons/tabler/list-details'
+import layoutDistributeHorizontal from '@iconify-icons/tabler/layout-distribute-horizontal'
 // Custom icons - better represents flow/funnel/retention visualizations
 import { flowIcon, funnelIcon, retentionIcon } from './customIcons.js'
 import chartDonut4 from '@iconify-icons/tabler/chart-donut-4'
@@ -133,6 +137,7 @@ export const DEFAULT_ICONS: IconRegistry = {
   schemaGraph: { icon: map, category: 'action' },
   cube: { icon: cubeOutline, category: 'action' },
   download: { icon: arrowDownTray, category: 'action' },
+  upload: { icon: arrowUpTray, category: 'action' },
 
   // Field type icons (solid for visual distinction)
   measure: { icon: chartBarSolid, category: 'field' },
@@ -151,6 +156,7 @@ export const DEFAULT_ICONS: IconRegistry = {
   chartRadialBar: { icon: radar2, category: 'chart' },
   chartTreemap: { icon: chartTreemap, category: 'chart' },
   chartTable: { icon: table, category: 'chart' },
+  chartRecordsTable: { icon: listDetails, category: 'chart' },
   chartActivityGrid: { icon: calendarStats, category: 'chart' },
   chartKpiNumber: { icon: number, category: 'chart' },
   chartKpiDelta: { icon: trendingUp, category: 'chart' },
@@ -162,9 +168,11 @@ export const DEFAULT_ICONS: IconRegistry = {
   chartHeatmap: { icon: chartGridDots, category: 'chart' },
   chartRetention: { icon: retentionIcon, category: 'chart' },
   chartBoxPlot: { icon: boxPadding, category: 'chart' },
+  chartDotStrip: { icon: chartDots3, category: 'chart' },
   chartWaterfall: { icon: stairs, category: 'chart' },
   chartCandlestick: { icon: chartCandle, category: 'chart' },
   chartMeasureProfile: { icon: chartArrowsVertical, category: 'chart' },
+  chartProportionBar: { icon: layoutDistributeHorizontal, category: 'chart' },
   chartGauge: { icon: gauge, category: 'chart' },
 
   // Measure type icons (solid)

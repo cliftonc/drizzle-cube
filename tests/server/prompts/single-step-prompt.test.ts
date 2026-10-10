@@ -45,7 +45,10 @@ describe('SYSTEM_PROMPT_TEMPLATE constant', () => {
     expect(SYSTEM_PROMPT_TEMPLATE).toContain('lt')
     expect(SYSTEM_PROMPT_TEMPLATE).toContain('lte')
     expect(SYSTEM_PROMPT_TEMPLATE).toContain('inDateRange')
-    expect(SYSTEM_PROMPT_TEMPLATE).toContain('notInDateRange')
+    // notInDateRange is not a supported operator — it must not be advertised
+    expect(SYSTEM_PROMPT_TEMPLATE).not.toContain('notInDateRange')
+    expect(SYSTEM_PROMPT_TEMPLATE).toContain('notStartsWith')
+    expect(SYSTEM_PROMPT_TEMPLATE).toContain('isNotEmpty')
     expect(SYSTEM_PROMPT_TEMPLATE).toContain('beforeDate')
     expect(SYSTEM_PROMPT_TEMPLATE).toContain('afterDate')
     expect(SYSTEM_PROMPT_TEMPLATE).toContain('set')

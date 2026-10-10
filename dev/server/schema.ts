@@ -93,6 +93,38 @@ export const employeeTeams = pgTable('employee_teams', {
   index('idx_employee_teams_team').on(table.teamId)
 ])
 
+// ---------------------------------------------------------------------------
+// User-defined attributes (EAV) — the shape that motivates per-tenant cube sets.
+//
+// Each organisation defines its own attributes, so the set of columns differs
+// per tenant. `dev/server/cubes.ts` generates a dimension per attribute and
+// registers one cube set per organisation at boot.
+// ---------------------------------------------------------------------------
+
+export const attributes = pgTable('attributes', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  name: text('name').notNull(),
+  // Drives the SQL cast, so filtering and sorting compare numbers as numbers.
+  valueType: text('value_type').notNull().default('string'), // 'string' | 'number'
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow()
+}, (table) => [
+  index('idx_attributes_org').on(table.organisationId)
+])
+
+// One row per (employee, attribute) holding that employee's value
+export const employeeAttributeValues = pgTable('employee_attribute_values', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  employeeId: integer('employee_id').notNull(),
+  attributeId: integer('attribute_id').notNull(),
+  value: text('value'),
+  organisationId: integer('organisation_id').notNull()
+}, (table) => [
+  index('idx_employee_attribute_values_org').on(table.organisationId),
+  // Serves the correlated subquery each generated dimension emits.
+  index('idx_employee_attribute_values_lookup').on(table.employeeId, table.attributeId)
+])
+
 // Analytics Pages table - for storing dashboard configurations
 export const analyticsPages = pgTable('analytics_pages', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
@@ -219,6 +251,8 @@ export const employeeTeamsRelations = relations(employeeTeams, ({ one }) => ({
 export const schema = {
   employees,
   departments,
+  attributes,
+  employeeAttributeValues,
   productivity,
   prEvents,
   teams,

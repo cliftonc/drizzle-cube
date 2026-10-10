@@ -518,6 +518,50 @@ describe('Hono Adapter', () => {
     expect(Array.isArray(data.cubes)).toBe(true)
   })
 
+  // MCP Origin validation (GHSA-ch89-j64x-45pq). Default config (no allowedOrigins)
+  // must reject foreign browser origins on every /mcp method while still admitting
+  // server-to-server (no-Origin) clients.
+  describe('MCP Origin validation', () => {
+    const rpc = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} })
+    const bothAccept = 'application/json, text/event-stream'
+
+    it('rejects POST /mcp from a foreign origin with 403', async () => {
+      const res = await app.request(new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: bothAccept, Origin: 'https://evil.example' },
+        body: rpc
+      }))
+      expect(res.status).toBe(403)
+    })
+
+    it('rejects GET /mcp from a foreign origin with 403', async () => {
+      const res = await app.request(new Request('http://localhost/mcp', {
+        method: 'GET',
+        headers: { Origin: 'https://evil.example' }
+      }))
+      expect(res.status).toBe(403)
+    })
+
+    it('rejects DELETE /mcp from a foreign origin with 403', async () => {
+      const res = await app.request(new Request('http://localhost/mcp', {
+        method: 'DELETE',
+        headers: { Origin: 'https://evil.example' }
+      }))
+      expect(res.status).toBe(403)
+    })
+
+    it('allows POST /mcp from a server-to-server client (no Origin)', async () => {
+      const res = await app.request(new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: rpc
+      }))
+      expect(res.status).toBe(200)
+      const data = await res.json() as any
+      expect(data.result.tools).toBeDefined()
+    })
+  })
+
   // Empty cubes validation
   it('should throw error when creating routes with empty cubes array', () => {
     expect(() => {

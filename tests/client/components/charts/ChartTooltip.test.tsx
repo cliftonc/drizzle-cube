@@ -131,7 +131,7 @@ describe('ChartTooltip', () => {
 
   describe('custom formatter', () => {
     it('should use custom formatter when provided', () => {
-      const customFormatter = vi.fn((value: any, name: any): [React.ReactText, React.ReactText] => [`$${value}`, name])
+      const customFormatter = vi.fn((value: any, name: any): [React.ReactNode, React.ReactNode] => [`$${value}`, name])
 
       render(<ChartTooltip formatter={customFormatter} />)
 
@@ -139,7 +139,7 @@ describe('ChartTooltip', () => {
     })
 
     it('should not use default formatter when custom is provided', () => {
-      const customFormatter = (value: any, name: any): [React.ReactText, React.ReactText] => [`Custom: ${value}`, name]
+      const customFormatter = (value: any, name: any): [React.ReactNode, React.ReactNode] => [`Custom: ${value}`, name]
 
       render(<ChartTooltip formatter={customFormatter} />)
 
@@ -306,7 +306,7 @@ describe('ChartTooltip', () => {
 
   describe('props integration', () => {
     it('should handle both formatter and labelFormatter', () => {
-      const customFormatter = (value: any, name: any): [React.ReactText, React.ReactText] => [`$${value}`, name]
+      const customFormatter = (value: any, name: any): [React.ReactNode, React.ReactNode] => [`$${value}`, name]
       const customLabelFormatter = (label: any) => `Date: ${label}`
 
       render(
@@ -321,8 +321,8 @@ describe('ChartTooltip', () => {
     })
 
     it('should update when props change', () => {
-      const formatter1 = (value: any, name: any): [React.ReactText, React.ReactText] => [`V1: ${value}`, name]
-      const formatter2 = (value: any, name: any): [React.ReactText, React.ReactText] => [`V2: ${value}`, name]
+      const formatter1 = (value: any, name: any): [React.ReactNode, React.ReactNode] => [`V1: ${value}`, name]
+      const formatter2 = (value: any, name: any): [React.ReactNode, React.ReactNode] => [`V2: ${value}`, name]
 
       const { rerender } = render(<ChartTooltip formatter={formatter1} />)
 
@@ -336,7 +336,7 @@ describe('ChartTooltip', () => {
 
   describe('third parameter support', () => {
     it('should support third props parameter in formatter', () => {
-      const customFormatter = vi.fn((value: any, name: any, props: any): [React.ReactText, React.ReactText] => {
+      const customFormatter = vi.fn((value: any, name: any, props: any): [React.ReactNode, React.ReactNode] => {
         const color = props?.color || '#000'
         return [`${value} (${color})`, name]
       })
@@ -350,7 +350,7 @@ describe('ChartTooltip', () => {
     })
 
     it('should handle missing props parameter gracefully', () => {
-      const customFormatter = (value: any, name: any, props: any): [React.ReactText, React.ReactText] => {
+      const customFormatter = (value: any, name: any, props: any): [React.ReactNode, React.ReactNode] => {
         const suffix = props?.payload?.unit || ''
         return [`${value}${suffix}`, name]
       }

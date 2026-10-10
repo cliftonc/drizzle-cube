@@ -19,11 +19,24 @@ export function buildCubeQuery(
   filters: Filter[],
   order?: Record<string, 'asc' | 'desc'>,
   preserveComparisonFilters: boolean = false,
-  limit?: number
+  limit?: number,
+  /**
+   * Record-grain charts list rows rather than aggregates — see
+   * `ChartTypeConfig.recordGrain`. Without this, editing a records-table
+   * portlet in the builder silently rebuilds its query as a grouped one.
+   *
+   * The server rejects period comparison and `fillMissingDates: true` on an
+   * ungrouped query, so it leaves both out and keeps the date filter. The
+   * breakdowns keep both settings for when the chart switches back. An
+   * explicit `fillMissingDates: false` stays, since the server accepts it.
+   */
+  ungrouped: boolean = false,
+  fillMissingDatesValue?: number | null
 ): CubeQuery {
   // Find time dimensions with comparison enabled
+  const isComparing = (b: BreakdownItem) => b.isTimeDimension && b.enableComparison && !ungrouped
   const comparisonFields = breakdowns
-    .filter((b) => b.isTimeDimension && b.enableComparison)
+    .filter(isComparing)
     .map((b) => b.field)
 
   // Remove date filters for comparison-enabled time dimensions
@@ -51,11 +64,12 @@ export function buildCubeQuery(
           compareDateRange?: [string, string][]
         } = {
           dimension: b.field,
-          granularity: b.granularity || 'day'
+          granularity: b.granularity || 'day',
+          ...(b.fillMissingDates !== undefined && !(ungrouped && b.fillMissingDates) && { fillMissingDates: b.fillMissingDates })
         }
 
         // If comparison is enabled, build compareDateRange from the ORIGINAL filter
-        if (b.enableComparison) {
+        if (isComparing(b)) {
           const compareDateRange = buildCompareDateRangeFromFilter(b.field, filters)
           if (compareDateRange) {
             td.compareDateRange = compareDateRange
@@ -66,7 +80,11 @@ export function buildCubeQuery(
       }),
     filters: filteredFilters.length > 0 ? filteredFilters : undefined,
     order: order && Object.keys(order).length > 0 ? order : undefined,
-    limit: limit ?? undefined
+    limit: limit ?? undefined,
+    // Set only when true: an explicit `false` is a distinct cache key from an
+    // absent flag, and every other chart wants it absent.
+    ungrouped: ungrouped || undefined,
+    ...(fillMissingDatesValue !== undefined && { fillMissingDatesValue })
   }
 
   // Clean up empty arrays

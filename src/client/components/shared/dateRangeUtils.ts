@@ -5,6 +5,7 @@
  * existing import paths stable.
  */
 
+import { parseRelativeDateRange } from '../../../shared/date-utils.js'
 import type { DateRangeType } from '../../shared/types.js'
 import { DATE_RANGE_OPTIONS } from '../../shared/types.js'
 import { convertDateRangeTypeToValue, requiresNumberInput } from '../../shared/utils.js'
@@ -37,139 +38,27 @@ export const XTD_OPTIONS: DatePreset[] = [
 
 type DateRange = { start: Date, end: Date }
 
-/** Start of the current ISO week (Monday) relative to a normalised "today". */
-function startOfWeek(today: Date): Date {
-  const start = new Date(today)
-  const dayOfWeek = start.getDay()
-  const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Monday as first day
-  start.setDate(start.getDate() - diff)
-  return start
-}
-
-/** Resolve the named/relative-to-now presets (today, this week, etc.). */
-function resolveNamedPreset(preset: string, today: Date, endOfToday: Date): DateRange | null {
-  switch (preset) {
-    case 'today':
-      return { start: today, end: endOfToday }
-    case 'yesterday': {
-      const yesterday = new Date(today)
-      yesterday.setDate(yesterday.getDate() - 1)
-      const endOfYesterday = new Date(yesterday)
-      endOfYesterday.setHours(23, 59, 59, 999)
-      return { start: yesterday, end: endOfYesterday }
-    }
-    case 'this week':
-      return { start: startOfWeek(today), end: endOfToday }
-    case 'this month':
-      return { start: new Date(today.getFullYear(), today.getMonth(), 1), end: endOfToday }
-    case 'this quarter': {
-      const quarter = Math.floor(today.getMonth() / 3)
-      return { start: new Date(today.getFullYear(), quarter * 3, 1), end: endOfToday }
-    }
-    case 'this year':
-      return { start: new Date(today.getFullYear(), 0, 1), end: endOfToday }
-    default:
-      return null
-  }
-}
-
-/** Resolve "last N <unit>" patterns. */
-function resolveLastNUnits(preset: string, today: Date, endOfToday: Date): DateRange | null {
-  const match = preset.match(/^last\s+(\d+)\s+(day|days|week|weeks|month|months|quarter|quarters|year|years)$/i)
-  if (!match) return null
-
-  const num = parseInt(match[1], 10)
-  const unit = match[2].toLowerCase()
-  const startDate = new Date(today)
-
-  if (unit === 'day' || unit === 'days') {
-    startDate.setDate(startDate.getDate() - num + 1)
-  } else if (unit === 'week' || unit === 'weeks') {
-    startDate.setDate(startDate.getDate() - (num * 7) + 1)
-  } else if (unit === 'month' || unit === 'months') {
-    startDate.setMonth(startDate.getMonth() - num)
-    startDate.setDate(startDate.getDate() + 1)
-  } else if (unit === 'quarter' || unit === 'quarters') {
-    startDate.setMonth(startDate.getMonth() - (num * 3))
-    startDate.setDate(startDate.getDate() + 1)
-  } else if (unit === 'year' || unit === 'years') {
-    startDate.setFullYear(startDate.getFullYear() - num)
-    startDate.setDate(startDate.getDate() + 1)
-  }
-
-  return { start: startDate, end: endOfToday }
-}
-
-/** Resolve "last <unit>" (no number) patterns. */
-function resolveLastUnit(preset: string, today: Date): DateRange | null {
-  const match = preset.match(/^last\s+(week|month|quarter|year)$/i)
-  if (!match) return null
-
-  const unit = match[1].toLowerCase()
-
-  if (unit === 'week') {
-    const endOfLastWeek = new Date(today)
-    const dayOfWeek = endOfLastWeek.getDay()
-    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    endOfLastWeek.setDate(endOfLastWeek.getDate() - diff - 1)
-    endOfLastWeek.setHours(23, 59, 59, 999)
-
-    const startOfLastWeek = new Date(endOfLastWeek)
-    startOfLastWeek.setDate(startOfLastWeek.getDate() - 6)
-    startOfLastWeek.setHours(0, 0, 0, 0)
-
-    return { start: startOfLastWeek, end: endOfLastWeek }
-  }
-  if (unit === 'month') {
-    const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-    const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0)
-    endOfLastMonth.setHours(23, 59, 59, 999)
-    return { start: startOfLastMonth, end: endOfLastMonth }
-  }
-  if (unit === 'quarter') {
-    const currentQuarter = Math.floor(today.getMonth() / 3)
-    const lastQuarter = currentQuarter === 0 ? 3 : currentQuarter - 1
-    const lastQuarterYear = currentQuarter === 0 ? today.getFullYear() - 1 : today.getFullYear()
-    const startOfLastQuarter = new Date(lastQuarterYear, lastQuarter * 3, 1)
-    const endOfLastQuarter = new Date(lastQuarterYear, lastQuarter * 3 + 3, 0)
-    endOfLastQuarter.setHours(23, 59, 59, 999)
-    return { start: startOfLastQuarter, end: endOfLastQuarter }
-  }
-  // year
-  const startOfLastYear = new Date(today.getFullYear() - 1, 0, 1)
-  const endOfLastYear = new Date(today.getFullYear() - 1, 11, 31)
-  endOfLastYear.setHours(23, 59, 59, 999)
-  return { start: startOfLastYear, end: endOfLastYear }
-}
-
 /**
- * Calculate actual date range from a preset string
- * Returns start and end dates for display purposes
+ * Calculate the same UTC boundaries used by the query parser.
+ * @param preset - A relative date expression.
+ * @returns The query boundaries, or null for an unknown expression.
  */
 export function calculateDateRange(preset: string): DateRange | null {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const endOfToday = new Date(today)
-  endOfToday.setHours(23, 59, 59, 999)
-
-  const normalized = preset.toLowerCase()
-
-  return (
-    resolveNamedPreset(normalized, today, endOfToday) ??
-    resolveLastNUnits(preset, today, endOfToday) ??
-    resolveLastUnit(preset, today)
-  )
+  return parseRelativeDateRange(preset)
 }
 
 /**
- * Format a date range for display (e.g., "Jan 1, 2024 - Jan 31, 2024")
+ * Format UTC query dates without shifting their calendar days to local time.
+ * @param start - The inclusive start of the query range.
+ * @param end - The inclusive end of the query range.
+ * @returns A compact UTC date label.
  */
 export function formatDateRangeDisplay(start: Date, end: Date): string {
   const options: Intl.DateTimeFormatOptions = {
     month: 'short',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
+    timeZone: 'UTC'
   }
 
   const startStr = start.toLocaleDateString('en-US', options)
@@ -181,8 +70,8 @@ export function formatDateRangeDisplay(start: Date, end: Date): string {
   }
 
   // If same year, omit year from start date
-  if (start.getFullYear() === end.getFullYear()) {
-    const startNoYear: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+  if (start.getUTCFullYear() === end.getUTCFullYear()) {
+    const startNoYear: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', timeZone: 'UTC' }
     return `${start.toLocaleDateString('en-US', startNoYear)} - ${endStr}`
   }
 

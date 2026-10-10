@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useId } from 'react'
 import { useTranslation } from '../../hooks/useTranslation.js'
 import { ComposedChart, XAxis, CartesianGrid } from 'recharts'
 import ChartContainer from './ChartContainer.js'
@@ -9,13 +9,24 @@ import { resolveChartAxisFields } from './chartAxisResolution.js'
 import {
   getDualAxisInfo,
   getYAxisChartMargins,
+  resolveAngledAxisHeight,
+  getPlotLeftOffset,
   withTargetData,
   renderDualYAxes,
   renderChartTargetLines,
   makeCartesianTooltipFormatter,
   renderHoverLegend
 } from './chartScaffolding.js'
-import { buildSeriesKeyToFieldMap, renderAreaSeries, resolveAreaStacking } from './cartesianChartHelpers.js'
+import {
+  buildSeriesKeyToFieldMap,
+  computeSeriesSummaries,
+  makeAxisResolver,
+  isTimeOrderedXAxis,
+  renderAreaGradientDefs,
+  renderAreaSeries,
+  resolveAreaStacking
+} from './cartesianChartHelpers.js'
+import ChartSummaryHeader from './ChartSummaryHeader.js'
 import { transformChartDataWithSeries } from '../../utils/chartUtils.js'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'
 import type { ChartProps } from '../../types.js'
@@ -32,6 +43,10 @@ const AreaChart = React.memo(function AreaChart({
 }: ChartProps) {
   const { t } = useTranslation()
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
+  // Gradient ids must be unique per chart instance or two area portlets on one
+  // dashboard steal each other's fills. useId() emits colons, which are not
+  // reliable inside SVG url(#...) references — strip them.
+  const gradientIdPrefix = `dc-area-${useId().replace(/:/g, '')}`
   // Use specialized hook to avoid re-renders from unrelated context changes
   const getFieldLabel = useCubeFieldLabel()
 
@@ -71,7 +86,7 @@ const AreaChart = React.memo(function AreaChart({
       connectNulls: displayConfig?.connectNulls ?? false
     }
 
-    const showAllXLabels = displayConfig?.showAllXLabels ?? true
+    const showAllXLabels = displayConfig?.showAllXLabels ?? false
 
     // Extract axis format configs
     const leftYAxisFormat = displayConfig?.leftYAxisFormat
@@ -96,8 +111,21 @@ const AreaChart = React.memo(function AreaChart({
     const { effectiveShouldStack, effectiveIsPercentStack, stackOffset } =
       resolveAreaStacking(displayConfig, hasRightAxis)
 
-    // Determine if legend will be shown
-    const showLegend = safeDisplayConfig.showLegend
+    // Summary header: per-series current value + change since the start of the
+    // window, derived from the data already fetched for the plot.
+    const showSummary = displayConfig?.showSummary === true && seriesKeys.length > 0
+    const summaries = showSummary
+      ? computeSeriesSummaries(
+          chartData,
+          seriesKeys,
+          colorPalette,
+          makeAxisResolver((key: string) => seriesKeyToField[key], yAxisAssignment),
+          'name'
+        )
+      : []
+
+    // The summary carries the colour dots, so the bottom legend becomes redundant.
+    const showLegend = safeDisplayConfig.showLegend && !showSummary
 
     // Use custom chart margins with extra space for Y-axis labels
     const chartMargins = getYAxisChartMargins(hasRightAxis)
@@ -117,10 +145,31 @@ const AreaChart = React.memo(function AreaChart({
     }
 
     return (
-      <ChartContainer height={height}>
+      <div className="dc:relative dc:w-full dc:flex dc:flex-col" style={{ height }}>
+        {showSummary && (
+          <ChartSummaryHeader
+            summaries={summaries}
+            getSeriesLabel={(seriesKey) => seriesKey}
+            valueFormat={leftYAxisFormat}
+            rightValueFormat={rightYAxisFormat}
+            showChange={isTimeOrderedXAxis(queryObject, xAxisField)}
+            leftOffset={getPlotLeftOffset(hasRightAxis)}
+          />
+        )}
+        {/* The header wraps, so its height is not knowable up front. Give the
+            plot the remaining flex space rather than subtracting a constant
+            that silently drifts out of sync once the header wraps. */}
+        <div className={showSummary ? 'dc:flex-1 dc:min-h-0' : 'dc:contents'}>
+        <ChartContainer height={showSummary ? '100%' : height} minHeight={showSummary ? 0 : undefined}>
         <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />}
-          <XAxis dataKey="name" type="category" tick={<AngledXAxisTick />} height={60} interval={showAllXLabels ? 0 : undefined} />
+          <XAxis
+            dataKey="name"
+            type="category"
+            tick={<AngledXAxisTick />}
+            height={resolveAngledAxisHeight(enhancedChartData.map((row: any) => row?.name))}
+            interval={showAllXLabels ? 0 : undefined}
+          />
           {renderDualYAxes(axisInfo, getFieldLabel, leftYAxisFormat, rightYAxisFormat, effectiveIsPercentStack)}
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip
@@ -140,6 +189,7 @@ const AreaChart = React.memo(function AreaChart({
             onHover: setHoveredLegend,
             onLeave: () => setHoveredLegend(null)
           })}
+          {!effectiveShouldStack && renderAreaGradientDefs(seriesKeys, colorPalette, gradientIdPrefix)}
           {renderAreaSeries({
             seriesKeys,
             colorPalette,
@@ -148,12 +198,17 @@ const AreaChart = React.memo(function AreaChart({
             hoveredLegend,
             connectNulls: safeDisplayConfig.connectNulls,
             shouldStack: effectiveShouldStack,
+            // Default off: area charts have never drawn plain markers.
+            showPoints: displayConfig?.showPoints ?? false,
             drillEnabled,
-            onDataPointClick
+            onDataPointClick,
+            gradientIdPrefix
           })}
           {renderChartTargetLines(spreadTargets)}
         </ComposedChart>
-      </ChartContainer>
+        </ChartContainer>
+        </div>
+      </div>
     )
   } catch (error) {
     return <ChartRenderError height={height} chartType="Area Chart" error={error} />

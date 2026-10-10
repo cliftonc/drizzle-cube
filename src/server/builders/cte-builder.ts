@@ -20,41 +20,12 @@ import type {
 
 import { resolveSqlExpression } from '../cube-utils.js'
 import type { DrizzleSqlBuilder } from '../physical-plan/drizzle-sql-builder.js'
+import { applyBaseJoins, buildSemiJoinCondition } from '../physical-plan/semi-join.js'
 
 /**
  * CTE information type extracted from runtime physical plan context
  */
 export type CTEInfo = NonNullable<PhysicalQueryPlan['preAggregationCTEs']>[0]
-
-/**
- * Apply a cube's BaseQueryDefinition.joins (intra-cube table-level joins)
- * to a Drizzle query/subquery built from cubeBase.from. Used by the CTE
- * builder for both pre-aggregation CTEs and propagating-filter subqueries
- * to ensure joined-table columns are in scope for SELECTs and WHEREs.
- */
-function applyBaseJoins(
-  query: any,
-  cubeBase: { joins?: Array<{ table: any; on: SQL; type?: 'left' | 'right' | 'inner' | 'full' }> }
-): any {
-  if (!cubeBase.joins) return query
-  for (const join of cubeBase.joins) {
-    switch (join.type || 'left') {
-      case 'left':
-        query = query.leftJoin(join.table, join.on)
-        break
-      case 'inner':
-        query = query.innerJoin(join.table, join.on)
-        break
-      case 'right':
-        query = query.rightJoin(join.table, join.on)
-        break
-      case 'full':
-        query = query.fullJoin(join.table, join.on)
-        break
-    }
-  }
-  return query
-}
 
 /**
  * CTEBuilder handles the construction of Common Table Expressions
@@ -358,7 +329,13 @@ export class CTEBuilder {
       const [filterCubeName, filterFieldName] = filterCondition.member.split('.')
       if (filterCubeName === cubeName && cube.dimensions?.[filterFieldName] && filterCondition.operator === 'inDateRange') {
         const fieldExpr = this.queryBuilder.buildMeasureExpression({ sql: cube.dimensions[filterFieldName].sql, type: 'number' }, context)
-        const dateCondition = this.queryBuilder.buildDateRangeCondition(fieldExpr, filterCondition.values)
+        const dateCondition = this.queryBuilder.buildFilterConditionPublic(
+          fieldExpr,
+          filterCondition.operator,
+          filterCondition.values,
+          cube.dimensions[filterFieldName],
+          filterCondition.dateRange
+        )
         if (dateCondition) {
           cteTimeFilters.push(dateCondition)
         }
@@ -603,45 +580,13 @@ export class CTEBuilder {
       return null
     }
 
-    // Build the combined WHERE condition from filters
-    const combinedWhere = filterConditions.length === 1
-      ? filterConditions[0]
-      : and(...filterConditions)
-
-    // For composite keys, use EXISTS instead of IN for better database compatibility
-    const joinConditions = propFilter.joinConditions
-
-    if (joinConditions.length === 1) {
-      // Single key: use simple IN clause
-      const { source: sourcePK, target: cteFK } = joinConditions[0]
-      let subquery: any = context.db
-        .select({ pk: sourcePK })
-        .from(cubeBase.from)
-      // Apply the source cube's intra-cube table-level joins so any
-      // joined-table column referenced by the propagating filter (or
-      // security WHERE) is in scope.
-      subquery = applyBaseJoins(subquery, cubeBase)
-      subquery = subquery.where(combinedWhere!)
-
-      return sql`${cteFK} IN ${subquery}`
-    } else {
-      // Composite keys: use EXISTS with all join conditions
-      // Build join condition: source.pk1 = cte.fk1 AND source.pk2 = cte.fk2 ...
-      const joinEqualityConditions = joinConditions.map(jc => eq(jc.source, jc.target))
-
-      // Combine join conditions with filter conditions
-      const existsWhere = and(
-        ...joinEqualityConditions,
-        combinedWhere!
-      )
-
-      let existsSubquery: any = context.db
-        .select({ one: sql`1` })
-        .from(cubeBase.from)
-      existsSubquery = applyBaseJoins(existsSubquery, cubeBase)
-      existsSubquery = existsSubquery.where(existsWhere!)
-
-      return sql`EXISTS ${existsSubquery}`
-    }
+    // source = filter cube PK (subquery side), target = CTE cube FK (outer side).
+    // Composite keys use EXISTS instead of IN for database compatibility.
+    return buildSemiJoinCondition(
+      context,
+      cubeBase,
+      propFilter.joinConditions.map(({ source, target }) => ({ outer: target, inner: source })),
+      filterConditions
+    )
   }
 }

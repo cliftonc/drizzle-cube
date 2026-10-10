@@ -77,6 +77,19 @@ export interface QueryContext {
    * without aggregation wrappers. Set from SemanticQuery.ungrouped.
    */
   ungrouped?: boolean
+  /**
+   * Cast an expression to a type, in this engine's dialect (`::decimal` on
+   * Postgres, `CAST(... AS DECIMAL)` elsewhere). Strict: unparseable input
+   * fails the query on Postgres and silently yields `0` on MySQL/SQLite.
+   */
+  cast: (fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer') => SQL
+  /**
+   * Cast an expression to a type, yielding NULL rather than failing when the
+   * input cannot be parsed. Use this over {@link QueryContext.cast} whenever
+   * the source column is free text — one dirty value should leave a row with a
+   * NULL cell, not fail the whole query.
+   */
+  tryCast: (fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer') => SQL
 }
 
 /**
@@ -180,7 +193,26 @@ export interface Dimension {
   /** Whether this is a primary key */
   primaryKey?: boolean
 
-  /** Whether to show in UI */
+  /**
+   * The column this dimension's SQL correlates on, for dimensions built from a
+   * correlated subquery (see `buildAttributeDimensions`).
+   *
+   * A correlated subquery in the SELECT list is only legal under GROUP BY when
+   * the column it correlates on is itself grouped: Postgres otherwise rejects
+   * the query with "subquery uses ungrouped column … from outer query", and
+   * MySQL does the same under `only_full_group_by`. The planner cannot see
+   * inside an opaque `sql` function, so a dimension that needs this declares it
+   * and the GROUP BY builder adds the key.
+   */
+  correlatesOn?: AnyColumn
+
+  /**
+   * Whether to include this dimension in generated cube metadata (`/meta`,
+   * the client field picker, AI prompts). Defaults to `true` (shown) when
+   * omitted. Setting `shown: false` hides the dimension from metadata/UI
+   * only — it remains fully usable in queries and filters, matching Cube.js
+   * semantics for `shown: false`.
+   */
   shown?: boolean
 
   /** Display format */
@@ -196,6 +228,19 @@ export interface Dimension {
    * @example ['year', 'quarter', 'month', 'day'] for a custom subset
    */
   granularities?: TimeGranularity[]
+
+  /**
+   * Whether missing time buckets are filled for this time dimension when a
+   * query or chart does not say. Only applies when type is 'time'.
+   *
+   * - Server: a query that omits `fillMissingDates` is filled only when this is
+   *   `true`. Unset means observed rows only (the Cube.js default).
+   * - Charts: fill gaps by default, like Cube.js. Set `false` where a missing
+   *   bucket means "no data" rather than zero, e.g. daily snapshot tables.
+   *
+   * A query's or chart's own `fillMissingDates` always wins.
+   */
+  fillMissingDates?: boolean
 }
 
 /**
@@ -224,7 +269,13 @@ export interface Measure {
   /** Display format */
   format?: string
 
-  /** Whether to show in UI */
+  /**
+   * Whether to include this measure in generated cube metadata (`/meta`,
+   * the client field picker, AI prompts). Defaults to `true` (shown) when
+   * omitted. Setting `shown: false` hides the measure from metadata/UI
+   * only — it remains fully usable in queries and filters, matching Cube.js
+   * semantics for `shown: false`.
+   */
   shown?: boolean
 
   /** Filters applied to this measure */

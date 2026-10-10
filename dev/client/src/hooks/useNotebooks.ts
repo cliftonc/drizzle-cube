@@ -4,6 +4,8 @@ import type {
   CreateNotebookRequest,
   UpdateNotebookRequest
 } from '../types'
+import { getJson, retryUnlessRequestFault } from './api'
+export { isNotFound } from './api'
 
 const API_BASE = '/api/notebooks'
 
@@ -11,14 +13,8 @@ const API_BASE = '/api/notebooks'
 export function useNotebooks() {
   return useQuery({
     queryKey: ['notebooks'],
-    queryFn: async (): Promise<Notebook[]> => {
-      const response = await fetch(API_BASE)
-      if (!response.ok) {
-        throw new Error('Failed to fetch notebooks')
-      }
-      const data = await response.json()
-      return data.data
-    }
+    queryFn: () => getJson<Notebook[]>(API_BASE, 'Failed to fetch notebooks'),
+    retry: retryUnlessRequestFault
   })
 }
 
@@ -26,15 +22,9 @@ export function useNotebooks() {
 export function useNotebook(id: number | string) {
   return useQuery({
     queryKey: ['notebooks', id],
-    queryFn: async (): Promise<Notebook> => {
-      const response = await fetch(`${API_BASE}/${id}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch notebook')
-      }
-      const data = await response.json()
-      return data.data
-    },
-    enabled: !!id
+    queryFn: () => getJson<Notebook>(`${API_BASE}/${id}`, 'Failed to fetch notebook'),
+    enabled: !!id,
+    retry: retryUnlessRequestFault
   })
 }
 

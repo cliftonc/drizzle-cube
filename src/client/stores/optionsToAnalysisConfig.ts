@@ -47,6 +47,7 @@ export function queryToState(query: CubeQuery): AnalysisBuilderState {
       granularity: td.granularity,
       isTimeDimension: true,
       enableComparison: Boolean(td.compareDateRange && td.compareDateRange.length > 0),
+      ...(td.fillMissingDates !== undefined && { fillMissingDates: td.fillMissingDates }),
     })),
   ]
 
@@ -107,6 +108,7 @@ export function queryToState(query: CubeQuery): AnalysisBuilderState {
     breakdowns,
     filters,
     order: query.order,
+    ...(query.fillMissingDatesValue !== undefined && { fillMissingDatesValue: query.fillMissingDatesValue }),
   }
 }
 

@@ -376,4 +376,88 @@ describe('useCubeLoadQuery', () => {
       })
     })
   })
+
+  describe('gapFill option (issue #1368)', () => {
+    const timeQuery: CubeQuery = {
+      measures: ['Employees.count'],
+      timeDimensions: [{ dimension: 'Employees.createdAt', granularity: 'day', dateRange: ['2026-08-01', '2026-08-03'] }]
+    }
+    const observed = [
+      { 'Employees.createdAt': '2026-08-01T00:00:00.000Z', 'Employees.count': 12 },
+      { 'Employees.createdAt': '2026-08-03T00:00:00.000Z', 'Employees.count': 14 }
+    ]
+    const respondWith = (cubeFill?: boolean) => {
+      const response = {
+        results: [{
+          query: timeQuery,
+          data: observed,
+          annotation: {
+            measures: {},
+            dimensions: {},
+            timeDimensions: { 'Employees.createdAt': { title: 'Created', type: 'time', fillMissingDates: cubeFill } }
+          }
+        }]
+      }
+      server.use(
+        http.get('*/cubejs-api/v1/load', () => HttpResponse.json(response)),
+        http.post('*/cubejs-api/v1/load', () => HttpResponse.json(response))
+      )
+    }
+
+    it('returns raw rows without gapFill', async () => {
+      respondWith()
+      const { wrapper } = createHookWrapper()
+      const { result } = renderHook(() => useCubeLoadQuery(timeQuery, { debounceMs: 0 }), { wrapper })
+
+      await waitFor(() => {
+        expect(result.current.rawData).toEqual(observed)
+      })
+    })
+
+    it('fills missing buckets for a chart', async () => {
+      respondWith()
+      const { wrapper } = createHookWrapper()
+      const { result } = renderHook(() => useCubeLoadQuery(timeQuery, { debounceMs: 0, gapFill: {} }), { wrapper })
+
+      await waitFor(() => {
+        expect(result.current.rawData).toHaveLength(3)
+      })
+      expect(result.current.resultSet?.rawData()[1]).toEqual({
+        'Employees.createdAt': '2026-08-02T00:00:00.000Z',
+        'Employees.count': 0
+      })
+    })
+
+    it('respects the cube time dimension turning filling off', async () => {
+      respondWith(false)
+      const { wrapper } = createHookWrapper()
+      const { result } = renderHook(() => useCubeLoadQuery(timeQuery, { debounceMs: 0, gapFill: {} }), { wrapper })
+
+      await waitFor(() => {
+        expect(result.current.rawData).toEqual(observed)
+      })
+    })
+
+    it('fills missing buckets with the query fillMissingDatesValue', async () => {
+      // Echo the sent query, as the server does, so the chart fills from it
+      server.use(
+        http.get('*/cubejs-api/v1/load', ({ request }) => HttpResponse.json({
+          query: JSON.parse(new URL(request.url).searchParams.get('query') || '{}'),
+          data: observed,
+          annotation: { measures: {}, dimensions: {}, timeDimensions: {} }
+        }))
+      )
+      const { wrapper } = createHookWrapper()
+      const query: CubeQuery = { ...timeQuery, fillMissingDatesValue: null }
+      const { result } = renderHook(() => useCubeLoadQuery(query, { debounceMs: 0, gapFill: {} }), { wrapper })
+
+      await waitFor(() => {
+        expect(result.current.rawData).toHaveLength(3)
+      })
+      expect(result.current.resultSet?.rawData()[1]).toEqual({
+        'Employees.createdAt': '2026-08-02T00:00:00.000Z',
+        'Employees.count': null
+      })
+    })
+  })
 })

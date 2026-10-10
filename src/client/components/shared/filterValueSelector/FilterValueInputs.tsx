@@ -163,7 +163,7 @@ export function MultiDateInput({ values, onValuesChange, onValueRemove }: MultiD
 }
 
 interface ComboBoxInputProps {
-  dropdownRef: React.RefObject<HTMLDivElement>
+  dropdownRef: React.RefObject<HTMLDivElement | null>
   supportsMultipleValues: boolean
   values: any[]
   isOpen: boolean

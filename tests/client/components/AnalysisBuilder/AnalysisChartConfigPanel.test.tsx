@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AnalysisChartConfigPanel from '../../../../src/client/components/AnalysisBuilder/AnalysisChartConfigPanel'
+import { useChartConfig } from '../../../../src/client/charts/lazyChartConfigRegistry'
 import type { MetricItem, BreakdownItem } from '../../../../src/client/components/AnalysisBuilder/types'
 import type { ChartType, ChartAxisConfig } from '../../../../src/client/types'
 import type { MetaResponse } from '../../../../src/client/shared/types'
@@ -99,6 +100,76 @@ describe('AnalysisChartConfigPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  // A content-first chart has no drop zones, so the Chart tab would otherwise be
+  // an empty panel while its main input sat in a sidebar box. An option can ask
+  // to be rendered here instead — see `placement` on DisplayOptionConfig.
+  describe('chart-placed display options', () => {
+    const contentOption = {
+      key: 'content',
+      label: 'Markdown Content',
+      type: 'string' as const,
+      placement: 'chart' as const,
+      syntax: 'markdownTemplate' as const,
+      rows: 18
+    }
+
+    const mocked = vi.mocked(useChartConfig)
+    // Every other test in this file leans on the shared mock, so the override
+    // is put back afterwards rather than left in place.
+    const sharedImplementation = mocked.getMockImplementation()
+
+    afterEach(() => {
+      if (sharedImplementation) mocked.mockImplementation(sharedImplementation)
+    })
+
+    function mockConfigWithContentOnChartTab() {
+      mocked.mockImplementation(() => ({
+        config: { skipQuery: true, dropZones: [], displayOptionsConfig: [contentOption] },
+        loading: false,
+        loaded: true
+      }))
+    }
+
+    it('renders an option that asks to appear on the chart tab', () => {
+      mockConfigWithContentOnChartTab()
+
+      render(
+        <AnalysisChartConfigPanel
+          {...defaultProps}
+          displayConfig={{ content: '## Hello' }}
+          onDisplayConfigChange={vi.fn()}
+        />
+      )
+
+      expect(screen.getByRole('textbox')).toHaveValue('## Hello')
+    })
+
+    it('leaves the option out when the panel has no display config to edit', () => {
+      mockConfigWithContentOnChartTab()
+
+      render(<AnalysisChartConfigPanel {...defaultProps} />)
+
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
+
+    it('reports edits through onDisplayConfigChange', async () => {
+      mockConfigWithContentOnChartTab()
+      const onDisplayConfigChange = vi.fn()
+      const user = userEvent.setup()
+
+      render(
+        <AnalysisChartConfigPanel
+          {...defaultProps}
+          displayConfig={{ content: '' }}
+          onDisplayConfigChange={onDisplayConfigChange}
+        />
+      )
+      await user.type(screen.getByRole('textbox'), '#')
+
+      expect(onDisplayConfigChange).toHaveBeenCalledWith({ content: '#' })
+    })
   })
 
   describe('chart type selection', () => {

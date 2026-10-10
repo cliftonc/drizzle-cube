@@ -4,17 +4,19 @@
  * Operates on raw load results + query metadata (no CubeProvider context needed).
  */
 
-import type { ChartType } from '../client/types.js'
+import { isSankeyData } from '../client/types/flow.js'
 import { isChartAvailableForShape } from './chartAvailability.js'
-
-/** Chart types available in the MCP App (subset of full ChartType) */
-export type McpChartType = ChartType
+import type { McpAppChartType } from './chartTypes.js'
 
 export interface ChartSelection {
-  chartType: McpChartType
+  chartType: McpAppChartType
   xAxis: string[]
   yAxis: string[]
   series: string[]
+  /** Measure field for charts that separate the value from the axes (e.g. heatmap). */
+  valueField?: string[]
+  /** Ordered columns for the records table, which does not use x/y axes. */
+  columns?: string[]
 }
 
 interface LoadQuery {
@@ -29,14 +31,6 @@ interface LoadQuery {
   order?: Record<string, string>
   limit?: number
 }
-
-/** Chart types shown in the MCP App switcher */
-export const SUPPORTED_CHARTS: McpChartType[] = [
-  'bar', 'line', 'area', 'pie', 'scatter', 'kpiNumber', 'table', 'treemap',
-  'radar', 'radialBar', 'bubble', 'funnel', 'waterfall', 'gauge',
-  'heatmap', 'sankey', 'sunburst', 'boxPlot', 'activityGrid',
-  'kpiDelta', 'kpiText', 'candlestick', 'measureProfile',
-]
 
 function getMeasures(query: LoadQuery): string[] {
   return query.measures || []
@@ -117,7 +111,12 @@ function getDefaultChartAxes(query: LoadQuery): Omit<ChartSelection, 'chartType'
 /**
  * Check if a chart type is available for the given query shape
  */
-export function isChartAvailable(chartType: McpChartType, query: LoadQuery, rowCount: number): boolean {
+export function isChartAvailable(
+  chartType: McpAppChartType,
+  query: LoadQuery,
+  rowCount: number,
+  hasFlowData = false,
+): boolean {
   const dimensions = getDimensions(query)
 
   return isChartAvailableForShape(chartType, {
@@ -126,13 +125,19 @@ export function isChartAvailable(chartType: McpChartType, query: LoadQuery, rowC
     hasTimeDim: getChartTimeDimensions(query).length > 0,
     dimensionCount: dimensions.length,
     rowCount,
+    hasFlowData,
   })
 }
 
 /**
  * Select the best chart type based on query + data shape
  */
-export function autoSelectChartType(query: LoadQuery, data: any[]): McpChartType {
+export function autoSelectChartType(query: LoadQuery, data: any[]): McpAppChartType {
+  // Flow queries return a single-row payload of { nodes, links } — visualize as Sankey.
+  if (isSankeyData(data[0])) {
+    return 'sankey'
+  }
+
   const measures = getMeasures(query)
   const dimensions = getDimensions(query)
   const timeDims = getChartTimeDimensions(query)
@@ -166,13 +171,37 @@ export function autoSelectChartType(query: LoadQuery, data: any[]): McpChartType
   return 'table'
 }
 
-export function deriveChartConfig(query: LoadQuery, data: any[], chartType: McpChartType): ChartSelection {
+export function deriveChartConfig(query: LoadQuery, data: any[], chartType: McpAppChartType): ChartSelection {
   if (chartType === 'table') {
     return {
       chartType,
       xAxis: getTableColumns(query, data),
       yAxis: [],
       series: [],
+    }
+  }
+
+  if (chartType === 'recordsTable') {
+    // Same column derivation as `table`, under the records table's own key.
+    return {
+      chartType,
+      columns: getTableColumns(query, data),
+      xAxis: [],
+      yAxis: [],
+      series: [],
+    }
+  }
+
+  if (chartType === 'heatmap') {
+    // Heatmap maps two dimensions onto the axes and a measure onto cell intensity.
+    const dimensions = getDimensions(query)
+    const measures = getMeasures(query)
+    return {
+      chartType,
+      xAxis: dimensions.slice(0, 1),
+      yAxis: dimensions.slice(1, 2),
+      series: [],
+      valueField: measures.slice(0, 1),
     }
   }
 

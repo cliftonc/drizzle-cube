@@ -5,7 +5,7 @@
  * Uses FilterValueSelector for the actual value input.
  */
 
-import React, { useEffect, useRef, useCallback } from 'react'
+import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react'
 import FilterValueSelector from '../shared/FilterValueSelector.js'
 import type { SimpleFilter, CubeMeta } from '../../types.js'
 import type { MetaResponse } from '../../shared/types.js'
@@ -16,7 +16,7 @@ interface FilterValuePopoverProps {
   schema: CubeMeta | null
   onValuesChange: (values: any[]) => void
   onClose: () => void
-  anchorRef: React.RefObject<HTMLElement>
+  anchorRef: React.RefObject<HTMLElement | null>
 }
 
 // Convert CubeMeta to MetaResponse format
@@ -62,6 +62,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
 }) => {
   const { t } = useTranslation()
   const popoverRef = useRef<HTMLDivElement>(null)
+  const [dateDraft, setDateDraft] = useState<{ filter: SimpleFilter, values: SimpleFilter['values'] } | null>(null)
 
   // Handle click outside to close
   useEffect(() => {
@@ -95,13 +96,27 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
     }
   }, [onClose, anchorRef])
 
-  // Handle value change
-  const handleValuesChange = useCallback((newValues: any[]) => {
+  /**
+   * Keep incomplete date edits local until both endpoints are set or cleared.
+   * @param newValues - Values emitted by the native selector.
+   */
+  const handleValuesChange = useCallback((newValues: SimpleFilter['values']) => {
+    if (
+      filter.operator === 'inDateRange' && newValues.length === 2 &&
+      newValues.some(value => value === '') && newValues.some(value => value !== '')
+    ) {
+      setDateDraft({ filter, values: newValues })
+      return
+    }
+    setDateDraft(null)
     onValuesChange(newValues)
-  }, [onValuesChange])
+  }, [filter, onValuesChange])
 
   // Convert schema to MetaResponse format
-  const metaResponse = convertToMetaResponse(schema)
+  const metaResponse = useMemo(() => convertToMetaResponse(schema), [schema])
+  const values = filter.operator === 'inDateRange' && filter.dateRange
+    ? (Array.isArray(filter.dateRange) ? filter.dateRange : [filter.dateRange])
+    : filter.values || []
 
   return (
     <div
@@ -126,7 +141,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
         <FilterValueSelector
           fieldName={filter.member}
           operator={filter.operator}
-          values={filter.values || []}
+          values={dateDraft?.filter === filter ? dateDraft.values : values}
           onValuesChange={handleValuesChange}
           schema={metaResponse}
         />
@@ -137,7 +152,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium dc:rounded dc:border dc:transition-colors"
+          className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium dc:rounded-sm dc:border dc:transition-colors"
           style={{
             borderColor: 'var(--dc-border)',
             color: 'var(--dc-text-secondary)',

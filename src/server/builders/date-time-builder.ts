@@ -26,6 +26,7 @@ import {
   normalizeDateValue,
   parseRelativeDateRangeValue
 } from './date-time-helpers.js'
+import { validateDateTuple, dateRangeInputDiagnostic } from './in-date-range-validation.js'
 
 export class DateTimeBuilder {
   constructor(private databaseAdapter: DatabaseAdapter) {}
@@ -54,11 +55,15 @@ export class DateTimeBuilder {
    */
   buildDateRangeCondition(
     fieldExpr: AnyColumn | SQL,
-    dateRange: string | string[]
+    dateRange: unknown
   ): SQL | null {
-    if (!dateRange) return null
+    if (dateRange === undefined || dateRange === null) return null
 
     if (Array.isArray(dateRange)) {
+      // A one-element array (['last 7 days'], ['2024-01-15']) is a single expression
+      if (dateRange.length === 1 && typeof dateRange[0] === 'string') {
+        return this.buildStringDateRangeCondition(fieldExpr, dateRange[0])
+      }
       return this.buildArrayDateRangeCondition(fieldExpr, dateRange)
     }
 
@@ -66,7 +71,7 @@ export class DateTimeBuilder {
       return this.buildStringDateRangeCondition(fieldExpr, dateRange)
     }
 
-    return null
+    throw new Error(dateRangeInputDiagnostic({ valid: false, reason: 'shape', input: 'dateRange' }))
   }
 
   private rangeBetween(
@@ -90,13 +95,16 @@ export class DateTimeBuilder {
   private buildArrayDateRangeCondition(
     fieldExpr: AnyColumn | SQL,
     dateRange: string[]
-  ): SQL | null {
-    if (dateRange.length < 2) return null
+  ): SQL {
+    const reason = validateDateTuple(dateRange)
+    if (reason) throw new Error(dateRangeInputDiagnostic({ valid: false, reason, input: 'dateRange' }))
 
     const startDate = this.normalizeDate(dateRange[0])
     let endDate = this.normalizeDate(dateRange[1])
 
-    if (!startDate || !endDate) return null
+    if (startDate === null || endDate === null) {
+      throw new Error(dateRangeInputDiagnostic({ valid: false, reason: 'invalidDate', input: 'dateRange' }))
+    }
 
     // For date-only strings, treat end date as end-of-day (23:59:59.999)
     // to include all records on that day
@@ -121,7 +129,9 @@ export class DateTimeBuilder {
 
     // Handle absolute date (single date)
     const normalizedDate = this.normalizeDate(dateRange)
-    if (!normalizedDate) return null
+    if (normalizedDate === null) {
+      throw new Error(dateRangeInputDiagnostic({ valid: false, reason: 'invalidRelative', input: 'dateRange' }))
+    }
 
     // For single date, create range for the whole day
     const dateObj = engineValueToDate(this.databaseAdapter, normalizedDate)
@@ -138,8 +148,7 @@ export class DateTimeBuilder {
   }
 
   /**
-   * Parse relative date range expressions like "today", "yesterday", "last 7 days", "this month", etc.
-   * Handles all 14 DATE_RANGE_OPTIONS from the client
+   * Parse relative date range expressions like "today", "yesterday", "last 7 days", "this month", "next week", etc.
    */
   parseRelativeDateRange(dateRange: string): { start: Date; end: Date } | null {
     return parseRelativeDateRangeValue(dateRange)

@@ -6,6 +6,7 @@
  */
 import { Link } from 'react-router-dom'
 import { NAV_ITEMS, LOCALE_OPTIONS } from './layoutNav'
+import { DEMO_ORGANISATIONS, getOrganisationId, setOrganisationId } from '../organisation'
 
 // GitHub icon component
 export const GitHubIcon = ({ className }: { className?: string }) => (
@@ -81,6 +82,35 @@ export function LanguageSelect({ locale, onLocaleChange, className }: LanguageSe
       {LOCALE_OPTIONS.map(option => (
         <option key={option.value} value={option.value}>
           {option.label}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+interface OrganisationSelectProps {
+  className: string
+}
+
+/**
+ * Switch the demo tenant.
+ *
+ * The two seeded organisations define different user-defined attributes, so
+ * changing this changes the cube set `/meta` returns — the records-table
+ * dashboard gains and loses columns accordingly.
+ */
+export function OrganisationSelect({ className }: OrganisationSelectProps) {
+  return (
+    <select
+      value={getOrganisationId()}
+      onChange={(event) => setOrganisationId(Number(event.target.value))}
+      className={className}
+      aria-label="Select organisation"
+      title="Each organisation defines its own attributes, so the cube set differs"
+    >
+      {DEMO_ORGANISATIONS.map(organisation => (
+        <option key={organisation.id} value={organisation.id}>
+          {organisation.name}
         </option>
       ))}
     </select>

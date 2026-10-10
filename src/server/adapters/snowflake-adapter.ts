@@ -127,6 +127,24 @@ export class SnowflakeAdapter extends BaseDatabaseAdapter {
     }
   }
 
+  /**
+   * Build Snowflake tolerant type casting using the native TRY_CAST function, which returns
+   * NULL on conversion failure instead of raising an error (unlike `::`/CAST). Snowflake's
+   * TRY_CAST supports VARCHAR, NUMBER-family types (including DECIMAL) and TIMESTAMP.
+   */
+  tryCastToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL {
+    switch (targetType) {
+      case 'timestamp':
+        return sql`TRY_CAST(${fieldExpr} AS TIMESTAMP)`
+      case 'decimal':
+        return sql`TRY_CAST(${fieldExpr} AS DECIMAL)`
+      case 'integer':
+        return sql`TRY_CAST(${fieldExpr} AS INTEGER)`
+      default:
+        throw new Error(`Unsupported cast type: ${targetType}`)
+    }
+  }
+
   // ============================================
   // Statistical & Window Function Methods
   // ============================================

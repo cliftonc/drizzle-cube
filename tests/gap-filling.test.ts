@@ -15,19 +15,24 @@ import {
   fillTimeSeriesGaps,
   parseDateRange,
   applyGapFilling
-} from '../src/server/gap-filler'
+} from '../src/shared/gap-filler'
+import { applyServerGapFilling } from '../src/server/gap-filler'
+
+/** Fill every eligible time dimension — isolates the bucket mechanics from the policy. */
+const fillAll = () => true
 
 describe('Gap Filling', () => {
   let testExecutor: TestExecutor
+  let queryExecutor: QueryExecutor
   let cubes: Map<string, Cube>
   let close: () => void
 
   beforeAll(async () => {
     const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
-    const executor = new QueryExecutor(dbExecutor)
+    queryExecutor = new QueryExecutor(dbExecutor)
     close = cleanup
     cubes = await getTestCubes(['Productivity', 'Employees'])
-    testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
+    testExecutor = new TestExecutor(queryExecutor, cubes, testSecurityContexts.org1)
   })
 
   afterAll(() => {
@@ -303,40 +308,20 @@ describe('Gap Filling', () => {
   })
 
   describe('Unit Tests - applyGapFilling', () => {
-    it('should skip filling when fillMissingDates is false', () => {
+    it('should not fill unless the caller says so', () => {
       const data = [
         { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }
       ]
 
       const result = applyGapFilling(data, {
-        measures: ['Sales.revenue'],
-        timeDimensions: [{
-          dimension: 'Sales.date',
-          granularity: 'day',
-          dateRange: ['2024-01-01', '2024-01-03'],
-          fillMissingDates: false
-        }]
-      }, ['Sales.revenue'])
-
-      expect(result).toHaveLength(1) // Not filled
-    })
-
-    it('should fill by default (fillMissingDates defaults to true)', () => {
-      const data = [
-        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }
-      ]
-
-      const result = applyGapFilling(data, {
-        measures: ['Sales.revenue'],
         timeDimensions: [{
           dimension: 'Sales.date',
           granularity: 'day',
           dateRange: ['2024-01-01', '2024-01-03']
-          // fillMissingDates not specified - should default to true
         }]
-      }, ['Sales.revenue'])
+      }, ['Sales.revenue'], () => false)
 
-      expect(result).toHaveLength(3) // Filled
+      expect(result).toHaveLength(1)
     })
 
     it('should skip when no granularity', () => {
@@ -351,7 +336,7 @@ describe('Gap Filling', () => {
           dateRange: ['2024-01-01', '2024-01-03']
           // No granularity - cannot fill gaps
         }]
-      }, ['Sales.revenue'])
+      }, ['Sales.revenue'], fillAll)
 
       expect(result).toHaveLength(1) // Not filled
     })
@@ -368,7 +353,7 @@ describe('Gap Filling', () => {
           granularity: 'day'
           // No dateRange - cannot determine bounds
         }]
-      }, ['Sales.revenue'])
+      }, ['Sales.revenue'], fillAll)
 
       expect(result).toHaveLength(1) // Not filled
     })
@@ -391,7 +376,7 @@ describe('Gap Filling', () => {
           operator: 'inDateRange',
           values: ['2024-01-01', '2024-01-03']
         }]
-      }, ['Sales.revenue'])
+      }, ['Sales.revenue'], fillAll)
 
       expect(result).toHaveLength(3)
       expect(result[0]['Sales.revenue']).toBe(100)
@@ -417,7 +402,7 @@ describe('Gap Filling', () => {
           values: [],
           dateRange: 'this year'
         }]
-      }, ['Sales.revenue'])
+      }, ['Sales.revenue'], fillAll)
 
       // Should have 12 months for the current year
       expect(result).toHaveLength(12)
@@ -441,7 +426,7 @@ describe('Gap Filling', () => {
           values: [],
           dateRange: ['2024-01-01', '2024-01-05']
         }]
-      }, ['Sales.revenue'])
+      }, ['Sales.revenue'], fillAll)
 
       expect(result).toHaveLength(5)
       expect(result[0]['Sales.revenue']).toBe(100)
@@ -468,7 +453,7 @@ describe('Gap Filling', () => {
             values: ['2024-01-01', '2024-01-03']
           }]
         }]
-      }, ['Sales.revenue'])
+      }, ['Sales.revenue'], fillAll)
 
       expect(result).toHaveLength(3)
     })
@@ -490,7 +475,7 @@ describe('Gap Filling', () => {
           operator: 'inDateRange',
           values: ['2024-01-01', '2024-01-05'] // Wider range on filter
         }]
-      }, ['Sales.revenue'])
+      }, ['Sales.revenue'], fillAll)
 
       // Should use timeDimension dateRange (2 days), not filter (5 days)
       expect(result).toHaveLength(2)
@@ -509,22 +494,116 @@ describe('Gap Filling', () => {
           dateRange: ['2024-01-01', '2024-01-02']
         }],
         fillMissingDatesValue: null
-      }, ['Sales.revenue'])
+      }, ['Sales.revenue'], fillAll)
 
       expect(result).toHaveLength(2)
       expect(result[1]['Sales.revenue']).toBeNull()
     })
   })
 
+  describe('Unit Tests - applyServerGapFilling (issue #1368)', () => {
+    const snapshotRows = () => [
+      { 'Snapshots.date': '2026-08-01T00:00:00.000Z', 'Snapshots.compliantCount': 12 },
+      { 'Snapshots.date': '2026-08-03T00:00:00.000Z', 'Snapshots.compliantCount': 14 }
+    ]
+    const snapshotQuery = (fillMissingDates?: boolean) => ({
+      measures: ['Snapshots.compliantCount'],
+      timeDimensions: [{
+        dimension: 'Snapshots.date',
+        granularity: 'day' as const,
+        dateRange: ['2026-08-01', '2026-08-03'],
+        ...(fillMissingDates !== undefined && { fillMissingDates })
+      }]
+    })
+    const snapshotCubes = (fillMissingDates?: boolean) => new Map([
+      ['Snapshots', { name: 'Snapshots', dimensions: { date: { type: 'time', fillMissingDates } } } as unknown as Cube]
+    ])
+
+    it('returns observed rows only when the query omits fillMissingDates', () => {
+      expect(applyServerGapFilling(snapshotRows(), snapshotQuery())).toEqual(snapshotRows())
+    })
+
+    it('fills the missing bucket when the query enables fillMissingDates', () => {
+      const result = applyServerGapFilling(snapshotRows(), snapshotQuery(true))
+      expect(result).toHaveLength(3)
+      expect(result[1]).toEqual({ 'Snapshots.date': '2026-08-02T00:00:00.000Z', 'Snapshots.compliantCount': 0 })
+    })
+
+    it('fills when the cube time dimension enables fillMissingDates', () => {
+      expect(applyServerGapFilling(snapshotRows(), snapshotQuery(), snapshotCubes(true))).toHaveLength(3)
+    })
+
+    it('lets the query override the cube time dimension', () => {
+      expect(applyServerGapFilling(snapshotRows(), snapshotQuery(false), snapshotCubes(true))).toHaveLength(2)
+      expect(applyServerGapFilling(snapshotRows(), snapshotQuery(true), snapshotCubes(false))).toHaveLength(3)
+    })
+
+    it('fills by default only when asked to (comparison periods)', () => {
+      expect(applyServerGapFilling(snapshotRows(), snapshotQuery(), undefined, true)).toHaveLength(3)
+      expect(applyServerGapFilling(snapshotRows(), snapshotQuery(), snapshotCubes(false), true)).toHaveLength(2)
+    })
+
+    it('never fills ungrouped queries', () => {
+      const query = { ...snapshotQuery(), ungrouped: true }
+      expect(applyServerGapFilling(snapshotRows(), query, snapshotCubes(true))).toHaveLength(2)
+    })
+  })
+
   describe('Integration Tests - Query Execution', () => {
+    it('should return observed rows only by default (issue #1368)', async () => {
+      const query = TestQueryBuilder.create()
+        .measures(['Productivity.recordCount'])
+        .timeDimensions([{
+          dimension: 'Productivity.date',
+          granularity: 'day',
+          dateRange: ['2030-01-01', '2030-01-03'] // Future dates - no data
+        }])
+        .build()
+
+      const result = await testExecutor.executeQuery(query)
+
+      expect(result.data).toHaveLength(0)
+    })
+
+    it('should fill when the cube time dimension enables fillMissingDates', async () => {
+      const productivity = cubes.get('Productivity')!
+      const fillingCubes = new Map(cubes)
+      fillingCubes.set('Productivity', {
+        ...productivity,
+        dimensions: {
+          ...productivity.dimensions,
+          date: { ...productivity.dimensions.date, fillMissingDates: true }
+        }
+      })
+      const fillingExecutor = new TestExecutor(queryExecutor, fillingCubes, testSecurityContexts.org1)
+      const timeDimension = {
+        dimension: 'Productivity.date',
+        granularity: 'day' as const,
+        dateRange: ['2030-01-01', '2030-01-03']
+      }
+
+      const filled = await fillingExecutor.executeQuery({
+        measures: ['Productivity.recordCount'],
+        timeDimensions: [timeDimension]
+      })
+      expect(filled.data).toHaveLength(3)
+      expect(filled.annotation.timeDimensions['Productivity.date'].fillMissingDates).toBe(true)
+
+      const overridden = await fillingExecutor.executeQuery({
+        measures: ['Productivity.recordCount'],
+        timeDimensions: [{ ...timeDimension, fillMissingDates: false }]
+      })
+      expect(overridden.data).toHaveLength(0)
+    })
+
     it('should fill gaps in time series query results', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.recordCount', 'Productivity.totalLinesOfCode'])
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'day',
-          dateRange: ['2024-01-01', '2024-01-07']
-          // fillMissingDates defaults to true
+          dateRange: ['2024-01-01', '2024-01-07'],
+          fillMissingDates: true
         }])
         .order({ 'Productivity.date': 'asc' })
         .build()
@@ -587,7 +666,8 @@ describe('Gap Filling', () => {
         timeDimensions: [{
           dimension: 'Productivity.date',
           granularity: 'day',
-          dateRange: ['2024-01-01', '2024-01-03']
+          dateRange: ['2024-01-01', '2024-01-03'],
+          fillMissingDates: true
         }],
         fillMissingDatesValue: null
       }
@@ -612,7 +692,8 @@ describe('Gap Filling', () => {
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'day',
-          dateRange: ['2024-01-01', '2024-01-03']
+          dateRange: ['2024-01-01', '2024-01-03'],
+          fillMissingDates: true
         }])
         .build()
 
@@ -640,7 +721,8 @@ describe('Gap Filling', () => {
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'month',
-          dateRange: ['2024-01-01', '2024-06-30']
+          dateRange: ['2024-01-01', '2024-06-30'],
+          fillMissingDates: true
         }])
         .order({ 'Productivity.date': 'asc' })
         .build()
@@ -657,7 +739,8 @@ describe('Gap Filling', () => {
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'week',
-          dateRange: ['2024-01-01', '2024-01-28']
+          dateRange: ['2024-01-01', '2024-01-28'],
+          fillMissingDates: true
         }])
         .order({ 'Productivity.date': 'asc' })
         .build()
@@ -683,7 +766,8 @@ describe('Gap Filling', () => {
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'year',
-          dateRange: ['2022-01-01', '2024-12-31']
+          dateRange: ['2022-01-01', '2024-12-31'],
+          fillMissingDates: true
         }])
         .order({ 'Productivity.date': 'asc' })
         .build()
@@ -702,7 +786,8 @@ describe('Gap Filling', () => {
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'day',
-          dateRange: ['2024-01-15', '2024-01-15']
+          dateRange: ['2024-01-15', '2024-01-15'],
+          fillMissingDates: true
         }])
         .build()
 
@@ -717,7 +802,8 @@ describe('Gap Filling', () => {
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'day',
-          dateRange: ['2030-01-01', '2030-01-03'] // Future dates - no data
+          dateRange: ['2030-01-01', '2030-01-03'], // Future dates - no data
+          fillMissingDates: true
         }])
         .build()
 
@@ -737,7 +823,8 @@ describe('Gap Filling', () => {
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'month',
-          dateRange: ['2024-01-01', '2024-01-31']
+          dateRange: ['2024-01-01', '2024-01-31'],
+          fillMissingDates: true
         }])
         .build()
 
@@ -753,7 +840,8 @@ describe('Gap Filling', () => {
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'quarter',
-          dateRange: ['2024-01-01', '2024-12-31']
+          dateRange: ['2024-01-01', '2024-12-31'],
+          fillMissingDates: true
         }])
         .order({ 'Productivity.date': 'asc' })
         .build()

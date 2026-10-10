@@ -49,6 +49,23 @@ export const connectNullsDisplayOption: DisplayOptionConfig = {
   description: 'chart.option.connectNulls.description'
 }
 
+/**
+ * Gap-filling control for time-series charts (issue #1368). `auto` follows the
+ * query, then the cube time dimension's `fillMissingDates`, then fills.
+ */
+export const fillMissingDatesDisplayOption: DisplayOptionConfig = {
+  key: 'fillMissingDates',
+  label: 'chart.option.fillMissingDates.label',
+  type: 'buttonGroup',
+  defaultValue: 'auto',
+  options: [
+    { value: 'auto', label: 'chart.option.fillMissingDates.auto' },
+    { value: true, label: 'chart.option.fillMissingDates.on' },
+    { value: false, label: 'chart.option.fillMissingDates.off' }
+  ],
+  description: 'chart.option.fillMissingDates.description'
+}
+
 /** Left Y-axis numeric format control (dual-axis charts). */
 export const leftYAxisFormatDisplayOption: DisplayOptionConfig = {
   key: 'leftYAxisFormat',
@@ -97,5 +114,52 @@ export function stackTypeDisplayOption(description: string): DisplayOptionConfig
       { value: 'percent', label: 'chart.option.stacking.percent' }
     ],
     description
+  }
+}
+
+/**
+ * Layout density for the KPI charts.
+ *
+ * `auto` keeps the historic behaviour, where the value's font size is derived
+ * from the portlet box — which makes a wide portlet render an enormous number.
+ * `compact` uses a fixed type scale so several KPIs read as a tidy metric strip.
+ */
+export const kpiLayoutDisplayOption: DisplayOptionConfig = {
+  key: 'layout',
+  label: 'chart.option.kpiLayout.label',
+  type: 'buttonGroup',
+  defaultValue: 'auto',
+  options: [
+    { value: 'auto', label: 'chart.option.kpiLayout.auto' },
+    { value: 'compact', label: 'chart.option.kpiLayout.compact' }
+  ],
+  description: 'chart.option.kpiLayout.description'
+}
+
+/**
+ * Summary-band toggle for the time-series charts.
+ *
+ * Renders each series' latest value and its change since the start of the
+ * window above the plot, so the chart is readable without hovering.
+ */
+export const showSummaryDisplayOption: DisplayOptionConfig = {
+  key: 'showSummary',
+  label: 'chart.option.showSummary.label',
+  type: 'boolean',
+  defaultValue: false,
+  description: 'chart.option.showSummary.description'
+}
+
+/**
+ * Data-point marker toggle for the time-series charts. Dense series (hundreds
+ * of points) read far better without a marker on every one.
+ */
+export function showPointsDisplayOption(defaultValue = true): DisplayOptionConfig {
+  return {
+    key: 'showPoints',
+    label: 'chart.option.showPoints.label',
+    type: 'boolean',
+    defaultValue,
+    description: 'chart.option.showPoints.description'
   }
 }

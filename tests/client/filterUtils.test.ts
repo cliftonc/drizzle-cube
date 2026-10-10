@@ -14,7 +14,9 @@ import {
   serializeFilterMapping,
   mappingIncludesFilter,
   getMappingMemberOverride,
-  applyMemberOverride
+  applyMemberOverride,
+  getRegularDashboardFilters,
+  getUnreachableUniversalTimeFilters
 } from '../../src/client/utils/filterUtils'
 import type { DashboardFilter, DashboardFilterMapping, CubeMeta, DashboardConfig, Filter, SimpleFilter } from '../../src/client/types'
 
@@ -609,6 +611,69 @@ describe('filterUtils', () => {
       const result = applyUniversalTimeFilters(dashboardFilters, ['time-filter-2'], timeDimensions)
 
       expect(result![0].dateRange).toEqual(['2024-07-01', '2024-12-31'])
+    })
+  })
+
+  describe('universal time filters pinned to a field (#1285)', () => {
+    const universal: DashboardFilter = {
+      id: 'date',
+      label: 'Date Range',
+      isUniversalTime: true,
+      filter: { member: '__universal_time__', operator: 'inDateRange', values: [], dateRange: 'last 7 days' }
+    }
+    const status = createDashboardFilter('status', 'Sessions.status')
+
+    it('treats a pinned universal filter as a regular filter on the pinned field', () => {
+      const mapping: DashboardFilterMapping = [{ filterId: 'date', member: 'Sessions.createdAt' }, 'status']
+
+      const regular = getRegularDashboardFilters([universal, status], mapping)
+      expect(regular?.map(df => df.id)).toEqual(['date', 'status'])
+      expect(getApplicableDashboardFilters(regular, mapping)).toEqual([
+        { member: 'Sessions.createdAt', operator: 'inDateRange', values: [], dateRange: 'last 7 days' },
+        status.filter
+      ])
+    })
+
+    it('keeps an unpinned universal filter off the regular path', () => {
+      expect(getRegularDashboardFilters([universal, status], ['date', 'status'])?.map(df => df.id))
+        .toEqual(['status'])
+    })
+
+    it('does not also apply a pinned universal filter to timeDimensions', () => {
+      const timeDimensions = [{ dimension: 'Sessions.updatedAt', granularity: 'day' }]
+      expect(applyUniversalTimeFilters([universal], [{ filterId: 'date', member: 'Sessions.createdAt' }], timeDimensions))
+        .toEqual(timeDimensions)
+    })
+
+    describe('getUnreachableUniversalTimeFilters', () => {
+      const kpiQuery = JSON.stringify({ measures: ['Sessions.count'] })
+      const breakdownQuery = JSON.stringify({ measures: ['Sessions.count'], dimensions: ['Sessions.status'] })
+      const trendQuery = JSON.stringify({
+        measures: ['Sessions.count'],
+        timeDimensions: [{ dimension: 'Sessions.createdAt', granularity: 'day' }]
+      })
+
+      it('flags an unpinned universal filter on KPI and breakdown queries', () => {
+        expect(getUnreachableUniversalTimeFilters(kpiQuery, [universal], ['date'])).toEqual([universal])
+        expect(getUnreachableUniversalTimeFilters(breakdownQuery, [universal], ['date'])).toEqual([universal])
+      })
+
+      it('does not flag queries with time dimensions, pinned filters, or unmapped filters', () => {
+        expect(getUnreachableUniversalTimeFilters(trendQuery, [universal], ['date'])).toEqual([])
+        expect(getUnreachableUniversalTimeFilters(kpiQuery, [universal], [{ filterId: 'date', member: 'Sessions.createdAt' }])).toEqual([])
+        expect(getUnreachableUniversalTimeFilters(kpiQuery, [universal], [])).toEqual([])
+      })
+
+      it('flags a multi-query portlet when any query lacks time dimensions', () => {
+        const multi = JSON.stringify({ queries: [JSON.parse(trendQuery), JSON.parse(kpiQuery)], mergeStrategy: 'concat' })
+        expect(getUnreachableUniversalTimeFilters(multi, [universal], ['date'])).toEqual([universal])
+      })
+
+      it('ignores funnel queries and unparseable queries', () => {
+        const funnel = JSON.stringify({ funnel: { steps: [], bindingKey: 'x', timeDimension: 'Sessions.createdAt' } })
+        expect(getUnreachableUniversalTimeFilters(funnel, [universal], ['date'])).toEqual([])
+        expect(getUnreachableUniversalTimeFilters('not json', [universal], ['date'])).toEqual([])
+      })
     })
   })
 })

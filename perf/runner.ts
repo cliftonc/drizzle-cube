@@ -28,22 +28,26 @@ export interface RunnerOptions {
   iterations: number
 }
 
-export async function runBenchmark(
+/**
+ * Resolve the security context a benchmark runs under (its override, or org1 —
+ * the large benchmarked organisation).
+ */
+export function resolveSecurityContext(def: BenchmarkDef): SecurityContext {
+  return def.securityContext ?? testSecurityContexts.org1
+}
+
+/**
+ * Build the single-execution thunk for a benchmark: one `runOnce()` call drives
+ * the exact execution path the benchmark's `mode` selects. Shared by the timing
+ * runner and the profiler so both measure identical work. Returns the row count
+ * produced (0 for dryRun).
+ */
+export function makeRunOnce(
   def: BenchmarkDef,
   ctx: RunnerContext,
-  options: RunnerOptions
-): Promise<BenchmarkResult> {
-  const securityContext: SecurityContext = def.securityContext ?? testSecurityContexts.org1
-  const base: Omit<BenchmarkResult, 'stats' | 'samples' | 'rows'> = {
-    id: def.id,
-    name: def.name,
-    category: def.category,
-    mode: def.mode,
-    iterations: options.iterations,
-    warmup: options.warmup
-  }
-
-  const runOnce = async (): Promise<number> => {
+  securityContext: SecurityContext = resolveSecurityContext(def)
+): () => Promise<number> {
+  return async (): Promise<number> => {
     switch (def.mode) {
       case 'dryRun': {
         await ctx.executor.dryRunSQL(ctx.cubes, def.query, securityContext)
@@ -63,6 +67,24 @@ export async function runBenchmark(
       }
     }
   }
+}
+
+export async function runBenchmark(
+  def: BenchmarkDef,
+  ctx: RunnerContext,
+  options: RunnerOptions
+): Promise<BenchmarkResult> {
+  const securityContext: SecurityContext = resolveSecurityContext(def)
+  const base: Omit<BenchmarkResult, 'stats' | 'samples' | 'rows'> = {
+    id: def.id,
+    name: def.name,
+    category: def.category,
+    mode: def.mode,
+    iterations: options.iterations,
+    warmup: options.warmup
+  }
+
+  const runOnce = makeRunOnce(def, ctx, securityContext)
 
   try {
     let rows = 0

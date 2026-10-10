@@ -78,6 +78,7 @@ export interface IconRegistry {
   schemaGraph: IconDefinition
   cube: IconDefinition
   download: IconDefinition
+  upload: IconDefinition
 
   // Field type icons
   measure: IconDefinition
@@ -96,6 +97,7 @@ export interface IconRegistry {
   chartRadialBar: IconDefinition
   chartTreemap: IconDefinition
   chartTable: IconDefinition
+  chartRecordsTable: IconDefinition
   chartActivityGrid: IconDefinition
   chartKpiNumber: IconDefinition
   chartKpiDelta: IconDefinition
@@ -107,9 +109,11 @@ export interface IconRegistry {
   chartHeatmap: IconDefinition
   chartRetention: IconDefinition
   chartBoxPlot: IconDefinition
+  chartDotStrip: IconDefinition
   chartWaterfall: IconDefinition
   chartCandlestick: IconDefinition
   chartMeasureProfile: IconDefinition
+  chartProportionBar: IconDefinition
   chartGauge: IconDefinition
 
   // Measure type icons

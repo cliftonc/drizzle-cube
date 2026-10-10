@@ -75,14 +75,14 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
           <div className="dc:flex dc:items-center dc:gap-0.5 dc:ml-1" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => onEditFilter(id)}
-              className="dc:p-0.5 hover:bg-dc-hover dc:rounded dc:transition-colors"
+              className="dc:p-0.5 hover:bg-dc-hover dc:rounded-sm dc:transition-colors"
               title="Edit filter"
             >
               <EditIcon className="dc:w-3 dc:h-3" />
             </button>
             <button
               onClick={() => onRemoveFilter(id)}
-              className="dc:p-0.5 hover:bg-dc-danger-bg hover:text-dc-danger dc:rounded dc:transition-colors"
+              className="dc:p-0.5 hover:bg-dc-danger-bg hover:text-dc-danger dc:rounded-sm dc:transition-colors"
               title="Remove filter"
             >
               <CloseIcon className="dc:w-3 dc:h-3" />

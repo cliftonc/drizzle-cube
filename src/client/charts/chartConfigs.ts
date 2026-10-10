@@ -1,3 +1,4 @@
+import type { ChartAxisConfig, ChartDisplayConfig } from '../types.js'
 
 /**
  * Configuration for a single axis drop zone in the chart configuration UI
@@ -26,6 +27,14 @@ export interface AxisDropZoneConfig {
 
   /** Enable L/R axis toggle for items in this drop zone (for dual Y-axis support) */
   enableDualAxis?: boolean
+
+  /**
+   * Keep this zone out of automatic chart-config inference (the agent's
+   * `inferChartConfig`). For zones whose meaning is subtractive or opt-in — the
+   * records table's hidden columns being the case in point — filling them from
+   * the query changes what renders rather than completing a partial config.
+   */
+  excludeFromInference?: boolean
 }
 
 /**
@@ -39,7 +48,7 @@ export interface DisplayOptionConfig {
   label: string
   
   /** Type of input control to render */
-  type: 'boolean' | 'string' | 'number' | 'select' | 'color' | 'paletteColor' | 'axisFormat' | 'stringArray' | 'buttonGroup'
+  type: 'boolean' | 'string' | 'number' | 'select' | 'color' | 'paletteColor' | 'axisFormat' | 'stringArray' | 'buttonGroup' | 'thresholdBands' | 'columnFormats' | 'rowLink'
   
   /** Default value for the option */
   defaultValue?: any
@@ -50,9 +59,47 @@ export interface DisplayOptionConfig {
   /** Options for select type */
   options?: Array<{ value: any; label: string }>
   
+  /**
+   * Which tab the option belongs on. Defaults to `display`.
+   *
+   * The Chart tab exists to answer "what feeds this chart", which for most
+   * types is the axis drop zones. A content-first chart has no zones, and its
+   * equivalent input is a display option — markdown's `content` being the case
+   * in point, which is its whole substance and wants the room. Marking it
+   * `chart` moves it there rather than leaving the tab empty and the editor
+   * squeezed into a sidebar.
+   */
+  placement?: 'chart' | 'display'
+
   /** Help text shown below the input */
   description?: string
-  
+
+  /**
+   * Shows the colour band picker on progress columns in a `columnFormats`
+   * option. Set it only when the chart's renderer reads `progressBands`.
+   */
+  progressBands?: boolean
+
+  /** Visible rows for a string option's textarea. Defaults to 8. */
+  rows?: number
+
+  /**
+   * Render a string option with syntax highlighting rather than as a plain
+   * textarea. Only `markdownTemplate` exists, colouring `{{ }}` expressions,
+   * `{% %}` tags and markdown headings.
+   */
+  syntax?: 'markdownTemplate'
+
+  /**
+   * External reference for options whose full syntax cannot fit in help text.
+   * Rendered as a link after the description, so the panel can stay short
+   * instead of restating a whole template language badly.
+   */
+  docsUrl?: string
+
+  /** Label for the `docsUrl` link — a translation key, like `label`. */
+  docsLabel?: string
+
   /** Minimum value for number inputs */
   min?: number
   
@@ -61,6 +108,31 @@ export interface DisplayOptionConfig {
   
   /** Step value for number inputs */
   step?: number
+
+  /**
+   * The columns a `columnFormats` option lists, in place of
+   * `chartConfig.columns`. A chart that builds columns of its own returns them
+   * here so each one can be formatted — computed columns, say, or the value
+   * field whose format a pivot's columns take. It sees the chart and display
+   * config only, not the result data.
+   */
+  columns?: (context: {
+    chartConfig?: ChartAxisConfig
+    displayConfig: ChartDisplayConfig
+  }) => string[]
+}
+
+/**
+ * Split display options by which tab renders them.
+ *
+ * Shared by the Chart and Display panels so the two cannot disagree and leave
+ * an option shown twice or not at all.
+ */
+export function optionsForPlacement(
+  options: DisplayOptionConfig[] | undefined,
+  placement: 'chart' | 'display'
+): DisplayOptionConfig[] {
+  return (options ?? []).filter((option) => (option.placement ?? 'display') === placement)
 }
 
 /**
@@ -150,6 +222,16 @@ export interface ChartTypeConfig {
    * Omit to mean "always available".
    */
   isAvailable?: (ctx: ChartAvailabilityContext) => ChartAvailability
+
+  /**
+   * This chart lists individual records rather than aggregates, so the query
+   * built for it must be `ungrouped`.
+   *
+   * Declared here rather than switched on a chart type inside the query
+   * builders, and read from the eager registry so those stay data-driven — and
+   * so a custom chart can opt in through the same flag.
+   */
+  recordGrain?: boolean
 }
 
 /**

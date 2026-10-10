@@ -196,6 +196,76 @@ describe('queryModeAdapter', () => {
       expect((config.query as MultiQueryConfig).queries).toHaveLength(2)
       expect((config.query as MultiQueryConfig).mergeStrategy).toBe('merge')
     })
+
+    describe('a time breakdown with comparison and date filling', () => {
+      const dateFilter: SimpleFilter = {
+        member: 'Employees.createdAt', operator: 'inDateRange', values: [], dateRange: ['2024-01-01', '2024-01-31']
+      }
+      const queryState = (field: string, fillMissingDates = true): QuerySliceState['queryStates'][number] => ({
+        metrics: [],
+        breakdowns: [
+          { id: '1', field, isTimeDimension: false },
+          {
+            id: '2', field: 'Employees.createdAt', isTimeDimension: true, granularity: 'day',
+            enableComparison: true, fillMissingDates
+          }
+        ],
+        filters: [dateFilter],
+        validationStatus: 'idle',
+        validationError: null,
+      })
+      const chart = (chartType: ChartConfig['chartType']) => ({
+        query: { chartType, chartConfig: {}, displayConfig: {} },
+      })
+
+      it('saves a grouped chart with comparison and date filling', () => {
+        const state: QuerySliceState = { queryStates: [queryState('Employees.name')], activeQueryIndex: 0, mergeStrategy: 'concat' }
+
+        expect(queryModeAdapter.save(state, chart('line'), 'chart').query).toEqual({
+          measures: [],
+          dimensions: ['Employees.name'],
+          timeDimensions: [{
+            dimension: 'Employees.createdAt',
+            granularity: 'day',
+            fillMissingDates: true,
+            compareDateRange: [['2024-01-01', '2024-01-31'], ['2023-12-01', '2023-12-31']]
+          }],
+          filters: [dateFilter]
+        })
+      })
+
+      it('saves a records table ungrouped, without the options the server rejects', () => {
+        // The builder previews a records table as an ungrouped query. Saving it
+        // grouped would show dashboards different rows from the preview.
+        const state: QuerySliceState = { queryStates: [queryState('Employees.name')], activeQueryIndex: 0, mergeStrategy: 'concat' }
+
+        expect(queryModeAdapter.save(state, chart('recordsTable'), 'chart').query).toEqual({
+          measures: [],
+          dimensions: ['Employees.name'],
+          timeDimensions: [{ dimension: 'Employees.createdAt', granularity: 'day' }],
+          filters: [dateFilter],
+          ungrouped: true
+        })
+      })
+
+      it('saves every query of a multi-query records table ungrouped', () => {
+        const state: QuerySliceState = {
+          queryStates: [queryState('Employees.name'), queryState('Employees.email')],
+          activeQueryIndex: 0,
+          mergeStrategy: 'concat',
+        }
+
+        const query = queryModeAdapter.save(state, chart('recordsTable'), 'chart').query
+        expect('queries' in query && query.queries.map((q) => q.ungrouped)).toEqual([true, true])
+      })
+
+      it('keeps fillMissingDates: false through saving and reopening a records table', () => {
+        const state: QuerySliceState = { queryStates: [queryState('Employees.name', false)], activeQueryIndex: 0, mergeStrategy: 'concat' }
+
+        const reopened = queryModeAdapter.load(queryModeAdapter.save(state, chart('recordsTable'), 'chart'))
+        expect(reopened.queryStates[0].breakdowns.find((b) => b.isTimeDimension)?.fillMissingDates).toBe(false)
+      })
+    })
   })
 
   describe('validate', () => {

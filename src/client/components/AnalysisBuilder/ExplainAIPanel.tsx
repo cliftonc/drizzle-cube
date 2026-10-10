@@ -131,7 +131,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="dc:px-2 dc:py-1 dc:text-xs dc:rounded bg-dc-surface hover:bg-dc-surface-hover text-dc-text-muted"
+      className="dc:px-2 dc:py-1 dc:text-xs dc:rounded-sm bg-dc-surface hover:bg-dc-surface-hover text-dc-text-muted"
       title="Copy to clipboard"
     >
       {copied ? t('explainAI.copied') : t('explainAI.copy')}
@@ -156,7 +156,7 @@ function RecommendationCard({ rec }: { rec: ExplainRecommendation }) {
       {/* Header */}
       <div className="dc:flex dc:items-center dc:gap-2 dc:mb-2">
         <span
-          className={`dc:px-2 dc:py-0.5 dc:text-xs dc:font-medium dc:rounded ${severityColors[rec.severity]}`}
+          className={`dc:px-2 dc:py-0.5 dc:text-xs dc:font-medium dc:rounded-sm ${severityColors[rec.severity]}`}
         >
           {typeLabels[rec.type]}
         </span>
@@ -186,7 +186,7 @@ function RecommendationCard({ rec }: { rec: ExplainRecommendation }) {
             </p>
           )}
           <div className="dc:relative">
-            <pre className="dc:p-3 dc:text-xs bg-dc-surface-secondary dc:rounded dc:overflow-x-auto dc:font-mono text-dc-text">
+            <pre className="dc:p-3 dc:text-xs bg-dc-surface-secondary dc:rounded-sm dc:overflow-x-auto dc:font-mono text-dc-text">
               {rec.cubeCode}
             </pre>
             <div className="dc:absolute dc:top-1 dc:right-1">

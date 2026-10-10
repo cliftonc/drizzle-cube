@@ -526,7 +526,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         height="100%"
         fallback={
           <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
-            <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded dc:w-full dc:h-full" />
+            <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded-sm dc:w-full dc:h-full" />
           </div>
         }
       />
@@ -585,7 +585,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const renderExecutionErrorBanner = () => {
     if (!executionError) return null
     return (
-      <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
+      <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded-sm dc:p-3">
         <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
           {t('results.debug.executionError')}
         </h4>
@@ -627,7 +627,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       ) : (
         <>
           <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.serverResponse')}</h4>
-          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3 text-dc-text-muted dc:text-sm">
             {t('results.debug.noResults')}
           </div>
         </>
@@ -658,7 +658,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     return (
       <div className="dc:p-4 dc:space-y-4 dc:overflow-auto dc:h-full">
         <div className="dc:flex dc:items-center dc:gap-2 dc:mb-4">
-          <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded">
+          <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded-sm">
             {config.label}
           </span>
           {config.badgeText && (
@@ -708,7 +708,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {config.metadataTitle && config.metadataSection && (
           <div>
             <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{config.metadataTitle}</h4>
-            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3">
               {config.metadataSection}
             </div>
           </div>
@@ -756,7 +756,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
       {/* Execution Error Banner (if any) */}
       {executionError && (
-        <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
+        <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded-sm dc:p-3">
           <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
             {t('results.debug.executionError')}
           </h4>
@@ -771,7 +771,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           {debugAnalysis && (
             <button
               onClick={handleCopyMarkdown}
-              className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded dc:border border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:flex dc:items-center dc:gap-1"
+              className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded-sm dc:border border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:flex dc:items-center dc:gap-1"
               title={t('results.debug.copyMarkdownTitle')}
             >
               {copyMarkdownState === 'copied' ? (
@@ -786,15 +786,15 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           )}
         </div>
         {debugLoading ? (
-          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3 text-dc-text-muted dc:text-sm">
             {t('common.loading')}
           </div>
         ) : debugAnalysis ? (
-          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3">
             <QueryAnalysisPanel analysis={debugAnalysis} />
           </div>
         ) : (
-          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3 text-dc-text-muted dc:text-sm">
             {debugError ? t('results.debug.analysisError') : t('results.debug.analysisEmpty')}
           </div>
         )}
@@ -819,7 +819,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         ) : (
           <>
             <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.cubeQuery')}</h4>
-            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
               {t('results.debug.noQuery')}
             </div>
           </>
@@ -883,7 +883,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         ) : (
           <>
             <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.serverResponse')}</h4>
-            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3 text-dc-text-muted dc:text-sm">
               {t('results.debug.noResults')}
             </div>
           </>
@@ -898,7 +898,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     const metadataSection = metadata ? (
       <div className="dc:flex dc:flex-wrap dc:gap-2">
         {metadata.steps.map((step, idx) => (
-          <div key={idx} className="dc:flex dc:items-center dc:gap-2 dc:px-3 dc:py-1.5 bg-dc-bg dc:border border-dc-border dc:rounded dc:text-sm">
+          <div key={idx} className="dc:flex dc:items-center dc:gap-2 dc:px-3 dc:py-1.5 bg-dc-bg dc:border border-dc-border dc:rounded-sm dc:text-sm">
             <span className="dc:w-5 dc:h-5 dc:flex dc:items-center dc:justify-center bg-dc-accent text-white dc:text-xs dc:rounded-full">
               {idx + 1}
             </span>
@@ -919,7 +919,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       serverQueryMissing: (
         <>
           <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.funnel.serverQuery')}</h4>
-          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
             {t('results.debug.funnel.noQuery')}
           </div>
         </>
@@ -963,7 +963,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     const extraSection = retentionChartData?.summary ? (
       <div>
         <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.retention.summaryTitle')}</h4>
-        <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
+        <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3">
           <div className="dc:grid dc:grid-cols-3 dc:gap-4 dc:text-sm">
             <div>
               <span className="text-dc-text-muted">{t('results.debug.retention.avgPeriod1')}</span>{' '}
@@ -996,7 +996,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       serverQueryMissing: (
         <>
           <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.retention.serverQuery')}</h4>
-          <div className="bg-dc-warning-bg dc:border border-dc-warning dc:rounded dc:p-3 dc:text-sm dc:h-64 dc:overflow-auto">
+          <div className="bg-dc-warning-bg dc:border border-dc-warning dc:rounded-sm dc:p-3 dc:text-sm dc:h-64 dc:overflow-auto">
             <div className="text-dc-warning dc:font-medium dc:mb-2">{t('results.debug.retention.configIncomplete')}</div>
             {retentionValidation && retentionValidation.errors.length > 0 ? (
               <ul className="list-disc dc:list-inside text-dc-text-secondary dc:space-y-1">
@@ -1055,7 +1055,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       serverQueryMissing: (
         <>
           <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.flow.serverQuery')}</h4>
-          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
             {t('results.debug.flow.noQuery')}
           </div>
         </>
@@ -1137,7 +1137,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <h3 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">
             {t('results.flow.nodes', { count: nodes.length })}
           </h3>
-          <div className="dc:border border-dc-border dc:rounded dc:overflow-hidden">
+          <div className="dc:border border-dc-border dc:rounded-sm dc:overflow-hidden">
             <table className="dc:w-full dc:text-sm">
               <thead className="bg-dc-surface-secondary">
                 <tr>
@@ -1152,7 +1152,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                   .map((node: Record<string, unknown>, idx: number) => (
                     <tr key={idx} className="hover:bg-dc-surface-hover">
                       <td className="dc:px-3 dc:py-2 dc:whitespace-nowrap">
-                        <span className={`dc:inline-flex dc:items-center dc:justify-center dc:w-6 dc:h-6 dc:rounded dc:text-xs dc:font-medium ${
+                        <span className={`dc:inline-flex dc:items-center dc:justify-center dc:w-6 dc:h-6 dc:rounded-sm dc:text-xs dc:font-medium ${
                           (node.layer as number) === 0
                             ? 'bg-dc-primary text-white'
                             : (node.layer as number) < 0
@@ -1178,7 +1178,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <h3 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">
             {t('results.flow.transitions', { count: links.length })}
           </h3>
-          <div className="dc:border border-dc-border dc:rounded dc:overflow-hidden">
+          <div className="dc:border border-dc-border dc:rounded-sm dc:overflow-hidden">
             <table className="dc:w-full dc:text-sm">
               <thead className="bg-dc-surface-secondary">
                 <tr>
@@ -1246,7 +1246,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         height="100%"
         fallback={
           <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
-            <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded dc:w-full dc:h-full" />
+            <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded-sm dc:w-full dc:h-full" />
           </div>
         }
       />
@@ -1327,7 +1327,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         </div>
         <button
           onClick={() => onRefreshClick()}
-          className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium bg-dc-warning text-white dc:rounded hover:bg-dc-warning/90 dc:transition-colors"
+          className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium bg-dc-warning text-white dc:rounded-sm hover:bg-dc-warning/90 dc:transition-colors"
         >
           {t('results.warning.refreshNow')}
         </button>

@@ -133,7 +133,7 @@ export default function AnalysisFilterGroup({
           {/* AND/OR Toggle Button */}
           <button
             onClick={handleToggleType}
-            className={`dc:px-2 dc:py-0.5 dc:text-xs dc:font-semibold dc:rounded dc:transition-colors ${
+            className={`dc:px-2 dc:py-0.5 dc:text-xs dc:font-semibold dc:rounded-sm dc:transition-colors ${
               group.type === 'and'
                 ? 'bg-dc-info-bg text-dc-info dc:hover:opacity-80'
                 : 'bg-dc-warning-bg text-dc-warning dc:hover:opacity-80'
@@ -154,14 +154,14 @@ export default function AnalysisFilterGroup({
           <div className="dc:relative" ref={addMenuRef}>
             <button
               onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
-              className="dc:p-1 text-dc-text-secondary hover:text-dc-primary hover:bg-dc-surface-hover dc:rounded dc:transition-colors"
+              className="dc:p-1 text-dc-text-secondary hover:text-dc-primary hover:bg-dc-surface-hover dc:rounded-sm dc:transition-colors"
               title="Add condition"
             >
               <AddIcon className="dc:w-4 dc:h-4" />
             </button>
 
             {isAddMenuOpen && (
-              <div className="dc:absolute dc:right-0 dc:mt-1 dc:z-40 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:py-1 dc:min-w-[120px]">
+              <div className="dc:absolute dc:right-0 dc:mt-1 dc:z-40 bg-dc-surface dc:border border-dc-border dc:rounded-sm dc:shadow-lg dc:py-1 dc:min-w-[120px]">
                 <button
                   onClick={handleAddFilterClick}
                   className="dc:w-full dc:text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"

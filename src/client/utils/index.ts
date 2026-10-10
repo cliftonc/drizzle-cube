@@ -12,12 +12,30 @@ export * from './periodUtils.js'
 export * from './pivotUtils.js'
 export * from './syntaxHighlighting.js'
 export * from './comparisonUtils.js'
+export * from './gapFilling.js'
 
 // Thumbnail utilities (requires html2canvas peer dependency)
 export { captureThumbnail, isThumbnailCaptureAvailable } from './thumbnail.js'
 
 // XLSX export utilities (requires exceljs peer dependency)
 export { exportPortletToXlsx, isExportAvailable } from './exportXlsx.js'
+
+// Dashboard JSON export / import (no extra dependency)
+export {
+  createDashboardExport,
+  serializeDashboardExport,
+  parseDashboardExport,
+  readDashboardExportFile,
+  downloadDashboardExport,
+  dashboardExportFilename,
+  normalizeDashboardConfigForExport,
+} from './dashboardExport.js'
+export type {
+  DashboardExportFile,
+  DashboardImportResult,
+  DashboardImportError,
+  DashboardImportWarning,
+} from './dashboardExport.js'
 
 /**
  * Create a dashboard layout from portlet configurations

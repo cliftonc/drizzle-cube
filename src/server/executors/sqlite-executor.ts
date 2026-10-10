@@ -17,11 +17,11 @@ export class SQLiteExecutor extends BaseDatabaseExecutor {
       // This is a Drizzle query object, execute it directly
       const result = await query.execute()
       if (Array.isArray(result)) {
-        return result.map(row => this.convertNumericFields(row, numericFields)) as T
+        return this.convertNumericFieldsInPlace(result, numericFields) as T
       }
       return result as T
     }
-    
+
     // SQLite is synchronous, but we wrap in Promise for consistency
     try {
       // For SQLite with better-sqlite3, we need to execute through the Drizzle instance
@@ -29,7 +29,7 @@ export class SQLiteExecutor extends BaseDatabaseExecutor {
       if (this.db.all) {
         const result = this.db.all(query)
         if (Array.isArray(result)) {
-          return result.map(row => this.convertNumericFields(row, numericFields)) as T
+          return this.convertNumericFieldsInPlace(result, numericFields) as T
         }
         return result as T
       } else if (this.db.run) {
@@ -45,22 +45,29 @@ export class SQLiteExecutor extends BaseDatabaseExecutor {
   }
 
   /**
-   * Convert numeric string fields to numbers (only for measure fields)
+   * Convert numeric string fields to numbers (only for measure fields), in place.
+   *
+   * Hot path for large result sets: this runs once per returned row. Rather than
+   * rebuild a fresh object per row (Object.entries + full-key copy), we mutate
+   * the driver-produced row — which we exclusively own — touching only the
+   * measure columns. Dimensions/time dimensions keep their original types.
+   * When there are no numeric fields, the rows are returned untouched.
    */
-  private convertNumericFields(row: any, numericFields?: string[]): any {
-    if (!row || typeof row !== 'object') return row
-    
-    const converted: any = {}
-    for (const [key, value] of Object.entries(row)) {
-      // Only convert measure fields to numbers
-      // Dimensions and time dimensions should keep their original types
-      if (numericFields && numericFields.includes(key)) {
-        converted[key] = this.coerceToNumber(value)
-      } else {
-        converted[key] = value
+  private convertNumericFieldsInPlace(rows: any[], numericFields?: string[]): any[] {
+    if (!numericFields || numericFields.length === 0) return rows
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]
+      if (!row || typeof row !== 'object') continue
+      for (const key of numericFields) {
+        const value = row[key]
+        // Skip absent keys and values already numeric (the common case — SQLite
+        // returns INTEGER/REAL columns as JS numbers, so no coercion is needed).
+        if (value != null && typeof value !== 'number') {
+          row[key] = this.coerceToNumber(value)
+        }
       }
     }
-    return converted
+    return rows
   }
 
   /**

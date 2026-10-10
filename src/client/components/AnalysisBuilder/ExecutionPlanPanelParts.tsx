@@ -59,7 +59,7 @@ export function SqlBlock({
       <SqlBlockShell
         title={title}
         height={height}
-        className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:animate-pulse"
+        className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3 text-dc-text-muted dc:text-sm dc:animate-pulse"
       >
         {t('results.debug.loadingSql')}
       </SqlBlockShell>
@@ -71,7 +71,7 @@ export function SqlBlock({
       <SqlBlockShell
         title={title}
         height={height}
-        className="text-dc-error dc:text-sm bg-dc-danger-bg dc:p-3 dc:rounded dc:border border-dc-error"
+        className="text-dc-error dc:text-sm bg-dc-danger-bg dc:p-3 dc:rounded-sm dc:border border-dc-error"
       >
         {sqlError.message}
       </SqlBlockShell>
@@ -94,7 +94,7 @@ export function SqlBlock({
     <SqlBlockShell
       title={title}
       height={height}
-      className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm"
+      className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3 text-dc-text-muted dc:text-sm"
     >
       {sqlPlaceholder}
     </SqlBlockShell>
@@ -105,33 +105,33 @@ function ExplainSummaryBadges({ summary }: { summary: ExplainResult['summary'] }
   const { t } = useTranslation()
   return (
     <div className="dc:flex dc:flex-wrap dc:items-center dc:gap-2">
-      <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded">
+      <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded-sm">
         {summary.database.toUpperCase()}
       </span>
       {summary.hasSequentialScans && (
-        <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-warning-bg text-dc-warning dc:border border-dc-warning dc:rounded">
+        <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-warning-bg text-dc-warning dc:border border-dc-warning dc:rounded-sm">
           {t('debug.sequentialScans')}
         </span>
       )}
       {summary.usedIndexes.length > 0 && (
-        <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-success-bg text-dc-success dc:border border-dc-success dc:rounded">
+        <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-success-bg text-dc-success dc:border border-dc-success dc:rounded-sm">
           {summary.usedIndexes.length === 1
             ? t('debug.indexesUsed', { count: summary.usedIndexes.length })
             : t('debug.indexesUsedPlural', { count: summary.usedIndexes.length })}
         </span>
       )}
       {summary.executionTime !== undefined && (
-        <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded">
+        <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded-sm">
           {t('debug.executionTime', { time: summary.executionTime.toFixed(2) })}
         </span>
       )}
       {summary.planningTime !== undefined && (
-        <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded">
+        <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded-sm">
           {t('debug.planningTime', { time: summary.planningTime.toFixed(2) })}
         </span>
       )}
       {summary.totalCost !== undefined && (
-        <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded">
+        <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded-sm">
           {t('debug.cost', { cost: summary.totalCost.toFixed(2) })}
         </span>
       )}
@@ -156,7 +156,7 @@ export function ExplainResults({
 
   if (explainLoading) {
     return (
-      <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:animate-pulse">
+      <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm dc:p-3 text-dc-text-muted dc:text-sm dc:animate-pulse">
         {useAnalyze ? t('debug.explainRunningAnalyze') : t('debug.explainRunningBasic')}
       </div>
     )
@@ -164,7 +164,7 @@ export function ExplainResults({
 
   if (explainError) {
     return (
-      <div className="text-dc-error dc:text-sm bg-dc-danger-bg dc:p-3 dc:rounded dc:border border-dc-error">
+      <div className="text-dc-error dc:text-sm bg-dc-danger-bg dc:p-3 dc:rounded-sm dc:border border-dc-error">
         <strong>{t('debug.explainError')}</strong> {explainError.message}
       </div>
     )

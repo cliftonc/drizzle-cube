@@ -13,19 +13,25 @@ import crypto from 'crypto'
 
 // Dynamic imports for DuckDB since it's an optional peer dependency
 let DuckDBInstance: any
-let DuckDBInstanceCache: any
 let drizzle: any
 
 // Module-level instance cache to prevent multiple instances accessing the same file
-// This prevents "Failed to execute prepared statement" errors on Linux
-let sharedInstanceCache: any = null
+// This prevents "Failed to execute prepared statement" errors on Linux.
+//
+// We memoise the *promise* per (path, config) rather than using DuckDB's own
+// DuckDBInstanceCache. Re-entering native duckdb_open_internal() for a file this
+// process has already opened blocks indefinitely inside
+// duckdb::DBInstanceCache::GetInstanceInternal, which hangs any test that opens a
+// second executor (e.g. to query as a different tenant). Caching the promise means
+// we call into native open exactly once per file, and concurrent callers await the
+// same in-flight open instead of racing into a second one.
+const instancePromises = new Map<string, Promise<any>>()
 
 async function loadDuckDBDependencies() {
   if (!DuckDBInstance) {
     try {
       const duckdbModule = await import('@duckdb/node-api')
       DuckDBInstance = duckdbModule.DuckDBInstance
-      DuckDBInstanceCache = duckdbModule.DuckDBInstanceCache
     } catch {
       throw new Error('DuckDB dependencies not installed. Install @duckdb/node-api and @leonardovida-md/drizzle-neo-duckdb')
     }
@@ -42,16 +48,19 @@ async function loadDuckDBDependencies() {
 }
 
 /**
- * Get or create the shared instance cache
- * Using a cache ensures only one DuckDBInstance exists per database file,
- * which prevents file locking issues and prepared statement corruption
- * when multiple tests run concurrently.
+ * Get or create the single DuckDBInstance for a database file.
+ * Only one instance may exist per file per process; opening a second one blocks
+ * forever in DuckDB's native instance cache, so every caller shares this promise.
  */
-function getSharedInstanceCache() {
-  if (!sharedInstanceCache && DuckDBInstanceCache) {
-    sharedInstanceCache = new DuckDBInstanceCache()
+function getOrCreateInstance(dbPath: string, instanceOptions: Record<string, string>) {
+  const key = `${dbPath}|${JSON.stringify(instanceOptions)}`
+  const existing = instancePromises.get(key)
+  if (existing) {
+    return existing
   }
-  return sharedInstanceCache
+  const pending: Promise<any> = Promise.resolve(DuckDBInstance.create(dbPath, instanceOptions))
+  instancePromises.set(key, pending)
+  return pending
 }
 
 /**
@@ -59,7 +68,12 @@ function getSharedInstanceCache() {
  * Called during cleanup to release all file handles
  */
 export function clearInstanceCache() {
-  sharedInstanceCache = null
+  for (const pending of instancePromises.values()) {
+    // The instance may still be opening; close it once it resolves, and ignore
+    // failures from an open that never succeeded.
+    pending.then(instance => instance?.closeSync?.()).catch(() => {})
+  }
+  instancePromises.clear()
 }
 
 // Environment variable name for the unique test database path
@@ -110,9 +124,10 @@ interface DuckDBConnectionOptions {
  * By default creates a file-based database connection for write operations.
  * Use readOnly: true for concurrent read access in tests.
  *
- * For file-based databases, uses DuckDBInstanceCache to ensure only one instance
- * exists per database file. This prevents "Failed to execute prepared statement"
- * errors that occur when multiple instances try to access the same file (especially on Linux).
+ * For file-based databases, the instance for a given path is opened once and shared.
+ * This prevents "Failed to execute prepared statement" errors that occur when multiple
+ * instances try to access the same file, and avoids re-entering DuckDB's native
+ * instance cache, which blocks forever on a file this process has already opened.
  */
 export async function createDuckDBConnection(options?: DuckDBConnectionOptions) {
   await loadDuckDBDependencies()
@@ -136,17 +151,11 @@ export async function createDuckDBConnection(options?: DuckDBConnectionOptions) 
       instanceOptions['access_mode'] = 'read_only'
     }
 
-    // Use instance cache for file-based databases to prevent multiple instances
-    // accessing the same file (which causes "Failed to execute prepared statement" on Linux)
-    const cache = getSharedInstanceCache()
-    if (cache) {
-      // The cache ensures only one instance exists per database path
-      // Multiple connections from the same instance are thread-safe
-      instance = await cache.getOrCreateInstance(dbPath, instanceOptions)
-    } else {
-      // Fallback if cache not available (shouldn't happen, but safety first)
-      instance = await DuckDBInstance.create(dbPath, instanceOptions)
-    }
+    // Reuse the single instance for this file to prevent multiple instances
+    // accessing the same file (which causes "Failed to execute prepared statement"
+    // on Linux, and blocks forever in DuckDB's native instance cache).
+    // Multiple connections from the same instance are thread-safe.
+    instance = await getOrCreateInstance(dbPath, instanceOptions)
   }
 
   const connection = await instance.connect()

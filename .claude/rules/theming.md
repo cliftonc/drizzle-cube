@@ -73,6 +73,27 @@ In Tailwind v4, the `dc:` prefix comes FIRST, then the variant:
 | `text-gray-900/700` | `text-dc-text`, `text-dc-text-secondary` |
 | `border-gray-200/300` | `border-dc-border` |
 
+## Corner Radius
+
+Tailwind is imported with `prefix(dc)`, so its radius scale is emitted as
+`--dc-radius-*`. Every `dc:rounded-sm` / `-md` / `-lg` utility in the library resolves
+through those variables, which means the whole UI's roundness is a three-line change:
+
+```css
+:root {
+  --dc-radius-sm: 0.125rem;
+  --dc-radius-md: 0.1875rem;
+  --dc-radius-lg: 0.25rem;
+}
+```
+
+Rules:
+- **Prefer `dc:rounded-sm` over bare `dc:rounded`.** Bare `dc:rounded` compiles to a
+  hardcoded `.25rem` and does not follow the token.
+- `dc:rounded-full` is intentionally hardcoded — keep using it for pills and avatars.
+- Do **not** add an `@theme { --radius-lg: ... }` block: under the `dc` prefix that
+  compiles to `--dc-radius-lg: var(--dc-radius-lg)`, a self-reference.
+
 ## Theme Variables
 
 Defined in `src/client/theme/variables.css`. Consumer apps can override:

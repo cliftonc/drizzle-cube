@@ -9,6 +9,7 @@ import { resolveChartAxisFields } from './chartAxisResolution.js'
 import {
   getDualAxisInfo,
   getYAxisChartMargins,
+  resolveAngledAxisHeight,
   withTargetData,
   renderDualYAxes,
   renderChartTargetLines,
@@ -45,7 +46,7 @@ const BarChart = React.memo(function BarChart({
     showTooltip: displayConfig?.showTooltip ?? true
   }
 
-  const showAllXLabels = displayConfig?.showAllXLabels ?? true
+  const showAllXLabels = displayConfig?.showAllXLabels ?? false
 
   // Extract axis format configs
   const leftYAxisFormat = displayConfig?.leftYAxisFormat
@@ -150,7 +151,7 @@ const BarChart = React.memo(function BarChart({
             dataKey="name"
             type="category"
             tick={<AngledXAxisTick />}
-            height={60}
+            height={resolveAngledAxisHeight(enhancedChartData.map((row: any) => row?.name))}
             interval={showAllXLabels ? 0 : undefined}
           />
           {renderDualYAxes(axisInfo, getFieldLabel, leftYAxisFormat, rightYAxisFormat, effectiveIsPercentStack)}

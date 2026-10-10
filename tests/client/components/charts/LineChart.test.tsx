@@ -602,7 +602,7 @@ describe('LineChart', () => {
   })
 
   describe('showAllXLabels', () => {
-    it('should render with all X labels shown by default', () => {
+    it('should render by default', () => {
       render(<LineChart data={mockData} chartConfig={basicChartConfig} />)
       expect(screen.getByTestId('chart-container')).toBeInTheDocument()
     })

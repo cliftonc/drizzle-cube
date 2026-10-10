@@ -21,6 +21,7 @@ export default function DashboardListPage() {
     handleCreateExample,
     handleDelete,
     handleCreateDashboard,
+    handleImportDashboard,
   } = useDashboardListActions(pages.length)
 
   if (isLoading) {
@@ -38,6 +39,7 @@ export default function DashboardListPage() {
         atLimit={atLimit}
         onCreateExample={handleCreateExample}
         onNew={() => setIsNewModalOpen(true)}
+        onImport={handleImportDashboard}
       />
 
       <DashboardListBody

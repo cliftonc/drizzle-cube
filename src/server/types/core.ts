@@ -66,6 +66,11 @@ export interface QueryResult {
   }
   /** Warnings about potential query issues (e.g., fan-out without dimensions) */
   warnings?: QueryWarning[]
+  /**
+   * Total rows the query would return with no limit/offset, present only when
+   * the query asked for it with `total: true`.
+   */
+  total?: number
 }
 
 /**
@@ -97,6 +102,14 @@ export interface SqlResult {
 export interface ExecutionOptions {
   /** Skip the cache lookup (but still cache the result for future requests) */
   skipCache?: boolean
+  /**
+   * Identifies the cube definitions that produced the result, as
+   * `setId:baseGeneration.setGeneration`. Appended unconditionally to the query
+   * cache key so results can never be shared between tenants whose cube sets
+   * differ, nor survive a re-registration that changed a definition.
+   * Set by SemanticLayerCompiler; callers do not supply it.
+   */
+  cubeSetKey?: string
 }
 
 /**
@@ -170,6 +183,8 @@ export interface TimeDimensionAnnotation {
   shortTitle: string
   type: string
   granularity?: TimeGranularity
+  /** The cube time dimension's `fillMissingDates`, when it declares one */
+  fillMissingDates?: boolean
 }
 
 /**

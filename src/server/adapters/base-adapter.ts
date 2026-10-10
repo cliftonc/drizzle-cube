@@ -140,7 +140,7 @@ export interface DatabaseAdapter {
    * @param value - The value to match
    * @returns SQL expression for string matching
    */
-  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL
+  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'notStartsWith' | 'endsWith' | 'notEndsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL
 
   /**
    * Cast expression to specific database type
@@ -149,6 +149,18 @@ export interface DatabaseAdapter {
    * @returns SQL expression with type casting
    */
   castToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL
+
+  /**
+   * Cast expression to specific database type, tolerantly: unparseable input yields NULL
+   * instead of raising an error (PostgreSQL's `::`/`CAST` on bad input) or silently producing
+   * 0 (MySQL/SQLite `CAST` on non-numeric text). Intended for EAV-style schemas where a text
+   * column holds numbers/timestamps for some attributes and free text for others, so one dirty
+   * value doesn't fail the whole query or masquerade as a real 0.
+   * @param fieldExpr - The field expression to cast
+   * @param targetType - Target database type
+   * @returns SQL expression with tolerant type casting; unparseable/NULL input yields NULL
+   */
+  tryCastToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL
 
   /**
    * Build AVG aggregation expression with database-specific null handling
@@ -281,6 +293,10 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL
   // Type casting (::type vs CAST(...))
   abstract castToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL
+  // Tolerant type casting (NULL on unparseable input). Semantics diverge too much per engine
+  // (regex-guarded CASE vs GLOB-guarded CASE vs native TRY_CAST) for a shared default to be
+  // correct for the majority, so — like castToType — it stays abstract.
+  abstract tryCastToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL
   // Feature flags per engine
   abstract getCapabilities(): DatabaseCapabilities
   // Percentile support varies widely (PERCENTILE_CONT / QUANTILE_CONT / unsupported)
@@ -307,7 +323,7 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   }
 
   /**
-   * Case-insensitive LIKE matching for contains/startsWith/endsWith/ilike.
+   * Case-insensitive LIKE matching for (not)contains/(not)startsWith/(not)endsWith/ilike.
    * Default uses native ILIKE (PostgreSQL/DuckDB/Snowflake); engines without ILIKE
    * (MySQL/SQLite/Databend) override with LOWER()+LIKE.
    * @param pattern - the LIKE pattern in its original case (already wrapped with % as needed)
@@ -335,7 +351,7 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
    */
   buildStringCondition(
     fieldExpr: AnyColumn | SQL,
-    operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex',
+    operator: 'contains' | 'notContains' | 'startsWith' | 'notStartsWith' | 'endsWith' | 'notEndsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex',
     value: string
   ): SQL {
     switch (operator) {
@@ -345,8 +361,12 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
         return this.caseInsensitiveLike(fieldExpr, `%${value}%`, true)
       case 'startsWith':
         return this.caseInsensitiveLike(fieldExpr, `${value}%`, false)
+      case 'notStartsWith':
+        return this.caseInsensitiveLike(fieldExpr, `${value}%`, true)
       case 'endsWith':
         return this.caseInsensitiveLike(fieldExpr, `%${value}`, false)
+      case 'notEndsWith':
+        return this.caseInsensitiveLike(fieldExpr, `%${value}`, true)
       case 'like':
         return sql`${fieldExpr} LIKE ${value}`
       case 'notLike':
@@ -466,6 +486,49 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   ): SQL | null {
     const over = buildWindowOverClause(partitionBy, orderBy, config)
     return buildWindowExpression(type, fieldExpr, over, config)
+  }
+
+  /**
+   * Regex pattern for tryCastToType's decimal guard: optional leading sign, digits with an
+   * optional fractional part (or a bare fractional part like `.5`), surrounded by optional
+   * spaces; rejects everything else. Shared by PostgreSQL (`~`) and MySQL/SingleStore
+   * (`REGEXP`).
+   *
+   * Deliberately written using only POSIX ERE syntax (`[0-9]` instead of `\d`, a literal
+   * space instead of `\s`) rather than Perl/ICU shorthands. PostgreSQL's `~` always
+   * understands `\d`/`\s`, and MySQL 8.0.4+'s default ICU regex engine does too — but
+   * SingleStore's `REGEXP` is dialect-switchable via the `regexp_format` session variable
+   * ('extended' = POSIX ERE, 'advanced' = ICU/PCRE-style), and SingleStore's own docs
+   * recommend explicitly opting into 'advanced' for new regex logic, implying 'extended'
+   * (POSIX, no `\d`/`\s`) is the default. Since SingleStoreAdapter inherits this pattern
+   * unchanged from MySQLAdapter and this repo doesn't control session variables for
+   * consumers, the pattern is written as the POSIX-ERE/ICU/ARE intersection so it matches
+   * correctly regardless of which dialect is active.
+   */
+  protected decimalTryCastPattern(): string {
+    return '^ *[+-]?([0-9]+(\\.[0-9]+)?|\\.[0-9]+) *$'
+  }
+
+  /**
+   * Regex pattern for tryCastToType's integer guard: optional leading sign, digits only,
+   * surrounded by optional spaces. Same POSIX-ERE/ICU/ARE-portable rationale as
+   * decimalTryCastPattern().
+   */
+  protected integerTryCastPattern(): string {
+    return '^ *[+-]?[0-9]+ *$'
+  }
+
+  /**
+   * Regex pattern for tryCastToType's timestamp guard: an ISO 8601-shaped date, optionally
+   * followed by a time component (with optional seconds, fractional seconds and a UTC/offset
+   * suffix), surrounded by optional spaces. This only validates the *shape* of the input —
+   * it does not catch calendar-invalid dates (e.g. 2024-02-30) or reject strings that "look"
+   * like a timestamp but aren't (that would need engine-side parsing, which is exactly what
+   * tryCastToType is avoiding relying on for error-safety). Same POSIX-ERE/ICU/ARE-portable
+   * rationale as decimalTryCastPattern().
+   */
+  protected timestampTryCastPattern(): string {
+    return '^ *[0-9]{4}-[0-9]{2}-[0-9]{2}([ T][0-9]{2}:[0-9]{2}(:[0-9]{2}(\\.[0-9]+)?)?([+-][0-9]{2}:?[0-9]{2}|Z)?)? *$'
   }
 
   /**

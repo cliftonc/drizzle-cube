@@ -35,7 +35,9 @@ import {
   primeEventId,
   serializeSseEvent,
   extractBearerToken,
-  buildWwwAuthenticateChallenge
+  buildWwwAuthenticateChallenge,
+  validateOriginHeader,
+  originOptionsFromMcp
 } from '../mcp-transport.js'
 import { ensureLocaleHeader } from '../locale.js'
 import { createCubeHttpHandler, withLocaleFromHeaders, type McpHttpPort } from '../core/index.js'
@@ -65,9 +67,18 @@ function createExpressPort(req: Request, res: Response): McpHttpPort<Response> {
 
 export interface ExpressAdapterOptions {
   /**
-   * Array of cube definitions to register
+   * Pre-configured SemanticLayerCompiler instance.
+   * When provided, skips creating a new compiler and cube registration (caller
+   * manages it). Required to use per-tenant cube sets, since the caller must own
+   * the compiler to call `registerCubeSet` — see docs/per-tenant-cube-sets.md.
    */
-  cubes: Cube[]
+  semanticLayer?: SemanticLayerCompiler
+
+  /**
+   * Array of cube definitions to register.
+   * Required unless `semanticLayer` is provided.
+   */
+  cubes?: Cube[]
 
   /**
    * Drizzle database instance (REQUIRED)
@@ -177,8 +188,8 @@ export function createCubeRouter(
   } = options
 
   // Validate required options
-  if (!cubes || cubes.length === 0) {
-    throw new Error('At least one cube must be provided in the cubes array')
+  if (!options.semanticLayer && (!cubes || cubes.length === 0)) {
+    throw new Error('At least one cube must be provided in the cubes array, or pass a pre-configured semanticLayer')
   }
 
   const router = Router()
@@ -199,7 +210,7 @@ export function createCubeRouter(
   router.use(express.urlencoded({ extended: true, limit: jsonLimit }))
 
   // Create semantic layer and register all cubes
-  const semanticLayer = new SemanticLayerCompiler({
+  const semanticLayer = options.semanticLayer ?? new SemanticLayerCompiler({
     drizzle,
     schema,
     engineType,
@@ -207,10 +218,12 @@ export function createCubeRouter(
     rlsSetup: options.rlsSetup
   })
 
-  // Register all provided cubes
-  cubes.forEach(cube => {
-    semanticLayer.registerCube(cube)
-  })
+  // Register cubes only when we created the compiler (not caller-managed)
+  if (!options.semanticLayer && cubes) {
+    cubes.forEach(cube => {
+      semanticLayer.registerCube(cube)
+    })
+  }
 
   // Framework-agnostic core. The base-context thunk returns the pre-locale
   // context; the core does the locale merge. Every REST + MCP handler funnels
@@ -242,8 +255,8 @@ export function createCubeRouter(
     await httpHandler.handleBatchPost(createExpressPort(req, res), baseContext(req, res))
   })
 
-  router.get(`${basePath}/meta`, (req: Request, res: Response) => {
-    httpHandler.handleMetaGet(createExpressPort(req, res))
+  router.get(`${basePath}/meta`, async (req: Request, res: Response) => {
+    await httpHandler.handleMetaGet(createExpressPort(req, res), baseContext(req, res))
   })
 
   router.post(`${basePath}/sql`, async (req: Request, res: Response) => {
@@ -378,6 +391,11 @@ export function createCubeRouter(
     })
 
     router.get(`${mcpBasePath}`, async (req: Request, res: Response) => {
+      const originValidation = validateOriginHeader(req.headers.origin, originOptionsFromMcp(mcp))
+      if (!originValidation.valid) {
+        return res.status(403).json({ error: originValidation.reason })
+      }
+
       if (mcp.resourceMetadataUrl && !extractBearerToken(req.headers.authorization)) {
         res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
         return res.status(401).json({ error: 'Bearer token required' })
@@ -408,6 +426,11 @@ export function createCubeRouter(
      * Clients SHOULD send DELETE to terminate sessions
      */
     router.delete(`${mcpBasePath}`, (_req: Request, res: Response) => {
+      const originValidation = validateOriginHeader(_req.headers.origin, originOptionsFromMcp(mcp))
+      if (!originValidation.valid) {
+        return res.status(403).json({ error: originValidation.reason })
+      }
+
       if (mcp.resourceMetadataUrl && !extractBearerToken(_req.headers.authorization)) {
         res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
         return res.status(401).json({ error: 'Bearer token required' })

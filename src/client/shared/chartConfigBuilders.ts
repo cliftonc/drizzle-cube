@@ -161,6 +161,20 @@ function buildTableConfig(ctx: AxisBuilderContext): ChartAxisConfig {
 }
 
 /**
+ * Records table: every selected field becomes a column, in selection order.
+ * Distinct from the table builder only in which key it writes.
+ */
+function buildRecordsTableConfig(ctx: AxisBuilderContext): ChartAxisConfig {
+  const { metrics, breakdowns } = ctx
+  return {
+    columns: [
+      ...breakdowns.map((b) => b.field),
+      ...metrics.map((m) => m.field)
+    ]
+  }
+}
+
+/**
  * Markdown doesn't need chart config.
  */
 function buildMarkdownConfig(): ChartAxisConfig {
@@ -192,11 +206,13 @@ const axisBuilders: Partial<Record<ChartType, AxisBuilder>> = {
   radar: buildCategoryValueConfig,
   radialBar: buildCategoryValueConfig,
   treemap: buildCategoryValueConfig,
+  proportionBar: buildPieConfig,
   activityGrid: buildActivityGridConfig,
   kpiNumber: buildKpiConfig,
   kpiDelta: buildKpiConfig,
   kpiText: buildKpiConfig,
   table: buildTableConfig,
+  recordsTable: buildRecordsTableConfig,
   markdown: buildMarkdownConfig,
 }
 

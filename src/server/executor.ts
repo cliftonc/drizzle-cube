@@ -4,6 +4,7 @@
  * Uses DrizzleSqlBuilder for SQL generation and LogicalPlanner for query planning
  */
 
+import { sql } from 'drizzle-orm'
 import type {
   SecurityContext,
   SemanticQuery,
@@ -37,6 +38,7 @@ import { FilterCachePreloader } from './execution/filter-cache-preloader.js'
 import { ModeRouter } from './execution/mode-router.js'
 import type { QueryExecutionMode } from './execution/mode-router.js'
 import { QueryResultCache } from './execution/query-result-cache.js'
+import { normalizeFilterOnlyTimeDimensions } from './execution/query-normalizer.js'
 import { ComparisonQueryBuilder } from './builders/comparison-query-builder.js'
 import type { NormalizedPeriod } from './builders/comparison-query-builder.js'
 import { FunnelQueryBuilder } from './builders/funnel-query-builder.js'
@@ -172,7 +174,7 @@ export class QueryExecutor {
 
       // Check cache BEFORE expensive operations (after validation, includes security context)
       // Skip cache lookup if options.skipCache is true (but still cache the result later)
-      const cacheKey = this.resultCache.generateKey(query, securityContext)
+      const cacheKey = this.resultCache.generateKey(query, securityContext, options?.cubeSetKey)
       const cached = await this.resultCache.lookup(cacheKey, options?.skipCache ?? false)
       if (cached) {
         return cached
@@ -219,6 +221,7 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): import('./logical-plan/index.js').QueryNode {
+    query = normalizeFilterOnlyTimeDimensions(query)
     const filterCache = new FilterCacheManager()
     const context = this.createQueryContext(securityContext, filterCache, query)
     this.filterCachePreloader.preload(query, filterCache, cubes, context)
@@ -234,6 +237,7 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): QueryAnalysis {
+    query = normalizeFilterOnlyTimeDimensions(query)
     const filterCache = new FilterCacheManager()
     const context = this.createQueryContext(securityContext, filterCache, query)
     this.filterCachePreloader.preload(query, filterCache, cubes, context)
@@ -284,8 +288,9 @@ export class QueryExecutor {
     // Execute query for each period in parallel
     const periodResultPromises = periodQueries.map(async (periodQuery, periodIndex) => {
       // Execute using the standard path (this.execute handles the rest)
-      // Note: We call executeStandardQuery to avoid recursion
-      const result = await this.executeStandardQuery(cubes, periodQuery, securityContext)
+      // Note: We call executeStandardQuery to avoid recursion. Periods are
+      // gap-filled by default so each period has a row per bucket to align on.
+      const result = await this.executeStandardQuery(cubes, periodQuery, securityContext, undefined, true)
 
       return { result, period: periods[periodIndex] }
     })
@@ -366,11 +371,7 @@ export class QueryExecutor {
     // Config already validated once on the execute path via validateQueryForMode.
 
     // Create query context
-    const context: QueryContext = {
-      db: this.dbExecutor.db,
-      schema: this.dbExecutor.schema,
-      securityContext
-    }
+    const context: QueryContext = this.createQueryContext(securityContext)
 
     // Build funnel query using Drizzle query builder
     // The refactored buildFunnelQuery returns a query builder with .toSQL() support
@@ -424,11 +425,7 @@ export class QueryExecutor {
     // Config already validated once on the execute path via validateQueryForMode.
 
     // Create query context
-    const context: QueryContext = {
-      db: this.dbExecutor.db,
-      schema: this.dbExecutor.schema,
-      securityContext
-    }
+    const context: QueryContext = this.createQueryContext(securityContext)
 
     // Build flow query using Drizzle query builder
     const flowQuery = this.flowQueryBuilder.buildFlowQuery(config, cubes, context)
@@ -479,11 +476,7 @@ export class QueryExecutor {
     // Config already validated once on the execute path via validateQueryForMode.
 
     // Create query context
-    const context: QueryContext = {
-      db: this.dbExecutor.db,
-      schema: this.dbExecutor.schema,
-      securityContext
-    }
+    const context: QueryContext = this.createQueryContext(securityContext)
 
     // Build retention query using Drizzle query builder
     const retentionQuery = this.retentionQueryBuilder.buildRetentionQuery(config, cubes, context)
@@ -530,13 +523,19 @@ export class QueryExecutor {
    * @param cacheKey - When provided (and a cache provider is configured), the
    *   fresh result is written to the cache. Pass `undefined` to skip caching
    *   (e.g. comparison period sub-queries cache at the comparison level).
+   * @param fillByDefault - Gap-fill time dimensions that neither the query nor
+   *   the cube configures. Only comparison period sub-queries pass `true`.
    */
   private async executeStandardQuery(
     cubes: Map<string, Cube>,
     query: SemanticQuery,
     securityContext: SecurityContext,
-    cacheKey?: string | undefined
+    cacheKey?: string | undefined,
+    fillByDefault = false
   ): Promise<QueryResult> {
+    // A timeDimension without granularity is a filter only (Cube.js semantics)
+    query = normalizeFilterOnlyTimeDimensions(query)
+
     // Create filter cache for parameter deduplication across CTEs
     const filterCache = new FilterCacheManager()
 
@@ -570,7 +569,7 @@ export class QueryExecutor {
     const data = await this.dbExecutor.execute(builtQuery, numericFields)
 
     // Normalise time-dimension date values (adapter-specific) and apply gap filling
-    const filledData = postProcessResultRows(data, query, this.databaseAdapter)
+    const filledData = postProcessResultRows(data, query, this.databaseAdapter, cubes, fillByDefault)
 
     // Generate annotations for UI
     const annotation = buildAnnotations(physicalPlan, query)
@@ -579,11 +578,51 @@ export class QueryExecutor {
       data: filledData,
       annotation,
       // Include warnings from query planning (e.g., fan-out without dimensions)
-      warnings: optimisedPlan.warnings?.length ? optimisedPlan.warnings : undefined
+      warnings: optimisedPlan.warnings?.length ? optimisedPlan.warnings : undefined,
+      total: query.total ? await this.executeTotalCount(physicalPlan, planQuery, context) : undefined
     }
 
     await this.resultCache.store(cacheKey, result)
     return result
+  }
+
+  /**
+   * Count the rows the query would return with no limit or offset — Cube's
+   * `total`.
+   *
+   * Rebuilds the *same* physical plan with pagination and ordering stripped and
+   * counts over it as a subquery. The wrapper is what makes a grouped query
+   * count groups rather than base rows, and rebuilding from `planQuery` rather
+   * than reading the paginated query's effective values matters because
+   * `applyLimitAndOffset` injects a default limit when an offset arrives
+   * without one.
+   *
+   * Runs inside the caller's RLS context, so the count sees exactly the rows
+   * the page did.
+   */
+  private async executeTotalCount(
+    physicalPlan: PhysicalQueryPlan,
+    planQuery: SemanticQuery,
+    context: QueryContext
+  ): Promise<number> {
+    const unpaginated = this.drizzlePlanBuilder.build(
+      physicalPlan,
+      { ...planQuery, limit: undefined, offset: undefined, order: undefined },
+      context
+    )
+
+    const countQuery = context.db
+      .select({ total: sql<number>`count(*)`.as('total') })
+      .from(unpaginated.as('dc_total'))
+
+    debugSql('total', countQuery)
+
+    const rows = await this.dbExecutor.execute<Record<string, unknown>[]>(countQuery)
+    // Read positionally rather than by key: Snowflake upper-cases column names,
+    // and Postgres returns bigint counts as strings.
+    const value = rows?.[0] ? Object.values(rows[0])[0] : undefined
+    const total = Number(value)
+    return Number.isFinite(total) ? total : 0
   }
 
   /**
@@ -599,7 +638,11 @@ export class QueryExecutor {
       schema: this.dbExecutor.schema,
       securityContext,
       filterCache,
-      ungrouped: query?.ungrouped
+      ungrouped: query?.ungrouped,
+      // Bound so a cube author can emit portable SQL without reaching for the
+      // engine adapter, which is not otherwise reachable from a cube's sql fn.
+      cast: (fieldExpr, targetType) => this.databaseAdapter.castToType(fieldExpr, targetType),
+      tryCast: (fieldExpr, targetType) => this.databaseAdapter.tryCastToType(fieldExpr, targetType)
     }
   }
 
@@ -813,11 +856,7 @@ export class QueryExecutor {
     }
 
     // Create query context
-    const context: QueryContext = {
-      db: this.dbExecutor.db,
-      schema: this.dbExecutor.schema,
-      securityContext
-    }
+    const context: QueryContext = this.createQueryContext(securityContext)
 
     // Build the analysis query using its Drizzle query builder, then extract
     // the SQL string and parameters via .toSQL().
@@ -875,6 +914,7 @@ export class QueryExecutor {
     query: SemanticQuery, 
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
+    query = normalizeFilterOnlyTimeDimensions(query)
     const filterCache = new FilterCacheManager()
     const context = this.createQueryContext(securityContext, filterCache, query)
     this.filterCachePreloader.preload(query, filterCache, cubes, context)

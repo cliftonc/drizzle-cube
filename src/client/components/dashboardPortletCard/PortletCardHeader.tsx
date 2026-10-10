@@ -3,23 +3,14 @@
  * the card component flat.
  */
 
-import React, { type CSSProperties, type ComponentType } from 'react'
+import React, { type CSSProperties } from 'react'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import type { PortletConfig } from '../../types.js'
 import DebugModal from '../DebugModal.js'
 import { getIcon } from '../../icons/registry.js'
 import type { PortletDebugDataEntry } from '../../stores/dashboardStore.js'
+import EditActionButtons, { ICON_STYLE, type CardIcons } from './EditActionButtons.js'
 
-const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'currentColor' }
-
-type IconComponent = ComponentType<{ className?: string; style?: CSSProperties }>
-
-interface CardIcons {
-  RefreshIcon: IconComponent
-  EditIcon: IconComponent
-  DeleteIcon: IconComponent
-  CopyIcon: IconComponent
-  FilterIcon: IconComponent
-}
 
 interface PortletCardHeaderProps {
   portlet: PortletConfig
@@ -36,6 +27,8 @@ interface PortletCardHeaderProps {
   xlsExportAvailable: boolean
   exportInProgress: boolean
   showCacheBustIndicator: boolean
+  /** Labels of mapped dashboard date filters that cannot narrow this portlet */
+  unreachableDateFilterLabels?: string[]
   icons: CardIcons
   onRefresh: (options?: { bustCache?: boolean }) => void
   onHoverRefreshChange: (hovering: boolean) => void
@@ -76,67 +69,20 @@ function CacheIndicator({ cachedAt }: { cachedAt: string }) {
   )
 }
 
-/** Edit-mode action buttons: filter config, duplicate, edit, delete. */
-function EditActionButtons({
-  portlet,
-  icons,
-  onOpenFilterConfig,
-  onDuplicate,
-  onEdit,
-  onDelete
-}: {
-  portlet: PortletConfig
-  icons: CardIcons
-  onOpenFilterConfig: () => void
-  onDuplicate: () => void
-  onEdit: () => void
-  onDelete: () => void
-}) {
-  const mappingCount = portlet.dashboardFilterMapping?.length ?? 0
-
-  const stop = (handler: () => void) => (event: React.MouseEvent | React.TouchEvent) => {
-    event.stopPropagation()
-    if ('preventDefault' in event && event.type === 'touchend') event.preventDefault()
-    handler()
-  }
-
+function UnreachableDateFilterIndicator({ labels }: { labels: string[] }) {
+  const { t } = useTranslation()
+  const WarningIcon = getIcon('warning')
+  const message = labels.map(label => t('portlet.dateFilterNotApplied', { label })).join('\n')
   return (
-    <>
-      <button
-        onClick={stop(onOpenFilterConfig)}
-        onTouchEnd={stop(onOpenFilterConfig)}
-        className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors dc:relative"
-        title={`Configure dashboard filters${mappingCount > 0 ? ` (${mappingCount} active)` : ''}`}
-        style={{ color: mappingCount > 0 ? 'var(--dc-primary)' : 'var(--dc-text-secondary)' }}
-      >
-        <icons.FilterIcon style={ICON_STYLE} />
-      </button>
-
-      <button
-        onClick={stop(onDuplicate)}
-        onTouchEnd={stop(onDuplicate)}
-        className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
-        title="Duplicate portlet"
-      >
-        <icons.CopyIcon style={ICON_STYLE} />
-      </button>
-      <button
-        onClick={stop(onEdit)}
-        onTouchEnd={stop(onEdit)}
-        className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
-        title="Edit portlet"
-      >
-        <icons.EditIcon style={ICON_STYLE} />
-      </button>
-      <button
-        onClick={stop(onDelete)}
-        onTouchEnd={stop(onDelete)}
-        className="dc:p-1 dc:mr-0.5 bg-transparent dc:border-none dc:rounded-sm dc:cursor-pointer hover:bg-dc-danger-bg text-dc-danger dc:transition-colors"
-        title="Delete portlet"
-      >
-        <icons.DeleteIcon style={ICON_STYLE} />
-      </button>
-    </>
+    <span
+      className="dc:p-1 text-dc-warning dc:shrink-0"
+      title={message}
+      aria-label={message}
+      role="img"
+      data-testid="portlet-date-filter-not-applied"
+    >
+      <WarningIcon style={ICON_STYLE} />
+    </span>
   )
 }
 
@@ -145,7 +91,7 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
     portlet, className, headerStyle, restHeaderProps, headerOnClick,
     editable, isEditMode, isInSelectionMode, debugData,
     copyAvailable, copySuccess, xlsExportAvailable, exportInProgress, showCacheBustIndicator,
-    icons, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
+    unreachableDateFilterLabels, icons, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
     onOpenFilterConfig, onDuplicate, onEdit, onDelete
   } = props
 
@@ -162,6 +108,9 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
     >
       <div className="dc:flex dc:items-center dc:gap-2 dc:flex-1 dc:min-w-0">
         <h3 className="dc:font-semibold dc:text-sm text-dc-text dc:truncate">{portlet.title}</h3>
+        {unreachableDateFilterLabels && unreachableDateFilterLabels.length > 0 && (
+          <UnreachableDateFilterIndicator labels={unreachableDateFilterLabels} />
+        )}
         {editable && isEditMode && debugData && (
           <div {...STOP_HANDLERS}>
             <DebugModal

@@ -226,6 +226,61 @@ describe('CompactFilterBar', () => {
     })
   })
 
+  describe('binding to a plain inDateRange filter (#1285)', () => {
+    const createPlainDateFilter = (dateRange: string): DashboardFilter => ({
+      id: 'plain-date',
+      label: 'Created',
+      filter: {
+        member: 'Sessions.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange
+      }
+    })
+
+    it('reflects the plain filter range in the date control', () => {
+      const props = createDefaultProps()
+      props.dashboardFilters = [createPlainDateFilter('last 7 days')]
+
+      render(<CompactFilterBar {...props} />)
+
+      expect(screen.getAllByTestId('preset-7d')[0]).toHaveAttribute('data-active', 'true')
+      // Keeps its own chip too, which names the field it filters
+      expect(screen.getAllByTestId('filter-chip-plain-date').length).toBeGreaterThan(0)
+    })
+
+    it('updates the plain filter instead of creating a universal time filter', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      props.dashboardFilters = [createPlainDateFilter('last 7 days'), createRegularFilter('status', 'Status')]
+
+      render(<CompactFilterBar {...props} />)
+      await user.click(screen.getAllByTestId('preset-30d')[0])
+
+      const newFilters: DashboardFilter[] = props.onDashboardFiltersChange.mock.calls[0][0]
+      expect(newFilters).toHaveLength(2)
+      expect(newFilters.some(f => f.isUniversalTime)).toBe(false)
+      expect(newFilters[0]).toEqual({
+        id: 'plain-date',
+        label: 'Created',
+        filter: { member: 'Sessions.createdAt', operator: 'inDateRange', values: [], dateRange: 'last 30 days' }
+      })
+    })
+
+    it('prefers the universal time filter when both kinds exist', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      props.dashboardFilters = [createPlainDateFilter('last 7 days'), createUniversalTimeFilter('last 7 days')]
+
+      render(<CompactFilterBar {...props} />)
+      await user.click(screen.getAllByTestId('preset-30d')[0])
+
+      const newFilters: DashboardFilter[] = props.onDashboardFiltersChange.mock.calls[0][0]
+      expect((newFilters[0].filter as SimpleFilter).dateRange).toBe('last 7 days')
+      expect((newFilters[1].filter as SimpleFilter).dateRange).toBe('last 30 days')
+    })
+  })
+
   describe('custom date button', () => {
     it('should show Custom button', () => {
       const props = createDefaultProps()
@@ -271,7 +326,7 @@ describe('CompactFilterBar', () => {
 
       expect(props.onDashboardFiltersChange).toHaveBeenCalled()
       const newFilters = props.onDashboardFiltersChange.mock.calls[0][0]
-      expect(newFilters[0].filter.values).toEqual(['2024-01-01', '2024-01-31'])
+      expect(newFilters[0].filter).toMatchObject({ values: [], dateRange: ['2024-01-01', '2024-01-31'] })
     })
 
     it('should close custom dropdown when close button clicked', async () => {
@@ -337,7 +392,7 @@ describe('CompactFilterBar', () => {
 
       expect(props.onDashboardFiltersChange).toHaveBeenCalled()
       const newFilters = props.onDashboardFiltersChange.mock.calls[0][0]
-      expect(newFilters[0].filter.values).toContain('YTD')
+      expect(newFilters[0].filter).toMatchObject({ values: [], dateRange: 'YTD' })
     })
 
     it('should close XTD dropdown when close button clicked', async () => {
@@ -474,7 +529,7 @@ describe('CompactFilterBar', () => {
           expect.objectContaining({
             isUniversalTime: true,
             filter: expect.objectContaining({
-              values: expect.arrayContaining(['last 30 days'])
+              values: [], dateRange: 'last 30 days'
             })
           })
         ])

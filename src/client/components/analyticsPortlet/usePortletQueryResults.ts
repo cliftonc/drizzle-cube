@@ -19,7 +19,7 @@ import {
   createMultiQueryKey
 } from '../../hooks/queries/index.js'
 import { cleanQueryForServer } from '../../shared/utils.js'
-import type { CubeQuery, MultiQueryConfig, ServerFunnelQuery } from '../../types.js'
+import type { ChartDisplayConfig, CubeQuery, MultiQueryConfig, ServerFunnelQuery } from '../../types.js'
 import type { FlowChartData, ServerFlowQuery } from '../../types/flow.js'
 import type { RetentionChartData, ServerRetentionQuery } from '../../types/retention.js'
 
@@ -40,6 +40,8 @@ export interface UsePortletQueryResultsParams {
   shouldSkipQuery: boolean
   eagerLoad: boolean
   isVisible: boolean
+  /** Chart display config — its `fillMissingDates` drives client-side gap filling */
+  displayConfig?: ChartDisplayConfig
 }
 
 export interface PortletQueryResults {
@@ -70,8 +72,10 @@ export function usePortletQueryResults(params: UsePortletQueryResultsParams): Po
     isRetentionMode,
     shouldSkipQuery,
     eagerLoad,
-    isVisible
+    isVisible,
+    displayConfig
   } = params
+  const gapFill = { fillMissingDates: displayConfig?.fillMissingDates }
 
   const queryClient = useQueryClient()
 
@@ -93,12 +97,14 @@ export function usePortletQueryResults(params: UsePortletQueryResultsParams): Po
     skip: shouldSkipSingle,
     resetResultSetOnChange: true,
     debounceMs: 100, // Lower debounce for portlets (faster response)
+    gapFill,
   })
 
   const multiQueryResult = useMultiCubeLoadQuery(multiQueryConfig, {
     skip: shouldSkipMulti,
     resetResultSetOnChange: true,
     debounceMs: 100,
+    gapFill,
   })
 
   const funnelQueryResult = useFunnelQuery(funnelConfig, {

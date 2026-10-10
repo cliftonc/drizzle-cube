@@ -86,6 +86,11 @@ export interface DimensionMetadata {
    * Used for time-based drill-down (year -> quarter -> month -> week -> day)
    */
   granularities?: TimeGranularity[]
+  /**
+   * The time dimension's `fillMissingDates` default, when the cube declares one.
+   * Charts use it to decide whether to fill missing buckets.
+   */
+  fillMissingDates?: boolean
 }
 
 /**

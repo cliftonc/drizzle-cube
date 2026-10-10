@@ -26,7 +26,7 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
 function TypeBadge({ type, color }: { type: string; color: string }) {
   return (
     <span
-      className="dc:inline-flex dc:items-center dc:px-1.5 dc:py-0.5 dc:rounded dc:text-[10px] dc:font-medium dc:uppercase"
+      className="dc:inline-flex dc:items-center dc:px-1.5 dc:py-0.5 dc:rounded-sm dc:text-[10px] dc:font-medium dc:uppercase"
       style={{ backgroundColor: `color-mix(in srgb, ${color} 15%, var(--dc-surface))`, color }}
     >
       {type}
@@ -58,7 +58,7 @@ function MeasureDetail({ measure, cube }: { measure: CubeMetaMeasure; cube: Cube
         <DetailRow label="Drill into">
           <div className="dc:flex dc:flex-wrap dc:gap-1">
             {measure.drillMembers.map(dm => (
-              <span key={dm} className="dc:font-mono dc:text-[10px] dc:px-1 dc:py-0.5 dc:rounded bg-dc-surface-secondary border-dc-border dc:border">
+              <span key={dm} className="dc:font-mono dc:text-[10px] dc:px-1 dc:py-0.5 dc:rounded-sm bg-dc-surface-secondary border-dc-border dc:border">
                 {dm.split('.')[1] || dm}
               </span>
             ))}
@@ -88,7 +88,7 @@ function DimensionDetail({ dimension, cube }: { dimension: CubeMetaDimension; cu
         <DetailRow label="Granularity">
           <div className="dc:flex dc:flex-wrap dc:gap-1">
             {dimension.granularities.map(g => (
-              <span key={g} className="dc:font-mono dc:text-[10px] dc:px-1 dc:py-0.5 dc:rounded bg-dc-surface-secondary border-dc-border dc:border">
+              <span key={g} className="dc:font-mono dc:text-[10px] dc:px-1 dc:py-0.5 dc:rounded-sm bg-dc-surface-secondary border-dc-border dc:border">
                 {g}
               </span>
             ))}

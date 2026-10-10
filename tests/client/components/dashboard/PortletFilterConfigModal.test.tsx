@@ -546,6 +546,46 @@ describe('PortletFilterConfigModal', () => {
       expect(screen.getByRole('option', { name: 'Default (Employees.departmentId)' })).toBeInTheDocument()
     })
 
+    it('should offer reachable time dimensions for a universal time filter (#1285)', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const universal: DashboardFilter = {
+        id: 'date',
+        label: 'Date Range',
+        isUniversalTime: true,
+        filter: { member: '__universal_time__', operator: 'inDateRange', values: [], dateRange: 'last 7 days' }
+      }
+      const timeSchema = {
+        cubes: [
+          {
+            ...schema.cubes[0],
+            dimensions: [
+              ...schema.cubes[0].dimensions,
+              { name: 'Employees.hiredAt', title: 'Hired At', shortTitle: 'Hired', type: 'time' }
+            ]
+          },
+          schema.cubes[1]
+        ]
+      }
+      render(
+        <PortletFilterConfigModal
+          {...mappingProps}
+          schema={timeSchema as any}
+          dashboardFilters={[universal]}
+          onSave={onSave}
+          currentMapping={['date']}
+        />
+      )
+
+      expect(screen.getByRole('option', { name: "Default (the portlet's time dimensions)" })).toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: 'Department Name' })).not.toBeInTheDocument()
+
+      await user.selectOptions(screen.getByRole('combobox'), 'Employees.hiredAt')
+      await user.click(screen.getByRole('button', { name: /apply filters/i }))
+
+      expect(onSave).toHaveBeenCalledWith([{ filterId: 'date', member: 'Employees.hiredAt' }])
+    })
+
     it('should not show a dropdown for unchecked filters', () => {
       render(<PortletFilterConfigModal {...mappingProps} currentMapping={[]} />)
 

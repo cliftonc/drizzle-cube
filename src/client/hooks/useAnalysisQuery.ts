@@ -25,7 +25,7 @@ import {
   type DebugDataEntry,
 } from './queries/index.js'
 import { useCubeMeta } from '../providers/CubeProvider.js'
-import type { CubeQuery, MultiQueryConfig, FunnelBindingKey, QueryMergeStrategy, AnalysisType } from '../types.js'
+import type { CubeQuery, MultiQueryConfig, FunnelBindingKey, QueryMergeStrategy, AnalysisType, ChartDisplayConfig } from '../types.js'
 import type { ExecutionStatus } from '../components/AnalysisBuilder/types.js'
 import type { ServerFunnelQuery } from '../types/funnel.js'
 import type { ServerFlowQuery, FlowChartData } from '../types/flow.js'
@@ -81,6 +81,11 @@ export interface UseAnalysisQueryOptions {
    * Used to display specific errors in the debug panel.
    */
   retentionValidation?: { isValid: boolean; errors: string[]; warnings: string[] } | null
+  /**
+   * The chart's gap-filling setting (`displayConfig.fillMissingDates`). Results
+   * are gap-filled client-side per this setting, the query and the cube.
+   */
+  fillMissingDates?: ChartDisplayConfig['fillMissingDates']
 }
 
 export interface UseAnalysisQueryResult {
@@ -180,7 +185,9 @@ export function useAnalysisQuery(
     serverFlowQuery,
     serverRetentionQuery,
     retentionValidation,
+    fillMissingDates,
   } = options
+  const gapFill = { fillMissingDates }
 
   // Get field label resolver from cube context (for human-readable labels)
   const { getFieldLabel } = useCubeMeta()
@@ -237,12 +244,14 @@ export function useAnalysisQuery(
   const singleQueryResult = useCubeLoadQuery(currentQuery, {
     skip: skipFlags.single,
     debounceMs: 300,
+    gapFill,
   })
 
   // Multi-query execution (only when analysisType is 'multi' or legacy multi mode)
   const multiQueryResult = useMultiCubeLoadQuery(multiQueryConfig, {
     skip: skipFlags.multi,
     debounceMs: 300,
+    gapFill,
   })
 
   // Funnel query execution

@@ -152,7 +152,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
         disabled={disabled}
         className={`
           dc:flex dc:items-center dc:justify-between dc:w-full dc:px-2 dc:py-1 dc:text-xs
-          bg-dc-surface dc:border border-dc-border dc:rounded
+          bg-dc-surface dc:border border-dc-border dc:rounded-sm
           dc:transition-colors
           ${disabled ? 'dc:opacity-50 dc:cursor-not-allowed' : 'hover:border-dc-primary dc:cursor-pointer'}
           ${isOpen ? 'border-dc-primary dc:ring-1 ring-dc-primary' : ''}
@@ -168,7 +168,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
               tabIndex={0}
               onClick={handleClear}
               onKeyDown={(e) => e.key === 'Enter' && handleClear(e as unknown as React.MouseEvent)}
-              className="dc:p-0.5 dc:rounded hover:bg-dc-surface-hover text-dc-text-muted hover:text-dc-text"
+              className="dc:p-0.5 dc:rounded-sm hover:bg-dc-surface-hover text-dc-text-muted hover:text-dc-text"
               title={t('funnel.bindingKey.clearTitle')}
             >
               ×
@@ -197,7 +197,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('funnel.bindingKey.searchPlaceholder')}
-                className="dc:w-full dc:pl-8 dc:pr-3 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded text-dc-text placeholder:text-dc-text-muted dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
+                className="dc:w-full dc:pl-8 dc:pr-3 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded-sm text-dc-text placeholder:text-dc-text-muted dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
               />
             </div>
           </div>
@@ -222,7 +222,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
                       onClick={() => handleSelect(dim.dimension)}
                       className={`
                         dc:flex dc:items-center dc:justify-between dc:w-full dc:px-3 dc:py-1.5 dc:text-sm
-                        dc:rounded dc:transition-colors
+                        dc:rounded-sm dc:transition-colors
                         ${isSelected(dim.dimension)
                           ? 'bg-dc-primary-bg text-dc-primary'
                           : 'text-dc-text hover:bg-dc-surface-hover'

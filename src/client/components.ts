@@ -41,5 +41,7 @@ export {
 // Component-related types
 export type {
   PortletConfig,
-  DashboardConfig
+  DashboardConfig,
+  PortletGroup,
+  PortletGroupCell
 } from './types.js'

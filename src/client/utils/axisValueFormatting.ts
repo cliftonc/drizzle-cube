@@ -93,6 +93,16 @@ export function abbreviateValue(num: number, abbreviate: boolean): AbbreviatedVa
 }
 
 /**
+ * Resolve the ISO 4217 code to format with: an explicit, well-formed code wins,
+ * otherwise the viewer's locale decides.
+ */
+function resolveCurrencyCode(code: string | undefined, locale: string): string {
+  return code && /^[A-Za-z]{3}$/.test(code)
+    ? code.toUpperCase()
+    : getCurrencyCodeForLocale(locale)
+}
+
+/**
  * Resolved formatting parameters shared by the per-unit formatters.
  */
 export interface AxisFormatParams {
@@ -106,8 +116,10 @@ export interface AxisFormatParams {
 
 function formatCurrency(params: AxisFormatParams): string {
   const { displayValue, abbreviate, abbreviationSuffix, decimals, locale } = params
-  // Currency code is determined by locale (USD for en-US, EUR for de-DE, etc.)
-  const currencyCode = getCurrencyCodeForLocale(locale)
+  // Explicit per-column code wins; otherwise derive it from the viewer's locale
+  // (USD for en-US, EUR for de-DE, ...). Half-typed codes are ignored rather
+  // than passed to Intl, which throws RangeError on anything but 3 letters.
+  const currencyCode = resolveCurrencyCode(params.config.currencyCode, locale)
 
   if (abbreviate && abbreviationSuffix) {
     // For abbreviated currency, format the number part and add suffix
@@ -140,10 +152,11 @@ function formatCurrency(params: AxisFormatParams): string {
 }
 
 function formatPercent(params: AxisFormatParams): string {
-  const { displayValue, abbreviate, abbreviationSuffix, decimals, locale } = params
+  const { displayValue, abbreviationSuffix, decimals, locale } = params
   // Format as percentage (multiply by 100 if value is 0-1 range, otherwise use as-is)
-  // Assume values > 1 are already percentages, values <= 1 need multiplication
-  const percentValue = Math.abs(displayValue) <= 1 && !abbreviate ? displayValue * 100 : displayValue
+  // Assume values > 1 are already percentages, values <= 1 need multiplication.
+  // An abbreviated value (1000 -> 1K) was above 1 before scaling, so it is never multiplied.
+  const percentValue = Math.abs(displayValue) <= 1 && !abbreviationSuffix ? displayValue * 100 : displayValue
   const formatted = new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,

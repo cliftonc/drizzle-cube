@@ -7,7 +7,7 @@
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import type { DrizzleDatabase } from '../../src/server/index.js'
-import { SemanticLayerCompiler, createDatabaseExecutor } from '../../src/server/index.js'
+import { SemanticLayerCompiler, createDatabaseExecutor, SINGLE_TENANT_CONTEXT } from '../../src/server/index.js'
 import {
   buildStep0Prompt,
   buildSystemPrompt,
@@ -190,7 +190,7 @@ function formatCubeSchemaForAI(db: DrizzleDatabase): string {
       semanticLayer.registerCube(cube)
     })
 
-    const metadata = semanticLayer.getMetadata()
+    const metadata = semanticLayer.getMetadata(SINGLE_TENANT_CONTEXT)
 
     // Format the metadata for AI consumption
     const cubes: Record<string, any> = {}
@@ -698,7 +698,7 @@ aiApp.post('/explain/analyze', async (c) => {
       semanticLayer.registerCube(cube)
     })
 
-    const metadata = semanticLayer.getMetadata()
+    const metadata = semanticLayer.getMetadata(SINGLE_TENANT_CONTEXT)
     const cubeSchema = formatCubeSchemaForExplain(metadata)
 
     // Get existing indexes for tables in the query

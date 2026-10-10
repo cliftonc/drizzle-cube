@@ -116,6 +116,8 @@ export function useDashboardViewState({ page, id }: UseDashboardViewStateArgs) {
     }
   }, [id])
 
+  // Name/description only: the API accepts partial updates, and resending the config
+  // from this closure could overwrite a config that was just imported or auto-saved.
   const handleEditMetadata = useCallback(async (data: { name: string; description?: string }) => {
     if (!page || !id) return
 
@@ -123,14 +125,13 @@ export function useDashboardViewState({ page, id }: UseDashboardViewStateArgs) {
       await updatePage.mutateAsync({
         id: parseInt(id),
         name: data.name,
-        description: data.description,
-        config: config
+        description: data.description
       })
     } catch (error) {
       console.error('Failed to save metadata:', error)
       throw error // Re-throw to keep modal open
     }
-  }, [page, id, config, updatePage])
+  }, [page, id, updatePage])
 
   const handleResetDashboard = useCallback(async () => {
     if (!id) return

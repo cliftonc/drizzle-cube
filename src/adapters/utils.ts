@@ -9,12 +9,14 @@ import type {
   SecurityContext,
   QueryAnalysis,
   QuerySuggestion,
-  AIValidationResult
+  AIValidationResult,
+  QueryValidationIssue
 } from '../server/index.js'
 import {
   suggestQuery,
   aiValidateQuery,
-  getActiveQueryModes
+  getActiveQueryModes,
+  QueryValidationError
 } from '../server/index.js'
 // Query handlers + SQL formatting live in the server layer so the in-process
 // agent can use them without a server→adapters import cycle. Re-exported here
@@ -23,6 +25,7 @@ export { handleDiscover, handleLoad } from '../server/query-handlers.js'
 export type { DiscoverRequest, LoadRequest, DiscoverResponse } from '../server/query-handlers.js'
 export { formatSqlString } from '../server/sql-format.js'
 import { normalizeQueryFields } from '../server/query-handlers.js'
+import { t } from '../i18n/runtime.js'
 export { normalizeQueryFields }
 import type {
   MCPPromptResolver,
@@ -165,10 +168,11 @@ function collectDryRunAnalysis(
 
 function validateDryRunQuery(
   query: SemanticQuery,
+  securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler,
   label: string
 ): void {
-  const validation = semanticLayer.validateQuery(query)
+  const validation = semanticLayer.validateQuery(query, securityContext)
   if (!validation.isValid) {
     throw new Error(`${label} validation failed: ${validation.errors.join(', ')}`)
   }
@@ -335,7 +339,7 @@ async function handleRegularDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  validateDryRunQuery(query, semanticLayer, 'Query')
+  validateDryRunQuery(query, securityContext, semanticLayer, 'Query')
   const cubesUsed = collectRegularReferencedCubes(query)
   const isMultiCube = cubesUsed.length > 1
   const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
@@ -372,7 +376,7 @@ async function handleComparisonDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  validateDryRunQuery(query, semanticLayer, 'Comparison query')
+  validateDryRunQuery(query, securityContext, semanticLayer, 'Comparison query')
   const cubesUsed = collectRegularReferencedCubes(query)
   const isMultiCube = cubesUsed.length > 1
   const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
@@ -415,6 +419,7 @@ export function formatCubeResponse(
     annotation?: any
     cache?: { hit: boolean; cachedAt?: string; ttlMs?: number; ttlRemainingMs?: number }
     warnings?: Array<{ code: string; message: string; severity: string; cubes?: string[]; measures?: string[]; suggestion?: string }>
+    total?: number
   },
   semanticLayer: SemanticLayerCompiler
 ) {
@@ -441,7 +446,9 @@ export function formatCubeResponse(
       // Include cache metadata if present (indicates cache hit with TTL info)
       ...(result.cache && { cache: result.cache }),
       // Include warnings if present (e.g., fan-out without dimensions)
-      ...(result.warnings?.length && { warnings: result.warnings })
+      ...(result.warnings?.length && { warnings: result.warnings }),
+      // Rows the query would return without limit/offset — only when asked for
+      ...(result.total !== undefined && { total: result.total })
     }],
     pivotQuery: {
       ...query,
@@ -519,12 +526,23 @@ export function formatMetaResponse(metadata: any) {
 }
 
 /**
- * Standard error response format
+ * Standard error response format.
+ *
+ * `issues` is additive: the `error` string keeps its exact shape for existing
+ * clients, while a caller that needs to act on a *particular* unknown member —
+ * a dashboard dropping the column for a deleted attribute, say — has something
+ * structured to read. Splitting the joined string back apart is not reliable,
+ * since the per-field hints contain the same separator.
  */
-export function formatErrorResponse(error: string | Error, status: number = 500) {
+export function formatErrorResponse(
+  error: string | Error,
+  status: number = 500,
+  issues?: QueryValidationIssue[]
+) {
   return {
     error: error instanceof Error ? error.message : error,
-    status
+    status,
+    ...(issues?.length && { issues })
   }
 }
 
@@ -580,11 +598,15 @@ export async function handleBatchRequest(
       }
     } else {
       // Query failed - return error information
+      const reason = settledResult.reason
       return {
         success: false,
-        error: settledResult.reason instanceof Error
-          ? settledResult.reason.message
-          : String(settledResult.reason),
+        error: reason instanceof Error ? reason.message : String(reason),
+        // Structured unknown-member detail, so a caller can drop a dead column
+        // rather than only report the whole batch item as broken. Always
+        // present as a key so both branches share a shape and callers can read
+        // `.error` without narrowing the union first.
+        issues: reason instanceof QueryValidationError ? reason.issues : undefined,
         query: queries[index] // Include the query that failed for debugging
       }
     }
@@ -602,7 +624,7 @@ async function handleFunnelDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  validateDryRunQuery(query, semanticLayer, 'Funnel query')
+  validateDryRunQuery(query, securityContext, semanticLayer, 'Funnel query')
   const cubesUsed = collectFunnelReferencedCubes(query)
   const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
   const funnel = query.funnel!
@@ -643,7 +665,7 @@ async function handleFlowDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  validateDryRunQuery(query, semanticLayer, 'Flow query')
+  validateDryRunQuery(query, securityContext, semanticLayer, 'Flow query')
   const cubesUsed = collectFlowReferencedCubes(query)
   const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
   const flow = query.flow!
@@ -678,7 +700,7 @@ async function handleRetentionDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  validateDryRunQuery(query, semanticLayer, 'Retention query')
+  validateDryRunQuery(query, securityContext, semanticLayer, 'Retention query')
   const cubesUsed = collectRetentionReferencedCubes(query)
   const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
   const retention = query.retention!
@@ -737,10 +759,17 @@ export interface MCPOptions {
   /** Base path for MCP endpoints (default: '/mcp') */
   basePath?: string
   /**
-   * Allowed origins for MCP requests (for Origin header validation per MCP 2025-11-25).
-   * If not provided, all origins are allowed (permissive mode).
-   * Set this to restrict access to specific origins for production security.
-   * Example: ['http://localhost:3000', 'https://myapp.com']
+   * Allowed origins for MCP requests (Origin header validation per MCP 2025-11-25,
+   * mitigating DNS rebinding).
+   *
+   * Default (when omitted): admit loopback origins (localhost / 127.x / [::1]) plus
+   * non-browser / server-to-server clients that send no Origin header (e.g. the Claude
+   * MCP connector, curl); every other browser Origin is rejected with 403.
+   *
+   * If a **browser front-end** calls `/mcp`, you MUST list its origin here to allow it,
+   * e.g. ['https://app.example.com']. Include the wildcard '*' to allow ALL origins
+   * (permissive mode — discouraged; prefer exact origins and/or {@link resourceMetadataUrl}
+   * auth as the primary control for public deployments).
    */
   allowedOrigins?: string[]
   /**
@@ -777,6 +806,11 @@ export interface MCPOptions {
    * When set, MCP endpoints require a Bearer token in the Authorization header.
    * Unauthenticated requests receive 401 with WWW-Authenticate pointing to this URL.
    * Token validation is the responsibility of extractSecurityContext.
+   *
+   * Strongly recommended for any public deployment: auth is the primary access control
+   * for `/mcp`, while {@link allowedOrigins} validation is defense-in-depth against
+   * browser-driven (DNS-rebinding) requests. The Claude MCP connector supports the
+   * OAuth 2.1 / PRM flow this enables.
    */
   resourceMetadataUrl?: string
   /**
@@ -809,9 +843,12 @@ export interface ValidateRequest {
  */
 export async function handleSuggest(
   semanticLayer: SemanticLayerCompiler,
+  securityContext: SecurityContext,
   body: SuggestRequest
 ): Promise<QuerySuggestion> {
-  const metadata = semanticLayer.getMetadata()
+  // Suggestions are built from cube metadata, so they are scoped to the cube
+  // set this caller may see — never the base set.
+  const metadata = semanticLayer.getMetadata(securityContext)
   return suggestQuery(metadata, body.naturalLanguage, body.cube)
 }
 
@@ -820,23 +857,38 @@ export async function handleSuggest(
  */
 export async function handleValidate(
   semanticLayer: SemanticLayerCompiler,
-  body: ValidateRequest,
-  securityContext?: SecurityContext
+  securityContext: SecurityContext,
+  body: ValidateRequest
 ): Promise<AIValidationResult & { sql?: { sql: string; params?: any[] } }> {
-  const metadata = semanticLayer.getMetadata()
+  // The query is validated against the caller's cube set. The context used to be
+  // optional here — callers that could not authenticate still got base-set
+  // metadata back. That escape hatch is gone: a caller with no resolvable
+  // context gets no cube list at all.
+  const metadata = semanticLayer.getMetadata(securityContext)
   const result = await aiValidateQuery(body.query, metadata)
 
-  if (result.isValid && securityContext) {
-    try {
-      const query = normalizeQueryFields(
-        (result.correctedQuery ?? body.query) as Record<string, unknown>
-      ) as SemanticQuery
-      const dryRun = await semanticLayer.dryRun(query, securityContext)
-      return { ...result, sql: dryRun }
-    } catch {
-      return result
+  // The AI validator's errors carry suggestions, so report those when it has any;
+  // the compiler only adds what the AI validator can't see (it overlaps otherwise).
+  if (!result.isValid) return result
+
+  const query = normalizeQueryFields(
+    (result.correctedQuery ?? body.query) as Record<string, unknown>
+  ) as SemanticQuery
+  const cubeValidation = semanticLayer.validateQuery(query, securityContext)
+  if (!cubeValidation.isValid) {
+    return {
+      ...result,
+      isValid: false,
+      errors: cubeValidation.errors.map(message => ({ type: 'syntax_error' as const, message }))
     }
   }
 
-  return result
+  try {
+    const dryRun = await semanticLayer.dryRun(query, securityContext)
+    return { ...result, sql: dryRun }
+  } catch (error) {
+    return { ...result, isValid: false, errors: [...result.errors, {
+      type: 'syntax_error', message: t('server.validation.ai.dryRunFailed', { error: String(error) })
+    }] }
+  }
 }

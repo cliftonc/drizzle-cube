@@ -34,7 +34,9 @@ import {
   primeEventId,
   serializeSseEvent,
   extractBearerToken,
-  buildWwwAuthenticateChallenge
+  buildWwwAuthenticateChallenge,
+  validateOriginHeader,
+  originOptionsFromMcp
 } from '../mcp-transport.js'
 import { handleAgentChatRequest } from './agent-handler.js'
 import { ensureLocaleHeader } from '../locale.js'
@@ -243,7 +245,7 @@ export function createCubeRoutes(
   app.post(`${basePath}/load`, (c) => httpHandler.handleLoadPost(createHonoPort(c), baseContext(c)))
   app.get(`${basePath}/load`, (c) => httpHandler.handleLoadGet(createHonoPort(c), baseContext(c)))
   app.post(`${basePath}/batch`, (c) => httpHandler.handleBatchPost(createHonoPort(c), baseContext(c)))
-  app.get(`${basePath}/meta`, (c) => httpHandler.handleMetaGet(createHonoPort(c)))
+  app.get(`${basePath}/meta`, (c) => httpHandler.handleMetaGet(createHonoPort(c), baseContext(c)))
   app.post(`${basePath}/sql`, (c) => httpHandler.handleSqlPost(createHonoPort(c), baseContext(c)))
   app.get(`${basePath}/sql`, (c) => httpHandler.handleSqlGet(createHonoPort(c), baseContext(c)))
   app.post(`${basePath}/dry-run`, (c) => httpHandler.handleDryRunPost(createHonoPort(c), baseContext(c)))
@@ -288,6 +290,11 @@ export function createCubeRoutes(
      * Clients SHOULD send DELETE to terminate sessions
      */
     app.delete(`${mcpBasePath}`, (c) => {
+      const originValidation = validateOriginHeader(c.req.header('origin'), originOptionsFromMcp(mcp))
+      if (!originValidation.valid) {
+        return c.json({ error: originValidation.reason }, 403)
+      }
+
       if (mcp.resourceMetadataUrl && !extractBearerToken(c.req.header('authorization'))) {
         c.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
         return c.json({ error: 'Bearer token required' }, 401)
@@ -299,6 +306,11 @@ export function createCubeRoutes(
     })
 
     app.get(`${mcpBasePath}`, (c) => {
+      const originValidation = validateOriginHeader(c.req.header('origin'), originOptionsFromMcp(mcp))
+      if (!originValidation.valid) {
+        return c.json({ error: originValidation.reason }, 403)
+      }
+
       if (mcp.resourceMetadataUrl && !extractBearerToken(c.req.header('authorization'))) {
         c.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
         return c.json({ error: 'Bearer token required' }, 401)

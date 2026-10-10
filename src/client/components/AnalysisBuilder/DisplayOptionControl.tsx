@@ -2,18 +2,32 @@
  * DisplayOptionControl Component
  *
  * Renders a single structured display option (boolean, string, number, select,
- * color, paletteColor, axisFormat, stringArray, buttonGroup) for the
+ * color, paletteColor, axisFormat, stringArray, buttonGroup, thresholdBands) for the
  * AnalysisDisplayConfigPanel. Each option type has its own small presentational
  * component so the dispatcher stays flat. Behaviour is identical to the previous
  * inline rendering.
  */
 
 import type { ReactElement } from 'react'
-import type { ChartDisplayConfig, ColorPalette, AxisFormatConfig } from '../../types.js'
+import type {
+  AxisFormatConfig,
+  ChartAxisConfig,
+  ChartDisplayConfig,
+  ColorPalette,
+  ColumnFormatConfig,
+  RowLinkConfig,
+  ThresholdBand
+} from '../../types.js'
 import type { DisplayOptionConfig } from '../../charts/chartConfigs.js'
 import { AxisFormatControls } from '../charts/AxisFormatControls.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
 import StringArrayInput from './StringArrayInput.js'
+import { parseThresholds } from '../charts/gaugeChartHelpers.js'
+import ColumnFormatsEditor from './ColumnFormatsEditor.js'
+import TemplateEditor from './TemplateEditor.js'
+
+/** Neutral starting colour for a newly added threshold band. */
+const DEFAULT_BAND_COLOUR = '#22c55e'
 
 type SetValue = (value: unknown) => void
 
@@ -21,13 +35,46 @@ interface OptionRenderProps {
   option: DisplayOptionConfig
   displayConfig: ChartDisplayConfig
   colorPalette?: ColorPalette
+  /**
+   * The chart's axis config. Only needed by options that are keyed by field —
+   * `columnFormats` renders one row per assigned column — so it is optional and
+   * the mount points that configure fieldless charts may omit it.
+   */
+  chartConfig?: ChartAxisConfig
   setValue: SetValue
-  t: (key: string) => string
+  t: (key: string, params?: Record<string, string | number>) => string
 }
 
-function OptionDescription({ description, t }: { description?: string; t: (key: string) => string }) {
-  if (!description) return null
-  return <p className="dc:text-xs text-dc-text-muted">{t(description)}</p>
+function OptionDescription({
+  description,
+  docsUrl,
+  docsLabel,
+  t
+}: {
+  description?: string
+  docsUrl?: string
+  docsLabel?: string
+  t: (key: string) => string
+}) {
+  if (!description && !docsUrl) return null
+  return (
+    <p className="dc:text-xs text-dc-text-muted">
+      {description ? t(description) : null}
+      {docsUrl ? (
+        <>
+          {description ? ' ' : null}
+          <a
+            href={docsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="dc:underline text-dc-accent"
+          >
+            {t(docsLabel ?? 'chart.config.learnMore')}
+          </a>
+        </>
+      ) : null}
+    </p>
+  )
 }
 
 function BooleanOption({ option, displayConfig, setValue, t }: OptionRenderProps) {
@@ -38,7 +85,7 @@ function BooleanOption({ option, displayConfig, setValue, t }: OptionRenderProps
         type="checkbox"
         checked={(displayConfig[key] as boolean) ?? option.defaultValue ?? false}
         onChange={(e) => setValue(e.target.checked)}
-        className="dc:rounded border-dc-border focus:ring-dc-accent"
+        className="dc:rounded-sm border-dc-border focus:ring-dc-accent"
         style={{ color: 'var(--dc-primary)' }}
       />
       <span className="dc:text-sm text-dc-text">{t(option.label)}</span>
@@ -49,22 +96,33 @@ function BooleanOption({ option, displayConfig, setValue, t }: OptionRenderProps
 function StringOption({ option, displayConfig, setValue, t }: OptionRenderProps) {
   const key = option.key as keyof ChartDisplayConfig
   const value = (displayConfig[key] as string) ?? option.defaultValue ?? ''
+  // Placeholders are usually literal examples, but a chart may supply a
+  // translation key instead. `t` returns an unknown key unchanged, so one call
+  // handles both.
+  const placeholder = option.placeholder ? t(option.placeholder) : undefined
   return (
     <div className="dc:space-y-1">
       <label className="dc:text-sm text-dc-text-secondary">
         {t(option.label)}
         {option.key === 'content' && (
           <span className="dc:text-xs text-dc-text-muted dc:ml-1">
-            (only headers, lists and links)
+            {t('chart.markdown.contentHint')}
           </span>
         )}
       </label>
-      {option.key === 'content' ? (
+      {option.syntax === 'markdownTemplate' ? (
+        <TemplateEditor
+          value={value}
+          onChange={setValue}
+          placeholder={placeholder}
+          rows={option.rows ?? 8}
+        />
+      ) : option.key === 'content' ? (
         <textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={option.placeholder}
-          rows={8}
+          placeholder={placeholder}
+          rows={option.rows ?? 8}
           className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent dc:font-mono dc:resize-y bg-dc-surface text-dc-text"
         />
       ) : (
@@ -72,11 +130,11 @@ function StringOption({ option, displayConfig, setValue, t }: OptionRenderProps)
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={option.placeholder}
+          placeholder={placeholder}
           className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
         />
       )}
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -93,7 +151,7 @@ function PaletteColorOption({ option, displayConfig, colorPalette, setValue, t }
             key={index}
             type="button"
             onClick={() => setValue(index)}
-            className={`dc:w-8 dc:h-8 dc:rounded dc:border-2 dc:transition-all dc:duration-200 dc:hover:scale-110 focus:outline-hidden dc:focus:ring-2 focus:ring-dc-accent dc:focus:ring-offset-1 ${
+            className={`dc:w-8 dc:h-8 dc:rounded-sm dc:border-2 dc:transition-all dc:duration-200 dc:hover:scale-110 focus:outline-hidden dc:focus:ring-2 focus:ring-dc-accent dc:focus:ring-offset-1 ${
               selectedIndex === index
                 ? 'dc:ring-2 dc:ring-offset-1 dc:scale-110'
                 : 'hover:border-dc-text-muted'
@@ -119,7 +177,7 @@ function PaletteColorOption({ option, displayConfig, colorPalette, setValue, t }
           />
         ]}
       </div>
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -139,7 +197,7 @@ function NumberOption({ option, displayConfig, setValue, t }: OptionRenderProps)
         step={option.step}
         className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
       />
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -160,7 +218,7 @@ function SelectOption({ option, displayConfig, setValue, t }: OptionRenderProps)
           </option>
         ))}
       </select>
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -186,7 +244,7 @@ function ColorOption({ option, displayConfig, setValue, t }: OptionRenderProps) 
           className="dc:flex-1 dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
         />
       </div>
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -239,7 +297,158 @@ function ButtonGroupOption({ option, displayConfig, setValue, t }: OptionRenderP
           )
         })}
       </div>
-      <OptionDescription description={option.description} t={t} />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
+    </div>
+  )
+}
+
+
+/**
+ * Threshold bands for the gauge.
+ *
+ * A band's `value` is stored as a 0-1 fraction of the gauge's min->max range,
+ * which is not what anyone wants to type. The editor works in the gauge's own
+ * units - read from the same displayConfig - and converts on the way in and out,
+ * so a 0-100 dial is edited as 50, not 0.5.
+ */
+function ThresholdBandsOption({ option, displayConfig, setValue, t }: OptionRenderProps) {
+  const key = option.key as keyof ChartDisplayConfig
+  const raw = displayConfig[key]
+  const bands = parseThresholds(raw as string | ThresholdBand[] | undefined)
+
+  const min = Number(displayConfig.minValue ?? 0)
+  const max = Number(displayConfig.maxValue ?? 100)
+  const span = max - min
+  // A zero span would make every band land on the same point; fall back to
+  // editing the raw fraction rather than dividing by zero.
+  const usable = Number.isFinite(span) && span !== 0
+  const toScale = (fraction: number) => (usable ? min + fraction * span : fraction)
+  const toFraction = (scaled: number) => (usable ? (scaled - min) / span : scaled)
+
+  const commit = (next: ThresholdBand[]) => {
+    const sorted = [...next].sort((a, b) => a.value - b.value)
+    setValue(sorted.length > 0 ? sorted : undefined)
+  }
+  const update = (index: number, patch: Partial<ThresholdBand>) =>
+    commit(bands.map((band, i) => (i === index ? { ...band, ...patch } : band)))
+
+  return (
+    <div className="dc:space-y-1">
+      <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
+      <div className="dc:space-y-1">
+        {bands.map((band, index) => (
+          <div key={index} className="dc:flex dc:items-center dc:gap-2">
+            <input
+              type="color"
+              value={band.color}
+              onChange={(e) => update(index, { color: e.target.value })}
+              aria-label={t('chart.gauge.thresholds.colour')}
+              className="dc:w-10 dc:h-8 dc:shrink-0 dc:border border-dc-border dc:rounded-sm dc:cursor-pointer"
+            />
+            <input
+              type="number"
+              value={Number(toScale(band.value).toFixed(4))}
+              onChange={(e) => {
+                const scaled = Number(e.target.value)
+                if (Number.isFinite(scaled)) update(index, { value: toFraction(scaled) })
+              }}
+              aria-label={t('chart.gauge.thresholds.from')}
+              className="dc:flex-1 dc:min-w-0 dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+            />
+            <button
+              type="button"
+              onClick={() => commit(bands.filter((_, i) => i !== index))}
+              title={t('chart.gauge.thresholds.remove')}
+              className="dc:px-2 dc:py-1 dc:text-sm dc:shrink-0 dc:rounded-sm text-dc-danger hover:bg-dc-danger-bg dc:cursor-pointer"
+            >
+              &times;
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          const last = bands[bands.length - 1]
+          // Drop the new band midway between the last one and the top of the dial.
+          const next = last ? Math.min(1, (last.value + 1) / 2) : 0
+          commit([...bands, { value: next, color: DEFAULT_BAND_COLOUR }])
+        }}
+        className="dc:text-xs dc:px-2 dc:py-1 dc:rounded-sm dc:border border-dc-border text-dc-text-secondary hover:bg-dc-surface-hover dc:cursor-pointer"
+      >
+        {t('chart.gauge.thresholds.add')}
+      </button>
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
+    </div>
+  )
+}
+
+/**
+ * Per-column rendering for the records table, or for any chart whose option
+ * lists its own columns. Delegates to `ColumnFormatsEditor` so this file stays a
+ * dispatcher; like `ThresholdBandsOption` it always writes the complete `Record`
+ * back rather than a partial patch.
+ */
+function ColumnFormatsOption({ option, displayConfig, chartConfig, colorPalette, setValue, t }: OptionRenderProps) {
+  const key = option.key as keyof ChartDisplayConfig
+  return (
+    <div className="dc:space-y-1">
+      <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
+      <ColumnFormatsEditor
+        value={(displayConfig[key] as Record<string, ColumnFormatConfig>) ?? {}}
+        chartConfig={chartConfig}
+        displayConfig={displayConfig}
+        columns={option.columns}
+        colorPalette={colorPalette}
+        progressBands={option.progressBands}
+        onChange={setValue}
+        t={t}
+      />
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
+    </div>
+  )
+}
+
+/**
+ * Row click-through template for the records table. `{Cube.field}` tokens are
+ * filled per row, including from hidden columns; the URL is validated at render
+ * time, so an unsafe template simply produces no link.
+ */
+function RowLinkOption({ option, displayConfig, setValue, t }: OptionRenderProps) {
+  const key = option.key as keyof ChartDisplayConfig
+  const value = (displayConfig[key] as RowLinkConfig | undefined) ?? { urlTemplate: '' }
+
+  const commit = (next: RowLinkConfig) =>
+    setValue(next.urlTemplate.trim() ? next : undefined)
+
+  return (
+    <div className="dc:space-y-1">
+      <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
+      <input
+        type="text"
+        value={value.urlTemplate}
+        onChange={(e) => commit({ ...value, urlTemplate: e.target.value })}
+        placeholder={t('chart.recordsTable.rowLink.placeholder')}
+        aria-label={t('chart.recordsTable.rowLink.urlTemplate')}
+        className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+      />
+      <div className="dc:flex dc:border border-dc-border dc:rounded-sm dc:overflow-hidden">
+        {(['self', 'blank'] as const).map(target => (
+          <button
+            key={target}
+            type="button"
+            onClick={() => commit({ ...value, target })}
+            className={`dc:flex-1 dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:cursor-pointer ${
+              (value.target ?? 'self') === target
+                ? 'bg-dc-primary text-white'
+                : 'bg-dc-surface text-dc-text hover:bg-dc-border'
+            }`}
+          >
+            {t(`chart.recordsTable.rowLink.target.${target}`)}
+          </button>
+        ))}
+      </div>
+      <OptionDescription description={option.description} docsUrl={option.docsUrl} docsLabel={option.docsLabel} t={t} />
     </div>
   )
 }
@@ -254,13 +463,17 @@ const OPTION_RENDERERS: Record<string, (props: OptionRenderProps) => ReactElemen
   color: ColorOption,
   axisFormat: AxisFormatOption,
   stringArray: StringArrayOption,
-  buttonGroup: ButtonGroupOption
+  buttonGroup: ButtonGroupOption,
+  thresholdBands: ThresholdBandsOption,
+  columnFormats: ColumnFormatsOption,
+  rowLink: RowLinkOption
 }
 
 interface DisplayOptionControlProps {
   option: DisplayOptionConfig
   displayConfig: ChartDisplayConfig
   colorPalette?: ColorPalette
+  chartConfig?: ChartAxisConfig
   onDisplayConfigChange: (config: ChartDisplayConfig) => void
 }
 
@@ -268,6 +481,7 @@ export default function DisplayOptionControl({
   option,
   displayConfig,
   colorPalette,
+  chartConfig,
   onDisplayConfigChange,
 }: DisplayOptionControlProps) {
   const { t } = useTranslation()
@@ -276,5 +490,5 @@ export default function DisplayOptionControl({
 
   const Renderer = OPTION_RENDERERS[option.type]
   if (!Renderer) return null
-  return <Renderer option={option} displayConfig={displayConfig} colorPalette={colorPalette} setValue={setValue} t={t} />
+  return <Renderer option={option} displayConfig={displayConfig} colorPalette={colorPalette} chartConfig={chartConfig} setValue={setValue} t={t} />
 }

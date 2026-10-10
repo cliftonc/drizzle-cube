@@ -3,7 +3,7 @@
  * Tests for Model Context Protocol transport utilities and JSON-RPC handling
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   negotiateProtocol,
   wantsEventStream,
@@ -26,6 +26,7 @@ import {
   resolveMcpResources,
   resolveMcpInstructions,
   getMcpAppHtml,
+  injectMcpAppConfig,
   SUPPORTED_MCP_PROTOCOLS,
   DEFAULT_MCP_PROTOCOL,
   MCP_SESSION_ID_HEADER,
@@ -36,7 +37,9 @@ import {
   type McpDispatchContext,
   type McpAppConfig
 } from '../../src/adapters/mcp-transport'
+import type { MCPResource } from '../../src/adapters/mcp-transport'
 import { createTestSemanticLayer } from '../helpers/test-database'
+import type { SemanticQuery } from '../../src/server/types/query'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
 
@@ -188,8 +191,23 @@ describe('MCP Transport Layer', () => {
       }
     })
 
-    it('should allow all origins when no allowedOrigins configured', () => {
-      const result = validateOriginHeader('http://example.com')
+    it('should allow loopback origins by default (no allowedOrigins configured)', () => {
+      for (const origin of ['http://localhost:3000', 'http://127.0.0.1:8787', 'http://[::1]:8787', 'https://localhost']) {
+        const result = validateOriginHeader(origin)
+        expect(result.valid, origin).toBe(true)
+      }
+    })
+
+    it('should reject a foreign browser origin by default (DNS-rebinding vector)', () => {
+      const result = validateOriginHeader('https://evil.example')
+      expect(result.valid).toBe(false)
+      if (!result.valid) {
+        expect(result.reason).toContain('loopback origins only')
+      }
+    })
+
+    it('should allow all origins when the wildcard is configured', () => {
+      const result = validateOriginHeader('https://evil.example', { allowedOrigins: ['*'] })
       expect(result.valid).toBe(true)
     })
 
@@ -227,9 +245,9 @@ describe('MCP Transport Layer', () => {
       expect(result.valid).toBe(true)
     })
 
-    it('should handle empty allowedOrigins array', () => {
-      const result = validateOriginHeader('http://example.com', { allowedOrigins: [] })
-      expect(result.valid).toBe(true)
+    it('should apply the loopback-only default for an empty allowedOrigins array', () => {
+      expect(validateOriginHeader('http://example.com', { allowedOrigins: [] }).valid).toBe(false)
+      expect(validateOriginHeader('http://localhost:3000', { allowedOrigins: [] }).valid).toBe(true)
     })
   })
 
@@ -638,7 +656,12 @@ describe('MCP Transport Layer', () => {
         const { testEmployeesCube } = await createTestCubesForCurrentDatabase()
         semanticLayer.registerCube(testEmployeesCube)
 
-        const resources = buildMcpResources(semanticLayer, defaults => defaults.filter(resource => resource.uri !== 'drizzle-cube://quickstart'))
+        const resources = buildMcpResources(
+          semanticLayer,
+          testSecurityContexts.org1,
+          (defaults: MCPResource[]) =>
+            defaults.filter(resource => resource.uri !== 'drizzle-cube://quickstart')
+        )
 
         expect(resources.some(resource => resource.uri === 'drizzle-cube://schema')).toBe(true)
         expect(resources.some(resource => resource.uri === 'drizzle-cube://quickstart')).toBe(false)
@@ -769,6 +792,15 @@ describe('MCP Transport Layer', () => {
         expect(toolNames).toContain('discover')
         expect(toolNames).toContain('validate')
         expect(toolNames).toContain('load')
+      })
+
+      it('documents flat date values on load and chart tools', async () => {
+        const result = await dispatchMcpMethod('tools/list', {}, dispatchCtx) as any
+        for (const tool of result.tools.filter((tool: { name: string }) => ['load', 'chart'].includes(tool.name))) {
+          const values = tool.inputSchema.properties.query.properties.filters.items.properties.values
+          expect(values.items).not.toHaveProperty('items')
+          expect(values.description).toContain('flat')
+        }
       })
 
       it('should have input schemas for tools', async () => {
@@ -994,6 +1026,62 @@ describe('MCP Transport Layer', () => {
         expect(parsed.sql).toHaveProperty('sql')
       })
 
+      it('rejects nested values without SQL and accepts flat and relative ranges', async () => {
+        const query: SemanticQuery = { measures: ['Employees.count'], filters: [{
+          member: 'Employees.createdAt', operator: 'inDateRange', values: [['2024-01-01', '2024-01-31']]
+        }] }
+        const call = async () => {
+          const response = await dispatchMcpMethod('tools/call', { name: 'validate', arguments: { query } }, dispatchCtx) as any
+          return JSON.parse(response.content[0].text)
+        }
+        const invalid = await call()
+        expect(invalid.isValid).toBe(false)
+        expect(invalid.errors).toHaveLength(1)
+        expect(invalid).not.toHaveProperty('sql')
+        query.filters = [{ member: 'Employees.createdAt', operator: 'inDateRange', values: ['2024-01-01', '2024-01-31'] }]
+        const flat = await call()
+        expect(flat.isValid).toBe(true)
+        expect(flat.sql.sql).toMatch(/where/i)
+        query.filters = [{ member: 'Employees.createdAt', operator: 'inDateRange', values: ['last 7 days'] }]
+        expect((await call()).isValid).toBe(true)
+      })
+
+      it('reports each problem once, with its own error type', async () => {
+        const response = await dispatchMcpMethod('tools/call', {
+          name: 'validate', arguments: { query: { measures: ['Employees.cout'] } }
+        }, dispatchCtx) as any
+        const parsed = JSON.parse(response.content[0].text)
+        expect(parsed.isValid).toBe(false)
+        expect(parsed.errors.map((e: { type: string }) => e.type)).toEqual(['measure_not_found'])
+      })
+
+      it('rejects a reversed time dimension range that the AI validator does not check', async () => {
+        const response = await dispatchMcpMethod('tools/call', {
+          name: 'validate', arguments: { query: { measures: ['Employees.count'], timeDimensions: [
+            { dimension: 'Employees.createdAt', granularity: 'month', dateRange: ['2024-12-31', '2024-01-01'] }
+          ] } }
+        }, dispatchCtx) as any
+        const parsed = JSON.parse(response.content[0].text)
+        expect(parsed.isValid).toBe(false)
+        expect(parsed).not.toHaveProperty('sql')
+        expect(parsed.errors[0].message).toContain('Employees.createdAt')
+      })
+
+      it('reports dry-run failures instead of declaring success without SQL', async () => {
+        const spy = vi.spyOn(semanticLayer, 'dryRun').mockRejectedValueOnce(new Error('SQL generation failed'))
+        try {
+          const response = await dispatchMcpMethod('tools/call', {
+            name: 'validate', arguments: { query: { measures: ['Employees.count'] } }
+          }, dispatchCtx) as any
+          const parsed = JSON.parse(response.content[0].text)
+          expect(parsed.isValid).toBe(false)
+          expect(parsed.errors[0].message).toContain('SQL generation failed')
+          expect(parsed).not.toHaveProperty('sql')
+        } finally {
+          spy.mockRestore()
+        }
+      })
+
       it('should throw error without query', async () => {
         await expect(
           dispatchMcpMethod('tools/call', {
@@ -1005,6 +1093,14 @@ describe('MCP Transport Layer', () => {
     })
 
     describe('load via tools/call', () => {
+      it('rejects nested inDateRange without executing an unfiltered load', async () => {
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'load', arguments: { query: { measures: ['Employees.count'], filters: [{
+            member: 'Employees.createdAt', operator: 'inDateRange', values: [['2024-01-01', '2024-01-31']]
+          }] } }
+        }, dispatchCtx) as any
+        expect(result.isError).toBe(true)
+      })
       it('should execute query', async () => {
         const result = await dispatchMcpMethod('tools/call', {
           name: 'load',
@@ -1103,23 +1199,36 @@ describe('MCP Transport Layer', () => {
   })
 
   describe('getMcpAppHtml locale config injection', () => {
-    it('returns base html unchanged when no config is provided', () => {
+    it('returns base html unchanged when no config is provided', async () => {
       // No config → no injection; the built HTML is returned as-is.
       // Assert on the injection *assignment* (`window.X = ...`), not the bare
       // identifier: the app bundle itself reads `window.__DRIZZLE_CUBE_MCP_APP_CONFIG__`,
       // so the built HTML always contains the name — only the injected
       // <script> assigns to it.
-      const html = getMcpAppHtml()
+      const html = await getMcpAppHtml()
       expect(html).toContain('<!DOCTYPE html>')
       expect(html).not.toContain('window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ =')
     })
 
-    it('injects config script into html when config is provided', () => {
+    it('injects config script into html when config is provided', async () => {
       const config: McpAppConfig = { defaultLocale: 'nl-NL' }
-      const result = getMcpAppHtml(config)
+      const result = await getMcpAppHtml(config)
       expect(result).toContain('__DRIZZLE_CUBE_MCP_APP_CONFIG__')
       expect(result).toContain('"nl-NL"')
       expect(result).toContain('</head>')
+    })
+
+    it('injectMcpAppConfig is pure over the html it is given', () => {
+      const html = '<!DOCTYPE html><html><head><title>x</title></head><body></body></html>'
+      // Empty html (app not built) and missing config both pass through untouched
+      expect(injectMcpAppConfig('', { defaultLocale: 'nl-NL' })).toBe('')
+      expect(injectMcpAppConfig(html)).toBe(html)
+      const result = injectMcpAppConfig(html, { defaultLocale: 'nl-NL', detectBrowserLocale: false })
+      expect(result).toContain(
+        '<script>window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ = {"defaultLocale":"nl-NL","detectBrowserLocale":false}</script></head>'
+      )
+      // Injected exactly once, immediately before </head>
+      expect(result.split('__DRIZZLE_CUBE_MCP_APP_CONFIG__').length).toBe(2)
     })
 
     // The injection logic is tested via a thin wrapper that patches the module-level html.

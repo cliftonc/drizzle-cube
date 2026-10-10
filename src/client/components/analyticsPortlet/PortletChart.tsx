@@ -6,7 +6,7 @@
 
 import { LazyChart, isValidChartType } from '../../charts/ChartLoader.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
-import type { ChartAxisConfig, ChartDisplayConfig, ChartType, CubeQuery } from '../../types.js'
+import type { ChartAxisConfig, ChartDisplayConfig, ChartPagination, ChartType, CubeQuery } from '../../types.js'
 import type { FlowChartData } from '../../types/flow.js'
 import type { RetentionChartData } from '../../types/retention.js'
 import type { ColorPalette } from '../../utils/colorPalettes.js'
@@ -33,6 +33,7 @@ export interface PortletChartProps {
   chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
   activeQuery: CubeQuery | null
+  pagination?: ChartPagination
   colorPalette?: ColorPalette
   drillEnabled: boolean
   currentChartConfig?: ChartAxisConfig | null
@@ -69,6 +70,7 @@ function resolvePortletData(props: PortletChartProps): unknown {
   switch (chartType) {
     case 'pie':
     case 'table':
+    case 'recordsTable':
       return resultSet.tablePivot()
     default:
       return resultSet.rawData()
@@ -83,6 +85,7 @@ export function PortletChart(props: PortletChartProps) {
     chartConfig,
     displayConfig,
     activeQuery,
+    pagination,
     colorPalette,
     drillEnabled,
     currentChartConfig,
@@ -109,10 +112,9 @@ export function PortletChart(props: PortletChartProps) {
     }
 
     // Cast to unknown[] for ChartProps - specific charts (like Sankey) handle their own data format
-    const data = resolvePortletData(props) as unknown as unknown[]
-
-    // For markdown chart, use empty data array
-    const chartData = effectiveChartType === 'markdown' ? [] : data
+    // Markdown is no longer special-cased to an empty array: with a query
+    // attached it renders its content as a template over these rows.
+    const chartData = resolvePortletData(props) as unknown as unknown[]
 
     // Use drill chart config if available, otherwise fall back to original
     const effectiveChartConfig = (drillEnabled && currentChartConfig)
@@ -126,6 +128,7 @@ export function PortletChart(props: PortletChartProps) {
         chartConfig={effectiveChartConfig}
         displayConfig={displayConfig}
         queryObject={activeQuery ?? undefined}
+        pagination={pagination}
         height={height}
         colorPalette={colorPalette}
         onDataPointClick={drillEnabled ? onDataPointClick : undefined}
@@ -135,7 +138,7 @@ export function PortletChart(props: PortletChartProps) {
             className="dc:flex dc:items-center dc:justify-center dc:w-full"
             style={{ height: typeof height === 'number' ? `${height}px` : height }}
           >
-            <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded dc:w-full dc:h-full dc:min-h-[100px]" />
+            <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded-sm dc:w-full dc:h-full dc:min-h-[100px]" />
           </div>
         }
       />

@@ -247,12 +247,12 @@ function validateFilters(
 ): void {
   for (const filter of filters) {
     // Handle logical filters (AND/OR)
-    if ('and' in filter && Array.isArray(filter.and)) {
-      validateFilters(filter.and, metadata, errors, corrections)
-      continue
-    }
-    if ('or' in filter && Array.isArray(filter.or)) {
-      validateFilters(filter.or, metadata, errors, corrections)
+    // Only a well-formed group short-circuits; anything else still gets member validation.
+    const and = 'and' in filter && Array.isArray(filter.and) ? filter.and : undefined
+    const or = 'or' in filter && Array.isArray(filter.or) ? filter.or : undefined
+    if (and || or) {
+      if (and) validateFilters(and, metadata, errors, corrections)
+      if (or) validateFilters(or, metadata, errors, corrections)
       continue
     }
 
