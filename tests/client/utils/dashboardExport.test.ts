@@ -235,6 +235,19 @@ describe('dashboardExport', () => {
       expect(withAnalysis({ query: {} }).ok).toBe(true)
     })
 
+    it('rejects an analysisConfig without a charts map', () => {
+      const withCharts = (charts: unknown) => {
+        const { charts: _charts, ...rest } = analysisConfig()
+        const config = charts === undefined ? rest : { ...rest, charts }
+        return parseDashboardExport({ portlets: [{ id: 'p', title: 'P', x: 0, y: 0, w: 6, h: 4, analysisConfig: config }] })
+      }
+      const rejected = { ok: false, errors: [{ code: 'invalidPortlet', index: 0, path: 'analysisConfig.charts' }] }
+      expect(withCharts(undefined)).toEqual(rejected)
+      expect(withCharts(null)).toEqual(rejected)
+      expect(withCharts('bar')).toEqual(rejected)
+      expect(withCharts({}).ok).toBe(true)
+    })
+
     it('migrates legacy portlets on import', () => {
       const result = parseDashboardExport({
         portlets: [

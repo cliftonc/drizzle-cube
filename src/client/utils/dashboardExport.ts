@@ -307,6 +307,9 @@ function parsePortlet(value: unknown, index: number): PortletParseResult {
   // `query` JSON string (plus its sibling chart fields) that configMigration upgrades.
   if (value.analysisConfig !== undefined) {
     if (!isValidAnalysisConfig(value.analysisConfig)) return fail('analysisConfig')
+    // isValidAnalysisConfig does not check `charts`, but the dashboard card reads
+    // `charts[analysisType]` on every render.
+    if (!isRecord(value.analysisConfig.charts)) return fail('analysisConfig.charts')
     portlet.analysisConfig = value.analysisConfig
     return { ok: true, portlet }
   }
