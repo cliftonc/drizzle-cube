@@ -186,9 +186,12 @@
   pointer-events: none;
 }
 
+/* border-box keeps a drop zone's padding inside the row, so the columns
+   narrow to make room for it rather than pushing the row past its parent. */
 .dc-row-layout-row {
   display: flex;
   width: 100%;
+  box-sizing: border-box;
   align-items: stretch;
   gap: var(--dc-column-gap, 16px);
 }
