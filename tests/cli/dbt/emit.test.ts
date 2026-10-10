@@ -72,4 +72,20 @@ describe('dbt emitters', () => {
     expect(orderLines).toContain("sql: sql<string>`concat_ws('|', ${orderLines.orderId}, ${orderLines.lineNumber})`")
     expect(orderLines.match(/primaryKey: true/g)).toHaveLength(2)
   })
+
+  it('declares a composite key once at table level and qualifies tables with their schema', () => {
+    const schema = emitSchema(models(), { header: GENERATED_HEADER }).content
+    expect(schema).toContain("const analyticsSchema = pgSchema('analytics')")
+    expect(schema).toContain("export const orderLines = analyticsSchema.table('order_lines', {")
+    expect(schema).toContain('primaryKey({ columns: [table.orderId, table.lineNumber] })')
+    expect(schema).not.toMatch(/orderId: .*\.primaryKey\(\)/)
+    expect(schema).not.toContain('pgTable')
+  })
+
+  it('uses pgTable for models in the default schema', () => {
+    const publicModels = models().map((model) => ({ ...model, schemaName: undefined }))
+    const schema = emitSchema(publicModels, { header: GENERATED_HEADER }).content
+    expect(schema).toContain("export const customers = pgTable('customers', {")
+    expect(schema).not.toContain('pgSchema')
+  })
 })

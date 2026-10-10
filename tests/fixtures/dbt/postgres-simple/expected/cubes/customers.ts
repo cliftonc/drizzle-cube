@@ -2,7 +2,7 @@
 
 import { eq } from 'drizzle-orm'
 import { defineCube, type BaseQueryDefinition, type Cube, type QueryContext } from 'drizzle-cube/server'
-import { customers } from '../schema'
+import { customers } from '../schema.js'
 
 function securityValue(ctx: QueryContext): number {
   const value = ctx.securityContext.organisationId
@@ -14,7 +14,7 @@ function securityValue(ctx: QueryContext): number {
 
 export const CustomersCube: Cube = defineCube('Customers', {
   title: 'Customers',
-  description: 'Customer records.',
+  description: 'Customer records.\nOne row per customer, including O\'Hare\'s accounts.',
   sql: (ctx: QueryContext): BaseQueryDefinition => ({
     from: customers,
     where: eq(customers.organisationId, securityValue(ctx))
@@ -48,6 +48,27 @@ export const CustomersCube: Cube = defineCube('Customers', {
       description: 'Whether the customer is active.',
       type: 'boolean',
       sql: customers.active
+    },
+    signedUpAt: {
+      name: 'signedUpAt',
+      title: 'Signed Up At',
+      description: 'Signup time.',
+      type: 'time',
+      sql: customers.signedUpAt
+    },
+    externalRef: {
+      name: 'externalRef',
+      title: 'External Ref',
+      description: 'CRM reference.',
+      type: 'string',
+      sql: customers.externalRef
+    },
+    parentCustomerId: {
+      name: 'parentCustomerId',
+      title: 'Parent Customer Id',
+      description: 'Parent account.',
+      type: 'number',
+      sql: customers.parentCustomerId
     }
   },
   measures: {

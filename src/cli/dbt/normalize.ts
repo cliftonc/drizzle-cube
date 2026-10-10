@@ -1,7 +1,7 @@
 import type { MeasureType } from '../../server/types/core.js'
-import { humanizeTitle, makeUniqueIdentifier, toCamelCase, toKebabCase, toPascalCase } from './naming.js'
+import { humanizeTitle, isIdentifier, makeUniqueIdentifier, toKebabCase, toPascalCase } from './naming.js'
 import { mapPostgresCatalogType } from './postgres-types.js'
-import type { CatalogColumn, DbtModel, GeneratedColumn, GeneratedMeasure, GeneratedModel, GeneratorWarning, ParsedDbtArtifacts, SecurityMode, SupportedMaterialization } from './types.js'
+import type { CatalogColumn, DbtModel, DbtRelationshipTest, GeneratedColumn, GeneratedMeasure, GeneratedModel, GeneratorWarning, ParsedDbtArtifacts, SecurityMode, SupportedMaterialization } from './types.js'
 
 const MATERIALIZATIONS = new Set<string>(['table', 'view', 'incremental'])
 const MEASURE_TYPES = new Set<string>(['count', 'countDistinct', 'countDistinctApprox', 'sum', 'avg', 'min', 'max', 'runningTotal', 'number', 'calculated', 'stddev', 'stddevSamp', 'variance', 'varianceSamp', 'percentile', 'median', 'p95', 'p99', 'lag', 'lead', 'rank', 'denseRank', 'rowNumber', 'ntile', 'firstValue', 'lastValue', 'movingAvg', 'movingSum'])
@@ -19,10 +19,8 @@ function hasPrimaryKeyMeta(meta: Record<string, unknown> | undefined): boolean {
   return drizzleCubeMeta(meta)?.primary_key === true
 }
 
-function isPrimaryKey(model: DbtModel, column: string): boolean {
-  const dbtColumn = model.columns.find((candidate) => candidate.name === column)
-  const tests = model.testsByColumn[column] ?? dbtColumn?.tests ?? []
-  return hasPrimaryKeyMeta(dbtColumn?.meta) || (tests.includes('unique') && tests.includes('not_null'))
+function columnTests(model: DbtModel, column: string): string[] {
+  return model.testsByColumn[column] ?? model.columns.find((candidate) => candidate.name === column)?.tests ?? []
 }
 
 function catalogByName(columns: CatalogColumn[]): Map<string, CatalogColumn> {
@@ -33,7 +31,16 @@ function isMeasureType(value: string): value is MeasureType {
   return MEASURE_TYPES.has(value)
 }
 
-function explicitMeasures(model: DbtModel, columns: GeneratedColumn[], warnings: GeneratorWarning[]): GeneratedMeasure[] {
+function uniqueName(raw: string, used: Set<string>, kind: string, model: DbtModel, warnings: GeneratorWarning[]): string {
+  const result = makeUniqueIdentifier(raw, used, kind)
+  if (result.warning) warnings.push({ ...result.warning, modelName: model.name })
+  used.add(result.identifier)
+  return result.identifier
+}
+
+// Measure names share the cube's field namespace with dimensions, so they are
+// made unique against the dimension names as well as each other.
+function explicitMeasures(model: DbtModel, columns: GeneratedColumn[], usedNames: Set<string>, warnings: GeneratorWarning[]): GeneratedMeasure[] {
   const result: GeneratedMeasure[] = []
   const modelMeta = drizzleCubeMeta(model.meta)
   const rawMeasures = Array.isArray(modelMeta?.measures) ? modelMeta.measures : []
@@ -49,14 +56,14 @@ function explicitMeasures(model: DbtModel, columns: GeneratedColumn[], warnings:
       warnings.push({ code: 'invalid_measure_column', message: `Skipping measure '${raw.name}' because column '${columnName}' was not emitted.`, modelName: model.name, columnName })
       continue
     }
-    result.push({ name: toCamelCase(raw.name), title: typeof raw.title === 'string' ? raw.title : humanizeTitle(raw.name), description: typeof raw.description === 'string' ? raw.description : undefined, type: raw.type, columnName })
+    result.push({ name: uniqueName(raw.name, usedNames, 'measure', model, warnings), title: typeof raw.title === 'string' ? raw.title : humanizeTitle(raw.name), description: typeof raw.description === 'string' ? raw.description : undefined, type: raw.type, columnName })
   }
 
   for (const column of columns) {
     const dbtColumn = model.columns.find((candidate) => candidate.name === column.sqlName)
     const raw = drizzleCubeMeta(dbtColumn?.meta)?.measure
     if (!isRecord(raw) || typeof raw.name !== 'string' || typeof raw.type !== 'string' || !isMeasureType(raw.type)) continue
-    result.push({ name: toCamelCase(raw.name), title: typeof raw.title === 'string' ? raw.title : humanizeTitle(raw.name), type: raw.type, columnName: column.sqlName })
+    result.push({ name: uniqueName(raw.name, usedNames, 'measure', model, warnings), title: typeof raw.title === 'string' ? raw.title : humanizeTitle(raw.name), type: raw.type, columnName: column.sqlName })
   }
 
   return result
@@ -86,15 +93,47 @@ function buildColumns(model: DbtModel, catalogColumns: CatalogColumn[], warnings
       propertyName: prop.identifier,
       dimensionName: dim.identifier,
       title: humanizeTitle(catalogColumn.name),
-      description: manifestColumn?.description ?? catalogColumn.comment,
+      description: manifestColumn?.description || catalogColumn.comment,
       builder: mapped.builder,
+      withTimezone: mapped.withTimezone === true,
       dimensionType: mapped.dimensionType,
-      primaryKey: isPrimaryKey(model, catalogColumn.name),
-      notNull: (model.testsByColumn[catalogColumn.name] ?? manifestColumn?.tests ?? []).includes('not_null'),
+      primaryKey: false,
+      notNull: columnTests(model, catalogColumn.name).includes('not_null'),
       catalogIndex: catalogColumn.index ?? result.length
     })
   }
   return result.sort((left, right) => left.catalogIndex - right.catalogIndex)
+}
+
+// A declared key (meta.drizzle_cube.primary_key columns, a primary_key
+// constraint, or a unique_combination_of_columns test) is emitted whole or not
+// at all — a partial composite key would make the count measure wrong. Without
+// one, a single unique + not_null column is the key.
+function markPrimaryKey(model: DbtModel, columns: GeneratedColumn[], warnings: GeneratorWarning[]): void {
+  const metaKey = model.columns.filter((column) => hasPrimaryKeyMeta(column.meta)).map((column) => column.name)
+  const declared = metaKey.length > 0 ? metaKey : model.primaryKeyColumns
+  let key: string[]
+  if (declared.length > 0) {
+    const emitted = new Set(columns.map((column) => column.sqlName))
+    const missing = declared.filter((name) => !emitted.has(name))
+    if (missing.length > 0) {
+      warnings.push({ code: 'primary_key_column_skipped', message: `Emitting no primary key for model '${model.name}' because key column(s) ${missing.join(', ')} were not emitted.`, modelName: model.name })
+      return
+    }
+    key = declared
+  } else {
+    const candidates = columns
+      .filter((column) => {
+        const tests = columnTests(model, column.sqlName)
+        return tests.includes('unique') && tests.includes('not_null')
+      })
+      .map((column) => column.sqlName)
+    if (candidates.length > 1) {
+      warnings.push({ code: 'ambiguous_primary_key', message: `Model '${model.name}' has several unique, not-null columns (${candidates.join(', ')}); using '${candidates[0]}' as the primary key. Set meta.drizzle_cube.primary_key on a column to choose another.`, modelName: model.name })
+    }
+    key = candidates.slice(0, 1)
+  }
+  for (const column of columns) column.primaryKey = key.includes(column.sqlName)
 }
 
 function buildModel(model: DbtModel, artifacts: ParsedDbtArtifacts, security: SecurityMode, warnings: GeneratorWarning[]): GeneratedModel | null {
@@ -117,19 +156,24 @@ function buildModel(model: DbtModel, artifacts: ParsedDbtArtifacts, security: Se
     warnings.push({ code: 'missing_security_column', message: `Skipping model '${model.name}' because security column '${security.columnName}' was not emitted.`, modelName: model.name, columnName: security.columnName })
     return null
   }
+  markPrimaryKey(model, columns, warnings)
+  const usedFieldNames = new Set(columns.map((column) => column.dimensionName))
+  const countMeasureName = uniqueName('count', usedFieldNames, 'measure', model, warnings)
   const cubeName = toPascalCase(model.name)
   return {
     uniqueId: model.uniqueId,
     dbtName: model.name,
     relationName: model.alias,
+    schemaName: model.schema && model.schema !== 'public' ? model.schema : undefined,
     tableExportName: makeUniqueIdentifier(model.name, new Set(), 'model').identifier,
     cubeName,
     cubeExportName: `${cubeName}Cube`,
     fileName: toKebabCase(model.name),
     title: humanizeTitle(model.name),
-    description: model.description,
+    description: model.description || undefined,
     columns,
-    measures: explicitMeasures(model, columns, warnings),
+    countMeasureName,
+    measures: explicitMeasures(model, columns, usedFieldNames, warnings),
     relationships: [],
     security
   }
@@ -158,20 +202,53 @@ function assertNoModelIdentifierCollisions(models: GeneratedModel[]): void {
 
 function addRelationships(models: GeneratedModel[], artifacts: ParsedDbtArtifacts, warnings: GeneratorWarning[]): void {
   const byId = new Map(models.map((model) => [model.uniqueId, model]))
+  const resolved: Array<{ relationship: DbtRelationshipTest; source: GeneratedModel; target: GeneratedModel; sourceColumn: GeneratedColumn; targetColumn: GeneratedColumn }> = []
   for (const relationship of artifacts.relationships) {
     const source = byId.get(relationship.sourceModelId)
     const target = byId.get(relationship.targetModelId)
     const sourceColumn = source?.columns.find((column) => column.sqlName === relationship.sourceColumn)
     const targetColumn = target?.columns.find((column) => column.sqlName === relationship.targetColumn)
     if (!source || !target || !sourceColumn || !targetColumn) {
-      warnings.push({ code: 'relationship_dropped', message: 'Skipping relationship because source/target model or column was skipped.' })
+      warnings.push({ code: 'relationship_dropped', message: `Skipping relationship '${relationship.testId}' because its source/target model or column was skipped.` })
       continue
     }
-    source.relationships.push({ name: toCamelCase(target.dbtName), sourceColumnName: sourceColumn.propertyName, targetCubeName: target.cubeName, targetTableExportName: target.tableExportName, targetColumnName: targetColumn.propertyName })
+    if (source === target) {
+      warnings.push({ code: 'self_relationship_unsupported', message: `Skipping relationship '${relationship.testId}' because self-joins are not supported.`, modelName: source.dbtName, columnName: relationship.sourceColumn })
+      continue
+    }
+    resolved.push({ relationship, source, target, sourceColumn, targetColumn })
+  }
+
+  // The join planner picks the first join it finds between two cubes and has
+  // no way to choose another, so a second foreign key to the same target
+  // (billing vs referring customer) would be emitted but never used. Keep the
+  // first by column order and warn about the rest.
+  resolved.sort((left, right) => left.source.fileName.localeCompare(right.source.fileName) || left.sourceColumn.catalogIndex - right.sourceColumn.catalogIndex)
+  const usedNames = new Map<GeneratedModel, Set<string>>()
+  const joined = new Map<GeneratedModel, Map<GeneratedModel, string>>()
+  for (const { relationship, source, target, sourceColumn, targetColumn } of resolved) {
+    const targets = joined.get(source) ?? new Map<GeneratedModel, string>()
+    joined.set(source, targets)
+    const keptColumn = targets.get(target)
+    if (keptColumn) {
+      warnings.push({ code: 'duplicate_target_relationship', message: `Skipping relationship '${relationship.testId}' because '${source.dbtName}' already joins '${target.dbtName}' on '${keptColumn}'; only one join between two cubes is used.`, modelName: source.dbtName, columnName: relationship.sourceColumn })
+      continue
+    }
+    targets.set(target, relationship.sourceColumn)
+    const used = usedNames.get(source) ?? new Set<string>()
+    usedNames.set(source, used)
+    const name = makeUniqueIdentifier(target.dbtName, used, 'join')
+    if (name.warning) warnings.push({ ...name.warning, modelName: source.dbtName })
+    used.add(name.identifier)
+    source.relationships.push({ name: name.identifier, sourceColumnName: sourceColumn.propertyName, targetCubeName: target.cubeName, targetTableExportName: target.tableExportName, targetColumnName: targetColumn.propertyName })
   }
 }
 
 export function normalizeDbtArtifacts(artifacts: ParsedDbtArtifacts, options: { security: SecurityMode }): { models: GeneratedModel[]; warnings: GeneratorWarning[] } {
+  // The context property is emitted as `ctx.securityContext.<property>`.
+  if (options.security.kind === 'filter' && !isIdentifier(options.security.contextProperty)) {
+    throw new Error(`Security context property '${options.security.contextProperty}' must be a plain identifier such as organisationId.`)
+  }
   const warnings = [...artifacts.warnings]
   const models = artifacts.models
     .map((model) => buildModel(model, artifacts, options.security, warnings))

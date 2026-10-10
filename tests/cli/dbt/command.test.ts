@@ -19,6 +19,8 @@ describe('dbt command', () => {
   it('requires explicit security in non-interactive mode', async () => {
     await expect(dbtGenerate(['--dialect', 'postgres', '--manifest', 'm', '--catalog', 'c', '--out', 'o'])).rejects.toThrow('Non-interactive')
     await expect(dbtGenerate(['--dialect', 'postgres', '--manifest', 'm', '--catalog', 'c', '--out', 'o', '--security-column', 'organisation_id'])).rejects.toThrow('Both --security-column')
+    await expect(dbtGenerate(['--dialect', 'postgres', '--manifest', 'm', '--catalog', 'c', '--out', 'o', '--security-column', 'organisation_id', '--security-context', 'org.id'])).rejects.toThrow('plain identifier')
+    expect(generateFromDbt).not.toHaveBeenCalled()
   })
 
   it('supports --no-security warning path and prints summary', async () => {

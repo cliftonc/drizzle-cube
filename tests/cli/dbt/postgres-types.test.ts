@@ -10,7 +10,11 @@ describe('Postgres catalog type mapping', () => {
     expect(mapPostgresCatalogType('varchar')).toMatchObject({ builder: 'text', dimensionType: 'string' })
     expect(mapPostgresCatalogType('bool')).toMatchObject({ builder: 'boolean', dimensionType: 'boolean' })
     expect(mapPostgresCatalogType('date')).toMatchObject({ builder: 'date', dimensionType: 'time' })
-    expect(mapPostgresCatalogType('timestamp with time zone')).toMatchObject({ builder: 'timestamp', dimensionType: 'time' })
+    expect(mapPostgresCatalogType('timestamp without time zone')).toEqual({ builder: 'timestamp', dimensionType: 'time' })
+    expect(mapPostgresCatalogType('timestamp with time zone')).toEqual({ builder: 'timestamp', dimensionType: 'time', withTimezone: true })
+    expect(mapPostgresCatalogType('uuid')).toMatchObject({ builder: 'uuid', dimensionType: 'string' })
+    expect(mapPostgresCatalogType('time without time zone')).toMatchObject({ builder: 'time', dimensionType: 'string' })
+    expect(mapPostgresCatalogType('character varying(32)')).toMatchObject({ builder: 'text', dimensionType: 'string' })
     expect(mapPostgresCatalogType('jsonb')).toMatchObject({ builder: 'jsonb', dimensionType: 'string' })
   })
 

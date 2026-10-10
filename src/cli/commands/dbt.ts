@@ -1,7 +1,7 @@
 import process from 'node:process'
 import { createInterface } from 'node:readline/promises'
 import { parseArgs } from 'node:util'
-import { toCamelCase } from '../dbt/naming.js'
+import { isIdentifier, toCamelCase } from '../dbt/naming.js'
 import { generateFromDbt } from '../dbt/generate.js'
 import type { GenerationResult, SecurityMode } from '../dbt/types.js'
 
@@ -16,7 +16,6 @@ interface ParsedValues {
   dryRun?: boolean
   check?: boolean
   force?: boolean
-  config?: string
 }
 
 export function printDbtHelp(): void {
@@ -51,8 +50,7 @@ function parseDbtArgs(argv: string[]): ParsedValues {
       'no-security': { type: 'boolean' },
       'dry-run': { type: 'boolean' },
       check: { type: 'boolean' },
-      force: { type: 'boolean' },
-      config: { type: 'string' }
+      force: { type: 'boolean' }
     }
   })
   return {
@@ -65,9 +63,13 @@ function parseDbtArgs(argv: string[]): ParsedValues {
     noSecurity: parsed.values['no-security'],
     dryRun: parsed.values['dry-run'],
     check: parsed.values.check,
-    force: parsed.values.force,
-    config: parsed.values.config
+    force: parsed.values.force
   }
+}
+
+function requireContextProperty(value: string): string {
+  if (!isIdentifier(value)) throw new Error(`--security-context must be a plain identifier such as organisationId, got '${value}'.`)
+  return value
 }
 
 async function promptSecurity(values: ParsedValues): Promise<SecurityMode> {
@@ -76,7 +78,7 @@ async function promptSecurity(values: ParsedValues): Promise<SecurityMode> {
     return { kind: 'none' }
   }
   if (values.securityColumn && values.securityContext) {
-    return { kind: 'filter', columnName: values.securityColumn, contextProperty: values.securityContext }
+    return { kind: 'filter', columnName: values.securityColumn, contextProperty: requireContextProperty(values.securityContext) }
   }
   if (values.securityColumn || values.securityContext) {
     throw new Error('Both --security-column and --security-context are required when configuring security filtering.')
@@ -90,7 +92,7 @@ async function promptSecurity(values: ParsedValues): Promise<SecurityMode> {
         return { kind: 'none' }
       }
       const context = (await rl.question(`Security context property [${toCamelCase(column)}]: `)).trim()
-      return { kind: 'filter', columnName: column, contextProperty: context || toCamelCase(column) }
+      return { kind: 'filter', columnName: column, contextProperty: requireContextProperty(context || toCamelCase(column)) }
     } finally {
       rl.close()
     }
@@ -129,8 +131,7 @@ export async function dbtGenerate(argv = process.argv.slice(4)): Promise<void> {
     security,
     dryRun: values.dryRun === true,
     check: values.check === true,
-    force: values.force === true,
-    configPath: values.config
+    force: values.force === true
   })
   printSummary(result)
 }

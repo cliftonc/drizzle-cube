@@ -41,7 +41,15 @@ export function humanizeTitle(value: string): string {
 }
 
 export function quoteStringLiteral(value: string): string {
-  return `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+  // JSON escaping covers backslashes, newlines and control characters (dbt
+  // descriptions are often multi-line); re-quote with single quotes to match
+  // the emitted code style.
+  const escaped = JSON.stringify(value).slice(1, -1).replace(/\\"/g, '"').replace(/'/g, "\\'")
+  return `'${escaped}'`
+}
+
+export function isIdentifier(value: string): boolean {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value) && !RESERVED.has(value)
 }
 
 export function sanitizeIdentifier(value: string): string {

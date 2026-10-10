@@ -2,7 +2,7 @@
 
 import { eq } from 'drizzle-orm'
 import { defineCube, type BaseQueryDefinition, type Cube, type QueryContext } from 'drizzle-cube/server'
-import { customers, orders } from '../schema'
+import { customers, orders } from '../schema.js'
 
 function securityValue(ctx: QueryContext): number {
   const value = ctx.securityContext.organisationId
@@ -38,9 +38,16 @@ export const OrdersCube: Cube = defineCube('Orders', {
     customerId: {
       name: 'customerId',
       title: 'Customer Id',
-      description: 'Customer id.',
+      description: 'Billing customer.',
       type: 'number',
       sql: orders.customerId
+    },
+    referredByCustomerId: {
+      name: 'referredByCustomerId',
+      title: 'Referred By Customer Id',
+      description: 'Referring customer.',
+      type: 'number',
+      sql: orders.referredByCustomerId
     },
     status: {
       name: 'status',
@@ -62,6 +69,13 @@ export const OrdersCube: Cube = defineCube('Orders', {
       description: 'Creation timestamp.',
       type: 'time',
       sql: orders.createdAt
+    },
+    deliveryTime: {
+      name: 'deliveryTime',
+      title: 'Delivery Time',
+      description: 'Preferred delivery time of day.',
+      type: 'string',
+      sql: orders.deliveryTime
     }
   },
   measures: {

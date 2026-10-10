@@ -50,42 +50,119 @@ function readCatalogColumns(value: unknown): CatalogColumn[] {
   return result
 }
 
-function collectColumnTests(nodes: Record<string, unknown>): Record<string, Record<string, string[]>> {
-  const result: Record<string, Record<string, string[]>> = {}
+function stringArray(value: unknown): string[] {
+  return arrayValue(value).filter((item): item is string => typeof item === 'string')
+}
+
+// dbt keeps a generic test's arguments in test_metadata.kwargs; older or
+// hand-written artifacts may put them on the node itself.
+function testKwargs(node: Record<string, unknown>): Record<string, unknown> {
+  return recordValue(recordValue(node.test_metadata)?.kwargs) ?? recordValue(node.kwargs) ?? {}
+}
+
+function testName(node: Record<string, unknown>): string | undefined {
+  return stringValue(recordValue(node.test_metadata)?.name) ?? stringValue(node.name)
+}
+
+function dependsOnModels(node: Record<string, unknown>): string[] {
+  return stringArray(recordValue(node.depends_on)?.nodes).filter((value) => value.startsWith('model.'))
+}
+
+// The model a test is defined on. depends_on.nodes is sorted, so its first
+// entry is not necessarily the tested model.
+function attachedModelId(node: Record<string, unknown>): string | undefined {
+  const attached = stringValue(node.attached_node)
+  if (attached?.startsWith('model.')) return attached
+  const models = dependsOnModels(node)
+  return models.length === 1 ? models[0] : undefined
+}
+
+function testColumnName(node: Record<string, unknown>): string | undefined {
+  return stringValue(node.column_name) ?? stringValue(testKwargs(node).column_name)
+}
+
+interface ModelTests {
+  testsByColumn: Record<string, Record<string, string[]>>
+  keyColumnsByModel: Record<string, string[]>
+}
+
+function collectModelTests(nodes: Record<string, unknown>): ModelTests {
+  const testsByColumn: Record<string, Record<string, string[]>> = {}
+  const keyColumnsByModel: Record<string, string[]> = {}
   for (const raw of Object.values(nodes)) {
     const node = recordValue(raw)
     if (!node || node.resource_type !== 'test') continue
-    const dependsOn = recordValue(node.depends_on)
-    const modelId = arrayValue(dependsOn?.nodes).find((value): value is string => typeof value === 'string' && value.startsWith('model.'))
-    const columnName = stringValue(node.column_name) ?? stringValue(recordValue(node.kwargs)?.column_name)
-    const testName = stringValue(recordValue(node.test_metadata)?.name) ?? stringValue(node.name)
-    if (!modelId || !columnName || !testName) continue
-    result[modelId] ??= {}
-    result[modelId][columnName] ??= []
-    result[modelId][columnName]?.push(testName)
+    const modelId = attachedModelId(node)
+    const name = testName(node)
+    if (!modelId || !name) continue
+    if (name === 'unique_combination_of_columns') {
+      const columns = stringArray(testKwargs(node).combination_of_columns)
+      if (columns.length > 0) keyColumnsByModel[modelId] ??= columns
+      continue
+    }
+    const columnName = testColumnName(node)
+    if (!columnName) continue
+    testsByColumn[modelId] ??= {}
+    testsByColumn[modelId][columnName] ??= []
+    testsByColumn[modelId][columnName]?.push(name)
   }
-  return result
+  return { testsByColumn, keyColumnsByModel }
+}
+
+function constraintPrimaryKey(node: Record<string, unknown>): string[] {
+  for (const raw of arrayValue(node.constraints)) {
+    const constraint = recordValue(raw)
+    if (constraint?.type === 'primary_key') {
+      const columns = stringArray(constraint.columns)
+      if (columns.length > 0) return columns
+    }
+  }
+  const columns = recordValue(node.columns) ?? {}
+  return Object.entries(columns)
+    .filter(([, rawColumn]) => arrayValue(recordValue(rawColumn)?.constraints).some((constraint) => recordValue(constraint)?.type === 'primary_key'))
+    .map(([name, rawColumn]) => stringValue(recordValue(rawColumn)?.name) ?? name)
+}
+
+// kwargs.to is a Jinja string such as "ref('customers')" or
+// "ref('package', 'customers')"; the last quoted argument is the model name.
+function referencedModelName(to: string | undefined): string | undefined {
+  const match = to?.match(/^\s*ref\s*\((.*)\)\s*$/)
+  if (!match?.[1]) return undefined
+  const args = Array.from(match[1].matchAll(/['"]([^'"]+)['"]/g), (arg) => arg[1])
+  return args.at(-1)
 }
 
 function collectRelationships(nodes: Record<string, unknown>, warnings: GeneratorWarning[]): DbtRelationshipTest[] {
+  const modelNames = new Map<string, string>()
+  for (const [id, raw] of Object.entries(nodes)) {
+    const name = stringValue(recordValue(raw)?.name)
+    if (id.startsWith('model.') && name) modelNames.set(id, name)
+  }
+
   const relationships: DbtRelationshipTest[] = []
-  for (const raw of Object.values(nodes)) {
+  for (const [testId, raw] of Object.entries(nodes)) {
     const node = recordValue(raw)
     if (!node || node.resource_type !== 'test') continue
-    const metadataName = stringValue(recordValue(node.test_metadata)?.name)
-    if (metadataName !== 'relationships' && !stringValue(node.name)?.includes('relationships')) continue
+    if (testName(node) !== 'relationships') continue
 
-    const dependsOnNodes = arrayValue(recordValue(node.depends_on)?.nodes).filter((value): value is string => typeof value === 'string')
-    const sourceModelId = dependsOnNodes.find((value) => value.startsWith('model.'))
-    const targetModelId = dependsOnNodes.find((value) => value.startsWith('model.') && value !== sourceModelId)
-    const kwargs = recordValue(node.kwargs) ?? {}
-    const sourceColumn = stringValue(node.column_name) ?? stringValue(kwargs.column_name)
+    const kwargs = testKwargs(node)
+    const sourceModelId = attachedModelId(node)
+    const otherModels = dependsOnModels(node).filter((id) => id !== sourceModelId)
+    const refName = referencedModelName(stringValue(kwargs.to))
+    let targetModelId: string | undefined
+    if (refName) {
+      targetModelId = otherModels.find((id) => modelNames.get(id) === refName)
+        ?? (sourceModelId && modelNames.get(sourceModelId) === refName ? sourceModelId : undefined)
+    } else if (otherModels.length === 1) {
+      targetModelId = otherModels[0]
+    }
+    const sourceColumn = testColumnName(node)
     const targetColumn = stringValue(kwargs.field) ?? stringValue(kwargs.to_field) ?? stringValue(kwargs.to_column)
 
     if (sourceModelId && targetModelId && sourceColumn && targetColumn) {
-      relationships.push({ sourceModelId, sourceColumn, targetModelId, targetColumn })
+      relationships.push({ testId, sourceModelId, sourceColumn, targetModelId, targetColumn })
     } else {
-      warnings.push({ code: 'relationship_unresolved', message: 'Skipping dbt relationships test because source/target model or column could not be resolved.' })
+      warnings.push({ code: 'relationship_unresolved', message: `Skipping dbt relationships test '${testId}' because its source/target model or column could not be resolved (only ref() targets are supported).` })
     }
   }
   return relationships
@@ -100,7 +177,7 @@ export function parseDbtArtifacts(manifest: unknown, catalog: unknown): ParsedDb
   if (!catalogNodes) throw new Error('catalog.json must contain a top-level nodes object')
 
   const warnings: GeneratorWarning[] = []
-  const testsByModel = collectColumnTests(manifestNodes)
+  const { testsByColumn: testsByModel, keyColumnsByModel } = collectModelTests(manifestNodes)
   const models: DbtModel[] = []
   for (const [uniqueId, raw] of Object.entries(manifestNodes)) {
     const node = recordValue(raw)
@@ -108,6 +185,7 @@ export function parseDbtArtifacts(manifest: unknown, catalog: unknown): ParsedDb
     const name = stringValue(node.name)
     if (!name) continue
     const testsByColumn = testsByModel[uniqueId] ?? {}
+    const constrainedKey = constraintPrimaryKey(node)
     models.push({
       uniqueId,
       name,
@@ -118,7 +196,8 @@ export function parseDbtArtifacts(manifest: unknown, catalog: unknown): ParsedDb
       materialized: stringValue(recordValue(node.config)?.materialized),
       columns: readColumns(node.columns, testsByColumn),
       meta: recordValue(node.meta),
-      testsByColumn
+      testsByColumn,
+      primaryKeyColumns: constrainedKey.length > 0 ? constrainedKey : keyColumnsByModel[uniqueId] ?? []
     })
   }
 

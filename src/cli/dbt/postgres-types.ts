@@ -3,6 +3,7 @@ import type { EmittedDimensionType, GeneratorWarning, PgColumnBuilder } from './
 export interface PostgresTypeMapping {
   builder: PgColumnBuilder
   dimensionType: EmittedDimensionType
+  withTimezone?: boolean
   warnings?: GeneratorWarning[]
 }
 
@@ -29,8 +30,11 @@ export function mapPostgresCatalogType(type: string): PostgresTypeMapping | null
   if (['double precision', 'float8'].includes(normalized)) {
     return { builder: 'doublePrecision', dimensionType: 'number' }
   }
-  if (['text', 'varchar', 'character varying', 'char', 'character', 'uuid'].includes(normalized)) {
+  if (['text', 'varchar', 'character varying', 'char', 'character'].includes(normalized)) {
     return { builder: 'text', dimensionType: 'string' }
+  }
+  if (normalized === 'uuid') {
+    return { builder: 'uuid', dimensionType: 'string' }
   }
   if (['boolean', 'bool'].includes(normalized)) {
     return { builder: 'boolean', dimensionType: 'boolean' }
@@ -38,8 +42,18 @@ export function mapPostgresCatalogType(type: string): PostgresTypeMapping | null
   if (normalized === 'date') {
     return { builder: 'date', dimensionType: 'time' }
   }
-  if (['timestamp', 'timestamp without time zone', 'timestamp with time zone', 'timestamptz', 'time'].includes(normalized)) {
+  if (['timestamp', 'timestamp without time zone'].includes(normalized)) {
     return { builder: 'timestamp', dimensionType: 'time' }
+  }
+  if (['timestamp with time zone', 'timestamptz'].includes(normalized)) {
+    return { builder: 'timestamp', dimensionType: 'time', withTimezone: true }
+  }
+  // A time of day has no date, so it can't be a time dimension.
+  if (['time', 'time without time zone'].includes(normalized)) {
+    return { builder: 'time', dimensionType: 'string' }
+  }
+  if (['time with time zone', 'timetz'].includes(normalized)) {
+    return { builder: 'time', dimensionType: 'string', withTimezone: true }
   }
   if (['json', 'jsonb'].includes(normalized)) {
     return { builder: 'jsonb', dimensionType: 'string' }

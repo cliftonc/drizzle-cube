@@ -13,7 +13,6 @@ export interface DbtGenerateOptions {
   dryRun: boolean
   check: boolean
   force: boolean
-  configPath?: string
 }
 
 export interface GeneratorWarning {
@@ -29,7 +28,7 @@ export interface GeneratedFile {
 }
 
 export type SupportedMaterialization = 'table' | 'view' | 'incremental'
-export type PgColumnBuilder = 'bigint' | 'boolean' | 'date' | 'doublePrecision' | 'integer' | 'jsonb' | 'numeric' | 'real' | 'text' | 'timestamp'
+export type PgColumnBuilder = 'bigint' | 'boolean' | 'date' | 'doublePrecision' | 'integer' | 'jsonb' | 'numeric' | 'real' | 'text' | 'time' | 'timestamp' | 'uuid'
 export type EmittedDimensionType = 'string' | 'number' | 'time' | 'boolean'
 
 export interface DbtColumn {
@@ -50,6 +49,8 @@ export interface DbtModel {
   columns: DbtColumn[]
   meta?: Record<string, unknown>
   testsByColumn: Record<string, string[]>
+  /** Key columns declared by a primary_key constraint or a unique_combination_of_columns test. */
+  primaryKeyColumns: string[]
 }
 
 export interface CatalogColumn {
@@ -65,6 +66,7 @@ export interface CatalogNode {
 }
 
 export interface DbtRelationshipTest {
+  testId: string
   sourceModelId: string
   sourceColumn: string
   targetModelId: string
@@ -85,6 +87,7 @@ export interface GeneratedColumn {
   title: string
   description?: string
   builder: PgColumnBuilder
+  withTimezone: boolean
   dimensionType: EmittedDimensionType
   primaryKey: boolean
   notNull: boolean
@@ -111,6 +114,8 @@ export interface GeneratedModel {
   uniqueId: string
   dbtName: string
   relationName: string
+  /** Postgres schema from the dbt node; undefined for the default search path. */
+  schemaName?: string
   tableExportName: string
   cubeName: string
   cubeExportName: string
@@ -118,6 +123,7 @@ export interface GeneratedModel {
   title: string
   description?: string
   columns: GeneratedColumn[]
+  countMeasureName: string
   measures: GeneratedMeasure[]
   relationships: GeneratedRelationship[]
   security: SecurityMode

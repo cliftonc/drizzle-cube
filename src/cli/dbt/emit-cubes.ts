@@ -14,13 +14,13 @@ function dimensionLines(model: GeneratedModel): string {
 function countMeasure(model: GeneratedModel): string {
   const pks = model.columns.filter((column) => column.primaryKey)
   if (pks.length === 1 && pks[0]) {
-    return `    count: {\n      name: 'count',\n      type: 'countDistinct',\n      sql: ${model.tableExportName}.${pks[0].propertyName}\n    }`
+    return `    ${model.countMeasureName}: {\n      name: ${quoteStringLiteral(model.countMeasureName)},\n      type: 'countDistinct',\n      sql: ${model.tableExportName}.${pks[0].propertyName}\n    }`
   }
   if (pks.length > 1) {
     const compositeExpression = pks.map((column) => `\${${model.tableExportName}.${column.propertyName}}`).join(', ')
-    return `    count: {\n      name: 'count',\n      type: 'countDistinct',\n      sql: sql<string>\`concat_ws('|', ${compositeExpression})\`\n    }`
+    return `    ${model.countMeasureName}: {\n      name: ${quoteStringLiteral(model.countMeasureName)},\n      type: 'countDistinct',\n      sql: sql<string>\`concat_ws('|', ${compositeExpression})\`\n    }`
   }
-  return `    count: {\n      name: 'count',\n      type: 'count'\n    }`
+  return `    ${model.countMeasureName}: {\n      name: ${quoteStringLiteral(model.countMeasureName)},\n      type: 'count'\n    }`
 }
 
 function hasCompositePrimaryKey(model: GeneratedModel): boolean {
@@ -71,14 +71,14 @@ function cubeContent(model: GeneratedModel, context: EmitContext): string {
   const drizzleImports = [needsEq ? 'eq' : undefined, needsSql ? 'sql' : undefined].filter((name): name is string => typeof name === 'string')
   const imports = drizzleImports.length > 0 ? `import { ${drizzleImports.join(', ')} } from 'drizzle-orm'\n` : ''
 
-  return `${context.header}\n\n${imports}import { defineCube, type BaseQueryDefinition, type Cube, type QueryContext } from 'drizzle-cube/server'\nimport { ${schemaImports} } from '../schema'\n${securityValueHelper(model)}\nexport const ${model.cubeExportName}: Cube = defineCube(${quoteStringLiteral(model.cubeName)}, {\n  title: ${quoteStringLiteral(model.title)},\n${descriptionLine(model.description, '  ')}  ${sqlBody},\n  dimensions: {\n${dimensionLines(model)}\n  },\n  measures: {\n${measures}\n  }${joinsBlock(model)}\n})\n`
+  return `${context.header}\n\n${imports}import { defineCube, type BaseQueryDefinition, type Cube, type QueryContext } from 'drizzle-cube/server'\nimport { ${schemaImports} } from '../schema.js'\n${securityValueHelper(model)}\nexport const ${model.cubeExportName}: Cube = defineCube(${quoteStringLiteral(model.cubeName)}, {\n  title: ${quoteStringLiteral(model.title)},\n${descriptionLine(model.description, '  ')}  ${sqlBody},\n  dimensions: {\n${dimensionLines(model)}\n  },\n  measures: {\n${measures}\n  }${joinsBlock(model)}\n})\n`
 }
 
 function indexContent(models: GeneratedModel[], context: EmitContext): string {
-  const imports = models.map((model) => `import { ${model.cubeExportName} } from './cubes/${model.fileName}'`).join('\n')
-  const exports = models.map((model) => `export { ${model.cubeExportName} } from './cubes/${model.fileName}'`).join('\n')
+  const imports = models.map((model) => `import { ${model.cubeExportName} } from './cubes/${model.fileName}.js'`).join('\n')
+  const exports = models.map((model) => `export { ${model.cubeExportName} } from './cubes/${model.fileName}.js'`).join('\n')
   const array = models.map((model) => `  ${model.cubeExportName}`).join(',\n')
-  return `${context.header}\n\n${imports}\n\n${exports}\n\nexport { schema } from './schema'\n\nexport const allCubes = [\n${array}\n]\n`
+  return `${context.header}\n\n${imports}\n\n${exports}\n\nexport { schema } from './schema.js'\n\nexport const allCubes = [\n${array}\n]\n`
 }
 
 export function emitCubes(models: GeneratedModel[], context: EmitContext): GeneratedFile[] {

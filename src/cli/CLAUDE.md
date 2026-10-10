@@ -9,8 +9,15 @@ layer — it generates and scaffolds files; it never connects to a database.
 ```
 src/cli/
 ├── index.ts            # arg routing (node:util parseArgs), top-level error handling
-└── commands/
-    └── charts.ts       # `charts init|list` — scaffold / list custom chart plugins
+├── commands/
+│   ├── charts.ts       # `charts init|list` — scaffold / list custom chart plugins
+│   └── dbt.ts          # `dbt generate` — args, security prompt, summary (the I/O edge)
+└── dbt/                # dbt artifacts → Drizzle schema + cubes (see docs/dbt-generate.md)
+    ├── parse-artifacts.ts  # manifest/catalog → models, tests, relationships (type guards)
+    ├── normalize.ts        # models → GeneratedModel: columns, keys, measures, joins, warnings
+    ├── emit-schema.ts      # schema.ts (pgSchema/pgTable)
+    ├── emit-cubes.ts       # cubes/*.ts + index.ts
+    └── write-output.ts     # ownership header, --dry-run / --check / --force, stale files
 ```
 
 ## Conventions for all CLI code

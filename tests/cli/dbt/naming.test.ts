@@ -13,6 +13,7 @@ describe('dbt naming helpers', () => {
     expect(sanitizeIdentifier('123 name')).toBe('_123Name')
     expect(sanitizeIdentifier('class')).toBe('classValue')
     expect(quoteStringLiteral("O'Hare")).toBe("'O\\'Hare'")
+    expect(quoteStringLiteral('line one\nline "two" \\ end')).toBe("'line one\\nline \"two\" \\\\ end'")
   })
 
   it('returns deterministic unique identifiers and collision warnings', () => {
