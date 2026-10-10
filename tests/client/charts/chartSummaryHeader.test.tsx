@@ -195,7 +195,7 @@ describe('dual Y-axis summaries', () => {
     // left axis -> currency
     expect(screen.getByText(/\$2,000/)).toBeInTheDocument()
     // right axis -> percent, NOT currency
-    expect(screen.getByText(/50\.0%/)).toBeInTheDocument()
+    expect(screen.getByText('50.0%')).toBeInTheDocument()
   })
 })
 

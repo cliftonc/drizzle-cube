@@ -38,3 +38,22 @@ describe('formatAxisValue — currency', () => {
       .toContain('£')
   })
 })
+
+describe('formatAxisValue — percent', () => {
+  it('scales a 0-1 ratio with the default abbreviate setting', () => {
+    expect(formatAxisValue(0.75, { unit: 'percent', decimals: 1 }, 'en-US')).toBe('75.0%')
+  })
+
+  it('gives the same result with abbreviate on and off', () => {
+    expect(formatAxisValue(0.873, { unit: 'percent', abbreviate: true, decimals: 1 }, 'en-US'))
+      .toBe(formatAxisValue(0.873, { unit: 'percent', abbreviate: false, decimals: 1 }, 'en-US'))
+  })
+
+  it('leaves values above 1 as already-scaled percentages', () => {
+    expect(formatAxisValue(42, { unit: 'percent', decimals: 0 }, 'en-US')).toBe('42%')
+  })
+
+  it('does not scale a value that abbreviation brought down to 1', () => {
+    expect(formatAxisValue(1000, { unit: 'percent', decimals: 0 }, 'en-US')).toBe('1K%')
+  })
+})
