@@ -226,6 +226,16 @@ export function AnalyticsPage() {
 
 Use `AnalyticsDashboard` when you want to compose and persist dashboard layouts in your own application storage. AI agents can connect to `/mcp`; those requests use the same adapter security context as the REST API.
 
+## Generate schema and cubes from dbt artifacts
+
+Generate Drizzle `pg-core` schema and one Drizzle Cube definition per supported dbt model from local dbt artifacts:
+
+```bash
+npx drizzle-cube dbt generate --manifest target/manifest.json --catalog target/catalog.json --dialect postgres --out ./src/cubes/generated --security-column organisation_id --security-context organisationId
+```
+
+See [docs/dbt-generate.md](docs/dbt-generate.md) for all options, security modes, drift checking, and v1 limitations. The v1 generator is local artifact-only and Postgres-only; it does not clone GitHub repositories, run dbt, or parse raw dbt project YAML/Jinja.
+
 ## Analysis Modes
 
 Drizzle Cube supports multiple analysis modes at the semantic-layer level:

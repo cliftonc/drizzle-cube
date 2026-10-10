@@ -4,7 +4,17 @@
     "lib": ["ES2023"],
     "jsx": "preserve",
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    /* paths replaces the base config's paths, so repeat them. The
+       drizzle-cube/server alias lets generated dbt fixtures typecheck the way
+       a consumer would import them, without a prior build. */
+    "paths": {
+      "drizzle-cube/server": ["./src/server/index.ts"],
+      "@xyflow/react/dist/style.css": ["./src/types/xyflow-react-style.d.css.ts"],
+      "@/server/*": ["./src/server/*"],
+      "@/client/*": ["./src/client/*"],
+      "@/adapters/*": ["./src/adapters/*"]
+    }
   },
   "include": [
     "src/server/**/*.ts",

@@ -1,0 +1,202 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/catalog/v1.json",
+    "dbt_version": "1.8.7"
+  },
+  "nodes": {
+    "model.demo.customers": {
+      "metadata": {
+        "type": "BASE TABLE",
+        "schema": "analytics",
+        "name": "customers",
+        "database": "warehouse",
+        "comment": null,
+        "owner": "dbt"
+      },
+      "columns": {
+        "id": {
+          "type": "integer",
+          "index": 1,
+          "name": "id",
+          "comment": null
+        },
+        "organisation_id": {
+          "type": "integer",
+          "index": 2,
+          "name": "organisation_id",
+          "comment": null
+        },
+        "name": {
+          "type": "text",
+          "index": 3,
+          "name": "name",
+          "comment": null
+        },
+        "active": {
+          "type": "boolean",
+          "index": 4,
+          "name": "active",
+          "comment": null
+        },
+        "signed_up_at": {
+          "type": "timestamp with time zone",
+          "index": 5,
+          "name": "signed_up_at",
+          "comment": null
+        },
+        "external_ref": {
+          "type": "uuid",
+          "index": 6,
+          "name": "external_ref",
+          "comment": null
+        },
+        "parent_customer_id": {
+          "type": "integer",
+          "index": 7,
+          "name": "parent_customer_id",
+          "comment": null
+        }
+      },
+      "stats": {
+        "has_stats": {
+          "id": "has_stats",
+          "label": "Has Stats?",
+          "value": false,
+          "include": false,
+          "description": ""
+        }
+      },
+      "unique_id": "model.demo.customers"
+    },
+    "model.demo.orders": {
+      "metadata": {
+        "type": "BASE TABLE",
+        "schema": "analytics",
+        "name": "orders",
+        "database": "warehouse",
+        "comment": null,
+        "owner": "dbt"
+      },
+      "columns": {
+        "id": {
+          "type": "integer",
+          "index": 1,
+          "name": "id",
+          "comment": null
+        },
+        "organisation_id": {
+          "type": "integer",
+          "index": 2,
+          "name": "organisation_id",
+          "comment": null
+        },
+        "customer_id": {
+          "type": "integer",
+          "index": 3,
+          "name": "customer_id",
+          "comment": null
+        },
+        "referred_by_customer_id": {
+          "type": "integer",
+          "index": 4,
+          "name": "referred_by_customer_id",
+          "comment": null
+        },
+        "status": {
+          "type": "character varying(32)",
+          "index": 5,
+          "name": "status",
+          "comment": null
+        },
+        "amount": {
+          "type": "numeric(12,2)",
+          "index": 6,
+          "name": "amount",
+          "comment": null
+        },
+        "created_at": {
+          "type": "timestamp without time zone",
+          "index": 7,
+          "name": "created_at",
+          "comment": null
+        },
+        "delivery_window": {
+          "type": "interval",
+          "index": 8,
+          "name": "delivery_window",
+          "comment": null
+        },
+        "delivery_time": {
+          "type": "time without time zone",
+          "index": 9,
+          "name": "delivery_time",
+          "comment": null
+        }
+      },
+      "stats": {
+        "has_stats": {
+          "id": "has_stats",
+          "label": "Has Stats?",
+          "value": false,
+          "include": false,
+          "description": ""
+        }
+      },
+      "unique_id": "model.demo.orders"
+    },
+    "model.demo.order_lines": {
+      "metadata": {
+        "type": "BASE TABLE",
+        "schema": "analytics",
+        "name": "order_lines",
+        "database": "warehouse",
+        "comment": null,
+        "owner": "dbt"
+      },
+      "columns": {
+        "order_id": {
+          "type": "integer",
+          "index": 1,
+          "name": "order_id",
+          "comment": null
+        },
+        "line_number": {
+          "type": "integer",
+          "index": 2,
+          "name": "line_number",
+          "comment": null
+        },
+        "organisation_id": {
+          "type": "integer",
+          "index": 3,
+          "name": "organisation_id",
+          "comment": null
+        },
+        "count": {
+          "type": "integer",
+          "index": 4,
+          "name": "count",
+          "comment": null
+        },
+        "tags": {
+          "type": "text[]",
+          "index": 5,
+          "name": "tags",
+          "comment": null
+        }
+      },
+      "stats": {
+        "has_stats": {
+          "id": "has_stats",
+          "label": "Has Stats?",
+          "value": false,
+          "include": false,
+          "description": ""
+        }
+      },
+      "unique_id": "model.demo.order_lines"
+    }
+  },
+  "sources": {},
+  "errors": null
+}

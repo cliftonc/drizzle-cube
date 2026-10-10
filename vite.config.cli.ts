@@ -10,7 +10,7 @@ export default defineConfig({
     },
     outDir: 'dist/cli',
     rollupOptions: {
-      external: ['node:fs', 'node:path', 'node:util', 'fs', 'path'],
+      external: ['node:fs', 'node:fs/promises', 'node:os', 'node:path', 'node:process', 'node:readline/promises', 'node:util', 'fs', 'fs/promises', 'os', 'path', 'process', 'readline/promises'],
     },
     target: 'node18',
     minify: false,

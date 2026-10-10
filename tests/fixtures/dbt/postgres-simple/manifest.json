@@ -1,0 +1,858 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+    "dbt_version": "1.8.7",
+    "adapter_type": "postgres"
+  },
+  "nodes": {
+    "model.demo.customers": {
+      "database": "warehouse",
+      "schema": "analytics",
+      "name": "customers",
+      "resource_type": "model",
+      "package_name": "demo",
+      "path": "marts/customers.sql",
+      "original_file_path": "models/marts/customers.sql",
+      "unique_id": "model.demo.customers",
+      "fqn": [
+        "demo",
+        "marts",
+        "customers"
+      ],
+      "alias": "customers",
+      "config": {
+        "enabled": true,
+        "materialized": "table",
+        "schema": null,
+        "tags": [],
+        "meta": {}
+      },
+      "tags": [],
+      "description": "Customer records.\nOne row per customer, including O'Hare's accounts.",
+      "columns": {
+        "id": {
+          "name": "id",
+          "description": "Customer id.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "description": "Tenant id.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "name": {
+          "name": "name",
+          "description": "Customer name.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "active": {
+          "name": "active",
+          "description": "Whether the customer is active.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "signed_up_at": {
+          "name": "signed_up_at",
+          "description": "Signup time.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "external_ref": {
+          "name": "external_ref",
+          "description": "CRM reference.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "parent_customer_id": {
+          "name": "parent_customer_id",
+          "description": "Parent account.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        }
+      },
+      "meta": {},
+      "relation_name": "\"warehouse\".\"analytics\".\"customers\"",
+      "depends_on": {
+        "macros": [],
+        "nodes": []
+      },
+      "refs": [],
+      "constraints": [],
+      "contract": {
+        "enforced": false,
+        "alias_types": true
+      }
+    },
+    "model.demo.orders": {
+      "database": "warehouse",
+      "schema": "analytics",
+      "name": "orders",
+      "resource_type": "model",
+      "package_name": "demo",
+      "path": "marts/orders.sql",
+      "original_file_path": "models/marts/orders.sql",
+      "unique_id": "model.demo.orders",
+      "fqn": [
+        "demo",
+        "marts",
+        "orders"
+      ],
+      "alias": "orders",
+      "config": {
+        "enabled": true,
+        "materialized": "incremental",
+        "schema": null,
+        "tags": [],
+        "meta": {
+          "drizzle_cube": {
+            "measures": [
+              {
+                "name": "totalAmount",
+                "type": "sum",
+                "column": "amount",
+                "title": "Total Amount"
+              }
+            ]
+          }
+        }
+      },
+      "tags": [],
+      "description": "Order facts.",
+      "columns": {
+        "id": {
+          "name": "id",
+          "description": "Order id.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "description": "Tenant id.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "description": "Billing customer.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "referred_by_customer_id": {
+          "name": "referred_by_customer_id",
+          "description": "Referring customer.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "status": {
+          "name": "status",
+          "description": "Order status.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "amount": {
+          "name": "amount",
+          "description": "Order amount.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "created_at": {
+          "name": "created_at",
+          "description": "Creation timestamp.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "delivery_window": {
+          "name": "delivery_window",
+          "description": "Promised delivery window.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "delivery_time": {
+          "name": "delivery_time",
+          "description": "Preferred delivery time of day.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        }
+      },
+      "meta": {
+        "drizzle_cube": {
+          "measures": [
+            {
+              "name": "totalAmount",
+              "type": "sum",
+              "column": "amount",
+              "title": "Total Amount"
+            }
+          ]
+        }
+      },
+      "relation_name": "\"warehouse\".\"analytics\".\"orders\"",
+      "depends_on": {
+        "macros": [],
+        "nodes": []
+      },
+      "refs": [],
+      "constraints": [],
+      "contract": {
+        "enforced": false,
+        "alias_types": true
+      }
+    },
+    "model.demo.order_lines": {
+      "database": "warehouse",
+      "schema": "analytics",
+      "name": "order_lines",
+      "resource_type": "model",
+      "package_name": "demo",
+      "path": "marts/order_lines.sql",
+      "original_file_path": "models/marts/order_lines.sql",
+      "unique_id": "model.demo.order_lines",
+      "fqn": [
+        "demo",
+        "marts",
+        "order_lines"
+      ],
+      "alias": "order_lines",
+      "config": {
+        "enabled": true,
+        "materialized": "table",
+        "schema": null,
+        "tags": [],
+        "meta": {}
+      },
+      "tags": [],
+      "description": "One row per order line.",
+      "columns": {
+        "order_id": {
+          "name": "order_id",
+          "description": "Order.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "line_number": {
+          "name": "line_number",
+          "description": "Line within the order.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "organisation_id": {
+          "name": "organisation_id",
+          "description": "Tenant id.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "count": {
+          "name": "count",
+          "description": "Units on the line.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        },
+        "tags": {
+          "name": "tags",
+          "description": "Free-form tags.",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        }
+      },
+      "meta": {},
+      "relation_name": "\"warehouse\".\"analytics\".\"order_lines\"",
+      "depends_on": {
+        "macros": [],
+        "nodes": []
+      },
+      "refs": [],
+      "constraints": [],
+      "contract": {
+        "enforced": false,
+        "alias_types": true
+      }
+    },
+    "model.demo.ephemeral_rollup": {
+      "database": "warehouse",
+      "schema": "analytics",
+      "name": "ephemeral_rollup",
+      "resource_type": "model",
+      "package_name": "demo",
+      "path": "marts/ephemeral_rollup.sql",
+      "original_file_path": "models/marts/ephemeral_rollup.sql",
+      "unique_id": "model.demo.ephemeral_rollup",
+      "fqn": [
+        "demo",
+        "marts",
+        "ephemeral_rollup"
+      ],
+      "alias": "ephemeral_rollup",
+      "config": {
+        "enabled": true,
+        "materialized": "ephemeral",
+        "schema": null,
+        "tags": [],
+        "meta": {}
+      },
+      "tags": [],
+      "description": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "description": "",
+          "meta": {},
+          "data_type": null,
+          "constraints": [],
+          "quote": null,
+          "tags": []
+        }
+      },
+      "meta": {},
+      "relation_name": null,
+      "depends_on": {
+        "macros": [],
+        "nodes": []
+      },
+      "refs": [],
+      "constraints": [],
+      "contract": {
+        "enforced": false,
+        "alias_types": true
+      }
+    },
+    "test.demo.unique_customers_id.0123456789": {
+      "database": "warehouse",
+      "schema": "analytics_dbt_test__audit",
+      "name": "unique_customers_id",
+      "resource_type": "test",
+      "package_name": "demo",
+      "unique_id": "test.demo.unique_customers_id.0123456789",
+      "fqn": [
+        "demo",
+        "marts",
+        "unique_customers_id"
+      ],
+      "alias": "unique_customers_id",
+      "config": {
+        "enabled": true,
+        "severity": "ERROR"
+      },
+      "depends_on": {
+        "macros": [
+          "macro.dbt.test_unique"
+        ],
+        "nodes": [
+          "model.demo.customers"
+        ]
+      },
+      "refs": [
+        {
+          "name": "customers",
+          "package": null,
+          "version": null
+        }
+      ],
+      "column_name": "id",
+      "file_key_name": "models.customers",
+      "attached_node": "model.demo.customers",
+      "test_metadata": {
+        "name": "unique",
+        "kwargs": {
+          "column_name": "id",
+          "model": "{{ get_where_subquery(ref('customers')) }}"
+        },
+        "namespace": null
+      }
+    },
+    "test.demo.not_null_customers_id.0123456789": {
+      "database": "warehouse",
+      "schema": "analytics_dbt_test__audit",
+      "name": "not_null_customers_id",
+      "resource_type": "test",
+      "package_name": "demo",
+      "unique_id": "test.demo.not_null_customers_id.0123456789",
+      "fqn": [
+        "demo",
+        "marts",
+        "not_null_customers_id"
+      ],
+      "alias": "not_null_customers_id",
+      "config": {
+        "enabled": true,
+        "severity": "ERROR"
+      },
+      "depends_on": {
+        "macros": [
+          "macro.dbt.test_not_null"
+        ],
+        "nodes": [
+          "model.demo.customers"
+        ]
+      },
+      "refs": [
+        {
+          "name": "customers",
+          "package": null,
+          "version": null
+        }
+      ],
+      "column_name": "id",
+      "file_key_name": "models.customers",
+      "attached_node": "model.demo.customers",
+      "test_metadata": {
+        "name": "not_null",
+        "kwargs": {
+          "column_name": "id",
+          "model": "{{ get_where_subquery(ref('customers')) }}"
+        },
+        "namespace": null
+      }
+    },
+    "test.demo.not_null_customers_organisation_id.0123456789": {
+      "database": "warehouse",
+      "schema": "analytics_dbt_test__audit",
+      "name": "not_null_customers_organisation_id",
+      "resource_type": "test",
+      "package_name": "demo",
+      "unique_id": "test.demo.not_null_customers_organisation_id.0123456789",
+      "fqn": [
+        "demo",
+        "marts",
+        "not_null_customers_organisation_id"
+      ],
+      "alias": "not_null_customers_organisation_id",
+      "config": {
+        "enabled": true,
+        "severity": "ERROR"
+      },
+      "depends_on": {
+        "macros": [
+          "macro.dbt.test_not_null"
+        ],
+        "nodes": [
+          "model.demo.customers"
+        ]
+      },
+      "refs": [
+        {
+          "name": "customers",
+          "package": null,
+          "version": null
+        }
+      ],
+      "column_name": "organisation_id",
+      "file_key_name": "models.customers",
+      "attached_node": "model.demo.customers",
+      "test_metadata": {
+        "name": "not_null",
+        "kwargs": {
+          "column_name": "organisation_id",
+          "model": "{{ get_where_subquery(ref('customers')) }}"
+        },
+        "namespace": null
+      }
+    },
+    "test.demo.relationships_customers_parent_customer_id.0123456789": {
+      "database": "warehouse",
+      "schema": "analytics_dbt_test__audit",
+      "name": "relationships_customers_parent_customer_id",
+      "resource_type": "test",
+      "package_name": "demo",
+      "unique_id": "test.demo.relationships_customers_parent_customer_id.0123456789",
+      "fqn": [
+        "demo",
+        "marts",
+        "relationships_customers_parent_customer_id"
+      ],
+      "alias": "relationships_customers_parent_customer_id",
+      "config": {
+        "enabled": true,
+        "severity": "ERROR"
+      },
+      "depends_on": {
+        "macros": [
+          "macro.dbt.test_relationships"
+        ],
+        "nodes": [
+          "model.demo.customers"
+        ]
+      },
+      "refs": [
+        {
+          "name": "customers",
+          "package": null,
+          "version": null
+        }
+      ],
+      "column_name": "parent_customer_id",
+      "file_key_name": "models.customers",
+      "attached_node": "model.demo.customers",
+      "test_metadata": {
+        "name": "relationships",
+        "kwargs": {
+          "field": "id",
+          "column_name": "parent_customer_id",
+          "model": "{{ get_where_subquery(ref('customers')) }}",
+          "to": "ref('customers')"
+        },
+        "namespace": null
+      }
+    },
+    "test.demo.unique_orders_id.0123456789": {
+      "database": "warehouse",
+      "schema": "analytics_dbt_test__audit",
+      "name": "unique_orders_id",
+      "resource_type": "test",
+      "package_name": "demo",
+      "unique_id": "test.demo.unique_orders_id.0123456789",
+      "fqn": [
+        "demo",
+        "marts",
+        "unique_orders_id"
+      ],
+      "alias": "unique_orders_id",
+      "config": {
+        "enabled": true,
+        "severity": "ERROR"
+      },
+      "depends_on": {
+        "macros": [
+          "macro.dbt.test_unique"
+        ],
+        "nodes": [
+          "model.demo.orders"
+        ]
+      },
+      "refs": [
+        {
+          "name": "orders",
+          "package": null,
+          "version": null
+        }
+      ],
+      "column_name": "id",
+      "file_key_name": "models.orders",
+      "attached_node": "model.demo.orders",
+      "test_metadata": {
+        "name": "unique",
+        "kwargs": {
+          "column_name": "id",
+          "model": "{{ get_where_subquery(ref('orders')) }}"
+        },
+        "namespace": null
+      }
+    },
+    "test.demo.not_null_orders_id.0123456789": {
+      "database": "warehouse",
+      "schema": "analytics_dbt_test__audit",
+      "name": "not_null_orders_id",
+      "resource_type": "test",
+      "package_name": "demo",
+      "unique_id": "test.demo.not_null_orders_id.0123456789",
+      "fqn": [
+        "demo",
+        "marts",
+        "not_null_orders_id"
+      ],
+      "alias": "not_null_orders_id",
+      "config": {
+        "enabled": true,
+        "severity": "ERROR"
+      },
+      "depends_on": {
+        "macros": [
+          "macro.dbt.test_not_null"
+        ],
+        "nodes": [
+          "model.demo.orders"
+        ]
+      },
+      "refs": [
+        {
+          "name": "orders",
+          "package": null,
+          "version": null
+        }
+      ],
+      "column_name": "id",
+      "file_key_name": "models.orders",
+      "attached_node": "model.demo.orders",
+      "test_metadata": {
+        "name": "not_null",
+        "kwargs": {
+          "column_name": "id",
+          "model": "{{ get_where_subquery(ref('orders')) }}"
+        },
+        "namespace": null
+      }
+    },
+    "test.demo.relationships_orders_customer_id.0123456789": {
+      "database": "warehouse",
+      "schema": "analytics_dbt_test__audit",
+      "name": "relationships_orders_customer_id",
+      "resource_type": "test",
+      "package_name": "demo",
+      "unique_id": "test.demo.relationships_orders_customer_id.0123456789",
+      "fqn": [
+        "demo",
+        "marts",
+        "relationships_orders_customer_id"
+      ],
+      "alias": "relationships_orders_customer_id",
+      "config": {
+        "enabled": true,
+        "severity": "ERROR"
+      },
+      "depends_on": {
+        "macros": [
+          "macro.dbt.test_relationships"
+        ],
+        "nodes": [
+          "model.demo.customers",
+          "model.demo.orders"
+        ]
+      },
+      "refs": [
+        {
+          "name": "customers",
+          "package": null,
+          "version": null
+        },
+        {
+          "name": "orders",
+          "package": null,
+          "version": null
+        }
+      ],
+      "column_name": "customer_id",
+      "file_key_name": "models.orders",
+      "attached_node": "model.demo.orders",
+      "test_metadata": {
+        "name": "relationships",
+        "kwargs": {
+          "field": "id",
+          "column_name": "customer_id",
+          "model": "{{ get_where_subquery(ref('orders')) }}",
+          "to": "ref('customers')"
+        },
+        "namespace": null
+      }
+    },
+    "test.demo.relationships_orders_referred_by_customer_id.0123456789": {
+      "database": "warehouse",
+      "schema": "analytics_dbt_test__audit",
+      "name": "relationships_orders_referred_by_customer_id",
+      "resource_type": "test",
+      "package_name": "demo",
+      "unique_id": "test.demo.relationships_orders_referred_by_customer_id.0123456789",
+      "fqn": [
+        "demo",
+        "marts",
+        "relationships_orders_referred_by_customer_id"
+      ],
+      "alias": "relationships_orders_referred_by_customer_id",
+      "config": {
+        "enabled": true,
+        "severity": "ERROR"
+      },
+      "depends_on": {
+        "macros": [
+          "macro.dbt.test_relationships"
+        ],
+        "nodes": [
+          "model.demo.customers",
+          "model.demo.orders"
+        ]
+      },
+      "refs": [
+        {
+          "name": "customers",
+          "package": null,
+          "version": null
+        },
+        {
+          "name": "orders",
+          "package": null,
+          "version": null
+        }
+      ],
+      "column_name": "referred_by_customer_id",
+      "file_key_name": "models.orders",
+      "attached_node": "model.demo.orders",
+      "test_metadata": {
+        "name": "relationships",
+        "kwargs": {
+          "field": "id",
+          "column_name": "referred_by_customer_id",
+          "model": "{{ get_where_subquery(ref('orders')) }}",
+          "to": "ref('customers')"
+        },
+        "namespace": null
+      }
+    },
+    "test.demo.unique_combination_of_columns_order_lines_order_id_line_number.0123456789": {
+      "database": "warehouse",
+      "schema": "analytics_dbt_test__audit",
+      "name": "unique_combination_of_columns_order_lines_order_id_line_number",
+      "resource_type": "test",
+      "package_name": "demo",
+      "unique_id": "test.demo.unique_combination_of_columns_order_lines_order_id_line_number.0123456789",
+      "fqn": [
+        "demo",
+        "marts",
+        "unique_combination_of_columns_order_lines_order_id_line_number"
+      ],
+      "alias": "unique_combination_of_columns_order_lines_order_id_line_number",
+      "config": {
+        "enabled": true,
+        "severity": "ERROR"
+      },
+      "depends_on": {
+        "macros": [
+          "macro.dbt.test_unique_combination_of_columns"
+        ],
+        "nodes": [
+          "model.demo.order_lines"
+        ]
+      },
+      "refs": [
+        {
+          "name": "order_lines",
+          "package": null,
+          "version": null
+        }
+      ],
+      "column_name": null,
+      "file_key_name": "models.order_lines",
+      "attached_node": "model.demo.order_lines",
+      "test_metadata": {
+        "name": "unique_combination_of_columns",
+        "kwargs": {
+          "combination_of_columns": [
+            "order_id",
+            "line_number"
+          ],
+          "model": "{{ get_where_subquery(ref('order_lines')) }}"
+        },
+        "namespace": "dbt_utils"
+      }
+    },
+    "test.demo.relationships_order_lines_order_id.0123456789": {
+      "database": "warehouse",
+      "schema": "analytics_dbt_test__audit",
+      "name": "relationships_order_lines_order_id",
+      "resource_type": "test",
+      "package_name": "demo",
+      "unique_id": "test.demo.relationships_order_lines_order_id.0123456789",
+      "fqn": [
+        "demo",
+        "marts",
+        "relationships_order_lines_order_id"
+      ],
+      "alias": "relationships_order_lines_order_id",
+      "config": {
+        "enabled": true,
+        "severity": "ERROR"
+      },
+      "depends_on": {
+        "macros": [
+          "macro.dbt.test_relationships"
+        ],
+        "nodes": [
+          "model.demo.order_lines",
+          "model.demo.orders"
+        ]
+      },
+      "refs": [
+        {
+          "name": "orders",
+          "package": null,
+          "version": null
+        },
+        {
+          "name": "order_lines",
+          "package": null,
+          "version": null
+        }
+      ],
+      "column_name": "order_id",
+      "file_key_name": "models.order_lines",
+      "attached_node": "model.demo.order_lines",
+      "test_metadata": {
+        "name": "relationships",
+        "kwargs": {
+          "field": "id",
+          "column_name": "order_id",
+          "model": "{{ get_where_subquery(ref('order_lines')) }}",
+          "to": "ref('orders')"
+        },
+        "namespace": null
+      }
+    }
+  },
+  "sources": {},
+  "macros": {},
+  "exposures": {},
+  "metrics": {}
+}
