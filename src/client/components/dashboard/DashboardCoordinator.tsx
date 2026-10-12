@@ -43,6 +43,7 @@ import type {
   PortletGroup,
   DashboardFilterMapping,
   DashboardLayoutMode,
+  PortletExpandPayload,
   RowLayout
 } from '../../types.js'
 import {
@@ -894,9 +895,16 @@ export default function DashboardCoordinator({
 
   // features.portletExpand shows the Expand button. A host handler replaces the
   // built-in Expand modal; without one, the button opens that modal.
+  // The host handler is called through a ref: a host often passes an inline
+  // function, and a new identity would otherwise re-render every card.
   const openExpandedPortlet = useDashboardStore(state => state.openExpandedPortlet)
+  const onPortletExpandRef = useRef(onPortletExpand)
+  onPortletExpandRef.current = onPortletExpand
+  const callHostPortletExpand = useCallback((payload: PortletExpandPayload) => {
+    onPortletExpandRef.current?.(payload)
+  }, [])
   const portletExpandHandler = features.portletExpand
-    ? (onPortletExpand ?? openExpandedPortlet)
+    ? (onPortletExpand ? callHostPortletExpand : openExpandedPortlet)
     : undefined
 
   // Memoize renderPortletCard to prevent unnecessary re-renders of DashboardPortletCard

@@ -97,6 +97,19 @@ vi.mock('../../src/client/providers/ScrollContainerContext', () => ({
   ScrollContainerProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }))
 
+// Count card header renders; the wrapper still renders the real header
+let headerRenders = 0
+vi.mock('../../src/client/components/dashboardPortletCard/PortletCardHeader', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/client/components/dashboardPortletCard/PortletCardHeader')>()
+  const RealHeader = actual.default
+  return {
+    default: (props: React.ComponentProps<typeof RealHeader>) => {
+      headerRenders++
+      return <RealHeader {...props} />
+    }
+  }
+})
+
 // Mock child components
 vi.mock('../../src/client/components/AnalyticsPortlet', () => ({
   default: React.forwardRef((props: any, _ref) => <div data-testid="analytics-portlet" data-query={props.query} />)
@@ -536,6 +549,37 @@ describe('DashboardGrid', () => {
       fireEvent.keyDown(document.body, { key: 'Escape' })
 
       expect(queryByRole('dialog')).toBeNull()
+    })
+
+    it('should not re-render the cards when the host passes a new onPortletExpand handler', () => {
+      mockFeatures = { portletExpand: true }
+      const config = createTestConfig(2)
+
+      const { rerender } = render(
+        <DashboardGrid config={config} onPortletExpand={() => {}} />,
+        { wrapper: TestWrapper }
+      )
+      const rendersBefore = headerRenders
+      rerender(<DashboardGrid config={config} onPortletExpand={() => {}} />)
+
+      expect(headerRenders).toBe(rendersBefore)
+    })
+
+    it('should give the latest onPortletExpand handler the clicked portlet', () => {
+      mockFeatures = { portletExpand: true }
+      const config = createTestConfig(2)
+      const firstHandler = vi.fn()
+      const latestHandler = vi.fn()
+
+      const { rerender, getAllByRole } = render(
+        <DashboardGrid config={config} onPortletExpand={firstHandler} />,
+        { wrapper: TestWrapper }
+      )
+      rerender(<DashboardGrid config={config} onPortletExpand={latestHandler} />)
+      fireEvent.click(getAllByRole('button', { name: 'Expand' })[0])
+
+      expect(firstHandler).not.toHaveBeenCalled()
+      expect(latestHandler).toHaveBeenCalledWith(expect.objectContaining({ portletId: 'portlet-0' }))
     })
   })
 })
