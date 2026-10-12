@@ -18,7 +18,7 @@ import DataBrowserPage from './pages/DataBrowserPage'
 const queryClient = new QueryClient()
 const LOCALE_STORAGE_KEY = 'drizzle-cube-dev-locale'
 const DEFAULT_LOCALE = 'en-GB'
-const SUPPORTED_LOCALES = ['en-GB', 'en-US', 'nl-NL', 'crowdin'] as const
+const SUPPORTED_LOCALES = ['en-GB', 'en-US', 'nl-NL', 'pt-BR', 'crowdin'] as const
 const CROWDIN_PROJECT_ID = 'drizzle-cube'
 const apiOptions = { apiUrl: '/cubejs-api/v1' }
 

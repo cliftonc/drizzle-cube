@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 import en from '../../src/i18n/locales/en.json'
 import enUS from '../../src/i18n/locales/en-US.json'
 import nlNL from '../../src/i18n/locales/nl-NL.json'
+import ptBR from '../../src/i18n/locales/pt-BR.json'
 import { chartConfigRegistry } from '../../src/client/charts/chartConfigRegistry'
 
 describe('i18n locale coverage', () => {
   const enDict = en as Record<string, string>
   const enUSDict = enUS as Record<string, string>
   const nlDict = nlNL as Record<string, string>
+  const ptDict = ptBR as Record<string, string>
 
   it('nl-NL has full key coverage of en', () => {
     const enKeys = Object.keys(enDict).sort()
@@ -19,6 +21,15 @@ describe('i18n locale coverage', () => {
   it('en-US is a valid override subset of en', () => {
     const enKeys = new Set(Object.keys(enDict))
     const invalid = Object.keys(enUSDict).filter(key => !enKeys.has(key))
+
+    expect(invalid).toEqual([])
+  })
+
+  it('pt-BR keys exist in en and keep their placeholders', () => {
+    const placeholders = (text: string) => (text.match(/\{[^{}]*\}/g) ?? []).sort().join()
+    const invalid = Object.keys(ptDict).filter(
+      key => !(key in enDict) || placeholders(ptDict[key]) !== placeholders(enDict[key])
+    )
 
     expect(invalid).toEqual([])
   })

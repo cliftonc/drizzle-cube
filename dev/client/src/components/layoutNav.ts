@@ -23,6 +23,7 @@ export const LOCALE_OPTIONS = [
   { value: 'en-GB', label: 'English (UK)' },
   { value: 'en-US', label: 'English (US)' },
   { value: 'nl-NL', label: 'Nederlands' },
+  { value: 'pt-BR', label: 'Português (Brasil)' },
   { value: 'crowdin', label: 'Crowdin In-Context' }
 ] as const
 
