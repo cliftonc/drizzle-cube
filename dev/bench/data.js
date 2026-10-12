@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791621892647,
+  "lastUpdate": 1791828014384,
   "repoUrl": "https://github.com/cliftonc/drizzle-cube",
   "entries": {
     "drizzle-cube": [
@@ -138968,6 +138968,324 @@ window.BENCHMARK_DATA = {
             "range": "± 0.2ms p95",
             "unit": "ms",
             "extra": "Cache-enabled executor, warm cache · p95 0.7ms · 700 rows"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ste.casasola@gmail.com",
+            "name": "Stefano Casasola",
+            "username": "irvelervel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4e6e3821de272ce64c6274a4b8bf85671033178c",
+          "message": "[Client] Add an Expand action to dashboard cards (#1397)\n\n* feat(dashboard): add an Expand action to portlet cards\n\nAnalyticsDashboard accepts `onPortletExpand`. When the host sets it, each\ncard with a header shows an Expand button next to Refresh in view mode.\nA click gives the host the resolved AnalyticsPortlet properties of the card\nand the view state of its chart. The host decides what the button opens.\n\n- Add PortletViewState, PortletExpandPayload, and AnalyticsPortletRef.\n- Add `getViewState()` to the AnalyticsPortlet ref.\n- Add a `maximize` icon key. The existing `expand` key stays a chevron.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* feat(dashboard): add the Expand action to the hover strip of grouped portlets\n\nA grouped portlet has no header, so its hover action strip shows the\nExpand button next to Refresh. It gives the host the same payload as\nthe button in a card header.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* feat(dashboard): hand the view state of a portlet chart to a new instance\n\nAnalyticsPortlet accepts `initialViewState` and returns its current view\nstate from `getViewState()`. The view state has two parts:\n\n- `drill`: the drill level, the drill path, and the original query. It\n  applies only to the base query it was taken from. The start value\n  survives the reset that runs when the query object changes.\n- `chart`: the state that the chart component reports with\n  `onViewStateChange`. The chart reads `initialViewState` on mount.\n\nA drill state with an unknown shape gives the root level.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* feat(dashboard): hand the records table page and sort to a new instance\n\nusePortletPagination starts its page, page size, and sort from\n`initialViewState.pagination` and returns them as view state. The state\napplies only to the query it was taken from, and it survives the resets\nthat run when the query or the authored page size changes. A state with\nan unknown shape gives the first page and no sort.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(dashboard): reset the reported chart state when the chart unmounts\n\nA refetch, an error, or an empty result unmounts the chart component, and\nit mounts again with its start state. AnalyticsPortlet kept the last state\nthat the chart reported, so getViewState() returned a page that the chart\nno longer showed. The reported state now goes back to the start state.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(dashboard): cover the Expand action and the view state handoff\n\n- DashboardPortletCard: the Expand button shows next to Refresh in view\n  mode only, not in edit mode, filter selection mode, or a hidden header,\n  and the hover strip of a grouped portlet has it too. The payload carries\n  the resolved chart properties and the chart view state.\n- DashboardGrid and AnalyticsDashboard pass onPortletExpand to each card.\n- AnalyticsPortlet hands initialViewState.chart to the chart, returns the\n  reported state, sets it back to the start state when a refetch unmounts\n  the chart, and starts at the drill level of a matching drill state.\n- useDrillInteraction starts from initialState and returns its state.\n- usePortletPagination starts from initialState past the mount-time\n  resets and still resets on a new base query.\n- parsePortletDrillViewState and parsePortletPaginationViewState reject\n  unknown shapes and state from another query.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* feat(dashboard): show the Expand button only when features.portletExpand is on\n\nA host now turns Expand on with features.portletExpand on CubeProvider,\nlike the other optional dashboard features. onPortletExpand alone no\nlonger shows the button: it only handles the click. Until the built-in\nExpand modal lands, a card shows the button when the option is on and\nthe dashboard gets onPortletExpand.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* feat(dashboard): open an expanded card in a built-in modal\n\nWith features.portletExpand on and no onPortletExpand handler, the Expand\nbutton now opens the card chart in a full-screen Modal, so Expand works\nwithout host code. A host handler still replaces the modal.\n\n- The dashboard store keeps the Expand payload; DashboardModals renders\n  PortletExpandModal next to the other dashboard modals, outside the grid\n  transforms. The chart starts at the view state of the card and loads at\n  once, because the modal is outside the scroll container that lazy loading\n  observes. A closed modal renders nothing, so each Expand mounts a new chart.\n- DrillMenu handles Escape in the capture phase and stops it, so Escape on\n  an open drill menu inside a Modal closes only the menu.\n- The dev app turns the option on.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* chore(mcp-app): regenerate the checked-in bundle\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(dashboard): keep the floating edit toolbar under dashboard modals\n\nFloatingEditToolbar is a z-50 portal at the end of body, so at the same\nz-index as a dashboard modal overlay it drew above the backdrop and stayed\nclickable. With a card expanded, its edit toggle put the dashboard into\nedit mode behind the modal, and after the modal closed the Expand button\nwas gone from every card. The toolbar now uses z-40: above the dashboard\ncontent, below modal overlays, popovers and chart tooltips.\n\nThe new e2e spec expands a card on a tall dashboard while the toolbar is\nshown, clicks where its edit toggle is, and expects the modal to close\nwith the dashboard still in view mode.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* perf(dashboard): call the host Expand handler through a stable wrapper\n\nA host often passes onPortletExpand as an inline function. Its identity\nchanged on each host render, so renderPortletCard changed too, and the\ncard memo (which compares the handler) re-rendered every card shell.\nThe coordinator now keeps the latest handler in a ref and gives the cards\none stable wrapper. The cards re-render only when a handler appears or\ngoes away.\n\nTests: a new inline handler does not re-render the cards, and the latest\nhandler still receives the click.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* docs(dashboard): note that the mobile stacked layout has no Expand button\n\nMobileStackedLayout draws its own card header with only Refresh, so\nfeatures.portletExpand does not add a button there. The FeaturesConfig\ncomment now says so.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-10-12T18:58:03+01:00",
+          "tree_id": "2ec71de02c10a15a4fd0549d2958de1358bec918",
+          "url": "https://github.com/cliftonc/drizzle-cube/commit/4e6e3821de272ce64c6274a4b8bf85671033178c"
+        },
+        "date": 1791828011477,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "baseline.count-time-entries",
+            "value": 37.3,
+            "range": "± 2.0ms p95",
+            "unit": "ms",
+            "extra": "Count over ~730k time entries · p95 39.3ms · 1 rows"
+          },
+          {
+            "name": "baseline.sum-avg-productivity",
+            "value": 15.45,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Sum + avg over ~335k productivity rows · p95 15.8ms · 1 rows"
+          },
+          {
+            "name": "baseline.count-distinct",
+            "value": 93.78,
+            "range": "± 5.2ms p95",
+            "unit": "ms",
+            "extra": "Count distinct employees over time entries · p95 99.0ms · 1 rows"
+          },
+          {
+            "name": "baseline.min-max",
+            "value": 15.51,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Min + max lines of code · p95 15.9ms · 1 rows"
+          },
+          {
+            "name": "baseline.calculated-measure",
+            "value": 16.84,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Calculated measure (productivity score) · p95 17.2ms · 1 rows"
+          },
+          {
+            "name": "multi.six-measures",
+            "value": 46.53,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Six measures on time entries · p95 46.8ms · 1 rows"
+          },
+          {
+            "name": "multi.mixed-types",
+            "value": 51,
+            "range": "± 5.7ms p95",
+            "unit": "ms",
+            "extra": "Mixed aggregation types on productivity · p95 56.7ms · 1 rows"
+          },
+          {
+            "name": "groupby.low-cardinality",
+            "value": 104.65,
+            "range": "± 7.3ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type (6 groups) · p95 112.0ms · 6 rows"
+          },
+          {
+            "name": "groupby.mid-cardinality",
+            "value": 82.23,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Group by department (~25 groups) · p95 82.7ms · 25 rows"
+          },
+          {
+            "name": "groupby.high-cardinality",
+            "value": 33.57,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Group by employee (~700 groups) · p95 33.9ms · 700 rows"
+          },
+          {
+            "name": "groupby.two-dimensions",
+            "value": 216.34,
+            "range": "± 4.1ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type + department · p95 220.5ms · 150 rows"
+          },
+          {
+            "name": "filter.equals",
+            "value": 38.04,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Equals filter (development entries) · p95 38.6ms · 1 rows"
+          },
+          {
+            "name": "filter.numeric-range",
+            "value": 15.05,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Numeric range filter (linesOfCode > 100) · p95 15.1ms · 1 rows"
+          },
+          {
+            "name": "filter.string-contains",
+            "value": 0.78,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "String contains filter on employee name · p95 1.0ms · 1 rows"
+          },
+          {
+            "name": "filter.nested-and-or",
+            "value": 43.23,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Nested AND/OR filter on time entries · p95 43.5ms · 1 rows"
+          },
+          {
+            "name": "filter.in-list-100",
+            "value": 37.16,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "IN-list filter with 100 employee ids · p95 37.4ms · 1 rows"
+          },
+          {
+            "name": "time.day-granularity-year",
+            "value": 135.71,
+            "range": "± 1.4ms p95",
+            "unit": "ms",
+            "extra": "Daily time series over 2024 (~366 buckets) · p95 137.2ms · 262 rows"
+          },
+          {
+            "name": "time.month-granularity",
+            "value": 133.56,
+            "range": "± 42.7ms p95",
+            "unit": "ms",
+            "extra": "Monthly time series over 2024 · p95 176.3ms · 12 rows"
+          },
+          {
+            "name": "time.week-with-dimension",
+            "value": 29.3,
+            "range": "± 0.9ms p95",
+            "unit": "ms",
+            "extra": "Weekly series split by allocation type (H1 2024) · p95 30.2ms · 104 rows"
+          },
+          {
+            "name": "time.gap-fill",
+            "value": 46.91,
+            "range": "± 16.8ms p95",
+            "unit": "ms",
+            "extra": "Daily series with fillMissingDates over 16 months · p95 63.8ms · 488 rows"
+          },
+          {
+            "name": "time.compare-date-range",
+            "value": 90.91,
+            "range": "± 6.5ms p95",
+            "unit": "ms",
+            "extra": "Period comparison Q1 vs Q2 2024 by month · p95 97.4ms · 6 rows"
+          },
+          {
+            "name": "join.belongs-to",
+            "value": 1.82,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Employees joined to departments · p95 1.9ms · 25 rows"
+          },
+          {
+            "name": "join.has-many-fanout",
+            "value": 167.94,
+            "range": "± 3.6ms p95",
+            "unit": "ms",
+            "extra": "Employee count with time-entry fan-out (~730k child rows) · p95 171.6ms · 25 rows"
+          },
+          {
+            "name": "join.many-to-many",
+            "value": 2.38,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Employees by team via junction table · p95 2.6ms · 40 rows"
+          },
+          {
+            "name": "join.three-cubes",
+            "value": 159.65,
+            "range": "± 1.9ms p95",
+            "unit": "ms",
+            "extra": "Departments + employees + time entries · p95 161.5ms · 25 rows"
+          },
+          {
+            "name": "rows.ordered-700",
+            "value": 79.06,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "~700 ordered group rows · p95 79.6ms · 700 rows"
+          },
+          {
+            "name": "rows.deep-offset",
+            "value": 77.66,
+            "range": "± 2.3ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped page at offset 100k (limit 1000) · p95 79.9ms · 1,000 rows"
+          },
+          {
+            "name": "rows.ungrouped-10k",
+            "value": 23.88,
+            "range": "± 1.4ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped raw rows (limit 10,000) · p95 25.2ms · 10,000 rows"
+          },
+          {
+            "name": "analysis.funnel",
+            "value": 104.71,
+            "range": "± 5.8ms p95",
+            "unit": "ms",
+            "extra": "Three-step funnel over ~335k events · p95 110.5ms · 3 rows"
+          },
+          {
+            "name": "analysis.flow",
+            "value": 32.19,
+            "range": "± 0.7ms p95",
+            "unit": "ms",
+            "extra": "Flow with 2 steps before/after · p95 32.9ms · 1 rows"
+          },
+          {
+            "name": "analysis.retention",
+            "value": 238.56,
+            "range": "± 2.8ms p95",
+            "unit": "ms",
+            "extra": "Monthly retention over 2024 (6 periods) · p95 241.4ms · 7 rows"
+          },
+          {
+            "name": "compile.simple",
+            "value": 0.05,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Compile simple aggregation query · p95 0.1ms · 0 rows"
+          },
+          {
+            "name": "compile.complex",
+            "value": 0.43,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Compile multi-cube query with filters + time dimension · p95 0.6ms · 0 rows"
+          },
+          {
+            "name": "eav.project-page",
+            "value": 0.81,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Project 2 EAV attributes over a 25-row page · p95 0.9ms · 25 rows"
+          },
+          {
+            "name": "eav.project-page-total",
+            "value": 14.26,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Same page, plus the total row count · p95 14.7ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-string",
+            "value": 46.29,
+            "range": "± 0.8ms p95",
+            "unit": "ms",
+            "extra": "Filter on a common string value (LIMIT satisfied early) · p95 47.1ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-numeric",
+            "value": 6.01,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Filter on a numeric attribute, incl. the tolerant cast · p95 6.5ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-selective",
+            "value": 452.03,
+            "range": "± 2.1ms p95",
+            "unit": "ms",
+            "extra": "Filter matching almost nothing — the full-scan case · p95 454.1ms · 0 rows"
+          },
+          {
+            "name": "eav.sort",
+            "value": 493.36,
+            "range": "± 3.0ms p95",
+            "unit": "ms",
+            "extra": "Order by a numeric EAV attribute (always a full scan) · p95 496.4ms · 25 rows"
+          },
+          {
+            "name": "eav.baseline-sort",
+            "value": 28.39,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Same shape ordering by a real column, for comparison · p95 28.8ms · 25 rows"
+          },
+          {
+            "name": "cache.miss",
+            "value": 43.05,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, cache bypassed · p95 44.1ms · 700 rows"
+          },
+          {
+            "name": "cache.hit",
+            "value": 0.27,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, warm cache · p95 0.5ms · 700 rows"
           }
         ]
       }
