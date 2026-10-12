@@ -79,6 +79,19 @@ describe('i18n runtime', () => {
       expect(getLocale()).toBe('nl-NL')
       expect(t('common.actions.cancel')).toBe('Annuleren')
     })
+
+    it('loads pt-BR translations', async () => {
+      await loadLocale('pt-BR')
+      expect(getLocale()).toBe('pt-BR')
+      expect(t('common.actions.save')).toBe('Salvar')
+      expect(t('chart.runtime.noData')).toBe('Sem dados disponíveis')
+    })
+
+    it('treats "pt" as pt-BR', async () => {
+      await loadLocale('pt')
+      expect(getLocale()).toBe('pt-BR')
+      expect(t('common.actions.cancel')).toBe('Cancelar')
+    })
   })
 
   describe('setTranslations()', () => {

@@ -12,7 +12,8 @@ src/i18n/
 └── locales/
     ├── en.json          Source of truth (en-GB, ~1600 keys)
     ├── en-US.json       American spelling overrides (~30 keys)
-    └── nl-NL.json       Dutch translation (full coverage)
+    ├── nl-NL.json       Dutch translation (full coverage)
+    └── pt-BR.json       Brazilian Portuguese translation (missing keys fall back to en)
 ```
 
 - **Default locale**: `en-GB` (statically bundled, always available)
