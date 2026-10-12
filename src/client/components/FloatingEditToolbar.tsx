@@ -123,10 +123,14 @@ export default function FloatingEditToolbar({
     ? (isHidden ? 'dc:-translate-x-16 dc:opacity-0 dc:pointer-events-none' : 'dc:translate-x-0 dc:opacity-100')
     : (isHidden ? 'dc:translate-x-16 dc:opacity-0 dc:pointer-events-none' : 'dc:translate-x-0 dc:opacity-100')
 
-  // Use portal to render outside the grid container to avoid react-grid-layout issues
+  // Use portal to render outside the grid container to avoid react-grid-layout issues.
+  // z-40 keeps the toolbar above the dashboard and below the z-50 overlay of a
+  // dashboard modal: the portal comes last in the body, so at an equal z-index it
+  // would draw over the backdrop and stay clickable (for example the edit toggle
+  // while a card is expanded).
   const toolbarContent = (
     <div
-      className={`dc:fixed dc:top-1/2 dc:-translate-y-1/2 dc:z-50 dc:flex dc:flex-col dc:gap-1.5 dc:p-2
+      className={`dc:fixed dc:top-1/2 dc:-translate-y-1/2 dc:z-40 dc:flex dc:flex-col dc:gap-1.5 dc:p-2
         bg-dc-surface-tertiary dc:border border-dc-border dc:rounded-lg
         dc:transition-all dc:duration-300 dc:ease-in-out
         ${positionClasses} ${translateClasses}`}

@@ -676,6 +676,12 @@ export interface AnalyticsPortletProps {
   title?: string
   colorPalette?: ColorPalette  // Complete palette with both colors and gradient
   loadingComponent?: ReactNode // Custom loading indicator (defaults to LoadingIndicator)
+  /**
+   * The chart starts with this view state instead of the default state. Read
+   * one time, on mount. Pass the `viewState` of a PortletExpandPayload without
+   * changes; a state with an unknown shape gives the default state.
+   */
+  initialViewState?: PortletViewState
   onDebugDataReady?: (debugData: {
     chartConfig: ChartAxisConfig
     displayConfig: ChartDisplayConfig
@@ -710,6 +716,37 @@ export interface DashboardMeta {
   description?: string
 }
 
+/**
+ * View state of one chart instance: state that the chart keeps in its own
+ * instance and that the dashboard config does not store. The host only
+ * carries it from one chart instance to another; it does not read it.
+ */
+export interface PortletViewState {
+  /** Drill-down state of the portlet. */
+  drill?: unknown
+  /** Server-side paging and sorting state of the portlet (records table). */
+  pagination?: unknown
+  /** State that the chart component reports with `onViewStateChange`. */
+  chart?: unknown
+}
+
+/** What a card gives the host when the user clicks its Expand button. */
+export interface PortletExpandPayload {
+  portletId: string
+  title: string
+  /** The resolved properties that the card gives to `AnalyticsPortlet`. */
+  chartProps: AnalyticsPortletProps
+  /** The view state of the card chart when the user clicked Expand. */
+  viewState: PortletViewState
+}
+
+/** Imperative handle of `AnalyticsPortlet`. */
+export interface AnalyticsPortletRef {
+  refresh: (options?: { bustCache?: boolean }) => void
+  /** Returns the current view state of this chart instance. */
+  getViewState: () => PortletViewState
+}
+
 export interface AnalyticsDashboardProps {
   config: DashboardConfig
   editable?: boolean
@@ -727,6 +764,12 @@ export interface AnalyticsDashboardProps {
    * without it an import only replaces the config.
    */
   onDashboardMetaChange?: (meta: { name: string; description?: string }) => Promise<void> | void
+  /**
+   * Replaces the built-in Expand modal: the Expand button calls this handler
+   * and does not open the modal. The handler does not show the button;
+   * `features.portletExpand` shows it.
+   */
+  onPortletExpand?: (payload: PortletExpandPayload) => void
 }
 
 export interface ChartProps {
@@ -749,6 +792,15 @@ export interface ChartProps {
    * hosts, where a chart pages and sorts over the rows it already has.
    */
   pagination?: ChartPagination
+
+  /**
+   * State that the chart component reported with `onViewStateChange` in another
+   * instance. Read it one time, on mount, and check its shape before use: on
+   * an unknown shape, use the default state.
+   */
+  initialViewState?: unknown
+  /** Report the state that the chart keeps in its own instance, for example its page */
+  onViewStateChange?: (state: unknown) => void
 }
 
 /**
@@ -813,6 +865,7 @@ export interface FeaturesConfig {
   manualRefresh?: boolean // When true, queries don't auto-execute on config changes. User must click Refresh. (default: false)
   xlsExport?: XlsExportFeatureConfig // Optional XLSX data export from portlets (requires exceljs)
   dashboardImportExport?: DashboardImportExportFeatureConfig // Optional dashboard export/import as a JSON file (toolbar buttons)
+  portletExpand?: boolean // Show an Expand button on dashboard cards in view mode. It opens the chart in a built-in modal, or calls AnalyticsDashboard's onPortletExpand when set. Not in the mobile stacked layout (default: false)
 }
 
 // Grid layout types (simplified)
@@ -1027,6 +1080,7 @@ export type {
   DrillResult,
   UseDrillInteractionOptions,
   DrillInteraction,
+  DrillInteractionState,
   DrillMenuProps,
   DrillBreadcrumbProps,
 } from './types/drill.js'

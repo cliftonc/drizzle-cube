@@ -38,6 +38,8 @@ interface PortletCardHeaderProps {
   onDuplicate: () => void
   onEdit: () => void
   onDelete: () => void
+  /** Shows the Expand button next to Refresh when set */
+  onExpand?: () => void
 }
 
 /** Suppresses drag/touch propagation on header action containers. */
@@ -92,12 +94,14 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
     editable, isEditMode, isInSelectionMode, debugData,
     copyAvailable, copySuccess, xlsExportAvailable, exportInProgress, showCacheBustIndicator,
     unreachableDateFilterLabels, icons, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
-    onOpenFilterConfig, onDuplicate, onEdit, onDelete
+    onOpenFilterConfig, onDuplicate, onEdit, onDelete, onExpand
   } = props
+  const { t } = useTranslation()
 
   const CameraIcon = getIcon('camera')
   const CheckIcon = getIcon('check')
   const DownloadIcon = getIcon('download')
+  const MaximizeIcon = getIcon('maximize')
 
   return (
     <div
@@ -151,6 +155,28 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
         >
           <icons.RefreshIcon style={ICON_STYLE} />
         </button>
+
+        {/* Expand button - the host decides what it opens; never disabled, so
+            a loading, failed, or empty card can still be expanded */}
+        {onExpand && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onExpand()
+            }}
+            onTouchEnd={(event) => {
+              event.stopPropagation()
+              event.preventDefault()
+              onExpand()
+            }}
+            className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:cursor-pointer text-dc-text-secondary hover:bg-dc-surface-hover dc:transition-colors"
+            title={t('dashboard.portlet.action.expand')}
+            aria-label={t('dashboard.portlet.action.expand')}
+          >
+            <MaximizeIcon style={ICON_STYLE} />
+          </button>
+        )}
 
         {/* Copy to clipboard button - visible when thumbnail feature is enabled and capability is available */}
         {copyAvailable && !isInSelectionMode && (

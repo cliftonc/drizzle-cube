@@ -3,11 +3,11 @@
  * Simplified version with minimal dependencies
  */
 
-import React, { useEffect, useMemo, useState, forwardRef, useImperativeHandle } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useScrollContainer } from '../providers/ScrollContainerContext.js'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
-import type { AnalyticsPortletProps } from '../types.js'
+import type { AnalyticsPortletProps, AnalyticsPortletRef, PortletViewState } from '../types.js'
 import { hasRunnableQuery, parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
 import { getRegularDashboardFilters } from '../utils/filterUtils.js'
 import { usePortletDrillState } from './analyticsPortlet/usePortletDrillState.js'
@@ -18,14 +18,6 @@ import { usePortletDebugData } from './analyticsPortlet/usePortletDebugData.js'
 import { resolvePortletRenderKind } from './analyticsPortlet/portletRenderState.js'
 import { PortletChartView } from './analyticsPortlet/PortletChartView.js'
 import { PortletStateView } from './analyticsPortlet/PortletStates.js'
-
-interface RefreshOptions {
-  bustCache?: boolean
-}
-
-interface AnalyticsPortletRef {
-  refresh: (options?: RefreshOptions) => void
-}
 
 // Memoize component to prevent re-renders when props haven't changed
 const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(({
@@ -41,8 +33,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   title: _title,
   colorPalette,
   loadingComponent,
+  initialViewState,
   onDebugDataReady
 }, ref) => {
+  // The start view state is read one time, on mount, like the chart components do
+  const [startViewState] = useState(() => initialViewState)
+
   // Lazy loading: Use IntersectionObserver to detect when portlet is visible
   // Get scroll container from context (null = viewport, element = container scroll)
   const scrollContainer = useScrollContainer()
@@ -101,7 +97,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   })
 
   // Drill-down state, active query, and navigation handlers
-  const { drill, activeQuery, handleNavigateBack, handleNavigateToLevel } = usePortletDrillState({
+  const { drill, activeQuery, drillViewState, handleNavigateBack, handleNavigateToLevel } = usePortletDrillState({
     queryObject: liveQuery,
     chartConfig,
     dashboardFilters,
@@ -109,16 +105,25 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     isMultiQuery,
     isFunnelMode,
     isFlowMode,
-    isRetentionMode
+    isRetentionMode,
+    initialDrill: startViewState?.drill
   })
+
+  // The chart component reports its own state (for example its page). A ref
+  // keeps the latest report, so a report does not render the portlet again.
+  const chartViewStateRef = useRef<unknown>(startViewState?.chart)
+  const handleChartViewStateChange = useCallback((state: unknown) => {
+    chartViewStateRef.current = state
+  }, [])
 
   // Server-side paging + sorting, layered over whichever query is active. Only
   // engaged for chart types that page; every other type gets `activeQuery` back
   // unchanged.
-  const { paginatedQuery, pagination } = usePortletPagination({
+  const { paginatedQuery, pagination, viewState: paginationViewState } = usePortletPagination({
     chartType,
     activeQuery,
-    pageSize: displayConfig?.pageSize
+    pageSize: displayConfig?.pageSize,
+    initialState: startViewState?.pagination
   })
 
   // Run all query hooks and derive combined loading/error/data + refresh/retry
@@ -155,8 +160,17 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     setDeadMemberError(error ?? null)
   }, [error])
 
-  // Expose refresh function through ref
-  useImperativeHandle(ref, () => ({ refresh }), [refresh])
+  // Expose refresh and the view state through ref
+  useImperativeHandle(ref, () => ({
+    refresh,
+    getViewState: () => {
+      const viewState: PortletViewState = {}
+      if (drillViewState) viewState.drill = drillViewState
+      if (paginationViewState) viewState.pagination = paginationViewState
+      if (chartViewStateRef.current !== undefined) viewState.chart = chartViewStateRef.current
+      return viewState
+    }
+  }), [refresh, drillViewState, paginationViewState])
 
   // The total only exists once a response carrying it has arrived, so it is
   // merged in here rather than fed back into the pagination hook.
@@ -221,6 +235,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     retentionChartData
   })
 
+  // A refetch, an error, or an empty result unmounts the chart component. It
+  // mounts again with the start state, so the reported state goes back to it.
+  useEffect(() => {
+    if (renderKind !== 'chart') chartViewStateRef.current = startViewState?.chart
+  }, [renderKind, startViewState])
+
   // Non-chart states (config-required, placeholder, loading, error, no-data)
   if (renderKind !== 'chart') {
     return (
@@ -272,6 +292,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         isDrillEnabled={isDrillEnabled}
         onNavigateBack={handleNavigateBack}
         onNavigateToLevel={handleNavigateToLevel}
+        initialViewState={startViewState?.chart}
+        onViewStateChange={handleChartViewStateChange}
       />
     </div>
   )

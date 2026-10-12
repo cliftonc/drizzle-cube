@@ -20,6 +20,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { DrillMenu } from '../../../src/client/components/DrillMenu'
 import { DrillBreadcrumb } from '../../../src/client/components/DrillBreadcrumb'
+import Modal from '../../../src/client/components/Modal'
 import type { DrillOption, DrillPathEntry } from '../../../src/client/types/drill'
 
 // Mock function types for proper casting
@@ -193,6 +194,31 @@ describe('DrillMenu', () => {
       fireEvent.keyDown(document, { key: 'Escape' })
 
       expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should close only the menu on Escape when the menu opens inside a modal', () => {
+      const onModalClose = vi.fn()
+      // The modal opens first, so its Escape listener is registered before the menu's
+      const { rerender } = render(
+        <Modal isOpen onClose={onModalClose}>
+          <div />
+        </Modal>
+      )
+      rerender(
+        <Modal isOpen onClose={onModalClose}>
+          <DrillMenu
+            options={singleOption}
+            position={defaultPosition}
+            onSelect={onSelect}
+            onClose={onClose}
+          />
+        </Modal>
+      )
+
+      fireEvent.keyDown(document.body, { key: 'Escape' })
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(onModalClose).not.toHaveBeenCalled()
     })
 
     it('should call onClose on click outside', () => {

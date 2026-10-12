@@ -442,4 +442,14 @@ describe('AnalyticsDashboard', () => {
       expect(capturedDashboardGridProps.config.portlets).toEqual([])
     })
   })
+
+  describe('expand action', () => {
+    it('should pass onPortletExpand to DashboardGrid', () => {
+      const onPortletExpand = vi.fn()
+
+      render(<AnalyticsDashboard config={createTestConfig()} onPortletExpand={onPortletExpand} />)
+
+      expect(capturedDashboardGridProps.onPortletExpand).toBe(onPortletExpand)
+    })
+  })
 })

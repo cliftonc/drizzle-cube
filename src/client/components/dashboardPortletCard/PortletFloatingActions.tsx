@@ -31,6 +31,8 @@ interface PortletFloatingActionsProps {
   onDuplicate: () => void
   onEdit: () => void
   onDelete: () => void
+  /** Shows the Expand button next to Refresh when set */
+  onExpand?: () => void
 }
 
 const GRIP_STYLE: CSSProperties = { width: '14px', height: '14px', color: 'currentColor' }
@@ -62,12 +64,14 @@ export default function PortletFloatingActions({
   onOpenFilterConfig,
   onDuplicate,
   onEdit,
-  onDelete
+  onDelete,
+  onExpand
 }: PortletFloatingActionsProps) {
   const { t } = useTranslation()
   const CameraIcon = getIcon('camera')
   const CheckIcon = getIcon('check')
   const DownloadIcon = getIcon('download')
+  const MaximizeIcon = getIcon('maximize')
 
   const stopRefresh = (event: React.MouseEvent) => {
     event.stopPropagation()
@@ -108,6 +112,22 @@ export default function PortletFloatingActions({
         >
           <icons.RefreshIcon style={ICON_STYLE} />
         </button>
+        {/* Same Expand action as the card header; never disabled */}
+        {onExpand && (
+          <button
+            type="button"
+            draggable={false}
+            onClick={(event) => {
+              event.stopPropagation()
+              onExpand()
+            }}
+            className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
+            title={t('dashboard.portlet.action.expand')}
+            aria-label={t('dashboard.portlet.action.expand')}
+          >
+            <MaximizeIcon style={ICON_STYLE} />
+          </button>
+        )}
         {/* Grouped children have no header, so the view-mode actions a
             standalone portlet shows there live here too. */}
         {copyAvailable && (

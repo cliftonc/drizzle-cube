@@ -38,6 +38,8 @@ export interface PortletChartProps {
   drillEnabled: boolean
   currentChartConfig?: ChartAxisConfig | null
   onDataPointClick?: (...args: any[]) => void
+  initialViewState?: unknown
+  onViewStateChange?: (state: unknown) => void
 }
 
 /**
@@ -89,7 +91,9 @@ export function PortletChart(props: PortletChartProps) {
     colorPalette,
     drillEnabled,
     currentChartConfig,
-    onDataPointClick
+    onDataPointClick,
+    initialViewState,
+    onViewStateChange
   } = props
 
   try {
@@ -133,6 +137,8 @@ export function PortletChart(props: PortletChartProps) {
         colorPalette={colorPalette}
         onDataPointClick={drillEnabled ? onDataPointClick : undefined}
         drillEnabled={drillEnabled}
+        initialViewState={initialViewState}
+        onViewStateChange={onViewStateChange}
         fallback={
           <div
             className="dc:flex dc:items-center dc:justify-center dc:w-full"

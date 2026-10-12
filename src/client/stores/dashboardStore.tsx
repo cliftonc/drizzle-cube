@@ -28,6 +28,7 @@ import type {
   ChartAxisConfig,
   ChartDisplayConfig,
   CubeQuery,
+  PortletExpandPayload,
 } from '../types.js'
 import type { FlowChartData } from '../types/flow.js'
 import type { RetentionChartData } from '../types/retention.js'
@@ -98,6 +99,8 @@ export interface DashboardStoreState {
   isTextModalOpen: boolean
   /** Portlet being edited in text modal (null = adding new) */
   editingTextPortlet: PortletConfig | null
+  /** Card shown in the built-in Expand modal (null = modal closed) */
+  expandedPortlet: PortletExpandPayload | null
 
   // =========================================================================
   // Layout State
@@ -159,6 +162,10 @@ export interface DashboardStoreActions {
   openTextModal: (portlet?: PortletConfig | null) => void
   /** Close text portlet modal */
   closeTextModal: () => void
+  /** Open the built-in Expand modal for a card */
+  openExpandedPortlet: (payload: PortletExpandPayload) => void
+  /** Close the built-in Expand modal */
+  closeExpandedPortlet: () => void
   /** Open delete confirmation for a portlet */
   openDeleteConfirm: (portletId: string) => void
 
@@ -236,6 +243,7 @@ const createDefaultState = (): DashboardStoreState => ({
   deleteConfirmGroupId: null,
   isTextModalOpen: false,
   editingTextPortlet: null,
+  expandedPortlet: null,
 
   // Layout state
   draftRows: null,
@@ -342,6 +350,10 @@ function createStoreActions(
         isTextModalOpen: false,
         editingTextPortlet: null,
       }),
+
+    openExpandedPortlet: (payload) => set({ expandedPortlet: payload }),
+
+    closeExpandedPortlet: () => set({ expandedPortlet: null }),
 
     openDeleteConfirm: (portletId: string) =>
       set({ deleteConfirmPortletId: portletId, deleteConfirmGroupId: null }),

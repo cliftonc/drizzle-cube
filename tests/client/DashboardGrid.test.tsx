@@ -5,17 +5,20 @@
 
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, fireEvent, act } from '@testing-library/react'
+import { render, fireEvent, act, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import DashboardGrid from '../../src/client/components/DashboardGrid'
 import { DashboardStoreProvider } from '../../src/client/stores/dashboardStore'
-import type { DashboardConfig, PortletConfig } from '../../src/client/types'
+import type { DashboardConfig, FeaturesConfig, PortletConfig } from '../../src/client/types'
 import type { DashboardDisplayMode } from '../../src/client/hooks/useResponsiveDashboard'
+
+// Features that both feature hooks return; reset before each test
+let mockFeatures: FeaturesConfig = {}
 
 // Mock CubeProvider context - DashboardGrid uses useCubeFeatures for features
 vi.mock('../../src/client/providers/CubeProvider', () => ({
   useCubeFeatures: vi.fn(() => ({
-    features: {},
+    features: mockFeatures,
     batchCoordinator: null,
     enableBatching: false,
     dashboardModes: ['grid', 'mobile']
@@ -25,7 +28,7 @@ vi.mock('../../src/client/providers/CubeProvider', () => ({
 // Mock CubeFeaturesProvider - DashboardPortletCard uses useCubeFeatures directly
 vi.mock('../../src/client/providers/CubeFeaturesProvider', () => ({
   useCubeFeatures: vi.fn(() => ({
-    features: {},
+    features: mockFeatures,
     dashboardModes: ['grid', 'mobile'],
     updateFeatures: vi.fn()
   })),
@@ -94,6 +97,19 @@ vi.mock('../../src/client/providers/ScrollContainerContext', () => ({
   ScrollContainerProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }))
 
+// Count card header renders; the wrapper still renders the real header
+let headerRenders = 0
+vi.mock('../../src/client/components/dashboardPortletCard/PortletCardHeader', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/client/components/dashboardPortletCard/PortletCardHeader')>()
+  const RealHeader = actual.default
+  return {
+    default: (props: React.ComponentProps<typeof RealHeader>) => {
+      headerRenders++
+      return <RealHeader {...props} />
+    }
+  }
+})
+
 // Mock child components
 vi.mock('../../src/client/components/AnalyticsPortlet', () => ({
   default: React.forwardRef((props: any, _ref) => <div data-testid="analytics-portlet" data-query={props.query} />)
@@ -161,6 +177,7 @@ function createTestConfig(portletCount = 2): DashboardConfig {
 describe('DashboardGrid', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFeatures = {}
     capturedGridLayoutProps = null
     mockResponsiveState = {
       containerRef: vi.fn(),
@@ -450,6 +467,119 @@ describe('DashboardGrid', () => {
       render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
 
       expect(capturedGridLayoutProps.width).toBe(1200)
+    })
+  })
+
+  describe('expand action', () => {
+    it('should show an Expand button on each card and give onPortletExpand the clicked portlet', () => {
+      mockFeatures = { portletExpand: true }
+      const onPortletExpand = vi.fn()
+
+      const { getAllByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} onPortletExpand={onPortletExpand} />,
+        { wrapper: TestWrapper }
+      )
+      const buttons = getAllByRole('button', { name: 'Expand' })
+      fireEvent.click(buttons[1])
+
+      expect(buttons).toHaveLength(2)
+      expect(onPortletExpand).toHaveBeenCalledWith(
+        expect.objectContaining({ portletId: 'portlet-1', title: 'Portlet 1', viewState: {} })
+      )
+    })
+
+    it('should not show an Expand button when features.portletExpand is off, even with onPortletExpand', () => {
+      const { queryAllByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} onPortletExpand={vi.fn()} />,
+        { wrapper: TestWrapper }
+      )
+
+      expect(queryAllByRole('button', { name: 'Expand' })).toHaveLength(0)
+    })
+
+    it('should not open the built-in Expand modal when the dashboard gets onPortletExpand', () => {
+      mockFeatures = { portletExpand: true }
+      const onPortletExpand = vi.fn()
+
+      const { getAllByRole, queryByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} onPortletExpand={onPortletExpand} />,
+        { wrapper: TestWrapper }
+      )
+      fireEvent.click(getAllByRole('button', { name: 'Expand' })[0])
+
+      expect(onPortletExpand).toHaveBeenCalledTimes(1)
+      expect(queryByRole('dialog')).toBeNull()
+    })
+
+    it('should open the built-in Expand modal with the portlet title and chart without onPortletExpand', () => {
+      mockFeatures = { portletExpand: true }
+
+      const { getAllByRole, getAllByTestId, getByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} />,
+        { wrapper: TestWrapper }
+      )
+      const cardQuery = getAllByTestId('analytics-portlet')[1].getAttribute('data-query')
+      fireEvent.click(getAllByRole('button', { name: 'Expand' })[1])
+
+      const dialog = getByRole('dialog', { name: 'Portlet 1' })
+      expect(within(dialog).getByTestId('analytics-portlet').getAttribute('data-query')).toBe(cardQuery)
+    })
+
+    it('should close the built-in Expand modal when the user clicks its close button', () => {
+      mockFeatures = { portletExpand: true }
+
+      const { getAllByRole, getByRole, queryByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} />,
+        { wrapper: TestWrapper }
+      )
+      fireEvent.click(getAllByRole('button', { name: 'Expand' })[0])
+      fireEvent.click(getByRole('button', { name: 'Close modal' }))
+
+      expect(queryByRole('dialog')).toBeNull()
+    })
+
+    it('should close the built-in Expand modal on Escape', () => {
+      mockFeatures = { portletExpand: true }
+
+      const { getAllByRole, queryByRole } = render(
+        <DashboardGrid config={createTestConfig(2)} />,
+        { wrapper: TestWrapper }
+      )
+      fireEvent.click(getAllByRole('button', { name: 'Expand' })[0])
+      fireEvent.keyDown(document.body, { key: 'Escape' })
+
+      expect(queryByRole('dialog')).toBeNull()
+    })
+
+    it('should not re-render the cards when the host passes a new onPortletExpand handler', () => {
+      mockFeatures = { portletExpand: true }
+      const config = createTestConfig(2)
+
+      const { rerender } = render(
+        <DashboardGrid config={config} onPortletExpand={() => {}} />,
+        { wrapper: TestWrapper }
+      )
+      const rendersBefore = headerRenders
+      rerender(<DashboardGrid config={config} onPortletExpand={() => {}} />)
+
+      expect(headerRenders).toBe(rendersBefore)
+    })
+
+    it('should give the latest onPortletExpand handler the clicked portlet', () => {
+      mockFeatures = { portletExpand: true }
+      const config = createTestConfig(2)
+      const firstHandler = vi.fn()
+      const latestHandler = vi.fn()
+
+      const { rerender, getAllByRole } = render(
+        <DashboardGrid config={config} onPortletExpand={firstHandler} />,
+        { wrapper: TestWrapper }
+      )
+      rerender(<DashboardGrid config={config} onPortletExpand={latestHandler} />)
+      fireEvent.click(getAllByRole('button', { name: 'Expand' })[0])
+
+      expect(firstHandler).not.toHaveBeenCalled()
+      expect(latestHandler).toHaveBeenCalledWith(expect.objectContaining({ portletId: 'portlet-0' }))
     })
   })
 })
