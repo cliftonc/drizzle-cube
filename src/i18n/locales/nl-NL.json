@@ -923,6 +923,7 @@
   "server.validation.query.ungroupedIncompatibleRetention": "Ungrouped queries are incompatible met retentie analyse",
   "server.validation.query.ungroupedIncompatibleCompareDateRange": "Ongegroepeerd queries zijn incompatible met compareDateRange",
   "server.validation.query.ungroupedIncompatibleFillMissingDates": "Ongroepeerde queries zijn niet compatibel met fillMissingDates",
+  "server.validation.query.ungroupedIncompatibleMeasureFilter": "Ongegroepeerde queries kunnen niet filteren op meting '{member}'. Metingfilters worden na aggregatie toegepast. Filter op een dimensie, of verwijder ungrouped.",
   "server.validation.query.filterMustHaveMember": "Filter moet hebben een lid veld",
   "server.validation.query.invalidFilterMemberFormat": "Ongeldig filter member format: {member}. Expected format: 'CubeName.fieldName'",
   "server.validation.query.cubeNotFoundForFilter": "Cube '{cubeName}' niet gevonden (referenced in filter '{member}')",
