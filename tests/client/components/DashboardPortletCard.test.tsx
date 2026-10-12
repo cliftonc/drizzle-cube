@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import React from 'react'
 
 // Mock AnalyticsPortlet - complex child component
@@ -14,7 +14,8 @@ vi.mock('../../../src/client/components/AnalyticsPortlet', () => {
     ) {
       ;(globalThis as any).__dcAnalyticsPortletRenderCount = ((globalThis as any).__dcAnalyticsPortletRenderCount || 0) + 1
       ReactMock.useImperativeHandle(ref, () => ({
-        refresh: vi.fn()
+        refresh: vi.fn(),
+        getViewState: () => (globalThis as any).__dcAnalyticsPortletViewState ?? {}
       }))
       return ReactMock.createElement(
         'div',
@@ -720,6 +721,141 @@ describe('DashboardPortletCard', () => {
       )
 
       expect(screen.queryByTestId('portlet-date-filter-not-applied')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('expand action', () => {
+    afterEach(() => {
+      delete (globalThis as any).__dcAnalyticsPortletViewState
+    })
+
+    it('should show an Expand button next to Refresh in view mode when onPortletExpand is set', () => {
+      const props = createDefaultProps()
+
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...props} onPortletExpand={vi.fn()} />
+        </TestWrapper>
+      )
+
+      const expand = screen.getByRole('button', { name: 'Expand' })
+      expect(expand).toHaveAttribute('title', 'Expand')
+      expect(screen.getByTitle(/refresh portlet data/i).nextElementSibling).toBe(expand)
+    })
+
+    it('should not show an Expand button without onPortletExpand', () => {
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...createDefaultProps()} />
+        </TestWrapper>
+      )
+
+      expect(screen.queryByRole('button', { name: 'Expand' })).not.toBeInTheDocument()
+    })
+
+    it('should not show an Expand button in edit mode', () => {
+      render(
+        <TestWrapperEditMode>
+          <DashboardPortletCard {...createDefaultProps()} onPortletExpand={vi.fn()} />
+        </TestWrapperEditMode>
+      )
+
+      expect(screen.getByTitle('Edit portlet')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Expand' })).not.toBeInTheDocument()
+    })
+
+    it('should not show an Expand button in filter selection mode', () => {
+      function SelectFilter({ children }: { children: React.ReactNode }) {
+        const setSelectedFilterId = useDashboardStore((s) => s.setSelectedFilterId)
+        React.useEffect(() => {
+          setSelectedFilterId('filter-1')
+        }, [setSelectedFilterId])
+        return <>{children}</>
+      }
+
+      render(
+        <TestWrapper>
+          <SelectFilter>
+            <DashboardPortletCard {...createDefaultProps()} onPortletExpand={vi.fn()} />
+          </SelectFilter>
+        </TestWrapper>
+      )
+
+      expect(screen.queryByRole('button', { name: 'Expand' })).not.toBeInTheDocument()
+    })
+
+    it('should not show an Expand button when the header is hidden', () => {
+      const analysisConfig = createMockAnalysisConfig()
+      analysisConfig.charts.query!.displayConfig = { hideHeader: true }
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ analysisConfig })
+
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...props} onPortletExpand={vi.fn()} />
+        </TestWrapper>
+      )
+
+      expect(screen.queryByRole('button', { name: 'Expand' })).not.toBeInTheDocument()
+    })
+
+    it('should give onPortletExpand the resolved chart properties and the chart view state', async () => {
+      const user = userEvent.setup()
+      const onPortletExpand = vi.fn()
+      const dashboardFilters = [
+        { id: 'filter-1', label: 'Region', filter: { member: 'Sales.region', operator: 'equals' as const, values: ['EU'] } }
+      ]
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ dashboardFilterMapping: ['filter-1'] })
+      ;(globalThis as any).__dcAnalyticsPortletViewState = { chart: { page: 2 } }
+
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...props} dashboardFilters={dashboardFilters} onPortletExpand={onPortletExpand} />
+        </TestWrapper>
+      )
+      await user.click(screen.getByRole('button', { name: 'Expand' }))
+
+      expect(onPortletExpand).toHaveBeenCalledWith({
+        portletId: 'portlet-1',
+        title: 'Sales Overview',
+        chartProps: expect.objectContaining({
+          query: JSON.stringify({ measures: ['Sales.total'] }),
+          chartType: 'bar',
+          chartConfig: {},
+          displayConfig: {},
+          dashboardFilters,
+          dashboardFilterMapping: ['filter-1'],
+          title: 'Sales Overview'
+        }),
+        viewState: { chart: { page: 2 } }
+      })
+      expect(props.callbacks.onRefresh).not.toHaveBeenCalled()
+    })
+
+    it('should show an Expand button in the hover strip of a grouped portlet in view mode', async () => {
+      const user = userEvent.setup()
+      const onPortletExpand = vi.fn()
+
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...createDefaultProps()} variant="groupChild" onPortletExpand={onPortletExpand} />
+        </TestWrapper>
+      )
+      await user.click(screen.getByRole('button', { name: 'Expand' }))
+
+      expect(onPortletExpand).toHaveBeenCalledWith(expect.objectContaining({ portletId: 'portlet-1' }))
+    })
+
+    it('should not show an Expand button in the hover strip of a grouped portlet in edit mode', () => {
+      render(
+        <TestWrapperEditMode>
+          <DashboardPortletCard {...createDefaultProps()} variant="groupChild" onPortletExpand={vi.fn()} />
+        </TestWrapperEditMode>
+      )
+
+      expect(screen.getByTitle('Delete portlet')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Expand' })).not.toBeInTheDocument()
     })
   })
 })

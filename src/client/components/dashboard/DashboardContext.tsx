@@ -35,7 +35,8 @@ import type {
   RowLayout,
   PortletGroup,
   FeaturesConfig,
-  DashboardMeta
+  DashboardMeta,
+  PortletExpandPayload
 } from '../../types.js'
 
 /**
@@ -67,6 +68,8 @@ export interface DashboardProviderProps {
   dashboardMeta?: DashboardMeta
   /** Called after an import replaced the config when the file carries a name, so the host can rename its record */
   onDashboardMetaChange?: (meta: { name: string; description?: string }) => Promise<void> | void
+  /** Replaces the built-in Expand modal; features.portletExpand shows the button */
+  onPortletExpand?: (payload: PortletExpandPayload) => void
   children: ReactNode
 }
 

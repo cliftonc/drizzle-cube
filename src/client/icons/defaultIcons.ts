@@ -41,6 +41,7 @@ import swatch from '@iconify-icons/heroicons-outline/swatch'
 import camera from '@iconify-icons/heroicons-outline/camera'
 import arrowDownTray from '@iconify-icons/heroicons-outline/arrow-down-tray'
 import arrowUpTray from '@iconify-icons/heroicons-outline/arrow-up-tray'
+import arrowsPointingOut from '@iconify-icons/heroicons-outline/arrows-pointing-out'
 import handThumbUp from '@iconify-icons/heroicons-solid/hand-thumb-up'
 import handThumbDown from '@iconify-icons/heroicons-solid/hand-thumb-down'
 
@@ -114,6 +115,7 @@ export const DEFAULT_ICONS: IconRegistry = {
   share: { icon: share, category: 'action' },
   expand: { icon: chevronDown, category: 'action' },
   collapse: { icon: chevronUp, category: 'action' },
+  maximize: { icon: arrowsPointingOut, category: 'action' },
   search: { icon: magnifyingGlass, category: 'action' },
   menu: { icon: bars3, category: 'action' },
   run: { icon: playSolid, category: 'action' },

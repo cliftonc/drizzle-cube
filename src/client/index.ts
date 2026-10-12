@@ -275,6 +275,10 @@ export type {
   ThumbnailFeatureConfig,
   DashboardImportExportFeatureConfig,
   DashboardMeta,
+  // Portlet expand types
+  PortletViewState,
+  PortletExpandPayload,
+  AnalyticsPortletRef,
   // Multi-query types
   MultiQueryConfig,
   QueryMergeStrategy,

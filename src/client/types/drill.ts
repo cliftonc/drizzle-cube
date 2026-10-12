@@ -217,6 +217,25 @@ export interface UseDrillInteractionOptions {
 
   /** Whether drill is enabled (default: true) */
   enabled?: boolean
+
+  /** Drill state to start from instead of the root level. Read one time, on mount. */
+  initialState?: DrillInteractionState
+}
+
+/**
+ * The drill state of useDrillInteraction. A new instance can start from it,
+ * for example a copy of a portlet chart in a larger view.
+ */
+export interface DrillInteractionState {
+  drillPath: DrillPathEntry[]
+  /** Granularity before the first drill, to detect a drill back to the root */
+  originalGranularity: string | null
+  /** Chart config before the first drill, restored at the root */
+  originalChartConfig: ChartAxisConfig | null
+  /** Chart config override of the current level */
+  currentChartConfig: ChartAxisConfig | null
+  /** Query before the first drill, restored at the root */
+  originalQuery: CubeQuery | null
 }
 
 /**
@@ -258,6 +277,9 @@ export interface DrillInteraction {
 
   /** Current chart config override from drill (null if using original config) */
   currentChartConfig: ChartAxisConfig | null
+
+  /** The current drill state, as `initialState` of a new instance takes it */
+  state: DrillInteractionState
 }
 
 /**

@@ -24,6 +24,49 @@ export interface UsePortletPaginationParams {
   activeQuery: CubeQuery | null
   /** Authored page size from the portlet's display config. */
   pageSize?: number
+  /** Paging state to start from (`PortletViewState.pagination`). Read one time, on mount. */
+  initialState?: unknown
+}
+
+/**
+ * The paging part of a portlet view state: what a new instance needs to start
+ * on the same page, with the same page size and sort, as another instance.
+ */
+export interface PortletPaginationViewState {
+  version: 1
+  /** JSON of the query that was paged */
+  baseQuery: string
+  page: number
+  pageSize: number
+  sort?: { column: string; direction: 'asc' | 'desc' }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
+ * Returns the paging view state when `value` has the expected shape and was
+ * taken from the same query, else null. The host passes the value through
+ * without reading it, so it is checked here before use.
+ */
+export function parsePortletPaginationViewState(
+  value: unknown,
+  baseQuery: string | null,
+  authoredPageSize: number | undefined
+): PortletPaginationViewState | null {
+  if (!isRecord(value) || value.version !== 1) return null
+  if (baseQuery === null || value.baseQuery !== baseQuery) return null
+  const { page, pageSize, sort } = value
+  if (typeof page !== 'number' || !Number.isInteger(page) || page < 0) return null
+  if (typeof pageSize !== 'number' || !(PAGE_SIZE_OPTIONS.includes(pageSize) || pageSize === authoredPageSize)) {
+    return null
+  }
+  if (sort === undefined) return { version: 1, baseQuery, page, pageSize }
+  if (!isRecord(sort) || typeof sort.column !== 'string' || (sort.direction !== 'asc' && sort.direction !== 'desc')) {
+    return null
+  }
+  return { version: 1, baseQuery, page, pageSize, sort: { column: sort.column, direction: sort.direction } }
 }
 
 export interface UsePortletPaginationResult {
@@ -35,6 +78,8 @@ export interface UsePortletPaginationResult {
    * caller fills it in from the result set.
    */
   pagination?: Omit<ChartPagination, 'total'>
+  /** What a new instance needs to start on this page; undefined when paging is off. */
+  viewState?: PortletPaginationViewState
 }
 
 /**
@@ -48,23 +93,35 @@ function supportsPagination(chartType: ChartType): boolean {
 export function usePortletPagination({
   chartType,
   activeQuery,
-  pageSize: authoredPageSize
+  pageSize: authoredPageSize,
+  initialState
 }: UsePortletPaginationParams): UsePortletPaginationResult {
   const enabled = supportsPagination(chartType) && activeQuery !== null
+  const activeQueryJson = activeQuery ? JSON.stringify(activeQuery) : null
 
-  const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(authoredPageSize ?? DEFAULT_PAGE_SIZE)
-  const [sort, setSort] = useState<{ column: string; direction: 'asc' | 'desc' } | undefined>()
+  // A start state applies only to the query it was taken from
+  const [startState] = useState(() =>
+    enabled ? parsePortletPaginationViewState(initialState, activeQueryJson, authoredPageSize) : null
+  )
 
-  // Follow the author's page size until the viewer overrides it.
+  const [page, setPage] = useState(startState?.page ?? 0)
+  const [pageSize, setPageSize] = useState(startState?.pageSize ?? authoredPageSize ?? DEFAULT_PAGE_SIZE)
+  const [sort, setSort] = useState<{ column: string; direction: 'asc' | 'desc' } | undefined>(startState?.sort)
+
+  // Follow the author's page size until the viewer overrides it. Starts at the
+  // mount-time value, so the first run keeps a start page size.
+  const previousAuthoredPageSize = useRef(authoredPageSize)
   useEffect(() => {
-    setPageSize(authoredPageSize ?? DEFAULT_PAGE_SIZE)
+    if (authoredPageSize !== previousAuthoredPageSize.current) {
+      previousAuthoredPageSize.current = authoredPageSize
+      setPageSize(authoredPageSize ?? DEFAULT_PAGE_SIZE)
+    }
   }, [authoredPageSize])
 
   // Reset when the underlying query changes — a dashboard filter or a drill
-  // step produces a different result set, where page 3 is meaningless.
-  const activeQueryJson = activeQuery ? JSON.stringify(activeQuery) : null
-  const previousQueryJson = useRef<string | null>(null)
+  // step produces a different result set, where page 3 is meaningless. Starts
+  // at the mount-time query, so the first run keeps a start page and sort.
+  const previousQueryJson = useRef<string | null>(activeQueryJson)
   useEffect(() => {
     if (activeQueryJson !== previousQueryJson.current) {
       previousQueryJson.current = activeQueryJson
@@ -112,5 +169,10 @@ export function usePortletPagination({
     }
   }, [enabled, page, pageSize, sort, changePageSize, toggleSort])
 
-  return { paginatedQuery, pagination }
+  const viewState = useMemo<PortletPaginationViewState | undefined>(() => {
+    if (!enabled || !activeQueryJson) return undefined
+    return { version: 1, baseQuery: activeQueryJson, page, pageSize, ...(sort ? { sort } : {}) }
+  }, [enabled, activeQueryJson, page, pageSize, sort])
+
+  return { paginatedQuery, pagination, viewState }
 }

@@ -9,6 +9,7 @@ import type {
   DrillOption,
   DrillPathEntry,
   DrillInteraction,
+  DrillInteractionState,
   UseDrillInteractionOptions
 } from '../types/drill.js'
 import type { ChartAxisConfig, CubeQuery } from '../types.js'
@@ -39,7 +40,8 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
     dashboardFilters,
     dashboardFilterMapping,
     // onDashboardFilterChange is no longer used - dashboard-scope options removed
-    enabled = true
+    enabled = true,
+    initialState
   } = options
 
   // Menu state
@@ -49,19 +51,27 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
   const [currentClickEvent, setCurrentClickEvent] = useState<ChartDataPointClickEvent | null>(null)
 
   // Drill path (breadcrumb navigation)
-  const [drillPath, setDrillPath] = useState<DrillPathEntry[]>([])
+  const [drillPath, setDrillPath] = useState<DrillPathEntry[]>(initialState?.drillPath ?? [])
 
   // Track the original granularity before any drilling (to detect when we should go back to root)
-  const [originalGranularity, setOriginalGranularity] = useState<string | null>(null)
+  const [originalGranularity, setOriginalGranularity] = useState<string | null>(initialState?.originalGranularity ?? null)
 
   // Track the original chart config to restore on drill up to root
-  const [originalChartConfig, setOriginalChartConfig] = useState<ChartAxisConfig | null>(null)
+  const [originalChartConfig, setOriginalChartConfig] = useState<ChartAxisConfig | null>(initialState?.originalChartConfig ?? null)
 
   // Current chart config override (from drill details)
-  const [currentChartConfig, setCurrentChartConfig] = useState<ChartAxisConfig | null>(null)
+  const [currentChartConfig, setCurrentChartConfig] = useState<ChartAxisConfig | null>(initialState?.currentChartConfig ?? null)
 
   // Track the complete original query to restore on drill up to root
-  const [originalQuery, setOriginalQuery] = useState<CubeQuery | null>(null)
+  const [originalQuery, setOriginalQuery] = useState<CubeQuery | null>(initialState?.originalQuery ?? null)
+
+  const state = useMemo<DrillInteractionState>(() => ({
+    drillPath,
+    originalGranularity,
+    originalChartConfig,
+    currentChartConfig,
+    originalQuery
+  }), [drillPath, originalGranularity, originalChartConfig, currentChartConfig, originalQuery])
 
   /**
    * Check if any drill options are available for the current query/metadata
@@ -302,7 +312,8 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
     navigateToLevel,
     drillEnabled,
     hasDashboardFilterMatch,
-    currentChartConfig
+    currentChartConfig,
+    state
   }
 }
 

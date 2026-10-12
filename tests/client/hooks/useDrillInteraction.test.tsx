@@ -660,4 +660,70 @@ describe('useDrillInteraction', () => {
       }
     })
   })
+
+  // ==========================================================================
+  // Start state (a copy of a portlet chart starts at the drill level of the original)
+  // ==========================================================================
+
+  describe('initial state', () => {
+    function drillOnce() {
+      const { result } = renderHook(() =>
+        useDrillInteraction({ query: baseQuery, metadata: mockMeta, onQueryChange })
+      )
+      act(() => {
+        result.current.handleDataPointClick(createClickEvent())
+      })
+      const drillOption = result.current.menuOptions.find(opt => opt.targetGranularity === 'week')!
+      act(() => {
+        result.current.handleOptionSelect(drillOption)
+      })
+      return result.current.state
+    }
+
+    it('returns the drill state of the current level', () => {
+      const state = drillOnce()
+
+      expect(state.drillPath).toHaveLength(1)
+      expect(state.originalQuery).toEqual(baseQuery)
+      expect(state.originalGranularity).toBe('month')
+    })
+
+    it('starts a new instance at the level of initialState', () => {
+      const state = drillOnce()
+      const drilledQuery = (onQueryChange.mock.calls.at(-1) as [CubeQuery])[0]
+
+      const { result } = renderHook(() =>
+        useDrillInteraction({
+          query: drilledQuery,
+          metadata: mockMeta,
+          onQueryChange: vi.fn(),
+          initialState: state
+        })
+      )
+
+      expect(result.current.drillPath).toEqual(state.drillPath)
+      expect(result.current.state).toEqual(state)
+    })
+
+    it('navigates a started instance back to the original query', () => {
+      const state = drillOnce()
+      const drilledQuery = (onQueryChange.mock.calls.at(-1) as [CubeQuery])[0]
+      const onStartedQueryChange = vi.fn()
+      const { result } = renderHook(() =>
+        useDrillInteraction({
+          query: drilledQuery,
+          metadata: mockMeta,
+          onQueryChange: onStartedQueryChange,
+          initialState: state
+        })
+      )
+
+      act(() => {
+        result.current.navigateBack()
+      })
+
+      expect(result.current.drillPath).toEqual([])
+      expect(onStartedQueryChange).toHaveBeenLastCalledWith(baseQuery)
+    })
+  })
 })

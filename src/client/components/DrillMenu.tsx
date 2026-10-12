@@ -123,8 +123,11 @@ export function DrillMenu({ options, position, onSelect, onClose }: DrillMenuPro
       }
     }
 
+    // Escape closes only the menu: a Modal around the chart (for example the
+    // built-in Expand modal) also closes on Escape from a document listener
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
+        event.stopPropagation()
         onClose()
       }
     }
@@ -135,13 +138,15 @@ export function DrillMenu({ options, position, onSelect, onClose }: DrillMenuPro
     }
 
     document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleEscape)
+    // Capture phase runs before the bubble-phase listeners on document, which
+    // were registered earlier by an open Modal, so stopPropagation reaches them
+    document.addEventListener('keydown', handleEscape, true)
     // Listen to scroll on capture phase to catch scrolling containers
     window.addEventListener('scroll', handleScroll, true)
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleEscape)
+      document.removeEventListener('keydown', handleEscape, true)
       window.removeEventListener('scroll', handleScroll, true)
     }
   }, [onClose])

@@ -48,6 +48,9 @@ export interface PortletChartViewProps {
   isDrillEnabled: boolean
   onNavigateBack: () => void
   onNavigateToLevel: (index: number) => void
+  /** Start state of the chart component (`PortletViewState.chart`) */
+  initialViewState?: unknown
+  onViewStateChange?: (state: unknown) => void
 }
 
 export function PortletChartView(props: PortletChartViewProps) {
@@ -75,7 +78,9 @@ export function PortletChartView(props: PortletChartViewProps) {
     drill,
     isDrillEnabled,
     onNavigateBack,
-    onNavigateToLevel
+    onNavigateToLevel,
+    initialViewState,
+    onViewStateChange
   } = props
 
   const hasIntrinsicHeight = hasIntrinsicChartHeight(chartType, displayConfig)
@@ -130,6 +135,8 @@ export function PortletChartView(props: PortletChartViewProps) {
               drillEnabled={isDrillEnabled}
               currentChartConfig={drill.currentChartConfig}
               onDataPointClick={drill.handleDataPointClick}
+              initialViewState={initialViewState}
+              onViewStateChange={onViewStateChange}
             />
           </div>
         </div>

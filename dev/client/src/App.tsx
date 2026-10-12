@@ -78,7 +78,9 @@ const features = {
   // XLSX data export from portlets (requires exceljs)
   xlsExport: { enabled: true },
   // Dashboard export/import as a JSON file (toolbar buttons)
-  dashboardImportExport: { enabled: true }
+  dashboardImportExport: { enabled: true },
+  // Expand button on dashboard cards; opens the chart in the built-in modal
+  portletExpand: true
 }
 
 function App() {

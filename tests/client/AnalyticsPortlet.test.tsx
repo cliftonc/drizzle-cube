@@ -4,10 +4,11 @@
  */
 
 import React, { createRef } from 'react'
-import { render, waitFor, act } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AnalyticsPortlet from '../../src/client/components/AnalyticsPortlet'
-import type { CubeResultSet, ChartAxisConfig } from '../../src/client/types'
+import type { AnalyticsPortletProps, AnalyticsPortletRef, CubeResultSet, ChartAxisConfig } from '../../src/client/types'
 
 // Mock react-intersection-observer
 let mockInView = true
@@ -118,7 +119,15 @@ vi.mock('../../src/client/providers/ScrollContainerContext', () => ({
 // Mock ChartLoader (LazyChart renders the chart based on chartType)
 vi.mock('../../src/client/charts/ChartLoader', () => ({
   LazyChart: ({ chartType, ...props }: any) => (
-    <div data-testid={`${chartType}-chart`} data-config={JSON.stringify(props.chartConfig)} />
+    <div
+      data-testid={`${chartType}-chart`}
+      data-config={JSON.stringify(props.chartConfig)}
+      data-initial-view-state={JSON.stringify(props.initialViewState ?? null)}
+    >
+      <button type="button" onClick={() => props.onViewStateChange?.({ page: 3 })}>
+        Report page 3
+      </button>
+    </div>
   ),
   isValidChartType: (chartType: string) => [
     'bar', 'line', 'area', 'pie', 'scatter', 'radar', 'radialBar', 'treemap',
@@ -366,7 +375,7 @@ describe('AnalyticsPortlet', () => {
 
   describe('refresh mechanism', () => {
     it('should expose refresh function through ref', async () => {
-      const ref = createRef<{ refresh: () => void }>()
+      const ref = createRef<AnalyticsPortletRef>()
       mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(
@@ -383,7 +392,7 @@ describe('AnalyticsPortlet', () => {
     })
 
     it('should invalidate cache when refresh is called', async () => {
-      const ref = createRef<{ refresh: () => void }>()
+      const ref = createRef<AnalyticsPortletRef>()
       mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(
@@ -638,6 +647,105 @@ describe('AnalyticsPortlet', () => {
           chartType: 'bar'
         })
       })
+    })
+  })
+
+  describe('view state', () => {
+    const barQuery = JSON.stringify({ measures: ['Test.count'], dimensions: ['Test.category'] })
+
+    function renderBar(ref: React.RefObject<AnalyticsPortletRef | null>, initialViewState?: unknown) {
+      return render(
+        <AnalyticsPortlet
+          ref={ref}
+          query={barQuery}
+          chartType="bar"
+          chartConfig={{ yAxis: ['Test.count'] }}
+          initialViewState={initialViewState as AnalyticsPortletProps['initialViewState']}
+        />
+      )
+    }
+
+    it('returns an empty view state for a chart at the root level that reported nothing', () => {
+      const ref = createRef<AnalyticsPortletRef>()
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+
+      renderBar(ref)
+
+      expect(ref.current?.getViewState()).toEqual({})
+    })
+
+    it('passes initialViewState.chart to the chart and returns what the chart reports', async () => {
+      const user = userEvent.setup()
+      const ref = createRef<AnalyticsPortletRef>()
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+
+      renderBar(ref, { chart: { page: 1 } })
+
+      expect(screen.getByTestId('bar-chart')).toHaveAttribute('data-initial-view-state', JSON.stringify({ page: 1 }))
+      expect(ref.current?.getViewState()).toEqual({ chart: { page: 1 } })
+
+      await user.click(screen.getByRole('button', { name: 'Report page 3' }))
+
+      expect(ref.current?.getViewState()).toEqual({ chart: { page: 3 } })
+    })
+
+    it('returns the chart start state again after a refetch unmounts the chart', async () => {
+      const user = userEvent.setup()
+      const ref = createRef<AnalyticsPortletRef>()
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      const { rerender } = renderBar(ref, { chart: { page: 1 } })
+      await user.click(screen.getByRole('button', { name: 'Report page 3' }))
+
+      mockUseCubeLoadQueryResult = { ...mockUseCubeLoadQueryResult, isFetching: true }
+      rerender(
+        <AnalyticsPortlet
+          ref={ref}
+          query={barQuery}
+          chartType="bar"
+          chartConfig={{ yAxis: ['Test.count'] }}
+          initialViewState={{ chart: { page: 1 } }}
+        />
+      )
+
+      expect(screen.queryByTestId('bar-chart')).not.toBeInTheDocument()
+      expect(ref.current?.getViewState()).toEqual({ chart: { page: 1 } })
+    })
+
+    it('starts at the drill level of initialViewState.drill when it comes from the same base query', async () => {
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      const { unmount } = renderBar(createRef<AnalyticsPortletRef>())
+      const baseQuery = (useCubeLoadQuery as any).mock.calls[0][0]
+      unmount()
+      vi.mocked(useCubeLoadQuery).mockClear()
+      const drilledQuery = { ...baseQuery, dimensions: ['Test.subcategory'] }
+      const drill = {
+        version: 1,
+        baseQuery: JSON.stringify(baseQuery),
+        drilledQuery,
+        drillPath: [{ id: 'level-1', label: 'Hardware', query: drilledQuery, dimension: 'Test.subcategory' }],
+        originalGranularity: null,
+        originalChartConfig: null,
+        currentChartConfig: null,
+        originalQuery: baseQuery
+      }
+      const ref = createRef<AnalyticsPortletRef>()
+
+      renderBar(ref, { drill })
+
+      expect((useCubeLoadQuery as any).mock.calls[0][0]).toEqual(drilledQuery)
+      expect(ref.current?.getViewState()).toEqual({ drill })
+    })
+
+    it('starts at the root level when initialViewState.drill has an unknown shape', async () => {
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
+      const ref = createRef<AnalyticsPortletRef>()
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+
+      renderBar(ref, { drill: { level: 'subcategory' } })
+
+      expect((useCubeLoadQuery as any).mock.calls[0][0]).toMatchObject({ dimensions: ['Test.category'] })
+      expect(ref.current?.getViewState()).toEqual({})
     })
   })
 })
