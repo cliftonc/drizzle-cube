@@ -865,7 +865,7 @@ export interface FeaturesConfig {
   manualRefresh?: boolean // When true, queries don't auto-execute on config changes. User must click Refresh. (default: false)
   xlsExport?: XlsExportFeatureConfig // Optional XLSX data export from portlets (requires exceljs)
   dashboardImportExport?: DashboardImportExportFeatureConfig // Optional dashboard export/import as a JSON file (toolbar buttons)
-  portletExpand?: boolean // Show an Expand button on dashboard cards in view mode. It opens the chart in a built-in modal, or calls AnalyticsDashboard's onPortletExpand when set (default: false)
+  portletExpand?: boolean // Show an Expand button on dashboard cards in view mode. It opens the chart in a built-in modal, or calls AnalyticsDashboard's onPortletExpand when set. Not in the mobile stacked layout (default: false)
 }
 
 // Grid layout types (simplified)
