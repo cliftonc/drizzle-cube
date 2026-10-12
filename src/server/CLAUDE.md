@@ -41,7 +41,7 @@ src/server/
 │   ├── filter-cache-preloader.ts FilterCachePreloader — pre-build filter SQL
 │   ├── annotation-builder.ts   buildAnnotations — UI metadata
 │   ├── result-post-processor.ts postProcessResultRows — time-dim normalise + gap fill
-│   └── query-normalizer.ts     granularity-less timeDimensions → inDateRange filters (Cube.js filter-only semantics)
+│   └── query-normalizer.ts     granularity-less timeDimensions → inDateRange filters (Cube.js filter-only semantics); drops a dimension that a granular timeDimension repeats
 ├── cube-utils.ts            defineCube, isolateSqlExpression, resolveSqlExpression, buildRegularJoinCondition, expandBelongsToManyJoin
 ├── measure-classification.ts SQL-free measure window-function classification (used by planning)
 ├── database-utils.ts        createDatabaseAdapter, getSupportedEngines
