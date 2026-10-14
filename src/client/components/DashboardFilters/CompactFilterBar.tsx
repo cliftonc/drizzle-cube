@@ -19,6 +19,7 @@ interface CompactFilterBarProps {
   dashboardFilters: DashboardFilter[]
   schema: CubeMeta | null
   isEditMode: boolean
+  allowDateFilterCreation?: boolean
   onDashboardFiltersChange: (filters: DashboardFilter[]) => void
   onAddFilter?: () => void
   onEditFilter?: (filterId: string) => void
@@ -29,12 +30,13 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   dashboardFilters,
   schema,
   isEditMode,
+  allowDateFilterCreation,
   onDashboardFiltersChange,
   onAddFilter,
   onEditFilter,
   onRemoveFilter
 }) => {
-  const bar = useCompactFilterBar(dashboardFilters, onDashboardFiltersChange)
+  const bar = useCompactFilterBar(dashboardFilters, onDashboardFiltersChange, allowDateFilterCreation)
 
   // If no filters and not in edit mode, don't show anything
   if (!isEditMode && bar.localFilters.length === 0) {
@@ -43,6 +45,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
 
   const viewProps: CompactFilterBarViewProps = {
     schema,
+    showDateControls: bar.showDateControls,
     isEditMode,
     onAddFilter,
     onEditFilter,

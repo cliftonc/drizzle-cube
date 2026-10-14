@@ -3,11 +3,11 @@
  *
  * Orchestrates dashboard-level filtering UI
  * - Edit mode: Shows filter chips with edit/delete actions
- * - View mode: Shows interactive read-only filters
+ * - View mode: Shows interactive read-only filters, also on read-only dashboards (`editable={false}`)
  *
  * Pattern: Simplified coordination layer (matches portlet editing pattern)
  * - No local editing state (modal owns all edit state)
- * - Just tracks which filter is being edited and modal visibility
+ * - Just tracks which filter is being edited; the modal shows while one is set
  * - Delegates to FilterEditModal for all editing logic
  */
 
@@ -41,9 +41,16 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
   onFilterSelect,
   isEditMode = false
 }) => {
-  // Track which filter is being edited and modal visibility (no local editing state)
+  // Track which filter is being edited (no local editing state)
   const [editingFilter, setEditingFilter] = useState<DashboardFilter | null>(null)
-  const [showFilterBuilder, setShowFilterBuilder] = useState(false)
+
+  // Filters can only be managed while editing an editable dashboard.
+  const showEditMode = editable && isEditMode
+
+  // Leaving edit mode closes the editor, so re-entering does not reopen it.
+  if (!showEditMode && editingFilter) {
+    setEditingFilter(null)
+  }
 
   // Convert CubeMeta to MetaResponse (QueryBuilder type)
   const convertToMetaResponse = useCallback((cubeMeta: CubeMeta | null): MetaResponse | null => {
@@ -105,7 +112,6 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
       }
     }
     setEditingFilter(newFilter)
-    setShowFilterBuilder(true)
   }, [dashboardFilters.length, generateFilterId])
 
   // Handle adding a universal time filter - applies to all time dimensions
@@ -133,7 +139,6 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
     const filterToEdit = dashboardFilters.find(df => df.id === filterId)
     if (filterToEdit) {
       setEditingFilter(filterToEdit)
-      setShowFilterBuilder(true)
     }
   }, [dashboardFilters])
 
@@ -147,7 +152,6 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
     // Close modal if we're deleting the filter being edited
     if (editingFilter?.id === filterId) {
       setEditingFilter(null)
-      setShowFilterBuilder(false)
     }
   }, [dashboardFilters, editingFilter, applyFilters])
 
@@ -179,23 +183,17 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
   // Handle modal close - just clean up state
   const handleCloseFilterBuilder = useCallback(() => {
     setEditingFilter(null)
-    setShowFilterBuilder(false)
   }, [])
 
-  // Hide filter panel completely when not editable (fully embedded mode without filter support)
-  if (!editable) {
-    return null
-  }
-
   // Hide if no filters exist and not in edit mode (nothing to show)
-  if (!isEditMode && dashboardFilters.length === 0) {
+  if (!showEditMode && dashboardFilters.length === 0) {
     return null
   }
 
   return (
     <div className="dc:mb-4">
       {/* Edit Mode - Full filter management with chips and actions */}
-      {isEditMode ? (
+      {showEditMode ? (
         <div
           className="dc:border dc:rounded-lg"
           style={{
@@ -221,20 +219,18 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
           schema={schema}
           isEditMode={false}
           onDashboardFiltersChange={onDashboardFiltersChange}
-          onAddFilter={handleAddFilter}
-          onEditFilter={handleEditFilter}
-          onRemoveFilter={handleRemoveFilter}
+          allowDateFilterCreation={editable}
         />
       )}
 
       {/* Filter Edit Modal */}
 
-      {showFilterBuilder && editingFilter && (
+      {editingFilter && (
         <FilterEditModal
           filter={editingFilter}
           schema={schema}
           dashboardConfig={dashboardConfig}
-          isOpen={showFilterBuilder}
+          isOpen={true}
           onSave={handleSaveFilter}
           onClose={handleCloseFilterBuilder}
           onDelete={() => handleRemoveFilter(editingFilter.id)}

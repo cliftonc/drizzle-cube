@@ -27,7 +27,8 @@ export function findDateControlFilter(filters: DashboardFilter[]): DashboardFilt
 
 export function useCompactFilterBar(
   dashboardFilters: DashboardFilter[],
-  onDashboardFiltersChange: (filters: DashboardFilter[]) => void
+  onDashboardFiltersChange: (filters: DashboardFilter[]) => void,
+  allowDateFilterCreation = true
 ) {
   // Local state for immediate UI feedback on filter value changes.
   // Without this, changes require a full round-trip through the parent's
@@ -116,7 +117,7 @@ export function useCompactFilterBar(
       })
       setLocalFilters(updatedFilters)
       onDashboardFiltersChange(updatedFilters)
-    } else {
+    } else if (allowDateFilterCreation) {
       // No date filter yet - create a universal time filter
       const newFilter: DashboardFilter = {
         id: generateFilterId(),
@@ -133,7 +134,7 @@ export function useCompactFilterBar(
       setLocalFilters(updatedFilters)
       onDashboardFiltersChange(updatedFilters)
     }
-  }, [localFilters, dateControlFilter, onDashboardFiltersChange, generateFilterId])
+  }, [localFilters, dateControlFilter, onDashboardFiltersChange, generateFilterId, allowDateFilterCreation])
 
   // Handle preset selection
   const handlePresetSelect = useCallback((presetValue: string) => {
@@ -179,6 +180,7 @@ export function useCompactFilterBar(
 
   return {
     localFilters,
+    showDateControls: Boolean(dateControlFilter) || allowDateFilterCreation,
     showCustomDropdown,
     setShowCustomDropdown,
     showXTDDropdown,

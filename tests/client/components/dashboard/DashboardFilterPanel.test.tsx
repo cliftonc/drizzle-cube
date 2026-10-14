@@ -55,12 +55,12 @@ vi.mock('../../../../src/client/components/DashboardFilters/EditModeFilterList',
 vi.mock('../../../../src/client/components/DashboardFilters/CompactFilterBar', () => ({
   default: vi.fn(({ dashboardFilters, onAddFilter, onEditFilter, onRemoveFilter }) => (
     <div data-testid="compact-filter-bar">
-      <button onClick={onAddFilter} data-testid="compact-add-filter">Add Filter</button>
+      {onAddFilter && <button onClick={onAddFilter} data-testid="compact-add-filter">Add Filter</button>}
       {dashboardFilters.map((filter: DashboardFilter) => (
         <div key={filter.id} data-testid={`compact-filter-${filter.id}`}>
           <span>{filter.label}</span>
-          <button onClick={() => onEditFilter(filter.id)} data-testid={`compact-edit-${filter.id}`}>Edit</button>
-          <button onClick={() => onRemoveFilter(filter.id)} data-testid={`compact-remove-${filter.id}`}>Remove</button>
+          {onEditFilter && <button onClick={() => onEditFilter(filter.id)} data-testid={`compact-edit-${filter.id}`}>Edit</button>}
+          {onRemoveFilter && <button onClick={() => onRemoveFilter(filter.id)} data-testid={`compact-remove-${filter.id}`}>Remove</button>}
         </div>
       ))}
     </div>
@@ -129,13 +129,49 @@ describe('DashboardFilterPanel', () => {
     vi.clearAllMocks()
   })
 
+  describe('management permission transitions', () => {
+    it.each([
+      { loss: 'editable', editable: false, isEditMode: true },
+      { loss: 'edit mode', editable: true, isEditMode: false }
+    ])('closes and discards an open modal after losing $loss', async ({ editable, isEditMode }) => {
+      const user = userEvent.setup()
+      const { rerender } = render(<DashboardFilterPanel {...defaultProps} isEditMode />)
+      await user.click(screen.getByTestId('edit-filter-1'))
+      expect(screen.getByTestId('filter-edit-modal')).toBeInTheDocument()
+
+      rerender(<DashboardFilterPanel {...defaultProps} editable={editable} isEditMode={isEditMode} />)
+      expect(defaultProps.onSaveFilters).not.toHaveBeenCalled()
+      expect(defaultProps.onDashboardFiltersChange).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('filter-edit-modal')).not.toBeInTheDocument()
+
+      rerender(<DashboardFilterPanel {...defaultProps} isEditMode />)
+      expect(screen.queryByTestId('filter-edit-modal')).not.toBeInTheDocument()
+      await user.click(screen.getByTestId('edit-filter-2'))
+      expect(screen.getByTestId('editing-filter-id')).toHaveTextContent('filter-2')
+    })
+  })
+
   // ==========================================================================
   // Visibility Tests
   // ==========================================================================
   describe('Component Visibility', () => {
-    it('should return null when not editable', () => {
+    it('should show CompactFilterBar when not editable', () => {
+      render(<DashboardFilterPanel {...defaultProps} editable={false} />)
+
+      expect(screen.getByTestId('compact-filter-bar')).toBeInTheDocument()
+      expect(screen.queryByTestId('edit-mode-filter-list')).not.toBeInTheDocument()
+    })
+
+    it('should not show EditModeFilterList when not editable, even in edit mode', () => {
+      render(<DashboardFilterPanel {...defaultProps} editable={false} isEditMode={true} />)
+
+      expect(screen.getByTestId('compact-filter-bar')).toBeInTheDocument()
+      expect(screen.queryByTestId('edit-mode-filter-list')).not.toBeInTheDocument()
+    })
+
+    it('should return null when not editable and no filters exist, even in edit mode', () => {
       const { container } = render(
-        <DashboardFilterPanel {...defaultProps} editable={false} />
+        <DashboardFilterPanel {...defaultProps} editable={false} dashboardFilters={[]} isEditMode={true} />
       )
 
       expect(container.firstChild).toBeNull()
@@ -234,13 +270,11 @@ describe('DashboardFilterPanel', () => {
       expect(screen.getByTestId('editing-filter-label')).toHaveTextContent('Filter 3')
     })
 
-    it('should open modal from CompactFilterBar add button', async () => {
-      const user = userEvent.setup()
+    it('should not offer CompactFilterBar definition creation in view mode', () => {
       render(<DashboardFilterPanel {...defaultProps} isEditMode={false} />)
 
-      await user.click(screen.getByTestId('compact-add-filter'))
-
-      expect(screen.getByTestId('filter-edit-modal')).toBeInTheDocument()
+      expect(screen.queryByTestId('compact-add-filter')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('filter-edit-modal')).not.toBeInTheDocument()
     })
   })
 
@@ -319,14 +353,11 @@ describe('DashboardFilterPanel', () => {
       expect(screen.getByTestId('editing-filter-id')).toHaveTextContent('filter-1')
     })
 
-    it('should open modal from CompactFilterBar edit button', async () => {
-      const user = userEvent.setup()
+    it('should not offer CompactFilterBar definition editing in view mode', () => {
       render(<DashboardFilterPanel {...defaultProps} isEditMode={false} />)
 
-      await user.click(screen.getByTestId('compact-edit-filter-2'))
-
-      expect(screen.getByTestId('filter-edit-modal')).toBeInTheDocument()
-      expect(screen.getByTestId('editing-filter-id')).toHaveTextContent('filter-2')
+      expect(screen.queryByTestId('compact-edit-filter-2')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('filter-edit-modal')).not.toBeInTheDocument()
     })
   })
 
@@ -354,24 +385,18 @@ describe('DashboardFilterPanel', () => {
       expect(updatedFilters[0].id).toBe('filter-2')
     })
 
-    it('should remove filter from CompactFilterBar', async () => {
-      const user = userEvent.setup()
-      const onDashboardFiltersChange = vi.fn()
+    it('should not offer CompactFilterBar definition removal in view mode', () => {
+      const onSaveFilters = vi.fn()
       render(
         <DashboardFilterPanel
           {...defaultProps}
           isEditMode={false}
-          onDashboardFiltersChange={onDashboardFiltersChange}
+          onSaveFilters={onSaveFilters}
         />
       )
 
-      await user.click(screen.getByTestId('compact-remove-filter-2'))
-
-      expect(onDashboardFiltersChange).toHaveBeenCalledTimes(1)
-
-      const updatedFilters = onDashboardFiltersChange.mock.calls[0][0]
-      expect(updatedFilters).toHaveLength(1)
-      expect(updatedFilters[0].id).toBe('filter-1')
+      expect(screen.queryByTestId('compact-remove-filter-2')).not.toBeInTheDocument()
+      expect(onSaveFilters).not.toHaveBeenCalled()
     })
 
     it('should close modal if editing filter is removed', async () => {
@@ -409,28 +434,6 @@ describe('DashboardFilterPanel', () => {
       const savedFilters = onSaveFilters.mock.calls[0][0]
       expect(savedFilters).toHaveLength(1)
       expect(savedFilters[0].id).toBe('filter-2')
-    })
-
-    it('should call onSaveFilters when removing from CompactFilterBar', async () => {
-      const user = userEvent.setup()
-      const onSaveFilters = vi.fn()
-      render(
-        <DashboardFilterPanel
-          {...defaultProps}
-          isEditMode={false}
-          onSaveFilters={onSaveFilters}
-        />
-      )
-
-      await user.click(screen.getByTestId('compact-remove-filter-2'))
-
-      await waitFor(() => {
-        expect(onSaveFilters).toHaveBeenCalledTimes(1)
-      })
-
-      const savedFilters = onSaveFilters.mock.calls[0][0]
-      expect(savedFilters).toHaveLength(1)
-      expect(savedFilters[0].id).toBe('filter-1')
     })
 
     it('should remove filter without error when onSaveFilters is not provided', async () => {
