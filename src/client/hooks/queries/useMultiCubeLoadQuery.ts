@@ -101,6 +101,8 @@ export interface UseMultiCubeLoadQueryResult {
   isLoading: boolean
   /** Whether any query is fetching (includes refetch) */
   isFetching: boolean
+  /** Whether the data belongs to a previous query rather than the current query */
+  isPlaceholderData: boolean
   /** Whether query is debouncing (waiting for user to stop typing) */
   isDebouncing: boolean
   /** First error encountered */
@@ -324,6 +326,7 @@ export function useMultiCubeLoadQuery(
     perQueryData,
     isLoading: queryResult.isLoading || isDebouncing,
     isFetching: queryResult.isFetching,
+    isPlaceholderData: queryResult.isPlaceholderData,
     isDebouncing,
     error,
     errors,

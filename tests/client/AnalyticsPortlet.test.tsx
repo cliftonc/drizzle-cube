@@ -689,7 +689,7 @@ describe('AnalyticsPortlet', () => {
       expect(ref.current?.getViewState()).toEqual({ chart: { page: 3 } })
     })
 
-    it('returns the chart start state again after a refetch unmounts the chart', async () => {
+    it('keeps the chart and its reported view state during a cached refetch', async () => {
       const user = userEvent.setup()
       const ref = createRef<AnalyticsPortletRef>()
       mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
@@ -707,8 +707,8 @@ describe('AnalyticsPortlet', () => {
         />
       )
 
-      expect(screen.queryByTestId('bar-chart')).not.toBeInTheDocument()
-      expect(ref.current?.getViewState()).toEqual({ chart: { page: 1 } })
+      expect(screen.getByTestId('bar-chart')).toBeInTheDocument()
+      expect(ref.current?.getViewState()).toEqual({ chart: { page: 3 } })
     })
 
     it('starts at the drill level of initialViewState.drill when it comes from the same base query', async () => {

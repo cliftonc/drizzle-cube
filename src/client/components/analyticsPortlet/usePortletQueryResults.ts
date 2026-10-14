@@ -141,8 +141,8 @@ export function usePortletQueryResults(params: UsePortletQueryResultsParams): Po
     retention: retentionQueryResult.isLoading || retentionQueryResult.isDebouncing,
     flow: flowQueryResult.isLoading || flowQueryResult.isDebouncing,
     funnel: funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing,
-    multi: multiQueryResult.isLoading,
-    single: singleQueryResult.isLoading
+    multi: multiQueryResult.isLoading || (multiQueryResult.isFetching && multiQueryResult.isPlaceholderData),
+    single: singleQueryResult.isLoading || (singleQueryResult.isFetching && singleQueryResult.isPlaceholderData)
   })
 
   const isFetching = pickByMode({
