@@ -1540,6 +1540,7 @@
   "dashboard.rows": "Rijen",
   "dashboard.desktopRequired": "Desktop view vereist voor editing",
   "dashboard.editModeHint": "Drag • Resize • Automatisch-save",
+  "dashboard.filterControlledByHost": "Dit filter wordt beheerd door de hostapplicatie.",
   "dashboard.filterSelectionMode": "Filter Selection Modus - Klik portlets naar toggle '{filterLabel}'",
   "dashboard.filterSelectionEscHint": "• Druk op Enter of Esc om op te slaan",
   "dashboard.filterFieldChipHint": "Klik om te wijzigen op welk veld dit filter wordt toegepast voor deze portlet",

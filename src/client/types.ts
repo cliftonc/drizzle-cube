@@ -748,9 +748,18 @@ export interface AnalyticsPortletRef {
 }
 
 export interface AnalyticsDashboardProps {
+  /** Remount with a different React key when switching to another dashboard record. */
   config: DashboardConfig
   editable?: boolean
   dashboardFilters?: DashboardFilter[] // Programmatic dashboard filters (merged with config.filters)
+  /**
+   * Requests updated prop overrides only, preserving config filter metadata, with
+   * the ID of the filter the viewer changed. Values remain unchanged until the
+   * host updates dashboardFilters. Without this callback, prop-owned filters are
+   * read-only. Config-only values use onConfigChange, or temporary viewer state
+   * when that callback is absent.
+   */
+  onDashboardFiltersChange?: (filters: DashboardFilter[], changedFilterId: string) => void
   loadingComponent?: ReactNode // Custom loading indicator for all portlets (defaults to LoadingIndicator)
   onConfigChange?: (config: DashboardConfig) => void
   onSave?: (config: DashboardConfig) => Promise<void> | void

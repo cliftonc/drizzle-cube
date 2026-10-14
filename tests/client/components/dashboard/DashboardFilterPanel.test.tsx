@@ -118,8 +118,8 @@ describe('DashboardFilterPanel', () => {
     editable: true,
     schema: sampleSchema,
     dashboardConfig: sampleDashboardConfig,
+    onFilterDefinitionsChange: vi.fn(),
     onDashboardFiltersChange: vi.fn(),
-    onSaveFilters: vi.fn(),
     selectedFilterId: null,
     onFilterSelect: vi.fn(),
     isEditMode: false
@@ -140,7 +140,7 @@ describe('DashboardFilterPanel', () => {
       expect(screen.getByTestId('filter-edit-modal')).toBeInTheDocument()
 
       rerender(<DashboardFilterPanel {...defaultProps} editable={editable} isEditMode={isEditMode} />)
-      expect(defaultProps.onSaveFilters).not.toHaveBeenCalled()
+      expect(defaultProps.onFilterDefinitionsChange).not.toHaveBeenCalled()
       expect(defaultProps.onDashboardFiltersChange).not.toHaveBeenCalled()
       expect(screen.queryByTestId('filter-edit-modal')).not.toBeInTheDocument()
 
@@ -284,20 +284,20 @@ describe('DashboardFilterPanel', () => {
   describe('Add Time Filter', () => {
     it('should add universal time filter directly without opening modal', async () => {
       const user = userEvent.setup()
-      const onDashboardFiltersChange = vi.fn()
+      const onFilterDefinitionsChange = vi.fn()
       render(
         <DashboardFilterPanel
           {...defaultProps}
           isEditMode={true}
-          onDashboardFiltersChange={onDashboardFiltersChange}
+          onFilterDefinitionsChange={onFilterDefinitionsChange}
         />
       )
 
       await user.click(screen.getByTestId('add-time-filter-btn'))
 
-      expect(onDashboardFiltersChange).toHaveBeenCalledTimes(1)
+      expect(onFilterDefinitionsChange).toHaveBeenCalledTimes(1)
 
-      const newFilters = onDashboardFiltersChange.mock.calls[0][0]
+      const newFilters = onFilterDefinitionsChange.mock.calls[0][0]
       expect(newFilters).toHaveLength(3) // 2 existing + 1 new
 
       const newTimeFilter = newFilters[2]
@@ -316,27 +316,6 @@ describe('DashboardFilterPanel', () => {
       expect(screen.queryByTestId('filter-edit-modal')).not.toBeInTheDocument()
     })
 
-    it('should call onSaveFilters with updated filters when adding time filter', async () => {
-      const user = userEvent.setup()
-      const onSaveFilters = vi.fn()
-      render(
-        <DashboardFilterPanel
-          {...defaultProps}
-          isEditMode={true}
-          onSaveFilters={onSaveFilters}
-        />
-      )
-
-      await user.click(screen.getByTestId('add-time-filter-btn'))
-
-      await waitFor(() => {
-        expect(onSaveFilters).toHaveBeenCalledTimes(1)
-      })
-
-      const savedFilters = onSaveFilters.mock.calls[0][0]
-      expect(savedFilters).toHaveLength(3) // 2 existing + 1 new
-      expect(savedFilters[2].isUniversalTime).toBe(true)
-    })
   })
 
   // ==========================================================================
@@ -367,36 +346,36 @@ describe('DashboardFilterPanel', () => {
   describe('Remove Filter', () => {
     it('should remove filter when Remove is clicked in edit mode', async () => {
       const user = userEvent.setup()
-      const onDashboardFiltersChange = vi.fn()
+      const onFilterDefinitionsChange = vi.fn()
       render(
         <DashboardFilterPanel
           {...defaultProps}
           isEditMode={true}
-          onDashboardFiltersChange={onDashboardFiltersChange}
+          onFilterDefinitionsChange={onFilterDefinitionsChange}
         />
       )
 
       await user.click(screen.getByTestId('remove-filter-1'))
 
-      expect(onDashboardFiltersChange).toHaveBeenCalledTimes(1)
+      expect(onFilterDefinitionsChange).toHaveBeenCalledTimes(1)
 
-      const updatedFilters = onDashboardFiltersChange.mock.calls[0][0]
+      const updatedFilters = onFilterDefinitionsChange.mock.calls[0][0]
       expect(updatedFilters).toHaveLength(1)
       expect(updatedFilters[0].id).toBe('filter-2')
     })
 
     it('should not offer CompactFilterBar definition removal in view mode', () => {
-      const onSaveFilters = vi.fn()
+      const onFilterDefinitionsChange = vi.fn()
       render(
         <DashboardFilterPanel
           {...defaultProps}
           isEditMode={false}
-          onSaveFilters={onSaveFilters}
+          onFilterDefinitionsChange={onFilterDefinitionsChange}
         />
       )
 
       expect(screen.queryByTestId('compact-remove-filter-2')).not.toBeInTheDocument()
-      expect(onSaveFilters).not.toHaveBeenCalled()
+      expect(onFilterDefinitionsChange).not.toHaveBeenCalled()
     })
 
     it('should close modal if editing filter is removed', async () => {
@@ -414,62 +393,20 @@ describe('DashboardFilterPanel', () => {
       expect(screen.queryByTestId('filter-edit-modal')).not.toBeInTheDocument()
     })
 
-    it('should call onSaveFilters with updated filters when removing in edit mode', async () => {
-      const user = userEvent.setup()
-      const onSaveFilters = vi.fn()
-      render(
-        <DashboardFilterPanel
-          {...defaultProps}
-          isEditMode={true}
-          onSaveFilters={onSaveFilters}
-        />
-      )
-
-      await user.click(screen.getByTestId('remove-filter-1'))
-
-      await waitFor(() => {
-        expect(onSaveFilters).toHaveBeenCalledTimes(1)
-      })
-
-      const savedFilters = onSaveFilters.mock.calls[0][0]
-      expect(savedFilters).toHaveLength(1)
-      expect(savedFilters[0].id).toBe('filter-2')
-    })
-
-    it('should remove filter without error when onSaveFilters is not provided', async () => {
-      const user = userEvent.setup()
-      const onDashboardFiltersChange = vi.fn()
-      render(
-        <DashboardFilterPanel
-          {...defaultProps}
-          isEditMode={true}
-          onDashboardFiltersChange={onDashboardFiltersChange}
-          onSaveFilters={undefined}
-        />
-      )
-
-      await user.click(screen.getByTestId('remove-filter-1'))
-
-      expect(onDashboardFiltersChange).toHaveBeenCalledTimes(1)
-    })
-
-    it('should still update state when onSaveFilters rejects', async () => {
+    it('should report a rejected definition commit', async () => {
       const user = userEvent.setup()
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const onDashboardFiltersChange = vi.fn()
-      const onSaveFilters = vi.fn().mockRejectedValue(new Error('save failed'))
+      const onFilterDefinitionsChange = vi.fn().mockRejectedValue(new Error('save failed'))
       render(
         <DashboardFilterPanel
           {...defaultProps}
           isEditMode={true}
-          onDashboardFiltersChange={onDashboardFiltersChange}
-          onSaveFilters={onSaveFilters}
+          onFilterDefinitionsChange={onFilterDefinitionsChange}
         />
       )
 
       await user.click(screen.getByTestId('remove-filter-1'))
 
-      expect(onDashboardFiltersChange).toHaveBeenCalledTimes(1)
       await waitFor(() => {
         expect(consoleError).toHaveBeenCalledWith('Failed to save filters:', expect.any(Error))
       })
@@ -484,12 +421,12 @@ describe('DashboardFilterPanel', () => {
   describe('Modal Save Behavior', () => {
     it('should update existing filter when saving from modal', async () => {
       const user = userEvent.setup()
-      const onDashboardFiltersChange = vi.fn()
+      const onFilterDefinitionsChange = vi.fn()
       render(
         <DashboardFilterPanel
           {...defaultProps}
           isEditMode={true}
-          onDashboardFiltersChange={onDashboardFiltersChange}
+          onFilterDefinitionsChange={onFilterDefinitionsChange}
         />
       )
 
@@ -499,17 +436,17 @@ describe('DashboardFilterPanel', () => {
       // Save the filter
       await user.click(screen.getByTestId('modal-save'))
 
-      expect(onDashboardFiltersChange).toHaveBeenCalled()
+      expect(onFilterDefinitionsChange).toHaveBeenCalled()
     })
 
     it('should add new filter when saving a new filter from modal', async () => {
       const user = userEvent.setup()
-      const onDashboardFiltersChange = vi.fn()
+      const onFilterDefinitionsChange = vi.fn()
       render(
         <DashboardFilterPanel
           {...defaultProps}
           isEditMode={true}
-          onDashboardFiltersChange={onDashboardFiltersChange}
+          onFilterDefinitionsChange={onFilterDefinitionsChange}
         />
       )
 
@@ -519,37 +456,20 @@ describe('DashboardFilterPanel', () => {
       // Save the new filter
       await user.click(screen.getByTestId('modal-save'))
 
-      expect(onDashboardFiltersChange).toHaveBeenCalled()
+      expect(onFilterDefinitionsChange).toHaveBeenCalled()
 
-      const updatedFilters = onDashboardFiltersChange.mock.calls[0][0]
+      const updatedFilters = onFilterDefinitionsChange.mock.calls[0][0]
       expect(updatedFilters.length).toBe(3) // 2 existing + 1 new
     })
 
-    it('should call onSaveFilters if provided', async () => {
+    it('should handle async onFilterDefinitionsChange', async () => {
       const user = userEvent.setup()
-      const onSaveFilters = vi.fn()
+      const onFilterDefinitionsChange = vi.fn().mockResolvedValue(undefined)
       render(
         <DashboardFilterPanel
           {...defaultProps}
           isEditMode={true}
-          onSaveFilters={onSaveFilters}
-        />
-      )
-
-      await user.click(screen.getByTestId('edit-filter-1'))
-      await user.click(screen.getByTestId('modal-save'))
-
-      expect(onSaveFilters).toHaveBeenCalled()
-    })
-
-    it('should handle async onSaveFilters', async () => {
-      const user = userEvent.setup()
-      const onSaveFilters = vi.fn().mockResolvedValue(undefined)
-      render(
-        <DashboardFilterPanel
-          {...defaultProps}
-          isEditMode={true}
-          onSaveFilters={onSaveFilters}
+          onFilterDefinitionsChange={onFilterDefinitionsChange}
         />
       )
 
@@ -557,7 +477,7 @@ describe('DashboardFilterPanel', () => {
       await user.click(screen.getByTestId('modal-save'))
 
       await waitFor(() => {
-        expect(onSaveFilters).toHaveBeenCalled()
+        expect(onFilterDefinitionsChange).toHaveBeenCalled()
       })
     })
   })
@@ -597,21 +517,21 @@ describe('DashboardFilterPanel', () => {
   describe('Modal Delete Behavior', () => {
     it('should remove filter when Delete is clicked in modal', async () => {
       const user = userEvent.setup()
-      const onDashboardFiltersChange = vi.fn()
+      const onFilterDefinitionsChange = vi.fn()
       render(
         <DashboardFilterPanel
           {...defaultProps}
           isEditMode={true}
-          onDashboardFiltersChange={onDashboardFiltersChange}
+          onFilterDefinitionsChange={onFilterDefinitionsChange}
         />
       )
 
       await user.click(screen.getByTestId('edit-filter-1'))
       await user.click(screen.getByTestId('modal-delete'))
 
-      expect(onDashboardFiltersChange).toHaveBeenCalled()
+      expect(onFilterDefinitionsChange).toHaveBeenCalled()
 
-      const updatedFilters = onDashboardFiltersChange.mock.calls[0][0]
+      const updatedFilters = onFilterDefinitionsChange.mock.calls[0][0]
       expect(updatedFilters).toHaveLength(1)
       expect(updatedFilters[0].id).toBe('filter-2')
     })
@@ -733,12 +653,12 @@ describe('DashboardFilterPanel', () => {
 
     it('should handle concurrent add operations', async () => {
       const user = userEvent.setup()
-      const onDashboardFiltersChange = vi.fn()
+      const onFilterDefinitionsChange = vi.fn()
       render(
         <DashboardFilterPanel
           {...defaultProps}
           isEditMode={true}
-          onDashboardFiltersChange={onDashboardFiltersChange}
+          onFilterDefinitionsChange={onFilterDefinitionsChange}
         />
       )
 
@@ -747,17 +667,17 @@ describe('DashboardFilterPanel', () => {
       await user.click(screen.getByTestId('add-time-filter-btn'))
 
       // Each click should result in a call
-      expect(onDashboardFiltersChange).toHaveBeenCalledTimes(2)
+      expect(onFilterDefinitionsChange).toHaveBeenCalledTimes(2)
     })
 
     it('should maintain stable filter IDs when updating', async () => {
       const user = userEvent.setup()
-      const onDashboardFiltersChange = vi.fn()
+      const onFilterDefinitionsChange = vi.fn()
       render(
         <DashboardFilterPanel
           {...defaultProps}
           isEditMode={true}
-          onDashboardFiltersChange={onDashboardFiltersChange}
+          onFilterDefinitionsChange={onFilterDefinitionsChange}
         />
       )
 
@@ -766,7 +686,7 @@ describe('DashboardFilterPanel', () => {
       await user.click(screen.getByTestId('modal-save'))
 
       // The filter ID should remain the same
-      const updatedFilters = onDashboardFiltersChange.mock.calls[0][0]
+      const updatedFilters = onFilterDefinitionsChange.mock.calls[0][0]
       expect(updatedFilters.find((f: DashboardFilter) => f.id === 'filter-1')).toBeDefined()
     })
 

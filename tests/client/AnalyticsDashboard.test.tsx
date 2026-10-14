@@ -392,7 +392,7 @@ describe('AnalyticsDashboard', () => {
         createTestFilter('new-filter', 'New Filter')
       ]
 
-      capturedDashboardGridProps.onDashboardFiltersChange(newFilters)
+      capturedDashboardGridProps.onDashboardFiltersChange(newFilters, 'new-filter')
 
       expect(onConfigChange).toHaveBeenCalledWith({
         ...config,
@@ -400,13 +400,12 @@ describe('AnalyticsDashboard', () => {
       })
     })
 
-    it('should not update config when prop filters are provided', () => {
+    it('should allow config-only changes when prop filters are read-only', () => {
       const config = createTestConfig({ filters: [] })
       const propFilters: DashboardFilter[] = [
         createTestFilter('prop-filter', 'Prop Filter')
       ]
       const onConfigChange = vi.fn()
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
       render(
         <AnalyticsDashboard
@@ -421,15 +420,10 @@ describe('AnalyticsDashboard', () => {
         createTestFilter('new-filter', 'New Filter')
       ]
 
-      capturedDashboardGridProps.onDashboardFiltersChange(newFilters)
+      capturedDashboardGridProps.onDashboardFiltersChange(newFilters, 'new-filter')
 
-      // Should not call onConfigChange when filters are controlled via props
-      expect(onConfigChange).not.toHaveBeenCalled()
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Dashboard filters are controlled via props - config changes ignored'
-      )
-
-      consoleSpy.mockRestore()
+      expect(onConfigChange).toHaveBeenCalledWith({ ...config, filters: newFilters })
+      expect(capturedDashboardGridProps.readOnlyFilterIds).toEqual(['prop-filter'])
     })
   })
 

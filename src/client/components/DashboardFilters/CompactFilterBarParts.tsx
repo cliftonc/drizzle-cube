@@ -24,6 +24,9 @@ export interface CompactFilterBarViewProps {
   schema: CubeMeta | null
   isEditMode: boolean
   showDateControls: boolean
+  dateReadOnly: boolean
+  readOnlyFilterIds: string[]
+  readOnlyDescriptionId: string
   onAddFilter?: () => void
   onEditFilter?: (filterId: string) => void
   onRemoveFilter?: (filterId: string) => void
@@ -78,6 +81,8 @@ function AddFilterButton({
 
 function NonDateFilterChips({
   nonDateFilters,
+  readOnlyFilterIds,
+  readOnlyDescriptionId,
   schema,
   isEditMode,
   onEditFilter,
@@ -85,7 +90,7 @@ function NonDateFilterChips({
   handleFilterChange
 }: Pick<
   CompactFilterBarViewProps,
-  'nonDateFilters' | 'schema' | 'isEditMode' | 'onEditFilter' | 'onRemoveFilter' | 'handleFilterChange'
+  'nonDateFilters' | 'readOnlyFilterIds' | 'readOnlyDescriptionId' | 'schema' | 'isEditMode' | 'onEditFilter' | 'onRemoveFilter' | 'handleFilterChange'
 >) {
   return (
     <>
@@ -93,6 +98,8 @@ function NonDateFilterChips({
         <FilterChip
           key={filter.id}
           filter={filter}
+          readOnly={readOnlyFilterIds.includes(filter.id)}
+          readOnlyDescriptionId={readOnlyDescriptionId}
           schema={schema}
           isEditMode={isEditMode}
           onChange={(updatedFilter) => handleFilterChange(filter.id, updatedFilter)}
@@ -129,13 +136,16 @@ function CustomDateButton({
       <button
         ref={customButtonRef}
         type="button"
+        disabled={props.dateReadOnly}
+        aria-describedby={props.dateReadOnly ? props.readOnlyDescriptionId : undefined}
         onClick={() => {
           setShowCustomDropdown(!showCustomDropdown)
           setShowXTDDropdown(false)
         }}
-        title={withTitle ? (activePresetId === 'custom' && dateRangeTooltip ? dateRangeTooltip : 'Custom date range') : undefined}
+        title={props.dateReadOnly ? t('dashboard.filterControlledByHost') : withTitle ? (activePresetId === 'custom' && dateRangeTooltip ? dateRangeTooltip : 'Custom date range') : undefined}
         className={`
           dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded-sm dc:text-xs dc:font-medium dc:border
+          dc:disabled:opacity-50 dc:disabled:cursor-not-allowed
           dc:transition-colors${withTitle ? ' dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-1' : ''}
         `}
         style={{
@@ -149,7 +159,7 @@ function CustomDateButton({
         {showLabel && <ChevronDownIcon className="dc:w-3 dc:h-3" />}
       </button>
 
-      {showCustomDropdown && (
+      {showCustomDropdown && !props.dateReadOnly && (
         <CustomDateDropdown
           isOpen={showCustomDropdown}
           onClose={() => setShowCustomDropdown(false)}
@@ -169,6 +179,7 @@ function XTDButton({
   props: CompactFilterBarViewProps
   withTitle: boolean
 }) {
+  const { t } = useTranslation()
   const {
     activeXTDId,
     dateRangeTooltip,
@@ -183,13 +194,16 @@ function XTDButton({
       <button
         ref={xtdButtonRef}
         type="button"
+        disabled={props.dateReadOnly}
+        aria-describedby={props.dateReadOnly ? props.readOnlyDescriptionId : undefined}
         onClick={() => {
           setShowXTDDropdown(!showXTDDropdown)
           setShowCustomDropdown(false)
         }}
-        title={withTitle ? (activeXTDId && dateRangeTooltip ? dateRangeTooltip : 'X to Date options') : undefined}
+        title={props.dateReadOnly ? t('dashboard.filterControlledByHost') : withTitle ? (activeXTDId && dateRangeTooltip ? dateRangeTooltip : 'X to Date options') : undefined}
         className={`
           dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded-sm dc:text-xs dc:font-medium dc:border
+          dc:disabled:opacity-50 dc:disabled:cursor-not-allowed
           dc:transition-colors${withTitle ? ' dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-1' : ''}
         `}
         style={{
@@ -202,7 +216,7 @@ function XTDButton({
         <ChevronDownIcon className="dc:w-3 dc:h-3" />
       </button>
 
-      {showXTDDropdown && (
+      {showXTDDropdown && !props.dateReadOnly && (
         <XTDDropdown
           isOpen={showXTDDropdown}
           onClose={() => setShowXTDDropdown(false)}
@@ -229,6 +243,8 @@ export function DesktopLayout(props: CompactFilterBarViewProps) {
         <>
           {/* Date Preset Chips */}
           <DatePresetChips
+            disabled={props.dateReadOnly}
+            disabledDescriptionId={props.readOnlyDescriptionId}
             activePreset={activePresetId !== 'custom' && !activeXTDId ? activePresetId : null}
             onPresetSelect={handlePresetSelect}
           />
@@ -273,6 +289,8 @@ export function MobileLayout(props: CompactFilterBarViewProps) {
         />
         {showDateControls && (
           <DatePresetChips
+            disabled={props.dateReadOnly}
+            disabledDescriptionId={props.readOnlyDescriptionId}
             activePreset={activePresetId !== 'custom' && !activeXTDId ? activePresetId : null}
             onPresetSelect={handlePresetSelect}
           />

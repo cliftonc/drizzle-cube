@@ -34,6 +34,7 @@ import type {
 interface DashboardGridProps {
   config: DashboardConfig
   editable?: boolean
+  readOnlyFilterIds?: string[]
   dashboardFilters?: DashboardFilter[] // Dashboard-level filters to apply to portlets
   loadingComponent?: ReactNode // Custom loading indicator for all portlets
   onConfigChange?: (config: DashboardConfig) => void
@@ -43,7 +44,13 @@ interface DashboardGridProps {
   onSaveThumbnail?: (thumbnailData: string) => Promise<string | void>
   colorPalette?: ColorPalette  // Complete palette with both colors and gradient
   schema?: CubeMeta | null  // Cube metadata for filter panel
-  onDashboardFiltersChange?: (filters: DashboardFilter[]) => void  // Handler for filter changes
+  /**
+   * Receives viewer value changes from the view-mode filter bar, with the ID of the
+   * filter the viewer changed. Filter definition edits in edit mode go to
+   * onConfigChange and then onSave, and the edit-mode list reads config.filters,
+   * not dashboardFilters.
+   */
+  onDashboardFiltersChange?: (filters: DashboardFilter[], changedFilterId: string) => void
   dashboardModes?: DashboardLayoutMode[]
   /** When true, no toolbar is rendered (neither the top edit bar nor the floating toolbar) */
   hideToolbar?: boolean

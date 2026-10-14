@@ -20,11 +20,12 @@ import type { MetaResponse } from '../shared/types.js'
 
 interface DashboardFilterPanelProps {
   dashboardFilters: DashboardFilter[]
+  readOnlyFilterIds?: string[]
   editable: boolean
   schema: CubeMeta | null
   dashboardConfig: DashboardConfig
-  onDashboardFiltersChange: (filters: DashboardFilter[]) => void
-  onSaveFilters?: (filters: DashboardFilter[]) => void | Promise<void>
+  onDashboardFiltersChange: (filters: DashboardFilter[], changedFilterId: string) => void
+  onFilterDefinitionsChange: (filters: DashboardFilter[]) => void | Promise<void>
   selectedFilterId?: string | null
   onFilterSelect?: (filterId: string) => void
   isEditMode?: boolean
@@ -32,11 +33,12 @@ interface DashboardFilterPanelProps {
 
 const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
   dashboardFilters,
+  readOnlyFilterIds,
   editable,
   schema,
   dashboardConfig,
   onDashboardFiltersChange,
-  onSaveFilters,
+  onFilterDefinitionsChange,
   selectedFilterId,
   onFilterSelect,
   isEditMode = false
@@ -91,14 +93,10 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
     return `df_${Date.now()}_${Math.random().toString(36).substring(7)}`
   }, [])
 
-  // Apply a committed filter mutation: update dashboard state, then persist
+  // Commit a definition change as a promise callers can catch
   const applyFilters = useCallback(async (updatedFilters: DashboardFilter[]) => {
-    onDashboardFiltersChange(updatedFilters)
-
-    if (onSaveFilters) {
-      await onSaveFilters(updatedFilters)
-    }
-  }, [onDashboardFiltersChange, onSaveFilters])
+    await onFilterDefinitionsChange(updatedFilters)
+  }, [onFilterDefinitionsChange])
 
   // Handle adding a new filter - create temporary filter for modal
   const handleAddFilter = useCallback(() => {
@@ -216,10 +214,11 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
         /* View Mode - Compact Mixpanel-style filter bar */
         <CompactFilterBar
           dashboardFilters={dashboardFilters}
+          readOnlyFilterIds={readOnlyFilterIds}
           schema={schema}
           isEditMode={false}
           onDashboardFiltersChange={onDashboardFiltersChange}
-          allowDateFilterCreation={editable}
+          allowDateFilterCreation={false}
         />
       )}
 

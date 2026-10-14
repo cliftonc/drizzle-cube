@@ -6,19 +6,23 @@
  */
 
 import React, { useMemo } from 'react'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import { DATE_PRESETS, calculateDateRange, formatDateRangeDisplay } from '../shared/utils.js'
 
 interface DatePresetChipsProps {
   activePreset: string | null
   onPresetSelect: (presetValue: string) => void
   disabled?: boolean
+  disabledDescriptionId?: string
 }
 
 const DatePresetChips: React.FC<DatePresetChipsProps> = ({
   activePreset,
   onPresetSelect,
-  disabled = false
+  disabled = false,
+  disabledDescriptionId
 }) => {
+  const { t } = useTranslation()
   // Memoize tooltip content for each preset
   const presetTooltips = useMemo(() => {
     const tooltips: Record<string, string> = {}
@@ -43,7 +47,9 @@ const DatePresetChips: React.FC<DatePresetChipsProps> = ({
             type="button"
             onClick={() => onPresetSelect(preset.value)}
             disabled={disabled}
-            title={tooltip}
+            aria-pressed={isActive}
+            aria-describedby={disabled ? disabledDescriptionId : undefined}
+            title={disabled ? t('dashboard.filterControlledByHost') : tooltip}
             className={`
               dc:px-2.5 dc:py-1 dc:rounded-sm dc:text-xs dc:font-medium dc:transition-colors
               dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-1

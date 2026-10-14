@@ -532,8 +532,21 @@ describe('CompactFilterBar', () => {
               values: [], dateRange: 'last 30 days'
             })
           })
-        ])
+        ]),
+        'universal-time'
       )
+    })
+
+    it('should not request a date range it has already requested', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      props.dashboardFilters = [createUniversalTimeFilter('last 30 days')]
+
+      render(<CompactFilterBar {...props} />)
+      await user.click(screen.getAllByTestId('preset-7d')[0])
+      await user.click(screen.getAllByTestId('preset-7d')[0])
+
+      expect(props.onDashboardFiltersChange).toHaveBeenCalledTimes(1)
     })
 
     it('should create new universal time filter if none exists when preset selected', async () => {
@@ -590,7 +603,7 @@ describe('CompactFilterBar', () => {
         expect(props.onDashboardFiltersChange).toHaveBeenLastCalledWith([
           { ...dateFilter, filter: { member, operator: 'inDateRange', values: [], dateRange } },
           otherFilter
-        ])
+        ], 'existing-date')
       }
       await user.click(screen.getAllByRole('button', { name: '30D' })[0])
       expectRange('last 30 days')

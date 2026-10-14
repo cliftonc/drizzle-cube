@@ -5,18 +5,25 @@
  * Uses FilterValueSelector for the actual value input.
  */
 
-import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react'
+import React, { useEffect, useRef, useMemo, useState } from 'react'
 import FilterValueSelector from '../shared/FilterValueSelector.js'
 import type { SimpleFilter, CubeMeta } from '../../types.js'
 import type { MetaResponse } from '../../shared/types.js'
+import { stableStringify } from '../../shared/queryKey.js'
+import { settlePendingChanges, type PendingChanges } from '../../shared/pendingChanges.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface FilterValuePopoverProps {
   filter: SimpleFilter
   schema: CubeMeta | null
-  onValuesChange: (values: any[]) => void
+  onValuesChange: (values: SimpleFilter['values']) => void
   onClose: () => void
   anchorRef: React.RefObject<HTMLElement | null>
+}
+
+/** Typed values not yet accepted by the host. */
+interface ValueDraft extends PendingChanges {
+  values: SimpleFilter['values']
 }
 
 // Convert CubeMeta to MetaResponse format
@@ -62,7 +69,18 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
 }) => {
   const { t } = useTranslation()
   const popoverRef = useRef<HTMLDivElement>(null)
-  const [dateDraft, setDateDraft] = useState<{ filter: SimpleFilter, values: SimpleFilter['values'] } | null>(null)
+  const values = filter.operator === 'inDateRange' && filter.dateRange
+    ? (Array.isArray(filter.dateRange) ? filter.dateRange : [filter.dateRange])
+    : filter.values || []
+  const valueKey = (nextValues: SimpleFilter['values']) =>
+    stableStringify([filter.member, filter.operator, nextValues])
+  const source = valueKey(values)
+  const [draft, setDraft] = useState<ValueDraft | null>(null)
+
+  // Earlier acknowledgements must not erase newer typing. Other host changes reset the draft.
+  if (draft && draft.source !== source) {
+    setDraft(settlePendingChanges(draft, source, valueKey(draft.values)))
+  }
 
   // Handle click outside to close
   useEffect(() => {
@@ -96,27 +114,18 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
     }
   }, [onClose, anchorRef])
 
-  /**
-   * Keep incomplete date edits local until both endpoints are set or cleared.
-   * @param newValues - Values emitted by the native selector.
-   */
-  const handleValuesChange = useCallback((newValues: SimpleFilter['values']) => {
-    if (
-      filter.operator === 'inDateRange' && newValues.length === 2 &&
+  const handleValuesChange = (newValues: SimpleFilter['values']) => {
+    const incompleteDate = filter.operator === 'inDateRange' && newValues.length === 2 &&
       newValues.some(value => value === '') && newValues.some(value => value !== '')
-    ) {
-      setDateDraft({ filter, values: newValues })
-      return
-    }
-    setDateDraft(null)
-    onValuesChange(newValues)
-  }, [filter, onValuesChange])
+    setDraft({
+      source,
+      values: newValues,
+      pending: incompleteDate ? draft?.pending || [] : [...(draft?.pending || []), valueKey(newValues)]
+    })
+    if (!incompleteDate) onValuesChange(newValues)
+  }
 
-  // Convert schema to MetaResponse format
   const metaResponse = useMemo(() => convertToMetaResponse(schema), [schema])
-  const values = filter.operator === 'inDateRange' && filter.dateRange
-    ? (Array.isArray(filter.dateRange) ? filter.dateRange : [filter.dateRange])
-    : filter.values || []
 
   return (
     <div
@@ -141,7 +150,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
         <FilterValueSelector
           fieldName={filter.member}
           operator={filter.operator}
-          values={dateDraft?.filter === filter ? dateDraft.values : values}
+          values={draft?.source === source ? draft.values : values}
           onValuesChange={handleValuesChange}
           schema={metaResponse}
         />
