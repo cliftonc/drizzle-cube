@@ -77,8 +77,8 @@ export function resolvePortletRenderKind(p: PortletRenderStateParams): PortletRe
   // Charts that don't need queries skip loading/error/no-data handling
   if (p.shouldSkipQuery) return 'chart'
 
-  // Loading during initial load OR during refresh (isFetching)
-  if (p.isLoading || p.isFetching || (p.queryObject && !p.resultSet && !p.error)) return 'loading'
+  // Keep the chart mounted while its cached data refreshes.
+  if (p.isLoading || (p.isFetching && !hasValidDataForMode(p)) || (p.queryObject && !p.resultSet && !p.error)) return 'loading'
 
   if (p.error) return 'error'
 

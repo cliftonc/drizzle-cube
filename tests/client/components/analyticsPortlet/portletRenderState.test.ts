@@ -45,6 +45,22 @@ describe('resolvePortletRenderKind', () => {
     expect(resolvePortletRenderKind(params())).toBe('chart')
   })
 
+  it('keeps a chart mounted during a cached refetch', () => {
+    expect(resolvePortletRenderKind(params({ isFetching: true }))).toBe('chart')
+  })
+
+  it('shows loading while fetching without cached data', () => {
+    expect(resolvePortletRenderKind(params({ isFetching: true, resultSet: null }))).toBe('loading')
+  })
+
+  it('shows loading when a changed query is debouncing even with previous data', () => {
+    expect(resolvePortletRenderKind(params({ isLoading: true, isFetching: true }))).toBe('loading')
+  })
+
+  it('shows an error when a cached refresh fails', () => {
+    expect(resolvePortletRenderKind(params({ error: new Error('Refresh failed') }))).toBe('error')
+  })
+
   // Reached when the query resolved to nothing runnable rather than while it is
   // still in flight, which is why `queryObject` is null here too.
   it('shows no-data for an ordinary chart with no result', () => {
