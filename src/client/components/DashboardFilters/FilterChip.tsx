@@ -10,6 +10,7 @@ import { getIcon } from '../../icons/index.js'
 import FilterValuePopover from './FilterValuePopover.js'
 import { formatFilterValueDisplay } from '../shared/utils.js'
 import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types.js'
+import { useTranslation } from '../../hooks/useTranslation.js'
 
 const CloseIcon = getIcon('close')
 const EditIcon = getIcon('edit')
@@ -18,6 +19,8 @@ interface FilterChipProps {
   filter: DashboardFilter
   schema: CubeMeta | null
   isEditMode: boolean
+  readOnly?: boolean
+  readOnlyDescriptionId?: string
   onChange: (updatedFilter: DashboardFilter) => void
   onEdit?: () => void
   onRemove?: () => void
@@ -27,10 +30,13 @@ const FilterChip: React.FC<FilterChipProps> = ({
   filter,
   schema,
   isEditMode,
+  readOnly = false,
+  readOnlyDescriptionId,
   onChange,
   onEdit,
   onRemove
 }) => {
+  const { t } = useTranslation()
   const [showPopover, setShowPopover] = useState(false)
   const chipRef = useRef<HTMLDivElement>(null)
 
@@ -65,6 +71,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
 
   // Handle chip click - open popover in view mode, or edit in edit mode
   const handleChipClick = useCallback(() => {
+    if (readOnly) return
     if (isEditMode) {
       // In edit mode, clicking opens the full modal
       onEdit?.()
@@ -72,7 +79,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
       // In view mode, show inline popover for value editing
       setShowPopover(true)
     }
-  }, [isEditMode, onEdit])
+  }, [isEditMode, onEdit, readOnly])
 
   // Don't show chips for group filters
   if (!('member' in filter.filter)) {
@@ -82,9 +89,20 @@ const FilterChip: React.FC<FilterChipProps> = ({
   return (
     <div ref={chipRef} className="dc:relative dc:inline-flex">
       <div
+        role={!isEditMode ? 'button' : undefined}
+        tabIndex={!isEditMode ? 0 : undefined}
+        aria-disabled={readOnly || undefined}
+        aria-describedby={readOnly ? readOnlyDescriptionId : undefined}
+        onKeyDown={event => {
+          if (!isEditMode && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault()
+            handleChipClick()
+          }
+        }}
         className={`
           dc:inline-flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded-sm dc:text-xs
-          dc:border dc:transition-colors dc:cursor-pointer
+          dc:border dc:transition-colors
+          ${readOnly ? 'dc:opacity-50 dc:cursor-not-allowed' : 'dc:cursor-pointer'}
           ${isEditMode ? 'dc:pr-1' : ''}
         `}
         style={{
@@ -99,7 +117,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
         onMouseLeave={(e) => {
           e.currentTarget.style.backgroundColor = 'var(--dc-surface)'
         }}
-        title={`${label} ${valueDisplay}`}
+        title={readOnly ? t('dashboard.filterControlledByHost') : `${label} ${valueDisplay}`}
       >
         <span className="dc:font-medium dc:truncate dc:max-w-[100px]">{label}</span>
         {valueDisplay && (
@@ -150,7 +168,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
       </div>
 
       {/* Value editing popover (view mode only) */}
-      {showPopover && !isEditMode && (
+      {showPopover && !isEditMode && !readOnly && (
         <FilterValuePopover
           filter={simpleFilter}
           schema={schema}

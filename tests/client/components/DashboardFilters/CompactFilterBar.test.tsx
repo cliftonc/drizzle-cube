@@ -532,8 +532,21 @@ describe('CompactFilterBar', () => {
               values: [], dateRange: 'last 30 days'
             })
           })
-        ])
+        ]),
+        'universal-time'
       )
+    })
+
+    it('should not request a date range it has already requested', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      props.dashboardFilters = [createUniversalTimeFilter('last 30 days')]
+
+      render(<CompactFilterBar {...props} />)
+      await user.click(screen.getAllByTestId('preset-7d')[0])
+      await user.click(screen.getAllByTestId('preset-7d')[0])
+
+      expect(props.onDashboardFiltersChange).toHaveBeenCalledTimes(1)
     })
 
     it('should create new universal time filter if none exists when preset selected', async () => {
@@ -556,6 +569,50 @@ describe('CompactFilterBar', () => {
           operator: 'inDateRange'
         })
       })
+    })
+  })
+
+  describe('date creation permission', () => {
+    it('hides date creation controls on both layouts when creation is forbidden', () => {
+      const props = createDefaultProps()
+      props.dashboardFilters = [createRegularFilter('status', 'Status')]
+      render(<CompactFilterBar {...props} allowDateFilterCreation={false} />)
+
+      expect(screen.getAllByText('Status')).toHaveLength(2)
+      for (const name of ['7D', '30D', 'Custom', 'XTD']) {
+        expect(screen.queryAllByRole('button', { name })).toHaveLength(0)
+      }
+      expect(props.onDashboardFiltersChange).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      { kind: 'universal', isUniversalTime: true, member: '__universal_time__' },
+      { kind: 'plain', isUniversalTime: false, member: 'Users.createdAt' }
+    ])('preserves $kind date values and IDs when creation is forbidden', async ({ isUniversalTime, member }) => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      const dateFilter: DashboardFilter = {
+        id: 'existing-date', label: 'Existing date', isUniversalTime,
+        filter: { member, operator: 'inDateRange', values: ['last 7 days'] }
+      }
+      const otherFilter = createRegularFilter('status', 'Status')
+      props.dashboardFilters = [dateFilter, otherFilter]
+      render(<CompactFilterBar {...props} allowDateFilterCreation={false} />)
+
+      const expectRange = (dateRange: string | string[]) => {
+        expect(props.onDashboardFiltersChange).toHaveBeenLastCalledWith([
+          { ...dateFilter, filter: { member, operator: 'inDateRange', values: [], dateRange } },
+          otherFilter
+        ], 'existing-date')
+      }
+      await user.click(screen.getAllByRole('button', { name: '30D' })[0])
+      expectRange('last 30 days')
+      await user.click(screen.getAllByRole('button', { name: 'Custom' })[0])
+      await user.click(screen.getAllByRole('button', { name: 'Apply Custom Range' })[0])
+      expectRange(['2024-01-01', '2024-01-31'])
+      await user.click(screen.getAllByRole('button', { name: 'XTD' })[0])
+      await user.click(screen.getAllByRole('button', { name: 'YTD' })[0])
+      expectRange('YTD')
     })
   })
 

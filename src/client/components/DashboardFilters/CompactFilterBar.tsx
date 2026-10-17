@@ -10,16 +10,19 @@
  * layout shell.
  */
 
-import React from 'react'
+import React, { useId } from 'react'
+import { useTranslation } from '../../hooks/useTranslation.js'
 import type { DashboardFilter, CubeMeta } from '../../types.js'
 import { useCompactFilterBar } from './useCompactFilterBar.js'
 import { DesktopLayout, MobileLayout, type CompactFilterBarViewProps } from './CompactFilterBarParts.js'
 
 interface CompactFilterBarProps {
   dashboardFilters: DashboardFilter[]
+  readOnlyFilterIds?: string[]
   schema: CubeMeta | null
   isEditMode: boolean
-  onDashboardFiltersChange: (filters: DashboardFilter[]) => void
+  allowDateFilterCreation?: boolean
+  onDashboardFiltersChange: (filters: DashboardFilter[], changedFilterId: string) => void
   onAddFilter?: () => void
   onEditFilter?: (filterId: string) => void
   onRemoveFilter?: (filterId: string) => void
@@ -27,22 +30,30 @@ interface CompactFilterBarProps {
 
 const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   dashboardFilters,
+  readOnlyFilterIds = [],
   schema,
   isEditMode,
+  allowDateFilterCreation,
   onDashboardFiltersChange,
   onAddFilter,
   onEditFilter,
   onRemoveFilter
 }) => {
-  const bar = useCompactFilterBar(dashboardFilters, onDashboardFiltersChange)
+  const { t } = useTranslation()
+  const readOnlyDescriptionId = useId()
+  const bar = useCompactFilterBar(dashboardFilters, onDashboardFiltersChange, allowDateFilterCreation)
 
   // If no filters and not in edit mode, don't show anything
-  if (!isEditMode && bar.localFilters.length === 0) {
+  if (!isEditMode && dashboardFilters.length === 0) {
     return null
   }
 
   const viewProps: CompactFilterBarViewProps = {
     schema,
+    readOnlyFilterIds,
+    readOnlyDescriptionId,
+    dateReadOnly: !!bar.dateControlFilter && readOnlyFilterIds.includes(bar.dateControlFilter.id),
+    showDateControls: bar.showDateControls,
     isEditMode,
     onAddFilter,
     onEditFilter,
@@ -72,6 +83,9 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
         backgroundColor: 'var(--dc-surface)'
       }}
     >
+      {readOnlyFilterIds.length > 0 && (
+        <span id={readOnlyDescriptionId} className="dc:sr-only">{t('dashboard.filterControlledByHost')}</span>
+      )}
       <DesktopLayout {...viewProps} />
       <MobileLayout {...viewProps} />
     </div>

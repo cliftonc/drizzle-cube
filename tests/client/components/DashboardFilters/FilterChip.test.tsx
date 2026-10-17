@@ -252,6 +252,26 @@ describe('FilterChip', () => {
       expect(screen.queryByTestId('filter-value-popover')).not.toBeInTheDocument()
     })
 
+    it.each(['{Enter}', '[Space]'])('should open popover from the keyboard with %s', async key => {
+      const user = userEvent.setup()
+
+      render(<FilterChip {...defaultProps} isEditMode={false} />)
+      screen.getByRole('button').focus()
+      await user.keyboard(key)
+
+      expect(screen.getByTestId('filter-value-popover')).toBeInTheDocument()
+    })
+
+    it('should keep a read-only chip closed from the keyboard', async () => {
+      const user = userEvent.setup()
+
+      render(<FilterChip {...defaultProps} isEditMode={false} readOnly />)
+      screen.getByRole('button').focus()
+      await user.keyboard('{Enter}[Space]')
+
+      expect(screen.queryByTestId('filter-value-popover')).not.toBeInTheDocument()
+    })
+
     it('should not show edit/remove buttons in view mode', () => {
       render(<FilterChip {...defaultProps} isEditMode={false} />)
 

@@ -18,10 +18,12 @@ export default function DashboardFilterBar() {
   const { t } = useTranslation()
   const {
     dashboardFilters,
+    readOnlyFilterIds,
     editable,
     schema,
     config,
     onDashboardFiltersChange,
+    onConfigChange,
     onSave,
     selectedFilterId,
     selectedFilter,
@@ -35,18 +37,20 @@ export default function DashboardFilterBar() {
     <>
       {/* Dashboard Filter Panel - Always visible below toolbar */}
       <DashboardFilterPanel
-        dashboardFilters={dashboardFilters || []}
+        dashboardFilters={editable && isEditMode ? config.filters || [] : dashboardFilters || []}
+        readOnlyFilterIds={readOnlyFilterIds}
         editable={editable}
         schema={schema || null}
         dashboardConfig={config}
         onDashboardFiltersChange={onDashboardFiltersChange || (() => {})}
-        onSaveFilters={onSave ? async (filters: DashboardFilter[]) => {
+        onFilterDefinitionsChange={async (filters: DashboardFilter[]) => {
           const updatedConfig = {
             ...config,
             filters
           }
-          await onSave(updatedConfig)
-        } : undefined}
+          onConfigChange?.(updatedConfig)
+          await onSave?.(updatedConfig)
+        }}
         selectedFilterId={selectedFilterId}
         onFilterSelect={handleFilterSelect}
         isEditMode={isEditMode}

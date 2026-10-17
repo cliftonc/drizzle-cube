@@ -6,8 +6,10 @@
  * inline implementation.
  */
 
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import type { DashboardFilter, SimpleFilter } from '../../types.js'
+import { stableStringify } from '../../shared/queryKey.js'
+import { settlePendingChanges, type PendingChanges } from '../../shared/pendingChanges.js'
 import {
   detectPresetFromDateRange,
   calculateDateRange,
@@ -27,21 +29,9 @@ export function findDateControlFilter(filters: DashboardFilter[]): DashboardFilt
 
 export function useCompactFilterBar(
   dashboardFilters: DashboardFilter[],
-  onDashboardFiltersChange: (filters: DashboardFilter[]) => void
+  onDashboardFiltersChange: (filters: DashboardFilter[], changedFilterId: string) => void,
+  allowDateFilterCreation = true
 ) {
-  // Local state for immediate UI feedback on filter value changes.
-  // Without this, changes require a full round-trip through the parent's
-  // onConfigChange → state update → re-render cycle before being visible.
-  // If the parent doesn't handle onConfigChange (or uses dashboardFilters prop),
-  // the round-trip never completes and clicks appear to do nothing.
-  const [localFilters, setLocalFilters] = useState<DashboardFilter[]>(dashboardFilters)
-
-  // Sync from props when parent updates (e.g., after round-trip completes,
-  // or when filters change externally)
-  useEffect(() => {
-    setLocalFilters(dashboardFilters)
-  }, [dashboardFilters])
-
   // Dropdown state
   const [showCustomDropdown, setShowCustomDropdown] = useState(false)
   const [showXTDDropdown, setShowXTDDropdown] = useState(false)
@@ -54,7 +44,7 @@ export function useCompactFilterBar(
   // one, otherwise the first plain inDateRange filter. Binding to a plain filter
   // lets a dashboard declare a single date filter that narrows every portlet
   // mapped to it, including KPIs and breakdowns without time dimensions.
-  const dateControlFilter = useMemo(() => findDateControlFilter(localFilters), [localFilters])
+  const dateControlFilter = useMemo(() => findDateControlFilter(dashboardFilters), [dashboardFilters])
 
   // Get current date range from the bound date filter
   const currentDateRange = useMemo(() => {
@@ -89,36 +79,46 @@ export function useCompactFilterBar(
   // filter bound to the date control keeps its chip, which names its field and
   // allows clearing or editing either endpoint.
   const nonDateFilters = useMemo(() => {
-    return localFilters.filter(df => !df.isUniversalTime)
-  }, [localFilters])
+    return dashboardFilters.filter(df => !df.isUniversalTime)
+  }, [dashboardFilters])
 
   // Generate unique ID for new filters
   const generateFilterId = useCallback(() => {
     return `df_${Date.now()}_${Math.random().toString(36).substring(7)}`
   }, [])
 
+  // Requests the host has not shown yet. The bar keeps showing accepted values,
+  // but each request builds on the latest one, so a host that applies requests
+  // in order keeps every pick.
+  const requested = useRef<(PendingChanges & { filters: DashboardFilter[] }) | null>(null)
+
+  // Requests one changed filter, unless the latest request or the accepted values already have it.
+  const requestChange = useCallback((change: (filters: DashboardFilter[]) => DashboardFilter | undefined) => {
+    const accepted = stableStringify(dashboardFilters)
+    const pending = requested.current && settlePendingChanges(requested.current, accepted)
+    const base = pending?.filters ?? dashboardFilters
+    const changed = change(base)
+    if (!changed) return
+    const updatedFilters = base.some(df => df.id === changed.id)
+      ? base.map(df => df.id === changed.id ? changed : df)
+      : [...base, changed]
+    const key = stableStringify(updatedFilters)
+    if (key === stableStringify(base)) return
+    requested.current = { source: accepted, pending: [...(pending?.pending ?? []), key], filters: updatedFilters }
+    onDashboardFiltersChange(updatedFilters, changed.id)
+  }, [dashboardFilters, onDashboardFiltersChange])
+
   // Handle date range change (preset, custom, or XTD)
   const handleDateRangeChange = useCallback((newDateRange: string | string[]) => {
-    if (dateControlFilter) {
-      // Update the bound filter, whichever kind it is
-      const updatedFilters = localFilters.map(df => {
-        if (df.id === dateControlFilter.id) {
-          return {
-            ...df,
-            filter: {
-              ...(df.filter as SimpleFilter),
-              values: [],
-              dateRange: newDateRange
-            }
-          }
-        }
-        return df
-      })
-      setLocalFilters(updatedFilters)
-      onDashboardFiltersChange(updatedFilters)
-    } else {
+    requestChange(filters => {
+      const target = findDateControlFilter(filters)
+      if (target) {
+        // Update the bound filter, whichever kind it is
+        return { ...target, filter: { ...(target.filter as SimpleFilter), values: [], dateRange: newDateRange } }
+      }
+      if (!allowDateFilterCreation) return undefined
       // No date filter yet - create a universal time filter
-      const newFilter: DashboardFilter = {
+      return {
         id: generateFilterId(),
         label: 'Date Range',
         isUniversalTime: true,
@@ -129,11 +129,8 @@ export function useCompactFilterBar(
           dateRange: newDateRange
         }
       }
-      const updatedFilters = [...localFilters, newFilter]
-      setLocalFilters(updatedFilters)
-      onDashboardFiltersChange(updatedFilters)
-    }
-  }, [localFilters, dateControlFilter, onDashboardFiltersChange, generateFilterId])
+    })
+  }, [requestChange, generateFilterId, allowDateFilterCreation])
 
   // Handle preset selection
   const handlePresetSelect = useCallback((presetValue: string) => {
@@ -154,12 +151,8 @@ export function useCompactFilterBar(
 
   // Handle filter value change (for non-date filters)
   const handleFilterChange = useCallback((filterId: string, updatedFilter: DashboardFilter) => {
-    const updatedFilters = localFilters.map(df =>
-      df.id === filterId ? updatedFilter : df
-    )
-    setLocalFilters(updatedFilters)
-    onDashboardFiltersChange(updatedFilters)
-  }, [localFilters, onDashboardFiltersChange])
+    requestChange(() => ({ ...updatedFilter, id: filterId }))
+  }, [requestChange])
 
   // Resolve relative labels on each render because the UTC day can change
   // without a change to the saved expression.
@@ -178,7 +171,8 @@ export function useCompactFilterBar(
   }
 
   return {
-    localFilters,
+    dateControlFilter,
+    showDateControls: Boolean(dateControlFilter) || allowDateFilterCreation,
     showCustomDropdown,
     setShowCustomDropdown,
     showXTDDropdown,

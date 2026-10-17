@@ -1540,6 +1540,7 @@
   "dashboard.rows": "Rows",
   "dashboard.desktopRequired": "Desktop view required for editing",
   "dashboard.editModeHint": "Drag • Resize • Auto-save",
+  "dashboard.filterControlledByHost": "This filter is controlled by the host application.",
   "dashboard.filterSelectionMode": "Filter Selection Mode - Click portlets to toggle '{filterLabel}'",
   "dashboard.filterSelectionEscHint": "• Press Enter or Esc to save",
   "dashboard.filterFieldChipHint": "Click to change which field this filter applies to for this portlet",

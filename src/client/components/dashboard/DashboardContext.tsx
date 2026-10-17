@@ -48,6 +48,8 @@ export interface DashboardProviderProps {
   editable?: boolean
   /** Dashboard-level filters to apply to portlets */
   dashboardFilters?: DashboardFilter[]
+  /** IDs of host-owned filters that viewers cannot change; the filter bar disables their controls */
+  readOnlyFilterIds?: string[]
   /** Custom loading indicator for all portlets */
   loadingComponent?: ReactNode
   onConfigChange?: (config: DashboardConfig) => void
@@ -59,8 +61,13 @@ export interface DashboardProviderProps {
   colorPalette?: ColorPalette
   /** Cube metadata for filter panel */
   schema?: CubeMeta | null
-  /** Handler for dashboard filter changes */
-  onDashboardFiltersChange?: (filters: DashboardFilter[]) => void
+  /**
+   * Receives viewer value changes from the view-mode filter bar, with the ID of the
+   * filter the viewer changed. Filter definition edits in edit mode go to
+   * onConfigChange and then onSave, and the edit-mode list reads config.filters,
+   * not dashboardFilters.
+   */
+  onDashboardFiltersChange?: (filters: DashboardFilter[], changedFilterId: string) => void
   dashboardModes?: DashboardLayoutMode[]
   /** When true, DashboardToolbar renders nothing (both the top bar and floating toolbar) */
   hideToolbar?: boolean
@@ -81,13 +88,14 @@ export interface DashboardContextValue {
   // ---- Props threaded through ----
   config: DashboardConfig
   editable: boolean
+  readOnlyFilterIds?: string[]
   dashboardFilters?: DashboardFilter[]
   loadingComponent?: ReactNode
   colorPalette?: ColorPalette
   schema?: CubeMeta | null
   onSave?: (config: DashboardConfig) => Promise<void> | void
   onConfigChange?: (config: DashboardConfig) => void
-  onDashboardFiltersChange?: (filters: DashboardFilter[]) => void
+  onDashboardFiltersChange?: (filters: DashboardFilter[], changedFilterId: string) => void
   hideToolbar?: boolean
   dashboardMeta?: DashboardMeta
 
