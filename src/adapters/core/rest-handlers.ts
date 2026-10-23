@@ -19,6 +19,7 @@ import {
   formatErrorResponse
 } from '../utils.js'
 import type { HttpPort } from './http-port.js'
+import { readCacheOptions } from './cache-options.js'
 import {
   resolveSecurityContext,
   sanitizeForLog,
@@ -187,9 +188,9 @@ export function createRestHandlers(semanticLayer: SemanticLayerCompiler): RestHa
 
       // Extract security context ONCE (shared across all queries)
       const securityContext = await resolveSecurityContext(getBaseSecurityContext, (n) => port.getHeader(n))
-      const skipCache = port.getHeader('x-cache-control') === 'no-cache'
+      const cacheOptions = readCacheOptions((n) => port.getHeader(n))
 
-      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer, { skipCache })
+      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer, cacheOptions)
       return port.send(200, batchResult)
     } catch (error) {
       // codeql[js/log-injection] error source is internal, not user-controlled

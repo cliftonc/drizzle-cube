@@ -355,6 +355,20 @@ Execute analytical queries.
 ### `GET /cubejs-api/v1/load?query={encoded_query}`
 Execute queries via GET with query string parameter.
 
+#### Result-cache request headers
+
+`/load` (GET and POST) and `/batch` read two optional request headers that
+control the server-side result cache:
+
+- `x-cache-max-age: <seconds>` — the oldest cached result the caller will
+  accept. An older entry counts as a miss: the query runs and the fresh result
+  is written back to the cache. `0` skips the cache read (the result is still
+  written). Must be a non-negative integer; other values are ignored.
+- `x-cache-control: no-cache` — same as `x-cache-max-age: 0`.
+
+When both are sent, the smaller max-age wins. These headers have no effect
+unless the semantic layer is configured with a `cache` provider.
+
 ### `GET /cubejs-api/v1/meta`
 Get cube metadata and schema information. Tenant-scoped: this route resolves
 `extractSecurityContext` like every other route and returns only that tenant's

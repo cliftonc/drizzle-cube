@@ -76,7 +76,7 @@ describe('createCubeHttpHandler — REST /load core', () => {
     expect(semanticLayer.executeMultiCubeQuery).not.toHaveBeenCalled()
   })
 
-  it('honors x-cache-control: no-cache by passing skipCache: true to the executor', async () => {
+  it('honors x-cache-control: no-cache by passing maxAgeMs: 0 to the executor', async () => {
     const semanticLayer = createStubSemanticLayer()
     const handler = createCubeHttpHandler({ semanticLayer, onError: vi.fn() })
     const port = createFakePort({
@@ -89,7 +89,7 @@ describe('createCubeHttpHandler — REST /load core', () => {
     expect(semanticLayer.executeMultiCubeQuery).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      { skipCache: true }
+      { maxAgeMs: 0 }
     )
   })
 
@@ -233,4 +233,64 @@ describe('createCubeHttpHandler — tenant scoping and cache headers', () => {
     expect(port.sent[0].status).toBe(400)
     expect(port.headersSet['Cache-Control']).toBe('private, no-store')
   })
+})
+
+describe('createCubeHttpHandler — x-cache-max-age', () => {
+  const getBaseSC = async () => ({ organisationId: 'org1' })
+  const query = { measures: ['Employees.count'] }
+
+  /** Run one request through the named endpoint and return the ExecutionOptions it passed. */
+  async function optionsFor(endpoint: 'loadPost' | 'loadGet' | 'batch', headers: Record<string, string>) {
+    const semanticLayer = createStubSemanticLayer()
+    const handler = createCubeHttpHandler({ semanticLayer, onError: vi.fn() })
+    if (endpoint === 'loadPost') {
+      await handler.handleLoadPost(createFakePort({ body: query, headers }), getBaseSC)
+    } else if (endpoint === 'loadGet') {
+      await handler.handleLoadGet(
+        createFakePort({ queryParams: { query: JSON.stringify(query) }, headers }),
+        getBaseSC
+      )
+    } else {
+      await handler.handleBatchPost(createFakePort({ body: { queries: [query, query] }, headers }), getBaseSC)
+    }
+    const calls = semanticLayer.executeMultiCubeQuery.mock.calls
+    expect(calls.length).toBeGreaterThan(0)
+    return calls.map((call: unknown[]) => call[2])
+  }
+
+  for (const endpoint of ['loadPost', 'loadGet', 'batch'] as const) {
+    describe(endpoint, () => {
+      it('maps the header (seconds) to maxAgeMs', async () => {
+        for (const options of await optionsFor(endpoint, { 'x-cache-max-age': '30' })) {
+          expect(options).toEqual(expect.objectContaining({ maxAgeMs: 30000 }))
+        }
+      })
+
+      it('accepts 0 as a cache bypass', async () => {
+        for (const options of await optionsFor(endpoint, { 'x-cache-max-age': '0' })) {
+          expect(options).toEqual(expect.objectContaining({ maxAgeMs: 0 }))
+        }
+      })
+
+      it('ignores invalid values', async () => {
+        for (const value of ['-5', '1.5', 'abc', '', '10s', '1e3']) {
+          for (const options of await optionsFor(endpoint, { 'x-cache-max-age': value })) {
+            expect(options?.maxAgeMs, `x-cache-max-age: ${JSON.stringify(value)}`).toBeUndefined()
+          }
+        }
+      })
+
+      it('sends no max-age when neither header is present', async () => {
+        for (const options of await optionsFor(endpoint, {})) {
+          expect(options?.maxAgeMs).toBeUndefined()
+        }
+      })
+
+      it('lets x-cache-control: no-cache win over a larger max-age', async () => {
+        for (const options of await optionsFor(endpoint, { 'x-cache-max-age': '60', 'x-cache-control': 'no-cache' })) {
+          expect(options).toEqual(expect.objectContaining({ maxAgeMs: 0 }))
+        }
+      })
+    })
+  }
 })

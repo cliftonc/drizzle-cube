@@ -15,8 +15,8 @@
  * `src/server/query-handlers.ts`. That one is the MCP/agent-flavored load
  * (normalizes AI fields, throws on invalid, no cache control, returns raw
  * `{ data, annotation, query }`). This REST load does NOT normalize, maps
- * validation failures to 400 JSON, honors `x-cache-control: no-cache`, and
- * returns `formatCubeResponse(...)`. The two coexist by design; converging them
+ * validation failures to 400 JSON, honors `x-cache-max-age` and
+ * `x-cache-control: no-cache`, and returns `formatCubeResponse(...)`. The two coexist by design; converging them
  * is a separate, later decision.
  */
 
@@ -31,6 +31,7 @@ import {
   type BaseSecurityContextThunk
 } from './security-context.js'
 import { createRestHandlers, type RestHandlers } from './rest-handlers.js'
+import { readCacheOptions } from './cache-options.js'
 import { createMcpPostHandler } from './mcp-handler.js'
 
 export type { BaseSecurityContextThunk } from './security-context.js'
@@ -89,9 +90,9 @@ export function createCubeHttpHandler(options: CubeHttpHandlerOptions): CubeHttp
       ))
     }
 
-    const skipCache = port.getHeader('x-cache-control') === 'no-cache'
+    const cacheOptions = readCacheOptions((n) => port.getHeader(n))
 
-    const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
+    const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, cacheOptions)
     return port.send(200, formatCubeResponse(query, result, semanticLayer))
   }
 
