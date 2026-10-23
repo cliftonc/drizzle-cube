@@ -11,6 +11,7 @@ import type {
   ExplainResult,
   ExplainOptions
 } from '../types.js'
+import { maxAgeHeaders, resolveMaxAgeSeconds, type MaxAgeOptions } from './maxAge.js'
 
 /**
  * A failed query, carrying the server's structured validation detail when it
@@ -75,21 +76,24 @@ export class CubeClient {
     }
   }
 
-  async load(query: CubeQuery, options?: { bustCache?: boolean }): Promise<CubeResultSet> {
+  /**
+   * Load one query. `maxAgeSeconds` sends `x-cache-max-age`, so the server
+   * answers from its cache only when the cached result is at most that old;
+   * `bustCache: true` is max-age 0.
+   */
+  async load(query: CubeQuery, options?: MaxAgeOptions): Promise<CubeResultSet> {
     // Use GET with query parameter for standard Cube.js compatibility
     const queryString = JSON.stringify(query)
     const queryParam = encodeURIComponent(queryString)
     const url = `${this.apiUrl}/load?query=${queryParam}`
 
-    // Build headers, optionally adding cache bust header
+    // Build headers, adding the max-age headers when one was asked for
     const requestHeaders: Record<string, string> = {
       // Remove Content-Type for GET request
       ...Object.fromEntries(
         Object.entries(this.headers).filter(([key]) => key !== 'Content-Type')
-      )
-    }
-    if (options?.bustCache) {
-      requestHeaders['X-Cache-Control'] = 'no-cache'
+      ),
+      ...maxAgeHeaders(resolveMaxAgeSeconds(options))
     }
 
     const response = await fetch(url, {
@@ -186,16 +190,16 @@ export class CubeClient {
 
   /**
    * Execute multiple queries in a single batch request
-   * Used by BatchCoordinator to optimize network requests
-   * Pass { bustCache: true } to bypass server-side cache
+   * Used by BatchCoordinator to optimize network requests.
+   * `maxAgeSeconds` applies to every query in the batch; `bustCache: true` is
+   * max-age 0.
    */
-  async batchLoad(queries: CubeQuery[], options?: { bustCache?: boolean }): Promise<CubeResultSet[]> {
+  async batchLoad(queries: CubeQuery[], options?: MaxAgeOptions): Promise<CubeResultSet[]> {
     const url = `${this.apiUrl}/batch`
 
-    // Build headers with optional cache bypass
-    const requestHeaders: Record<string, string> = { ...this.headers }
-    if (options?.bustCache) {
-      requestHeaders['X-Cache-Control'] = 'no-cache'
+    const requestHeaders: Record<string, string> = {
+      ...this.headers,
+      ...maxAgeHeaders(resolveMaxAgeSeconds(options))
     }
 
     const response = await fetch(url, {
@@ -289,6 +293,17 @@ class ResultSet implements CubeResultSet {
       return this.loadResponse.results[0].cache
     }
     return this.loadResponse.cache
+  }
+
+  /**
+   * When the server sent this response (ISO string). For a cache miss that is
+   * when the rows were computed; on a hit, `cacheInfo().cachedAt` is.
+   */
+  lastRefreshTime(): string | undefined {
+    if (this.loadResponse.results && this.loadResponse.results[0]) {
+      return this.loadResponse.results[0].lastRefreshTime
+    }
+    return this.loadResponse.lastRefreshTime
   }
 }
 

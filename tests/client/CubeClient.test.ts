@@ -169,4 +169,93 @@ describe('CubeClient', () => {
       expect(result).toEqual(mockResponse)
     })
   })
+
+  describe('max-age headers', () => {
+    function okResponse(body: unknown) {
+      return { ok: true, json: () => Promise.resolve(body) }
+    }
+
+    function headersOfCall(index = 0): Record<string, string> {
+      const init: { headers: Record<string, string> } = mockFetch.mock.calls[index][1]
+      return init.headers
+    }
+
+    const query: CubeQuery = { measures: ['Users.count'] }
+
+    it('sends no max-age header by default', async () => {
+      mockFetch.mockResolvedValueOnce(okResponse({ data: [] }))
+      await client.load(query)
+
+      const headers = headersOfCall()
+      expect(headers['X-Cache-Max-Age']).toBeUndefined()
+      expect(headers['X-Cache-Control']).toBeUndefined()
+    })
+
+    it('sends x-cache-max-age on load', async () => {
+      mockFetch.mockResolvedValueOnce(okResponse({ data: [] }))
+      await client.load(query, { maxAgeSeconds: 30 })
+
+      const headers = headersOfCall()
+      expect(headers['X-Cache-Max-Age']).toBe('30')
+      expect(headers['X-Cache-Control']).toBeUndefined()
+    })
+
+    it('sends max-age 0 (and no-cache for older servers) for a bust on load', async () => {
+      mockFetch.mockResolvedValueOnce(okResponse({ data: [] }))
+      await client.load(query, { bustCache: true })
+
+      const headers = headersOfCall()
+      expect(headers['X-Cache-Max-Age']).toBe('0')
+      expect(headers['X-Cache-Control']).toBe('no-cache')
+    })
+
+    it('rounds fractional max-ages down and ignores negative ones', async () => {
+      mockFetch.mockResolvedValue(okResponse({ data: [] }))
+      await client.load(query, { maxAgeSeconds: 12.9 })
+      await client.load(query, { maxAgeSeconds: -1 })
+
+      expect(headersOfCall(0)['X-Cache-Max-Age']).toBe('12')
+      expect(headersOfCall(1)['X-Cache-Max-Age']).toBeUndefined()
+    })
+
+    it('sends x-cache-max-age on batchLoad', async () => {
+      mockFetch.mockResolvedValueOnce(okResponse({ results: [{ success: true, data: [] }] }))
+      await client.batchLoad([query], { maxAgeSeconds: 10 })
+
+      const [url] = mockFetch.mock.calls[0]
+      expect(url).toBe('http://localhost:4000/cubejs-api/v1/batch')
+      const headers = headersOfCall()
+      expect(headers['X-Cache-Max-Age']).toBe('10')
+      expect(headers['Content-Type']).toBe('application/json')
+    })
+
+    it('sends max-age 0 for a bust on batchLoad', async () => {
+      mockFetch.mockResolvedValueOnce(okResponse({ results: [{ success: true, data: [] }] }))
+      await client.batchLoad([query], { bustCache: true })
+
+      const headers = headersOfCall()
+      expect(headers['X-Cache-Max-Age']).toBe('0')
+      expect(headers['X-Cache-Control']).toBe('no-cache')
+    })
+  })
+
+  describe('result set freshness', () => {
+    it('exposes lastRefreshTime and cache info from the nested response', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          results: [{
+            data: [],
+            lastRefreshTime: '2026-10-23T10:00:30.000Z',
+            cache: { hit: true, cachedAt: '2026-10-23T10:00:00.000Z', ttlMs: 300000, ttlRemainingMs: 270000 }
+          }]
+        })
+      })
+
+      const resultSet = await client.load({ measures: ['Users.count'] })
+
+      expect(resultSet.lastRefreshTime?.()).toBe('2026-10-23T10:00:30.000Z')
+      expect(resultSet.cacheInfo?.()?.cachedAt).toBe('2026-10-23T10:00:00.000Z')
+    })
+  })
 })

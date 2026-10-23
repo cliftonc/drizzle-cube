@@ -436,4 +436,68 @@ describe('BatchCoordinator', () => {
       expect(result.rawData()).toEqual([{ 'Sales.total': 1000 }])
     })
   })
+
+  describe('max-age queues', () => {
+    it('sends queries with different max-ages as separate batches', async () => {
+      const executor = vi.fn((queries: CubeQuery[], _options?: { maxAgeSeconds?: number }) =>
+        Promise.resolve(queries.map(q => createMockResult([{ measure: q.measures?.[0] }]))))
+      const coordinator = new BatchCoordinator(executor)
+
+      const plain = coordinator.register(createMockQuery(['A.count']))
+      const thirtyA = coordinator.register(createMockQuery(['B.count']), { maxAgeSeconds: 30 })
+      const thirtyB = coordinator.register(createMockQuery(['C.count']), { maxAgeSeconds: 30 })
+      const ten = coordinator.register(createMockQuery(['D.count']), { maxAgeSeconds: 10 })
+
+      await vi.advanceTimersByTimeAsync(50)
+
+      expect(executor).toHaveBeenCalledTimes(3)
+      expect(executor).toHaveBeenCalledWith([createMockQuery(['A.count'])])
+      expect(executor).toHaveBeenCalledWith(
+        [createMockQuery(['B.count']), createMockQuery(['C.count'])],
+        { maxAgeSeconds: 30 }
+      )
+      expect(executor).toHaveBeenCalledWith([createMockQuery(['D.count'])], { maxAgeSeconds: 10 })
+
+      // Each caller still gets its own row back
+      expect((await plain).rawData()).toEqual([{ measure: 'A.count' }])
+      expect((await thirtyA).rawData()).toEqual([{ measure: 'B.count' }])
+      expect((await thirtyB).rawData()).toEqual([{ measure: 'C.count' }])
+      expect((await ten).rawData()).toEqual([{ measure: 'D.count' }])
+    })
+
+    it('treats a cache bust as the max-age 0 queue', async () => {
+      const executor = vi.fn((queries: CubeQuery[], _options?: { maxAgeSeconds?: number }) =>
+        Promise.resolve(queries.map(() => createMockResult())))
+      const coordinator = new BatchCoordinator(executor)
+
+      coordinator.register(createMockQuery(['A.count']), { maxAgeSeconds: 0 })
+      coordinator.register(createMockQuery(['B.count']), { maxAgeSeconds: 0 })
+      expect(coordinator.getQueueSize()).toBe(2)
+
+      await vi.advanceTimersByTimeAsync(50)
+
+      expect(executor).toHaveBeenCalledTimes(1)
+      expect(executor).toHaveBeenCalledWith(
+        [createMockQuery(['A.count']), createMockQuery(['B.count'])],
+        { maxAgeSeconds: 0 }
+      )
+    })
+
+    it('rejects only the queue whose batch failed', async () => {
+      const executor = vi.fn((queries: CubeQuery[], options?: { maxAgeSeconds?: number }) =>
+        options?.maxAgeSeconds === 10
+          ? Promise.reject(new Error('boom'))
+          : Promise.resolve(queries.map(() => createMockResult([{ ok: true }]))))
+      const coordinator = new BatchCoordinator(executor)
+
+      const ok = coordinator.register(createMockQuery(['A.count']), { maxAgeSeconds: 30 })
+      const failing = coordinator.register(createMockQuery(['B.count']), { maxAgeSeconds: 10 })
+      const failingExpectation = expect(failing).rejects.toThrow('boom')
+
+      await vi.advanceTimersByTimeAsync(50)
+
+      expect((await ok).rawData()).toEqual([{ ok: true }])
+      await failingExpectation
+    })
+  })
 })
