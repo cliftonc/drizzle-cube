@@ -13,7 +13,7 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import { useCubeApi } from '../../providers/CubeApiProvider.js'
 import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
 import type { CubeQuery, CubeResultSet } from '../../types.js'
@@ -22,6 +22,7 @@ import { cleanQueryForServer } from '../../shared/utils.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { withChartGapFilling, type ChartGapFillOptions } from '../../utils/gapFilling.js'
+import { createPendingLoadOptions, type MaxAgeOptions } from '../../client/maxAge.js'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300
@@ -70,11 +71,11 @@ export interface UseCubeLoadQueryOptions {
   gapFill?: ChartGapFillOptions
 }
 
-/** Options for the refetch function */
-export interface RefetchOptions {
-  /** If true, bypasses both client and server caches */
-  bustCache?: boolean
-}
+/**
+ * Options for the refetch function. `maxAgeSeconds` is the oldest cached
+ * server result accepted; `bustCache: true` is max-age 0.
+ */
+export type RefetchOptions = MaxAgeOptions
 
 export interface UseCubeLoadQueryResult {
   /** The result set from the query */
@@ -95,7 +96,10 @@ export interface UseCubeLoadQueryResult {
   debouncedQuery: CubeQuery | null
   /** Whether the current query is valid */
   isValidQuery: boolean
-  /** Manually refetch the data. Pass { bustCache: true } to bypass caches. */
+  /**
+   * Manually refetch the data. Pass `{ maxAgeSeconds }` to accept a cached
+   * server result at most that old, or `{ bustCache: true }` to bypass caches.
+   */
   refetch: (options?: RefetchOptions) => void
   /** Clear the query cache */
   clearCache: () => void
@@ -203,9 +207,8 @@ export function useCubeLoadQuery(
     return executedQueryKey === currentQueryKey
   }, [serverQuery, skip, manualRefresh, executedQueryKey, currentQueryKey])
 
-  // Ref to track when the next fetch should bust the cache
-  // This is used instead of replacing the queryFn to avoid the queryFn getting "stuck" with bustCache=true
-  const bustCacheRef = useRef(false)
+  // Load options for the next fetch, requested by refetch and read by the queryFn
+  const [pending] = useState(createPendingLoadOptions)
 
   // Execute query with TanStack Query
   const queryResult = useQuery({
@@ -213,26 +216,22 @@ export function useCubeLoadQuery(
     queryFn: async () => {
       if (!serverQuery) throw new Error('No query provided')
 
-      // Check if this fetch should bust the cache
-      const shouldBustCache = bustCacheRef.current
-      // Reset the flag immediately so subsequent fetches don't bust cache
-      bustCacheRef.current = false
+      // With the max-age asked for by the refetch that triggered this fetch, if any
+      return pending.load((loadOptions) => {
+        // Use batch coordinator if enabled (collects queries for a short window,
+        // one queue per max-age, so a bust is the max-age 0 queue)
+        if (enableBatching && batchCoordinator) {
+          return batchCoordinator.register(serverQuery, loadOptions)
+        }
 
-      // When busting cache, bypass batch coordinator and make direct API call
-      if (shouldBustCache) {
-        return cubeApi.load(serverQuery, { bustCache: true })
-      }
-
-      // Use batch coordinator if enabled (collects queries for 100ms window)
-      if (enableBatching && batchCoordinator) {
-        return batchCoordinator.register(serverQuery)
-      }
-
-      // Fall back to direct load when batching disabled
-      return cubeApi.load(serverQuery)
+        // Fall back to direct load when batching disabled
+        return cubeApi.load(serverQuery, loadOptions)
+      })
     },
     enabled: shouldExecute,
-    staleTime,
+    // A request made while skipped makes the cached result stale, so the query
+    // fetches with it once enabled
+    staleTime: () => (pending.hasRequest() ? 0 : staleTime),
     placeholderData: keepPreviousData ? (prevData) => prevData : undefined,
   })
 
@@ -290,22 +289,18 @@ export function useCubeLoadQuery(
 
   // Execute query function - for manual refresh mode, triggers execution
   // Also serves as refetch in auto mode
+  // While the hook is skipped (an off-screen portlet) the request waits until
+  // the query is enabled and fetches.
+  const { refetch: refetchQuery } = queryResult
   const executeQuery = useCallback((options?: RefetchOptions) => {
-    if (!serverQuery) return
+    pending.request(options)
+    if (!serverQuery || skip) return
 
     // Mark this query as executed (for manual refresh mode)
     setExecutedQueryKey(currentQueryKey)
 
-    if (options?.bustCache) {
-      // Set the ref flag so the queryFn knows to bypass cache
-      // The flag is reset inside queryFn after reading it
-      bustCacheRef.current = true
-    }
-
-    // Invalidate and refetch - invalidateQueries marks as stale AND triggers refetch
-    // when the query is being observed (which it is, via useQuery)
-    queryClient.invalidateQueries({ queryKey: createQueryKey(serverQuery) })
-  }, [serverQuery, currentQueryKey, queryClient])
+    void refetchQuery()
+  }, [pending, serverQuery, skip, currentQueryKey, refetchQuery])
 
   // Refetch is an alias for executeQuery for backward compatibility
   const refetch = executeQuery

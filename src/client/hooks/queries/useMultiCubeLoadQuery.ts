@@ -9,8 +9,8 @@
  * - BatchCoordinator integration for dashboard-level batching
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useCallback, useMemo, useState } from 'react'
 import { useCubeApi } from '../../providers/CubeApiProvider.js'
 import type { MultiQueryConfig, CubeQuery, CubeResultSet } from '../../types.js'
 import { cleanQueryForServer } from '../../shared/utils.js'
@@ -18,6 +18,7 @@ import { mergeQueryResults } from '../../utils/multiQueryUtils.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { withChartGapFilling, type ChartGapFillOptions } from '../../utils/gapFilling.js'
+import { createPendingLoadOptions, type MaxAgeOptions } from '../../client/maxAge.js'
 
 type MultiQueryServerConfig = MultiQueryConfig & { queries: CubeQuery[] }
 
@@ -113,8 +114,11 @@ export interface UseMultiCubeLoadQueryResult {
   debouncedConfig: MultiQueryConfig | null
   /** Whether the current config is valid */
   isValidConfig: boolean
-  /** Manually refetch the data. Pass { bustCache: true } to bypass client and server caches. */
-  refetch: (options?: { bustCache?: boolean }) => void
+  /**
+   * Manually refetch the data. Pass `{ maxAgeSeconds }` to accept cached server
+   * results at most that old, or `{ bustCache: true }` to bypass caches.
+   */
+  refetch: (options?: MaxAgeOptions) => void
 }
 
 /**
@@ -164,7 +168,6 @@ export function useMultiCubeLoadQuery(
   void _resetResultSetOnChange
 
   const { cubeApi, batchCoordinator, enableBatching } = useCubeApi()
-  const queryClient = useQueryClient()
 
   // Validate config
   const isValidConfig = isValidMultiQueryConfig(config)
@@ -185,23 +188,25 @@ export function useMultiCubeLoadQuery(
     }
   }, [debouncedConfig])
 
+  // Load options for the next fetch, requested by refetch and read by the queryFn
+  const [pending] = useState(createPendingLoadOptions)
+
   // Execute multi-query with TanStack Query
   const queryResult = useQuery({
     queryKey: createMultiQueryKey(serverConfig),
     queryFn: async () => {
       if (!serverConfig) throw new Error('No config provided')
 
-      let resultSets: CubeResultSet[]
-
-      // Use BatchCoordinator if enabled
-      if (enableBatching && batchCoordinator) {
-        resultSets = await Promise.all(
-          serverConfig.queries.map((query) => batchCoordinator.register(query))
-        )
-      } else {
+      const resultSets: CubeResultSet[] = await pending.load((loadOptions) => {
+        // Use BatchCoordinator if enabled
+        if (enableBatching && batchCoordinator) {
+          return Promise.all(
+            serverConfig.queries.map((query) => batchCoordinator.register(query, loadOptions))
+          )
+        }
         // Direct batch call
-        resultSets = await cubeApi.batchLoad(serverConfig.queries)
-      }
+        return cubeApi.batchLoad(serverConfig.queries, loadOptions)
+      })
 
       // Track per-query errors
       const errors: (Error | null)[] = resultSets.map((rs) => {
@@ -247,60 +252,20 @@ export function useMultiCubeLoadQuery(
       }
     },
     enabled: !!serverConfig && !skip,
-    staleTime,
+    // A request made while skipped makes the cached result stale, so the query
+    // fetches with it once enabled
+    staleTime: () => (pending.hasRequest() ? 0 : staleTime),
     placeholderData: keepPreviousData ? (prevData) => prevData : undefined,
   })
 
-  // Refetch function - forces immediate refetch
-  // Pass { bustCache: true } to bypass both client and server caches
-  const refetch = (options?: { bustCache?: boolean }) => {
-    if (serverConfig) {
-      if (options?.bustCache) {
-        // Remove from TanStack Query cache first
-        queryClient.removeQueries({
-          queryKey: createMultiQueryKey(serverConfig),
-        })
-        // Fetch with cache bust header
-        queryClient.fetchQuery({
-          queryKey: createMultiQueryKey(serverConfig),
-          queryFn: async () => {
-            // Direct batch call with bustCache
-            const resultSets = await cubeApi.batchLoad(
-              serverConfig.queries,
-              { bustCache: true }
-            )
-            // Track per-query errors
-            const errors: (Error | null)[] = resultSets.map((rs) => {
-              if (rs && 'error' in rs && (rs as { error?: string }).error) {
-                return new Error((rs as { error: string }).error)
-              }
-              return null
-            })
-            // Merge results based on strategy
-            const data = serverConfig.mergeStrategy === 'concat'
-              ? resultSets.flatMap((rs) => rs?.rawData() || [])
-              : resultSets[0]?.rawData() || []
-            // Keep per-query data for table views
-            const perQueryData = serverConfig.mergeStrategy === 'concat'
-              ? resultSets.map((rs) => rs?.rawData() || [])
-              : []
-            return {
-              data,
-              resultSets,
-              perQueryData,
-              errors,
-              firstError: errors.find((e) => e !== null) || null,
-              config: serverConfig,
-            }
-          },
-        })
-      } else {
-        queryClient.refetchQueries({
-          queryKey: createMultiQueryKey(serverConfig),
-        })
-      }
-    }
-  }
+  // Refetch with the requested max-age. While the hook is skipped (an
+  // off-screen portlet) the request waits until the query is enabled and
+  // fetches.
+  const { refetch: refetchQuery } = queryResult
+  const refetch = useCallback((options?: MaxAgeOptions) => {
+    pending.request(options)
+    if (serverConfig && !skip) void refetchQuery()
+  }, [pending, serverConfig, skip, refetchQuery])
 
   // Gap-fill for a chart when asked. Uses the config the result was fetched
   // with, so placeholder data from a previous config merges consistently.

@@ -57,6 +57,7 @@ import { useRowLayoutEngine } from './dashboard/useRowLayoutEngine.js'
 import { useDashboardController } from './dashboard/useDashboardController.js'
 import type { SnapEdge } from './dashboard/groupUtils.js'
 import type { LayoutUpdate } from './dashboard/useRowLayoutEngine.js'
+import type { MaxAgeOptions } from '../client/maxAge.js'
 
 // ============================================================================
 // Types
@@ -84,9 +85,9 @@ export interface UseDashboardOptions {
   /** Grid width for row calculations */
   gridWidth?: number
   /** Portlet component refs for refresh functionality */
-  portletComponentRefs?: React.MutableRefObject<Record<string, { refresh: (options?: { bustCache?: boolean }) => void } | null>>
+  portletComponentRefs?: React.MutableRefObject<Record<string, { refresh: (options?: MaxAgeOptions) => void } | null>>
   /** Portlet refresh handler (external) */
-  onPortletRefresh?: (portletId: string, options?: { bustCache?: boolean }) => void
+  onPortletRefresh?: (portletId: string, options?: MaxAgeOptions) => void
   /** Ref to the dashboard container element for thumbnail capture */
   dashboardRef?: React.RefObject<HTMLElement | null>
 }
@@ -185,7 +186,7 @@ export interface UseDashboardActions {
   savePortlet: (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => Promise<string | null>
   deletePortlet: (portletId: string) => Promise<void>
   duplicatePortlet: (portletId: string) => Promise<string | undefined>
-  refreshPortlet: (portletId: string, options?: { bustCache?: boolean }) => void
+  refreshPortlet: (portletId: string, options?: MaxAgeOptions) => void
 
   // Filter Operations
   toggleFilterForPortlet: (portletId: string, filterId: string) => Promise<void>

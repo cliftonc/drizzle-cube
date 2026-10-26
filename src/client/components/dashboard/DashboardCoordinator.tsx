@@ -58,6 +58,7 @@ import DashboardContext, {
   type DashboardContextValue,
   type DashboardProviderProps
 } from './DashboardContext.js'
+import type { MaxAgeOptions } from '../../client/maxAge.js'
 
 const RefreshIcon = getIcon('refresh')
 const EditIcon = getIcon('edit')
@@ -716,8 +717,8 @@ export default function DashboardCoordinator({
   }, [handlePortletDragEnd])
 
   // Handle portlet refresh - use action from hook
-  // Pass { bustCache: true } to bypass client and server caches (shift+click)
-  const handlePortletRefresh = useCallback((portletId: string, options?: { bustCache?: boolean }) => {
+  // { bustCache: true } (shift+click) is max-age 0
+  const handlePortletRefresh = useCallback((portletId: string, options?: MaxAgeOptions) => {
     actionsRef.current.refreshPortlet(portletId, options)
   }, [])
 

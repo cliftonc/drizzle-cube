@@ -38,6 +38,7 @@ import type {
   DashboardMeta,
   PortletExpandPayload
 } from '../../types.js'
+import type { MaxAgeOptions } from '../../client/maxAge.js'
 
 /**
  * Props accepted by DashboardProvider (the public composable entry point).
@@ -170,7 +171,7 @@ export interface DashboardContextValue {
   handleSelectAllForFilter: (filterId: string) => Promise<void>
   handleSaveFilterConfig: (mapping: DashboardFilterMapping) => Promise<void>
   handlePortletSave: (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => Promise<void>
-  handlePortletRefresh: (portletId: string, options?: { bustCache?: boolean }) => void
+  handlePortletRefresh: (portletId: string, options?: MaxAgeOptions) => void
   handleLayoutChange: (layout: Layout) => void
   handleDragStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | null) => void
   handleResizeStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | null) => void

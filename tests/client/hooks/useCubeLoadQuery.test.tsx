@@ -315,6 +315,105 @@ describe('useCubeLoadQuery', () => {
     })
   })
 
+  describe('refetch max-age', () => {
+    function recordMaxAges(): Array<string | null> {
+      const maxAges: Array<string | null> = []
+      const respond = ({ request }: { request: Request }) => {
+        maxAges.push(request.headers.get('x-cache-max-age'))
+        return HttpResponse.json({
+          data: mockQueryData,
+          annotation: { measures: {}, dimensions: {}, timeDimensions: {} },
+          query: validQuery
+        })
+      }
+      server.use(http.get('*/cubejs-api/v1/load', respond), http.post('*/cubejs-api/v1/load', respond))
+      return maxAges
+    }
+
+    // A dashboard card and the expand modal showing the same portlet: one
+    // TanStack query, two observers. The modal renders last, so the query
+    // holds the modal's options; each refetch must still run its own queryFn.
+    it.each([
+      { observer: 'card' as const, maxAgeSeconds: 10 },
+      { observer: 'modal' as const, maxAgeSeconds: 20 }
+    ])('sends the $observer max-age when two hooks observe the same query', async ({ observer, maxAgeSeconds }) => {
+      const maxAges = recordMaxAges()
+      const { wrapper } = createHookWrapper()
+      const { result } = renderHook(
+        () => ({
+          card: useCubeLoadQuery(validQuery, { debounceMs: 0 }),
+          modal: useCubeLoadQuery(validQuery, { debounceMs: 0 })
+        }),
+        { wrapper }
+      )
+      await waitFor(() => expect(result.current.card.isLoading).toBe(false))
+      const initialCount = maxAges.length
+
+      act(() => {
+        result.current[observer].refetch({ maxAgeSeconds })
+      })
+
+      await waitFor(() => expect(maxAges.length).toBeGreaterThan(initialCount))
+      expect(maxAges.slice(initialCount)).toEqual([String(maxAgeSeconds)])
+    })
+
+    it('keeps the old rows visible while a bust refetches', async () => {
+      const maxAges = recordMaxAges()
+      const { wrapper } = createHookWrapper()
+      const { result } = renderHook(
+        () => useCubeLoadQuery(validQuery, { debounceMs: 0 }),
+        { wrapper }
+      )
+      await waitFor(() => expect(result.current.resultSet).not.toBeNull())
+      const initialCount = maxAges.length
+
+      act(() => {
+        result.current.refetch({ bustCache: true })
+      })
+
+      await waitFor(() => expect(result.current.isFetching).toBe(true))
+      expect(result.current.resultSet).not.toBeNull()
+      expect(result.current.isLoading).toBe(false)
+      await waitFor(() => expect(maxAges.length).toBeGreaterThan(initialCount))
+      expect(maxAges.slice(initialCount)).toEqual(['0'])
+    })
+
+    it('keeps the max-age for a retry after a failed attempt', async () => {
+      const maxAges: Array<string | null> = []
+      let failNext = false
+      const respond = ({ request }: { request: Request }) => {
+        maxAges.push(request.headers.get('x-cache-max-age'))
+        if (failNext) {
+          failNext = false
+          return HttpResponse.json({ error: 'Unavailable' }, { status: 503 })
+        }
+        return HttpResponse.json({
+          data: mockQueryData,
+          annotation: { measures: {}, dimensions: {}, timeDimensions: {} },
+          query: validQuery
+        })
+      }
+      server.use(http.get('*/cubejs-api/v1/load', respond), http.post('*/cubejs-api/v1/load', respond))
+
+      const { wrapper, queryClient } = createHookWrapper()
+      queryClient.setDefaultOptions({ queries: { ...queryClient.getDefaultOptions().queries, retry: 1, retryDelay: 0 } })
+      const { result } = renderHook(
+        () => useCubeLoadQuery(validQuery, { debounceMs: 0 }),
+        { wrapper }
+      )
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+      const initialCount = maxAges.length
+
+      failNext = true
+      act(() => {
+        result.current.refetch({ bustCache: true })
+      })
+
+      await waitFor(() => expect(maxAges.length).toBe(initialCount + 2))
+      expect(maxAges.slice(initialCount)).toEqual(['0', '0'])
+    })
+  })
+
   describe('clearCache', () => {
     it('should provide clearCache function', async () => {
       const { wrapper } = createHookWrapper()

@@ -7,6 +7,7 @@ import type { HTMLAttributes, ReactNode, ComponentType, CSSProperties } from 're
 import type { AnalyticsPortletRef, ChartType, DashboardFilter, DashboardLayoutMode, PortletConfig, PortletExpandPayload } from '../../types.js'
 import type { PortletCardVariant } from './cardStyles.js'
 import type { ColorPalette } from '../../utils/colorPalettes.js'
+import type { MaxAgeOptions } from '../../client/maxAge.js'
 
 // Shape mirrors DashboardPortletCardProps; kept here to type the comparators.
 export interface DashboardPortletCardProps {
@@ -24,7 +25,7 @@ export interface DashboardPortletCardProps {
   setPortletComponentRef: (portletId: string, element: AnalyticsPortletRef | null) => void
   callbacks: {
     onToggleFilter: (portletId: string, filterId: string) => void
-    onRefresh: (portletId: string, options?: { bustCache?: boolean }) => void
+    onRefresh: (portletId: string, options?: MaxAgeOptions) => void
     onDuplicate: (portletId: string) => void
     onEdit: (portlet: PortletConfig) => void
     onDelete: (portletId: string) => void

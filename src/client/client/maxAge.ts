@@ -49,3 +49,63 @@ export function maxAgeHeaders(maxAgeSeconds: number | undefined): Record<string,
   }
   return { 'X-Cache-Max-Age': String(maxAgeSeconds) }
 }
+
+/**
+ * Merge two refetch requests into the options one fetch should use: the
+ * stricter max-age wins and `bustCache` resolves to max-age 0. Returns `a`
+ * itself when `b` asks for nothing stricter, and undefined when neither asks
+ * for a max-age.
+ */
+export function mergeLoadOptions(a?: MaxAgeOptions, b?: MaxAgeOptions): MaxAgeOptions | undefined {
+  const current = resolveMaxAgeSeconds(a)
+  const merged = stricterMaxAge(current, resolveMaxAgeSeconds(b))
+  if (merged === undefined) return undefined
+  if (a && merged === current) return a
+  return { maxAgeSeconds: merged }
+}
+
+/** Load options a refetch asked for, kept until a fetch with them succeeds. */
+export interface PendingLoadOptions {
+  /** Remember options for the next fetch, merged with any already pending. */
+  request: (options?: MaxAgeOptions) => void
+  /** Whether a request is waiting for a successful fetch. */
+  hasRequest: () => boolean
+  /**
+   * Run one fetch attempt with the pending options. Success clears them unless
+   * a request made meanwhile replaced them; failure keeps them for the retry.
+   */
+  load: <T>(fetch: (options?: MaxAgeOptions) => Promise<T>) => Promise<T>
+}
+
+/**
+ * Per-hook carrier for a refetch's load options.
+ *
+ * A TanStack query function takes no per-call arguments, so a query hook's
+ * refetch records its options here and then refetches through the hook's own
+ * observer, which runs this hook's query function (even while the query is
+ * disabled). Going through `queryClient.invalidateQueries` instead would run
+ * the query function of whichever observer of the query rendered last, such
+ * as a dashboard card's expand modal.
+ *
+ * A skipped hook (an off-screen portlet) only records the request; its query
+ * function picks it up when the hook is enabled and fetches. Options stay
+ * pending through retries and clear when a fetch with them succeeds.
+ */
+export function createPendingLoadOptions(): PendingLoadOptions {
+  let pending: MaxAgeOptions | undefined
+  return {
+    request(options) {
+      pending = mergeLoadOptions(pending, options)
+    },
+    hasRequest() {
+      return pending !== undefined
+    },
+    async load(fetch) {
+      const options = pending
+      const result = await fetch(options)
+      // Retries keep the options; a stricter request made meanwhile survives
+      if (pending === options) pending = undefined
+      return result
+    }
+  }
+}

@@ -14,6 +14,8 @@ import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import type { CubeQuery } from '../../types.js'
+import { createPendingLoadOptions, type MaxAgeOptions } from '../../client/maxAge.js'
+import { resultSetComputedAt } from '../../utils/freshness.js'
 import type {
   ServerFlowQuery,
   FlowChartData,
@@ -47,6 +49,8 @@ export interface UseFlowQueryResult {
   rawData: unknown[] | null
   /** Cache metadata when served from cache */
   cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
+  /** When the rows were computed on the server (cache time on a hit, else response time) */
+  computedAt?: string | null
   /** Is initial load in progress */
   isLoading: boolean
   /** Is refetch in progress */
@@ -58,7 +62,7 @@ export interface UseFlowQueryResult {
   /** Error if query failed */
   error: Error | null
   /** Refetch the query. Pass { bustCache: true } to bypass client and server caches. */
-  refetch: (options?: { bustCache?: boolean }) => void
+  refetch: (options?: MaxAgeOptions) => void
   /** Reset the query cache */
   reset: () => void
   /** The server query being executed */
@@ -221,6 +225,9 @@ export function useFlowQuery(
     }
   }, [manualRefresh, query, skip, isValid, currentQueryKey])
 
+  // Load options for the next fetch, requested by refetch and read by the queryFn
+  const [pending] = useState(createPendingLoadOptions)
+
   // Execute flow query via TanStack Query
   const queryResult = useQuery({
     queryKey,
@@ -230,11 +237,10 @@ export function useFlowQuery(
       }
 
       const startTime = performance.now()
-
       try {
         // Send flow query to server (single request)
-        const resultSet = await cubeApi.load(
-          debouncedQuery as unknown as CubeQuery
+        const resultSet = await pending.load((loadOptions) =>
+          cubeApi.load(debouncedQuery as unknown as CubeQuery, loadOptions)
         )
       const rawData = resultSet.rawData()
       const executionTime = performance.now() - startTime
@@ -244,6 +250,7 @@ export function useFlowQuery(
         rawData,
         executionTime,
         cacheInfo,
+        computedAt: resultSetComputedAt(resultSet),
         // Include query key in result so we can detect stale data
         // (data from a different query key, e.g., sankey vs sunburst mode)
           // We store the RAW query key so we can compare against the current raw query
@@ -257,7 +264,9 @@ export function useFlowQuery(
     },
     // In manual refresh mode, only execute when explicitly triggered
     enabled: shouldExecute,
-    staleTime: 60000, // 1 minute cache
+    // 1 minute cache; a request made while skipped makes the cached result
+    // stale, so the query fetches with it once enabled
+    staleTime: () => (pending.hasRequest() ? 0 : 60000),
     gcTime: 5 * 60 * 1000, // 5 minute garbage collection
   })
 
@@ -302,37 +311,22 @@ export function useFlowQuery(
   }, [queryResult.data, queryResult.isSuccess, queryResult.isFetching, onComplete, isDataStale])
 
   /**
-   * Refetch the flow query
-   * Pass { bustCache: true } to bypass both client and server caches
+   * Refetch the flow query.
+   * `{ maxAgeSeconds }` accepts a cached server result at most that old;
+   * `{ bustCache: true }` is max-age 0.
+   * While the hook is skipped (an off-screen portlet) the request waits until
+   * the query is enabled and fetches.
    */
-  const refetch = useCallback((options?: { bustCache?: boolean }) => {
-    if (debouncedQuery && isValid) {
-      // Mark this query as executed (for manual refresh mode)
-      setExecutedQueryKey(currentQueryKey)
+  const { refetch: refetchQuery } = queryResult
+  const refetch = useCallback((options?: MaxAgeOptions) => {
+    pending.request(options)
+    if (!debouncedQuery || !isValid || skip) return
 
-      if (options?.bustCache) {
-        // Remove from TanStack Query cache first
-        queryClient.removeQueries({ queryKey })
-        // Fetch with cache bust header
-        queryClient.fetchQuery({
-          queryKey,
-          queryFn: async () => {
-            const startTime = performance.now()
-            const resultSet = await cubeApi.load(
-              debouncedQuery as unknown as CubeQuery,
-              { bustCache: true }
-            )
-            const rawData = resultSet.rawData()
-            const executionTime = performance.now() - startTime
-            const cacheInfo = resultSet.cacheInfo?.()
-            return { rawData, executionTime, cacheInfo }
-          },
-        })
-      } else {
-        queryResult.refetch()
-      }
-    }
-  }, [debouncedQuery, isValid, queryResult, queryClient, queryKey, cubeApi, currentQueryKey])
+    // Mark this query as executed (for manual refresh mode)
+    setExecutedQueryKey(currentQueryKey)
+
+    void refetchQuery()
+  }, [pending, debouncedQuery, isValid, skip, currentQueryKey, refetchQuery])
 
   /**
    * Reset clears the query cache
@@ -345,6 +339,7 @@ export function useFlowQuery(
     data: chartData,
     rawData: isDataStale ? null : (queryResult.data?.rawData ?? null),
     cacheInfo: queryResult.data?.cacheInfo ?? null,
+    computedAt: isDataStale ? null : (queryResult.data?.computedAt ?? null),
     isLoading: queryResult.isLoading || isDataStale,
     isFetching: queryResult.isFetching,
     isDebouncing,

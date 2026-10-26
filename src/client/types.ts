@@ -7,6 +7,7 @@ import type { ColorPalette } from './utils/colorPalettes.js'
 import type { FunnelBindingKey } from './types/funnel.js'
 import type { FlowChartData } from './types/flow.js'
 import type { RetentionChartData } from './types/retention.js'
+import type { MaxAgeOptions } from './client/maxAge.js'
 
 // Time granularity type for drill-down support
 export type TimeGranularity = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'
@@ -744,7 +745,11 @@ export interface PortletExpandPayload {
 
 /** Imperative handle of `AnalyticsPortlet`. */
 export interface AnalyticsPortletRef {
-  refresh: (options?: { bustCache?: boolean }) => void
+  /**
+   * Refetch the portlet's data. `maxAgeSeconds` accepts a cached server result
+   * at most that old; `bustCache: true` is max-age 0.
+   */
+  refresh: (options?: MaxAgeOptions) => void
   /** Returns the current view state of this chart instance. */
   getViewState: () => PortletViewState
 }

@@ -49,7 +49,7 @@ src/client/
 ├── client/                        API client
 │   ├── CubeClient.ts             HTTP client for Cube-compatible API
 │   ├── BatchCoordinator.ts       Request batching (one queue per max-age)
-│   └── maxAge.ts                 Max-age options → x-cache-max-age headers
+│   └── maxAge.ts                 Max-age options → headers; per-hook pending load options for refetch
 │
 ├── components/                    React components
 │   ├── AnalysisBuilder/           Query builder (~50 files, see AnalysisBuilder CLAUDE.md)
@@ -198,6 +198,7 @@ src/client/
     ├── configMigration.ts         Config version migration
     ├── dashboardExport.ts         Dashboard JSON export envelope + import validation
     ├── drillQueryBuilder.ts       Drill-down query construction
+    ├── freshness.ts               Computed-at of a result
     ├── filterUtils.ts             Filter manipulation
     ├── funnelExecution.ts, funnelValidation.ts  Funnel helpers
     ├── multiQueryUtils.ts, multiQueryValidation.ts  Multi-query helpers

@@ -8,24 +8,18 @@
  */
 
 import { useCallback } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import {
   useCubeLoadQuery,
   useMultiCubeLoadQuery,
   useFunnelQuery,
   useFlowQuery,
-  useRetentionQuery,
-  createQueryKey,
-  createMultiQueryKey
+  useRetentionQuery
 } from '../../hooks/queries/index.js'
-import { cleanQueryForServer } from '../../shared/utils.js'
+import { resolveMaxAgeSeconds, type MaxAgeOptions } from '../../client/maxAge.js'
+import { oldestComputedAt, resultSetComputedAt } from '../../utils/freshness.js'
 import type { ChartDisplayConfig, CubeQuery, MultiQueryConfig, ServerFunnelQuery } from '../../types.js'
 import type { FlowChartData, ServerFlowQuery } from '../../types/flow.js'
 import type { RetentionChartData, ServerRetentionQuery } from '../../types/retention.js'
-
-interface RefreshOptions {
-  bustCache?: boolean
-}
 
 export interface UsePortletQueryResultsParams {
   activeQuery: CubeQuery | null
@@ -55,7 +49,9 @@ export interface PortletQueryResults {
   funnelCacheInfo: ReturnType<typeof useFunnelQuery>['cacheInfo']
   flowCacheInfo: ReturnType<typeof useFlowQuery>['cacheInfo']
   retentionCacheInfo: ReturnType<typeof useRetentionQuery>['cacheInfo']
-  refresh: (options?: RefreshOptions) => void
+  /** When the active mode's rows were computed on the server (oldest result for multi-query) */
+  computedAt: string | undefined
+  refresh: (options?: MaxAgeOptions) => void
   retry: () => void
 }
 
@@ -76,8 +72,6 @@ export function usePortletQueryResults(params: UsePortletQueryResultsParams): Po
     displayConfig
   } = params
   const gapFill = { fillMissingDates: displayConfig?.fillMissingDates }
-
-  const queryClient = useQueryClient()
 
   // Derive per-hook skip flags from visibility + mode. A hook runs only for its
   // own mode, when the portlet is visible (or eager) and queries aren't skipped.
@@ -176,47 +170,35 @@ export function usePortletQueryResults(params: UsePortletQueryResultsParams): Po
   // Retention data is separate since it has a different structure (rows/periods vs array)
   const retentionChartData = isRetentionMode ? retentionQueryResult.chartData : null
 
-  // Either remove (bustCache) or invalidate the given cache key.
-  const bustOrInvalidate = useCallback((queryKey: readonly unknown[], bustCache: boolean) => {
-    if (bustCache) {
-      queryClient.removeQueries({ queryKey })
-    } else {
-      queryClient.invalidateQueries({ queryKey })
-    }
-  }, [queryClient])
+  const computedAt = pickByMode<string | undefined>({
+    retention: retentionQueryResult.computedAt ?? undefined,
+    flow: flowQueryResult.computedAt ?? undefined,
+    funnel: funnelQueryResult.computedAt ?? undefined,
+    multi: oldestComputedAt((multiQueryResult.resultSets ?? []).map(rs => resultSetComputedAt(rs))),
+    single: resultSetComputedAt(singleQueryResult.resultSet)
+  })
 
-  // Expose refresh function. Invalidates cache and forces a fresh fetch from the
-  // server. Pass bustCache: true to bypass both client and server caches.
-  const refresh = useCallback((options?: RefreshOptions) => {
-    const bustCache = options?.bustCache ?? false
+  // The one refresh path: the refresh button, shift+click and interval ticks
+  // all land here. Each hook refetches through its own observer and its own
+  // queryFn sends the max-age; old rows stay visible while it fetches. A hook
+  // that is skipped (portlet off-screen) fetches when the portlet scrolls into
+  // view.
+  const refresh = useCallback((options?: MaxAgeOptions) => {
+    const maxAgeSeconds = resolveMaxAgeSeconds(options)
+    const refetchOptions = maxAgeSeconds === undefined ? undefined : { maxAgeSeconds }
 
     if (isRetentionMode && serverRetentionQuery) {
-      // Retention query key format: ['cube', 'retention', JSON.stringify(serverQuery)]
-      bustOrInvalidate(['cube', 'retention', JSON.stringify(serverRetentionQuery)], bustCache)
-      retentionQueryResult.refetch()
+      retentionQueryResult.refetch(refetchOptions)
     } else if (isFlowMode && serverFlowQuery) {
-      // Flow query key format: ['cube', 'flow', JSON.stringify(serverQuery)]
-      bustOrInvalidate(['cube', 'flow', JSON.stringify(serverFlowQuery)], bustCache)
-      flowQueryResult.refetch({ bustCache })
+      flowQueryResult.refetch(refetchOptions)
     } else if (isFunnelMode && serverFunnelQuery) {
-      // Funnel query key format: ['cube', 'funnel', stepCount, JSON.stringify(serverQuery)]
-      const stepCount = serverFunnelQuery.funnel?.steps?.length || 0
-      bustOrInvalidate(['cube', 'funnel', stepCount, JSON.stringify(serverFunnelQuery)], bustCache)
-      funnelQueryResult.execute({ bustCache })
+      funnelQueryResult.execute(refetchOptions)
     } else if (isMultiQuery && multiQueryConfig) {
-      // Clean each query to match the cache key format used by useMultiCubeLoadQuery
-      const cleanedConfig = {
-        ...multiQueryConfig,
-        queries: multiQueryConfig.queries.map((q: CubeQuery) => cleanQueryForServer(q))
-      }
-      bustOrInvalidate(createMultiQueryKey(cleanedConfig), bustCache)
-      multiQueryResult.refetch({ bustCache })
+      multiQueryResult.refetch(refetchOptions)
     } else if (activeQuery) {
-      // Clean the query to match the cache key format used by useCubeLoadQuery
-      bustOrInvalidate(createQueryKey(cleanQueryForServer(activeQuery)), bustCache)
-      singleQueryResult.refetch({ bustCache })
+      singleQueryResult.refetch(refetchOptions)
     }
-  }, [isRetentionMode, isFlowMode, isFunnelMode, isMultiQuery, multiQueryConfig, activeQuery, bustOrInvalidate, serverRetentionQuery, serverFlowQuery, serverFunnelQuery, retentionQueryResult, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
+  }, [isRetentionMode, isFlowMode, isFunnelMode, isMultiQuery, multiQueryConfig, activeQuery, serverRetentionQuery, serverFlowQuery, serverFunnelQuery, retentionQueryResult, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
 
   const retry = useCallback(() => {
     if (isRetentionMode) {
@@ -243,6 +225,7 @@ export function usePortletQueryResults(params: UsePortletQueryResultsParams): Po
     funnelCacheInfo: funnelQueryResult.cacheInfo,
     flowCacheInfo: flowQueryResult.cacheInfo,
     retentionCacheInfo: retentionQueryResult.cacheInfo,
+    computedAt,
     refresh,
     retry
   }

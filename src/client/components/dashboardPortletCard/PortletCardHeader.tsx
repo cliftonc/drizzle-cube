@@ -10,6 +10,7 @@ import DebugModal from '../DebugModal.js'
 import { getIcon } from '../../icons/registry.js'
 import type { PortletDebugDataEntry } from '../../stores/dashboardStore.js'
 import EditActionButtons, { ICON_STYLE, type CardIcons } from './EditActionButtons.js'
+import type { MaxAgeOptions } from '../../client/maxAge.js'
 
 
 interface PortletCardHeaderProps {
@@ -30,7 +31,7 @@ interface PortletCardHeaderProps {
   /** Labels of mapped dashboard date filters that cannot narrow this portlet */
   unreachableDateFilterLabels?: string[]
   icons: CardIcons
-  onRefresh: (options?: { bustCache?: boolean }) => void
+  onRefresh: (options?: MaxAgeOptions) => void
   onHoverRefreshChange: (hovering: boolean) => void
   onCopyToClipboard: (event: React.MouseEvent | React.TouchEvent) => void
   onExportXlsx: (event: React.MouseEvent | React.TouchEvent) => void

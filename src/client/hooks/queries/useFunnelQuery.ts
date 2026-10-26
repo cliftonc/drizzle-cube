@@ -19,6 +19,8 @@ import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import type { CubeQuery } from '../../types.js'
+import { createPendingLoadOptions, type MaxAgeOptions } from '../../client/maxAge.js'
+import { resultSetComputedAt } from '../../utils/freshness.js'
 import type {
   FunnelConfig,
   FunnelChartData,
@@ -242,6 +244,9 @@ export function useFunnelQuery(
     }
   }, [manualRefresh, serverQuery, skip, currentQueryKey])
 
+  // Load options for the next fetch, requested by execute and read by the queryFn
+  const [pending] = useState(createPendingLoadOptions)
+
   // Execute funnel query via TanStack Query
   const queryResult = useQuery({
     queryKey,
@@ -251,10 +256,11 @@ export function useFunnelQuery(
       }
 
       const startTime = performance.now()
-
       try {
         // Send funnel query to server (single request)
-        const resultSet = await cubeApi.load(serverQuery as unknown as CubeQuery)
+        const resultSet = await pending.load((loadOptions) =>
+          cubeApi.load(serverQuery as unknown as CubeQuery, loadOptions)
+        )
         const rawData = resultSet.rawData()
         const executionTime = performance.now() - startTime
         const cacheInfo = resultSet.cacheInfo?.()
@@ -263,6 +269,7 @@ export function useFunnelQuery(
           rawData,
           executionTime,
           cacheInfo,
+          computedAt: resultSetComputedAt(resultSet),
         }
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error))
@@ -273,7 +280,9 @@ export function useFunnelQuery(
     // Enable when we have a server query (either prebuilt or built from config)
     // In manual refresh mode, only execute when explicitly triggered
     enabled: shouldExecute,
-    staleTime: 60000, // 1 minute cache
+    // 1 minute cache; a request made while skipped makes the cached result
+    // stale, so the query fetches with it once enabled
+    staleTime: () => (pending.hasRequest() ? 0 : 60000),
     gcTime: 5 * 60 * 1000, // 5 minute garbage collection
   })
 
@@ -378,43 +387,30 @@ export function useFunnelQuery(
   const status: FunnelExecutionResult['status'] = deriveFunnelStatus(queryResult)
 
   /**
-   * Manually execute/refetch the funnel query
-   * Pass { bustCache: true } to bypass both client and server caches
+   * Manually execute/refetch the funnel query.
+   * `{ maxAgeSeconds }` accepts a cached server result at most that old;
+   * `{ bustCache: true }` is max-age 0.
+   * A skipped (off-screen) query keeps the max-age and fetches with it when
+   * it is enabled again.
    */
-  const execute = useCallback(async (options?: { bustCache?: boolean }): Promise<FunnelExecutionResult | null> => {
-    // Allow execution if we have a serverQuery (either from prebuiltServerQuery or built from config)
-    if (!serverQuery) return null
+  const { refetch: refetchQuery } = queryResult
+  const execute = useCallback(async (options?: MaxAgeOptions): Promise<FunnelExecutionResult | null> => {
+    pending.request(options)
+    // Allow execution if we have a serverQuery (either from prebuiltServerQuery
+    // or built from config). While skipped (an off-screen portlet) the request
+    // waits until the query is enabled and fetches.
+    if (!serverQuery || skip) return null
 
     // Mark this query as executed (for manual refresh mode)
     setExecutedQueryKey(currentQueryKey)
 
     try {
-      if (options?.bustCache) {
-        // Remove from TanStack Query cache first
-        queryClient.removeQueries({ queryKey })
-        // Fetch with cache bust header
-        await queryClient.fetchQuery({
-          queryKey,
-          queryFn: async () => {
-            const startTime = performance.now()
-            const resultSet = await cubeApi.load(
-              serverQuery as unknown as CubeQuery,
-              { bustCache: true }
-            )
-            const rawData = resultSet.rawData()
-            const executionTime = performance.now() - startTime
-            const cacheInfo = resultSet.cacheInfo?.()
-            return { rawData, executionTime, cacheInfo }
-          },
-        })
-      } else {
-        await queryResult.refetch()
-      }
+      await refetchQuery()
       return result
     } catch {
       return result
     }
-  }, [serverQuery, queryResult, result, queryClient, queryKey, cubeApi, currentQueryKey])
+  }, [pending, serverQuery, skip, result, currentQueryKey, refetchQuery])
 
   /**
    * Cancel is a no-op for TanStack Query (handled automatically)
@@ -449,6 +445,7 @@ export function useFunnelQuery(
     // This is the actual { funnel: {...} } query sent to the server
     serverQuery,
     cacheInfo: queryResult.data?.cacheInfo ?? null,
+    computedAt: queryResult.data?.computedAt ?? null,
     // Manual refresh mode support
     needsRefresh,
   }

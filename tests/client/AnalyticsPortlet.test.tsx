@@ -391,7 +391,7 @@ describe('AnalyticsPortlet', () => {
       expect(typeof ref.current?.refresh).toBe('function')
     })
 
-    it('should invalidate cache when refresh is called', async () => {
+    it('should refetch through the query hook when refresh is called', async () => {
       const ref = createRef<AnalyticsPortletRef>()
       mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
@@ -408,12 +408,10 @@ describe('AnalyticsPortlet', () => {
         ref.current?.refresh()
       })
 
+      // The hook owns its cache key: it invalidates and its queryFn refetches.
+      // A plain refresh carries no max-age.
       await waitFor(() => {
-        // Component uses invalidateQueries to clear cache and trigger refetch
-        // The query is cleaned (empty arrays removed) to match the cache key format
-        expect(mockInvalidateQueries).toHaveBeenCalledWith({
-          queryKey: ['cube', 'load', JSON.stringify({ measures: ['Test.count'] })]
-        })
+        expect(mockUseCubeLoadQueryResult.refetch).toHaveBeenCalledWith(undefined)
       })
     })
   })
