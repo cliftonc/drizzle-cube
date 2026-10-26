@@ -76,7 +76,7 @@ describe('createCubeHttpHandler — REST /load core', () => {
     expect(semanticLayer.executeMultiCubeQuery).not.toHaveBeenCalled()
   })
 
-  it('honors x-cache-control: no-cache by passing maxAgeMs: 0 to the executor', async () => {
+  it('honors x-cache-control: no-cache by passing skipCache: true to the executor', async () => {
     const semanticLayer = createStubSemanticLayer()
     const handler = createCubeHttpHandler({ semanticLayer, onError: vi.fn() })
     const port = createFakePort({
@@ -89,7 +89,7 @@ describe('createCubeHttpHandler — REST /load core', () => {
     expect(semanticLayer.executeMultiCubeQuery).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      { maxAgeMs: 0 }
+      { skipCache: true, maxAgeMs: undefined }
     )
   })
 
@@ -286,9 +286,10 @@ describe('createCubeHttpHandler — x-cache-max-age', () => {
         }
       })
 
-      it('lets x-cache-control: no-cache win over a larger max-age', async () => {
+      // Precedence (skipCache wins) is resolved by the result cache; see cache-max-age.test.ts
+      it('forwards both x-cache-control: no-cache and max-age', async () => {
         for (const options of await optionsFor(endpoint, { 'x-cache-max-age': '60', 'x-cache-control': 'no-cache' })) {
-          expect(options).toEqual(expect.objectContaining({ maxAgeMs: 0 }))
+          expect(options).toEqual({ skipCache: true, maxAgeMs: 60000 })
         }
       })
     })

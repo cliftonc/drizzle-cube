@@ -6,8 +6,9 @@
  *   accept. A non-negative integer; anything else is ignored.
  * - `x-cache-control: no-cache` — max-age 0 (skip the read, still write).
  *
- * When both are present the smaller max-age wins. Neither has any effect when
- * the semantic layer has no cache provider configured.
+ * When both are present the smaller max-age wins (resolved by the server's
+ * result cache). Neither has any effect when the semantic layer has no cache
+ * provider configured.
  */
 
 import type { ExecutionOptions } from '../../server/index.js'
@@ -20,13 +21,13 @@ function parseMaxAgeHeader(value: string | undefined): number | undefined {
   if (value === undefined || !NON_NEGATIVE_INTEGER.test(value.trim())) {
     return undefined
   }
-  const ms = Number(value.trim()) * 1000
-  return Number.isSafeInteger(ms) ? ms : undefined
+  return Number(value.trim()) * 1000
 }
 
-/** Read the request cache headers into the `maxAgeMs` execution option. */
-export function readCacheOptions(readHeader: HeaderReader): Pick<ExecutionOptions, 'maxAgeMs'> {
-  const headerMaxAgeMs = parseMaxAgeHeader(readHeader('x-cache-max-age'))
-  const maxAgeMs = readHeader('x-cache-control') === 'no-cache' ? 0 : headerMaxAgeMs
-  return maxAgeMs === undefined ? {} : { maxAgeMs }
+/** Read the request cache headers into the result-cache execution options. */
+export function readCacheOptions(readHeader: HeaderReader): Pick<ExecutionOptions, 'skipCache' | 'maxAgeMs'> {
+  return {
+    skipCache: readHeader('x-cache-control') === 'no-cache',
+    maxAgeMs: parseMaxAgeHeader(readHeader('x-cache-max-age'))
+  }
 }

@@ -37,7 +37,7 @@ import { postProcessResultRows } from './execution/result-post-processor.js'
 import { FilterCachePreloader } from './execution/filter-cache-preloader.js'
 import { ModeRouter } from './execution/mode-router.js'
 import type { QueryExecutionMode } from './execution/mode-router.js'
-import { QueryResultCache, resolveMaxAgeMs } from './execution/query-result-cache.js'
+import { QueryResultCache } from './execution/query-result-cache.js'
 import { normalizeTimeDimensions } from './execution/query-normalizer.js'
 import { ComparisonQueryBuilder } from './builders/comparison-query-builder.js'
 import type { NormalizedPeriod } from './builders/comparison-query-builder.js'
@@ -177,7 +177,7 @@ export class QueryExecutor {
       // Entries older than max-age are a miss; max-age 0 (or skipCache) skips the
       // lookup. The fresh result is still cached later either way.
       const cacheKey = this.resultCache.generateKey(query, securityContext, options?.cubeSetKey)
-      const cached = await this.resultCache.lookup(cacheKey, resolveMaxAgeMs(options))
+      const cached = await this.resultCache.lookup(cacheKey, options)
       if (cached) {
         return cached
       }

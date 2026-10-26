@@ -16,8 +16,8 @@
  * (normalizes AI fields, throws on invalid, no cache control, returns raw
  * `{ data, annotation, query }`). This REST load does NOT normalize, maps
  * validation failures to 400 JSON, honors `x-cache-max-age` and
- * `x-cache-control: no-cache`, and returns `formatCubeResponse(...)`. The two coexist by design; converging them
- * is a separate, later decision.
+ * `x-cache-control: no-cache`, and returns `formatCubeResponse(...)`. The two
+ * coexist by design; converging them is a separate, later decision.
  */
 
 import type { SemanticLayerCompiler } from '../../server/compiler.js'

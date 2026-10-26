@@ -10,7 +10,8 @@ import type {
   QueryAnalysis,
   QuerySuggestion,
   AIValidationResult,
-  QueryValidationIssue
+  QueryValidationIssue,
+  ExecutionOptions
 } from '../server/index.js'
 import {
   suggestQuery,
@@ -547,21 +548,10 @@ export function formatErrorResponse(
 }
 
 /**
- * Options for batch request handling
+ * Options for batch request handling: the result-cache execution options
+ * (`skipCache`, `maxAgeMs`), applied to every query in the batch.
  */
-export interface BatchRequestOptions {
-  /**
-   * Whether to bypass server-side cache for all queries in the batch
-   * When true, all queries will be executed fresh without cache.
-   * Alias for `maxAgeMs: 0`; when both are set, the smaller max-age wins.
-   */
-  skipCache?: boolean
-  /**
-   * Oldest cached result (ms) to accept for every query in the batch; older
-   * entries are re-executed and re-cached. No effect without a cache provider.
-   */
-  maxAgeMs?: number
-}
+export type BatchRequestOptions = Pick<ExecutionOptions, 'skipCache' | 'maxAgeMs'>
 
 /**
  * Handle batch query requests - wrapper around existing single query execution
@@ -585,10 +575,7 @@ export async function handleBatchRequest(
     queries.map(async (query) => {
       // Use EXISTING single query execution logic - NO CODE DUPLICATION
       // Pass cache options through so max-age / bypass apply to every query
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, {
-        skipCache: options?.skipCache,
-        maxAgeMs: options?.maxAgeMs
-      })
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, options)
 
       // Use EXISTING response formatter - NO CODE DUPLICATION
       return formatCubeResponse(query, result, semanticLayer)

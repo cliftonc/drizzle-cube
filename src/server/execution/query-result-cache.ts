@@ -9,23 +9,6 @@
 import type { SecurityContext, SemanticQuery, QueryResult, CacheConfig, ExecutionOptions } from '../types/index.js'
 import { generateCacheKey } from '../cache-utils.js'
 
-/**
- * Resolve the effective max-age (ms) for a lookup. `skipCache: true` is an
- * alias for max-age 0; when both are set the smaller wins. A `maxAgeMs` that
- * is not a finite non-negative number is ignored. Undefined means any
- * unexpired entry is acceptable.
- */
-export function resolveMaxAgeMs(
-  options?: Pick<ExecutionOptions, 'skipCache' | 'maxAgeMs'>
-): number | undefined {
-  // skipCache is max-age 0, which is always the smaller value
-  if (options?.skipCache) {
-    return 0
-  }
-  const maxAgeMs = options?.maxAgeMs
-  return maxAgeMs !== undefined && Number.isFinite(maxAgeMs) && maxAgeMs >= 0 ? maxAgeMs : undefined
-}
-
 export class QueryResultCache {
   constructor(private readonly cacheConfig?: CacheConfig) {}
 
@@ -49,14 +32,27 @@ export class QueryResultCache {
    * attached) on a hit, or undefined on miss / bypass / no-cache. Emits
    * hit/miss events; lookup errors are non-fatal.
    *
-   * `maxAgeMs` is the oldest entry the caller accepts: an older entry (or one
-   * whose age is unknown) counts as a miss. `0` skips the read entirely.
-   * Callers still store the fresh result in every case.
+   * `options.maxAgeMs` is the oldest entry the caller accepts: an older entry
+   * (or one whose age is unknown) counts as a miss. `skipCache` is an alias for
+   * max-age 0, which skips the read entirely. A `maxAgeMs` that is not a finite
+   * non-negative number is ignored. Callers still store the fresh result in
+   * every case.
    */
-  async lookup(cacheKey: string | undefined, maxAgeMs?: number): Promise<QueryResult | undefined> {
+  async lookup(
+    cacheKey: string | undefined,
+    options?: Pick<ExecutionOptions, 'skipCache' | 'maxAgeMs'>
+  ): Promise<QueryResult | undefined> {
     if (!cacheKey || !this.cacheConfig?.provider) {
       return undefined
     }
+
+    // skipCache is max-age 0, which is always the smaller value
+    const requestedMaxAgeMs = options?.maxAgeMs
+    const maxAgeMs = options?.skipCache
+      ? 0
+      : requestedMaxAgeMs !== undefined && Number.isFinite(requestedMaxAgeMs) && requestedMaxAgeMs >= 0
+        ? requestedMaxAgeMs
+        : undefined
 
     // max-age 0 requested - emit a bypass event (miss) and skip the lookup
     if (maxAgeMs === 0) {
@@ -71,10 +67,11 @@ export class QueryResultCache {
     try {
       const startTime = Date.now()
       const cacheResult = await this.cacheConfig.provider.get<QueryResult>(cacheKey)
-      const tooOld = maxAgeMs !== undefined && (
-        !cacheResult?.metadata || Date.now() - cacheResult.metadata.cachedAt > maxAgeMs
+      const fresh = cacheResult && (
+        maxAgeMs === undefined ||
+        (cacheResult.metadata && Date.now() - cacheResult.metadata.cachedAt <= maxAgeMs)
       )
-      if (cacheResult && !tooOld) {
+      if (cacheResult && fresh) {
         this.cacheConfig.onCacheEvent?.({
           type: 'hit',
           key: cacheKey,
