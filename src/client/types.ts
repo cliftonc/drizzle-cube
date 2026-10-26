@@ -658,6 +658,8 @@ export interface CubeResultSet {
   annotation(): any
   loadResponse?: any
   cacheInfo?(): { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | undefined
+  /** When the server sent the response (ISO string). On a cache hit the rows were computed at `cacheInfo().cachedAt`. */
+  lastRefreshTime?(): string | undefined
   /** Rows the query would return without limit/offset — only when `total: true` was asked for. */
   totalCount?(): number | undefined
 }

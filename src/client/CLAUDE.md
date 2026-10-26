@@ -48,7 +48,8 @@ src/client/
 │
 ├── client/                        API client
 │   ├── CubeClient.ts             HTTP client for Cube-compatible API
-│   └── BatchCoordinator.ts       Request batching
+│   ├── BatchCoordinator.ts       Request batching (one queue per max-age)
+│   └── maxAge.ts                 Max-age options → x-cache-max-age headers
 │
 ├── components/                    React components
 │   ├── AnalysisBuilder/           Query builder (~50 files, see AnalysisBuilder CLAUDE.md)
