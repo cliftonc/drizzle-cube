@@ -92,19 +92,12 @@ describe('Cache max-age', () => {
     expect(cacheEvents[0].durationMs).toBe(0)
   })
 
-  it('skipCache: true behaves as max-age 0', async () => {
-    const result = await semanticLayer.execute(query, securityContext, { skipCache: true })
-
-    expect(result.cache).toBeUndefined()
-    expect(eventTypes()).toEqual(['miss', 'set'])
-    expect(cacheEvents[0].durationMs).toBe(0)
-  })
-
   it('skipCache: true wins over a larger max-age', async () => {
     const result = await semanticLayer.execute(query, securityContext, { skipCache: true, maxAgeMs: 60000 })
 
     expect(result.cache).toBeUndefined()
     expect(eventTypes()).toEqual(['miss', 'set'])
+    expect(cacheEvents[0].durationMs).toBe(0)
   })
 
   it('skipCache: false leaves max-age in charge', async () => {

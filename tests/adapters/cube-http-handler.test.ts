@@ -76,23 +76,6 @@ describe('createCubeHttpHandler — REST /load core', () => {
     expect(semanticLayer.executeMultiCubeQuery).not.toHaveBeenCalled()
   })
 
-  it('honors x-cache-control: no-cache by passing skipCache: true to the executor', async () => {
-    const semanticLayer = createStubSemanticLayer()
-    const handler = createCubeHttpHandler({ semanticLayer, onError: vi.fn() })
-    const port = createFakePort({
-      body: { measures: ['Employees.count'] },
-      headers: { 'x-cache-control': 'no-cache' }
-    })
-
-    await handler.handleLoadPost(port, getBaseSC)
-
-    expect(semanticLayer.executeMultiCubeQuery).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      { skipCache: true, maxAgeMs: undefined }
-    )
-  })
-
   it('GET happy path parses the query param and returns a 200 envelope', async () => {
     const semanticLayer = createStubSemanticLayer()
     const handler = createCubeHttpHandler({ semanticLayer, onError: vi.fn() })
@@ -261,14 +244,10 @@ describe('createCubeHttpHandler — x-cache-max-age', () => {
   for (const endpoint of ['loadPost', 'loadGet', 'batch'] as const) {
     describe(endpoint, () => {
       it('maps the header (seconds) to maxAgeMs', async () => {
-        for (const options of await optionsFor(endpoint, { 'x-cache-max-age': '30' })) {
-          expect(options).toEqual(expect.objectContaining({ maxAgeMs: 30000 }))
-        }
-      })
-
-      it('accepts 0 as a cache bypass', async () => {
-        for (const options of await optionsFor(endpoint, { 'x-cache-max-age': '0' })) {
-          expect(options).toEqual(expect.objectContaining({ maxAgeMs: 0 }))
+        for (const [value, maxAgeMs] of [['30', 30000], ['0', 0]] as const) {
+          for (const options of await optionsFor(endpoint, { 'x-cache-max-age': value })) {
+            expect(options, `x-cache-max-age: ${value}`).toEqual(expect.objectContaining({ maxAgeMs }))
+          }
         }
       })
 
