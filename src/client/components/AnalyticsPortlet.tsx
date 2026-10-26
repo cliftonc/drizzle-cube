@@ -34,7 +34,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   colorPalette,
   loadingComponent,
   initialViewState,
-  onDebugDataReady
+  onDebugDataReady,
+  onFreshnessChange
 }, ref) => {
   // The start view state is read one time, on mount, like the chart components do
   const [startViewState] = useState(() => initialViewState)
@@ -138,6 +139,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     funnelCacheInfo,
     flowCacheInfo,
     retentionCacheInfo,
+    computedAt,
     refresh,
     retry
   } = usePortletQueryResults({
@@ -159,6 +161,11 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   useEffect(() => {
     setDeadMemberError(error ?? null)
   }, [error])
+
+  // Report freshness (computed-at, fetching) to the card header
+  useEffect(() => {
+    onFreshnessChange?.({ computedAt, isFetching })
+  }, [onFreshnessChange, computedAt, isFetching])
 
   // Expose refresh and the view state through ref
   useImperativeHandle(ref, () => ({

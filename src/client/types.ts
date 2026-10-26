@@ -707,6 +707,16 @@ export interface AnalyticsPortletProps {
       activeQuery: any
     }
   }) => void
+  /** Reports when the portlet's rows were computed and whether it is fetching, on every change. */
+  onFreshnessChange?: (freshness: PortletFreshness) => void
+}
+
+/** Freshness of a portlet's data, as reported by `AnalyticsPortlet`. */
+export interface PortletFreshness {
+  /** When the rows were computed on the server (cache time on a hit, else response time). */
+  computedAt?: string
+  /** Whether a fetch is in flight. */
+  isFetching: boolean
 }
 
 /**

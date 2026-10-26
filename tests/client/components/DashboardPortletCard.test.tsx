@@ -3,15 +3,31 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import React from 'react'
 
+// Freshness the mocked AnalyticsPortlet reports on mount, when set
+type FreshnessGlobal = typeof globalThis & {
+  __dcAnalyticsPortletFreshness?: { computedAt?: string; isFetching: boolean }
+}
+
 // Mock AnalyticsPortlet - complex child component
 // Must be before the component import
 vi.mock('../../../src/client/components/AnalyticsPortlet', () => {
   const ReactMock = require('react')
   return {
     default: ReactMock.forwardRef(function MockAnalyticsPortlet(
-      props: { title?: string; chartType?: string; height?: string | number; onDebugDataReady?: (data: unknown) => void },
+      props: {
+        title?: string
+        chartType?: string
+        height?: string | number
+        onDebugDataReady?: (data: unknown) => void
+        onFreshnessChange?: (freshness: { computedAt?: string; isFetching: boolean }) => void
+      },
       ref: React.Ref<unknown>
     ) {
+      const { onFreshnessChange } = props
+      ReactMock.useEffect(() => {
+        const freshness = (globalThis as FreshnessGlobal).__dcAnalyticsPortletFreshness
+        if (freshness) onFreshnessChange?.(freshness)
+      }, [onFreshnessChange])
       ;(globalThis as any).__dcAnalyticsPortletRenderCount = ((globalThis as any).__dcAnalyticsPortletRenderCount || 0) + 1
       ReactMock.useImperativeHandle(ref, () => ({
         refresh: vi.fn(),
@@ -362,6 +378,36 @@ describe('DashboardPortletCard', () => {
 
       const refreshButton = screen.getByTitle(/refresh portlet data/i)
       expect(refreshButton.title).toContain('Shift+click')
+    })
+
+    it('spins the refresh icon and marks the button busy while the portlet fetches', () => {
+      ;(globalThis as FreshnessGlobal).__dcAnalyticsPortletFreshness = { isFetching: true }
+      try {
+        render(
+          <TestWrapper>
+            <DashboardPortletCard {...createDefaultProps()} />
+          </TestWrapper>
+        )
+
+        const refreshButton = screen.getByTestId('portlet-refresh')
+        expect(refreshButton).toHaveAttribute('aria-busy', 'true')
+        expect(refreshButton).toHaveAttribute('title', 'Refreshing…')
+        expect(refreshButton.querySelector('svg')).toHaveClass('dc:animate-spin')
+      } finally {
+        delete (globalThis as FreshnessGlobal).__dcAnalyticsPortletFreshness
+      }
+    })
+
+    it('does not spin the refresh icon while idle', () => {
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...createDefaultProps()} />
+        </TestWrapper>
+      )
+
+      const refreshButton = screen.getByTestId('portlet-refresh')
+      expect(refreshButton).toHaveAttribute('aria-busy', 'false')
+      expect(refreshButton.querySelector('svg')).not.toHaveClass('dc:animate-spin')
     })
   })
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, type ReactNode } from 'react'
+import React, { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import type {
   AnalyticsPortletProps,
   AnalyticsPortletRef,
@@ -6,7 +6,8 @@ import type {
   ChartDisplayConfig,
   ChartType,
   DashboardFilter,
-  DashboardFilterMapping
+  DashboardFilterMapping,
+  PortletFreshness
 } from '../types.js'
 import AnalyticsPortlet from './AnalyticsPortlet.js'
 import type { ColorPalette } from '../utils/colorPalettes.js'
@@ -37,6 +38,7 @@ interface PortletChartBodyProps {
   colorPalette?: ColorPalette
   loadingComponent?: ReactNode
   onDebugDataReady: (data: PortletDebugDataEntry) => void
+  onFreshnessChange?: (freshness: PortletFreshness) => void
 }
 
 const PortletChartBody = React.memo(function PortletChartBody({
@@ -55,6 +57,7 @@ const PortletChartBody = React.memo(function PortletChartBody({
   colorPalette,
   loadingComponent,
   onDebugDataReady,
+  onFreshnessChange,
 }: PortletChartBodyProps) {
   return (
     <div
@@ -75,6 +78,7 @@ const PortletChartBody = React.memo(function PortletChartBody({
         colorPalette={colorPalette}
         loadingComponent={loadingComponent}
         onDebugDataReady={onDebugDataReady}
+        onFreshnessChange={onFreshnessChange}
       />
     </div>
   )
@@ -207,6 +211,9 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
 
   const eagerLoad = portlet.eagerLoad ?? configEagerLoad ?? false
 
+  // The portlet reports its freshness; the header spins the refresh icon while it fetches
+  const [freshness, setFreshness] = useState<PortletFreshness>({ isFetching: false })
+
   // Expand hands the host the exact properties this card gives AnalyticsPortlet,
   // so a chart that the host renders from them shows the same data and shares
   // the card's query cache entry. Only offered in view mode: edit mode and
@@ -306,6 +313,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           showCacheBustIndicator={showCacheBustIndicator}
           unreachableDateFilterLabels={unreachableDateFilterLabels}
           icons={icons}
+          isFetching={freshness.isFetching}
           onRefresh={(options) => callbacks.onRefresh(portlet.id, options)}
           onHoverRefreshChange={setIsHoveringRefresh}
           onCopyToClipboard={handleCopyToClipboard}
@@ -334,6 +342,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
         colorPalette={colorPalette}
         loadingComponent={loadingComponent}
         onDebugDataReady={handleDebugDataReady}
+        onFreshnessChange={setFreshness}
       />
     </div>
   )

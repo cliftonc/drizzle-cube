@@ -31,6 +31,8 @@ interface PortletCardHeaderProps {
   /** Labels of mapped dashboard date filters that cannot narrow this portlet */
   unreachableDateFilterLabels?: string[]
   icons: CardIcons
+  /** Whether the portlet is fetching; the refresh icon spins meanwhile */
+  isFetching?: boolean
   onRefresh: (options?: MaxAgeOptions) => void
   onHoverRefreshChange: (hovering: boolean) => void
   onCopyToClipboard: (event: React.MouseEvent | React.TouchEvent) => void
@@ -94,7 +96,7 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
     portlet, className, headerStyle, restHeaderProps, headerOnClick,
     editable, isEditMode, isInSelectionMode, debugData,
     copyAvailable, copySuccess, xlsExportAvailable, exportInProgress, showCacheBustIndicator,
-    unreachableDateFilterLabels, icons, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
+    unreachableDateFilterLabels, icons, isFetching = false, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
     onOpenFilterConfig, onDuplicate, onEdit, onDelete, onExpand
   } = props
   const { t } = useTranslation()
@@ -103,6 +105,9 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
   const CheckIcon = getIcon('check')
   const DownloadIcon = getIcon('download')
   const MaximizeIcon = getIcon('maximize')
+  const refreshTitle = isFetching
+    ? t('dashboard.portlet.action.refreshing')
+    : showCacheBustIndicator ? t('dashboard.portlet.action.refreshBypassCache') : t('dashboard.portlet.action.refreshTitle')
 
   return (
     <div
@@ -152,9 +157,11 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
                 ? 'dc:cursor-pointer text-dc-warning bg-dc-warning-bg'
                 : 'dc:cursor-pointer text-dc-text-secondary hover:bg-dc-surface-hover'
           }`}
-          title={showCacheBustIndicator ? 'Click to refresh and bypass cache' : 'Refresh portlet data (Shift+click to bypass cache)'}
+          title={refreshTitle}
+          aria-busy={isFetching}
+          data-testid="portlet-refresh"
         >
-          <icons.RefreshIcon style={ICON_STYLE} />
+          <icons.RefreshIcon style={ICON_STYLE} className={isFetching ? 'dc:animate-spin' : undefined} />
         </button>
 
         {/* Expand button - the host decides what it opens; never disabled, so
