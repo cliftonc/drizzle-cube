@@ -47,7 +47,8 @@ import {
   type ApplyCors,
   buildMcpGetResponse
 } from './mcp-handler.js'
-import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale.js'
+import { resolveRequestLocale, withLocaleInSecurityContext } from '../locale.js'
+import { ensureClientRequestHeaders } from '../cors-headers.js'
 import {
   createCubeHttpHandler,
   withLocaleFromHeaders,
@@ -259,7 +260,7 @@ function getLocaleAwareRequestOptions(options: NextAdapterOptions): {
   const cors = options.cors
     ? {
         ...options.cors,
-        allowedHeaders: ensureLocaleHeader(options.cors.allowedHeaders)
+        allowedHeaders: ensureClientRequestHeaders(options.cors.allowedHeaders)
       }
     : undefined
 
@@ -336,7 +337,7 @@ function createNextCore(options: NextAdapterOptions): NextCore {
   })
 
   const corsConfig = options.cors
-    ? { ...options.cors, allowedHeaders: ensureLocaleHeader(options.cors.allowedHeaders) }
+    ? { ...options.cors, allowedHeaders: ensureClientRequestHeaders(options.cors.allowedHeaders) }
     : undefined
   const corsHeaders = (request: NextRequest) => (corsConfig ? getCorsHeaders(request, corsConfig) : {})
   const baseContext = (request: NextRequest, context?: RouteContext) => () =>
@@ -387,7 +388,7 @@ export function createOptionsHandler(corsOptions: NextCorsOptions): RouteHandler
   return async function optionsHandler(request: NextRequest) {
     const localeAwareCorsOptions: NextCorsOptions = {
       ...corsOptions,
-      allowedHeaders: ensureLocaleHeader(corsOptions.allowedHeaders)
+      allowedHeaders: ensureClientRequestHeaders(corsOptions.allowedHeaders)
     }
     const corsHeaders = getCorsHeaders(request, localeAwareCorsOptions)
     return new Response(null, {

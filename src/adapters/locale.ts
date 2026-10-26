@@ -48,19 +48,3 @@ export function withLocaleInSecurityContext(
     locale: effectiveLocale,
   };
 }
-
-export function ensureLocaleHeader(allowHeaders?: string[] | string): string[] {
-  const headers = Array.isArray(allowHeaders)
-    ? [...allowHeaders]
-    : (allowHeaders ?? "")
-        .split(",")
-        .map((header) => header.trim())
-        .filter(Boolean);
-
-  if (headers.some((header) => header.toLowerCase() === DC_LOCALE_HEADER)) {
-    return headers;
-  }
-
-  headers.push("X-DC-Locale");
-  return headers;
-}

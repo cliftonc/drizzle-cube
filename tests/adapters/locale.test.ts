@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   resolveRequestLocale,
   withLocaleInSecurityContext,
-  ensureLocaleHeader,
   DC_LOCALE_HEADER,
   DEFAULT_LOCALE,
 } from '../../src/adapters/locale'
@@ -91,34 +90,5 @@ describe('withLocaleInSecurityContext', () => {
   it('handles null/undefined security context gracefully', () => {
     const ctx = withLocaleInSecurityContext(null as any, 'nl-NL')
     expect(ctx).toEqual({ locale: 'nl-NL' })
-  })
-})
-
-describe('ensureLocaleHeader', () => {
-  it('adds X-DC-Locale to header list', () => {
-    const headers = ensureLocaleHeader(['Content-Type', 'Authorization'])
-    expect(headers).toContain('X-DC-Locale')
-  })
-
-  it('does not duplicate if already present', () => {
-    const headers = ensureLocaleHeader(['Content-Type', 'X-DC-Locale'])
-    const count = headers.filter((h) => h.toLowerCase() === DC_LOCALE_HEADER).length
-    expect(count).toBe(1)
-  })
-
-  it('is case-insensitive when checking existing headers', () => {
-    const headers = ensureLocaleHeader(['Content-Type', 'x-dc-locale'])
-    const count = headers.filter((h) => h.toLowerCase() === DC_LOCALE_HEADER).length
-    expect(count).toBe(1)
-  })
-
-  it('handles comma-separated string input', () => {
-    const headers = ensureLocaleHeader('Content-Type, Authorization')
-    expect(headers).toEqual(['Content-Type', 'Authorization', 'X-DC-Locale'])
-  })
-
-  it('handles empty input', () => {
-    const headers = ensureLocaleHeader()
-    expect(headers).toEqual(['X-DC-Locale'])
   })
 })

@@ -39,7 +39,7 @@ import {
   originOptionsFromMcp
 } from '../mcp-transport.js'
 import { handleAgentChatRequest } from './agent-handler.js'
-import { ensureLocaleHeader } from '../locale.js'
+import { ensureClientRequestHeaders } from '../cors-headers.js'
 import { createCubeHttpHandler, withLocaleFromHeaders, type McpHttpPort } from '../core/index.js'
 
 /**
@@ -202,11 +202,11 @@ export function createCubeRoutes(
 
   // Configure CORS if provided
   if (corsConfig) {
-    const localeAwareCorsConfig = {
+    const clientAwareCorsConfig = {
       ...corsConfig,
-      allowHeaders: ensureLocaleHeader(corsConfig.allowHeaders)
+      allowHeaders: ensureClientRequestHeaders(corsConfig.allowHeaders)
     }
-    app.use('/*', cors(localeAwareCorsConfig as any))
+    app.use('/*', cors(clientAwareCorsConfig as any))
   }
 
   // Use provided semantic layer or create a new one

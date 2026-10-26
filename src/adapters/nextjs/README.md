@@ -311,6 +311,12 @@ control the server-side result cache:
 When both are sent, the smaller max-age wins. These headers have no effect
 unless the semantic layer is configured with a `cache` provider.
 
+A browser client on another origin sends both headers, so its CORS preflight
+must allow them. The adapter's `cors` option adds them (along with
+`X-DC-Locale`) to `allowedHeaders` for you. If you set up CORS outside the
+adapter, list `X-Cache-Max-Age` and `X-Cache-Control` yourself, or requests that send them
+fail the preflight.
+
 #### `createMetaHandler(options)`
 
 Creates a route handler for metadata retrieval (`/meta` endpoint). Tenant-scoped:
