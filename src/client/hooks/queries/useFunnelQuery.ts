@@ -19,7 +19,7 @@ import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import type { CubeQuery } from '../../types.js'
-import { createPendingLoadOptions, type MaxAgeOptions } from '../../client/maxAge.js'
+import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
 import { resultSetComputedAt } from '../../utils/freshness.js'
 import type {
   FunnelConfig,
@@ -244,8 +244,8 @@ export function useFunnelQuery(
     }
   }, [manualRefresh, serverQuery, skip, currentQueryKey])
 
-  // Load options for the next fetch, requested by execute and read by the queryFn
-  const [pending] = useState(createPendingLoadOptions)
+  // Max-age recorded by execute, kept until a fetch with it succeeds
+  const [refetchMaxAge] = useState(createRefetchMaxAgeTracker)
 
   // Execute funnel query via TanStack Query
   const queryResult = useQuery({
@@ -258,7 +258,7 @@ export function useFunnelQuery(
       const startTime = performance.now()
       try {
         // Send funnel query to server (single request)
-        const resultSet = await pending.load((loadOptions) =>
+        const resultSet = await refetchMaxAge.runFetch((loadOptions) =>
           cubeApi.load(serverQuery as unknown as CubeQuery, loadOptions)
         )
         const rawData = resultSet.rawData()
@@ -280,9 +280,9 @@ export function useFunnelQuery(
     // Enable when we have a server query (either prebuilt or built from config)
     // In manual refresh mode, only execute when explicitly triggered
     enabled: shouldExecute,
-    // 1 minute cache; a request made while skipped makes the cached result
+    // 1 minute cache; a max-age recorded while skipped makes the cached result
     // stale, so the query fetches with it once enabled
-    staleTime: () => (pending.hasRequest() ? 0 : 60000),
+    staleTime: () => (refetchMaxAge.hasPendingMaxAge() ? 0 : 60000),
     gcTime: 5 * 60 * 1000, // 5 minute garbage collection
   })
 
@@ -395,9 +395,9 @@ export function useFunnelQuery(
    */
   const { refetch: refetchQuery } = queryResult
   const execute = useCallback(async (options?: MaxAgeOptions): Promise<FunnelExecutionResult | null> => {
-    pending.request(options)
+    refetchMaxAge.recordMaxAge(options)
     // Allow execution if we have a serverQuery (either from prebuiltServerQuery
-    // or built from config). While skipped (an off-screen portlet) the request
+    // or built from config). While skipped (an off-screen portlet) the max-age
     // waits until the query is enabled and fetches.
     if (!serverQuery || skip) return null
 
@@ -410,7 +410,7 @@ export function useFunnelQuery(
     } catch {
       return result
     }
-  }, [pending, serverQuery, skip, result, currentQueryKey, refetchQuery])
+  }, [refetchMaxAge, serverQuery, skip, result, currentQueryKey, refetchQuery])
 
   /**
    * Cancel is a no-op for TanStack Query (handled automatically)

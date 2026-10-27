@@ -22,7 +22,7 @@ import { cleanQueryForServer } from '../../shared/utils.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { withChartGapFilling, type ChartGapFillOptions } from '../../utils/gapFilling.js'
-import { createPendingLoadOptions, type MaxAgeOptions } from '../../client/maxAge.js'
+import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300
@@ -207,8 +207,8 @@ export function useCubeLoadQuery(
     return executedQueryKey === currentQueryKey
   }, [serverQuery, skip, manualRefresh, executedQueryKey, currentQueryKey])
 
-  // Load options for the next fetch, requested by refetch and read by the queryFn
-  const [pending] = useState(createPendingLoadOptions)
+  // Max-age recorded by refetch, kept until a fetch with it succeeds
+  const [refetchMaxAge] = useState(createRefetchMaxAgeTracker)
 
   // Execute query with TanStack Query
   const queryResult = useQuery({
@@ -217,7 +217,7 @@ export function useCubeLoadQuery(
       if (!serverQuery) throw new Error('No query provided')
 
       // With the max-age asked for by the refetch that triggered this fetch, if any
-      return pending.load((loadOptions) => {
+      return refetchMaxAge.runFetch((loadOptions) => {
         // Use batch coordinator if enabled (collects queries for a short window,
         // one queue per max-age, so a bust is the max-age 0 queue)
         if (enableBatching && batchCoordinator) {
@@ -229,9 +229,9 @@ export function useCubeLoadQuery(
       })
     },
     enabled: shouldExecute,
-    // A request made while skipped makes the cached result stale, so the query
+    // A max-age recorded while skipped makes the cached result stale, so the query
     // fetches with it once enabled
-    staleTime: () => (pending.hasRequest() ? 0 : staleTime),
+    staleTime: () => (refetchMaxAge.hasPendingMaxAge() ? 0 : staleTime),
     placeholderData: keepPreviousData ? (prevData) => prevData : undefined,
   })
 
@@ -289,18 +289,18 @@ export function useCubeLoadQuery(
 
   // Execute query function - for manual refresh mode, triggers execution
   // Also serves as refetch in auto mode
-  // While the hook is skipped (an off-screen portlet) the request waits until
+  // While the hook is skipped (an off-screen portlet) the max-age waits until
   // the query is enabled and fetches.
   const { refetch: refetchQuery } = queryResult
   const executeQuery = useCallback((options?: RefetchOptions) => {
-    pending.request(options)
+    refetchMaxAge.recordMaxAge(options)
     if (!serverQuery || skip) return
 
     // Mark this query as executed (for manual refresh mode)
     setExecutedQueryKey(currentQueryKey)
 
     void refetchQuery()
-  }, [pending, serverQuery, skip, currentQueryKey, refetchQuery])
+  }, [refetchMaxAge, serverQuery, skip, currentQueryKey, refetchQuery])
 
   // Refetch is an alias for executeQuery for backward compatibility
   const refetch = executeQuery

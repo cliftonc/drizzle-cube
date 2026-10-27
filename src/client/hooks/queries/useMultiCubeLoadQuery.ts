@@ -18,7 +18,7 @@ import { mergeQueryResults } from '../../utils/multiQueryUtils.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { withChartGapFilling, type ChartGapFillOptions } from '../../utils/gapFilling.js'
-import { createPendingLoadOptions, type MaxAgeOptions } from '../../client/maxAge.js'
+import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
 
 type MultiQueryServerConfig = MultiQueryConfig & { queries: CubeQuery[] }
 
@@ -188,8 +188,8 @@ export function useMultiCubeLoadQuery(
     }
   }, [debouncedConfig])
 
-  // Load options for the next fetch, requested by refetch and read by the queryFn
-  const [pending] = useState(createPendingLoadOptions)
+  // Max-age recorded by refetch, kept until a fetch with it succeeds
+  const [refetchMaxAge] = useState(createRefetchMaxAgeTracker)
 
   // Execute multi-query with TanStack Query
   const queryResult = useQuery({
@@ -197,7 +197,7 @@ export function useMultiCubeLoadQuery(
     queryFn: async () => {
       if (!serverConfig) throw new Error('No config provided')
 
-      const resultSets: CubeResultSet[] = await pending.load((loadOptions) => {
+      const resultSets: CubeResultSet[] = await refetchMaxAge.runFetch((loadOptions) => {
         // Use BatchCoordinator if enabled
         if (enableBatching && batchCoordinator) {
           return Promise.all(
@@ -252,20 +252,20 @@ export function useMultiCubeLoadQuery(
       }
     },
     enabled: !!serverConfig && !skip,
-    // A request made while skipped makes the cached result stale, so the query
+    // A max-age recorded while skipped makes the cached result stale, so the query
     // fetches with it once enabled
-    staleTime: () => (pending.hasRequest() ? 0 : staleTime),
+    staleTime: () => (refetchMaxAge.hasPendingMaxAge() ? 0 : staleTime),
     placeholderData: keepPreviousData ? (prevData) => prevData : undefined,
   })
 
   // Refetch with the requested max-age. While the hook is skipped (an
-  // off-screen portlet) the request waits until the query is enabled and
+  // off-screen portlet) the max-age waits until the query is enabled and
   // fetches.
   const { refetch: refetchQuery } = queryResult
   const refetch = useCallback((options?: MaxAgeOptions) => {
-    pending.request(options)
+    refetchMaxAge.recordMaxAge(options)
     if (serverConfig && !skip) void refetchQuery()
-  }, [pending, serverConfig, skip, refetchQuery])
+  }, [refetchMaxAge, serverConfig, skip, refetchQuery])
 
   // Gap-fill for a chart when asked. Uses the config the result was fetched
   // with, so placeholder data from a previous config merges consistently.
