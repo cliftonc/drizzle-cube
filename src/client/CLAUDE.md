@@ -120,11 +120,12 @@ src/client/
 │   ├── ChartTypeSelector.tsx      Chart type picker (driven by chartConfigRegistry)
 │   ├── DashboardGrid.tsx          Grid layout engine
 │   ├── dashboard/                 Dashboard coordinator, context, toolbar, edit bar, modals
-│   │                              (RefreshPauseToggle: dashboard-wide pause)
+│   │                              (RefreshPauseToggle: dashboard-wide pause; DashboardRefreshSelector:
+│   │                              edit-bar default interval)
 │   ├── DashboardPortletCard.tsx   Portlet card wrapper
 │   ├── dashboardPortletCard/      DashboardPortletCard.tsx sub-components + actions hook + helpers
 │   │                              (DataFreshnessIndicator: status dot + computed-at age, warning when stale)
-│   ├── portletAnalysisModal/      PortletAnalysisModal sibling helpers (save validation)
+│   ├── portletAnalysisModal/      PortletAnalysisModal sibling helpers (save validation, RefreshSettings)
 │   ├── RowManagedLayout.tsx       Row-based layout engine
 │   ├── MobileStackedLayout.tsx    Mobile-responsive layout
 │   └── (modals & misc)            ConfirmModal, DashboardEditModal, DebugModal, Modal,

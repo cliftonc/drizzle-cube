@@ -3,6 +3,7 @@ import type { StoreApi } from 'zustand'
 import { captureThumbnail } from '../../utils/thumbnail.js'
 import type {
   DashboardConfig,
+  DashboardRefreshConfig,
   DashboardFilterMapping,
   DashboardGridSettings,
   DashboardLayoutMode,
@@ -688,6 +689,19 @@ export function useDashboardController({
     [configRef, onConfigChangeRef, saveConfig]
   )
 
+  // Dashboard default interval refresh; undefined removes it
+  const handleRefreshDefaultChange = useCallback(
+    async (refresh: DashboardRefreshConfig | undefined) => {
+      if (!onConfigChangeRef.current) return
+
+      const { refresh: _previous, ...rest } = configRef.current
+      const updatedConfig: DashboardConfig = refresh ? { ...rest, refresh } : rest
+
+      await saveConfig(updatedConfig, 'Auto-save failed:')
+    },
+    [configRef, onConfigChangeRef, saveConfig]
+  )
+
   return {
     enterEditMode,
     exitEditMode,
@@ -708,6 +722,7 @@ export function useDashboardController({
     selectAllForFilter,
     saveFilterConfig,
     handlePaletteChange,
+    handleRefreshDefaultChange,
     importConfig,
     snapPortletIntoGroup,
     ungroupGroup,

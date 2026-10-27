@@ -3,9 +3,8 @@
  * of computed-at (when the rows were computed on the server, earlier than
  * receipt for a cached result). The dot pulses while fetching, and the dot and
  * age turn the warning color when computed-at is older than two refresh
- * intervals. The pause controls show a paused refresh; here it only stops the
- * stale warning. The tooltip spells out computed-at and the stale or paused
- * state.
+ * intervals. Paused shows on the card's pause/play button, not here. The
+ * tooltip spells out computed-at and the stale or paused state.
  */
 
 import { useEffect, useState } from 'react'

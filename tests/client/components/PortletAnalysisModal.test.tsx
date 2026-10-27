@@ -33,6 +33,7 @@ vi.mock('../../../src/client/components/AnalysisBuilderLazy', () => {
 })
 
 import PortletAnalysisModal from '../../../src/client/components/PortletAnalysisModal'
+import { CubeFeaturesProvider } from '../../../src/client/providers/CubeFeaturesProvider'
 import type { PortletConfig } from '../../../src/client/types'
 import type { ColorPalette } from '../../../src/client/utils/colorPalettes'
 
@@ -580,6 +581,104 @@ describe('PortletAnalysisModal', () => {
       await user.click(screen.getByRole('button', { name: 'Save' }))
 
       expect(props.onSave).toHaveBeenCalled()
+    })
+  })
+
+  describe('refresh settings', () => {
+    it('is hidden unless features.refresh is enabled, and keeps an existing refresh on save', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ refresh: { intervalSeconds: 45 } })
+      mockGetAnalysisConfig.mockReturnValue(createMockAnalysisConfig())
+
+      render(<PortletAnalysisModal {...props} />)
+
+      expect(screen.queryByTestId('portlet-refresh-settings')).toBeNull()
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      expect(props.onSave).toHaveBeenCalledWith(expect.objectContaining({ refresh: { intervalSeconds: 45 } }))
+    })
+
+    it('saves the interval and hidden-tab setting, floored by minIntervalSeconds', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet()
+      mockGetAnalysisConfig.mockReturnValue(createMockAnalysisConfig())
+
+      render(
+        <CubeFeaturesProvider features={{ refresh: { enabled: true, minIntervalSeconds: 10 } }}>
+          <PortletAnalysisModal {...props} />
+        </CubeFeaturesProvider>
+      )
+
+      const interval = screen.getByLabelText('Refresh interval in seconds')
+      await user.type(interval, '3')
+      await user.click(screen.getByLabelText('Pause while the tab is hidden'))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(props.onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ refresh: { intervalSeconds: 10, pauseWhenHidden: true } })
+      )
+    })
+
+    it('saves an unchecked hidden-tab setting as false over a dashboard default of true', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ refresh: { intervalSeconds: 45 } })
+      mockGetAnalysisConfig.mockReturnValue(createMockAnalysisConfig())
+
+      render(
+        <CubeFeaturesProvider features={{ refresh: { enabled: true } }}>
+          <PortletAnalysisModal {...props} dashboardRefresh={{ pauseWhenHidden: true }} />
+        </CubeFeaturesProvider>
+      )
+
+      const checkbox = screen.getByLabelText('Pause while the tab is hidden')
+      expect(checkbox).toBeChecked()
+      await user.click(checkbox)
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(props.onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ refresh: { intervalSeconds: 45, pauseWhenHidden: false } })
+      )
+    })
+
+    it('keeps an inherited or explicit-false hidden-tab setting when saved untouched', async () => {
+      const user = userEvent.setup()
+      mockGetAnalysisConfig.mockReturnValue(createMockAnalysisConfig())
+
+      for (const refresh of [{ intervalSeconds: 45 }, { intervalSeconds: 45, pauseWhenHidden: false }]) {
+        const props = createDefaultProps()
+        props.portlet = createMockPortlet({ refresh })
+        const { unmount } = render(
+          <CubeFeaturesProvider features={{ refresh: { enabled: true } }}>
+            <PortletAnalysisModal {...props} dashboardRefresh={{ pauseWhenHidden: true }} />
+          </CubeFeaturesProvider>
+        )
+        await user.click(screen.getByRole('button', { name: 'Save' }))
+        expect(props.onSave).toHaveBeenCalledWith(expect.objectContaining({ refresh }))
+        unmount()
+      }
+    })
+
+    it('clears the portlet override when the interval is emptied', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ refresh: { intervalSeconds: 45 } })
+      mockGetAnalysisConfig.mockReturnValue(createMockAnalysisConfig())
+
+      render(
+        <CubeFeaturesProvider features={{ refresh: { enabled: true } }}>
+          <PortletAnalysisModal {...props} />
+        </CubeFeaturesProvider>
+      )
+
+      const interval = screen.getByLabelText('Refresh interval in seconds')
+      expect(interval).toHaveValue(45)
+      await user.clear(interval)
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      const saved = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(saved).not.toHaveProperty('refresh')
     })
   })
 })

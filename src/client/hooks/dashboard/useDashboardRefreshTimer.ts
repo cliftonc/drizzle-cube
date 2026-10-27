@@ -8,8 +8,8 @@
  * call. A per-observer `refetchInterval` would split that batch.
  *
  * Nothing ticks unless `features.refresh.enabled` is set; `manualRefresh`,
- * edit mode and a dashboard-level pause stop every timer; a hidden tab (with
- * `pauseWhenHidden`) skips that portlet's ticks.
+ * edit mode and a dashboard-level pause stop every timer; a per-portlet pause
+ * or a hidden tab (with `pauseWhenHidden`) skips that portlet's ticks.
  */
 
 import { useEffect, useMemo, useRef } from 'react'
@@ -49,6 +49,8 @@ export interface UseDashboardRefreshTimerParams {
   features: FeaturesConfig
   /** Stop every timer (edit mode or dashboard-level pause) */
   stopped: boolean
+  /** Portlets the viewer paused; their ticks are skipped */
+  pausedPortletIds: string[]
   /** The refresh button's action */
   refreshPortlet: (portletId: string, options: { maxAgeSeconds: number }) => void
 }
@@ -67,6 +69,7 @@ export function useDashboardRefreshTimer({
   dashboardRefresh,
   features,
   stopped,
+  pausedPortletIds,
   refreshPortlet
 }: UseDashboardRefreshTimerParams): DashboardRefreshTimerState {
   const groups = useMemo(
@@ -74,10 +77,12 @@ export function useDashboardRefreshTimer({
     [portlets, dashboardRefresh, features]
   )
 
-  // Ticks read the latest groups and action, so editing the config does not
-  // restart the timers.
+  // Ticks read the latest groups, pauses and action, so editing the config or
+  // pausing one portlet does not restart the timers.
   const groupsRef = useRef(groups)
   groupsRef.current = groups
+  const pausedRef = useRef(pausedPortletIds)
+  pausedRef.current = pausedPortletIds
   const refreshPortletRef = useRef(refreshPortlet)
   refreshPortletRef.current = refreshPortlet
 
@@ -95,6 +100,7 @@ export function useDashboardRefreshTimer({
         const members = groupsRef.current.get(intervalSeconds) ?? []
         const hidden = isDocumentHidden()
         for (const member of members) {
+          if (pausedRef.current.includes(member.portletId)) continue
           if (hidden && member.pauseWhenHidden) continue
           refreshPortletRef.current(member.portletId, { maxAgeSeconds: intervalSeconds })
         }

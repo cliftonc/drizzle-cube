@@ -44,6 +44,7 @@ import { useCubeFeatures } from '../providers/CubeProvider.js'
 import type { LayoutItem } from 'react-grid-layout'
 import type {
   DashboardConfig,
+  DashboardRefreshConfig,
   PortletConfig,
   RowLayout,
   PortletGroup,
@@ -195,6 +196,8 @@ export interface UseDashboardActions {
 
   // Config Operations
   handlePaletteChange: (paletteName: string) => Promise<void>
+  /** Set the dashboard default refresh (features.refresh); undefined removes it */
+  handleRefreshDefaultChange: (refresh: DashboardRefreshConfig | undefined) => Promise<void>
   /** Replace the entire config (dashboard import); saves like any other edit */
   importConfig: (config: DashboardConfig) => Promise<void>
 
@@ -410,6 +413,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     selectAllForFilter,
     saveFilterConfig,
     handlePaletteChange,
+    handleRefreshDefaultChange,
     importConfig,
     snapPortletIntoGroup,
     ungroupGroup,
@@ -488,6 +492,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
       // Config operations
       handlePaletteChange,
+      handleRefreshDefaultChange,
       importConfig,
 
       // Group operations
@@ -529,6 +534,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       selectAllForFilter,
       saveFilterConfig,
       handlePaletteChange,
+      handleRefreshDefaultChange,
       importConfig,
       snapPortletIntoGroup,
       ungroupGroup,

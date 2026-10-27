@@ -32,6 +32,8 @@ export interface DashboardPortletCardProps {
     onEdit: (portlet: PortletConfig) => void
     onDelete: (portletId: string) => void
     onOpenFilterConfig: (portlet: PortletConfig) => void
+    /** Pause or resume this portlet's interval refresh */
+    onToggleRefreshPaused?: (portletId: string) => void
   }
   icons: {
     RefreshIcon: ComponentType<{ className?: string; style?: CSSProperties }>

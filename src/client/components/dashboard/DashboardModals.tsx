@@ -55,6 +55,7 @@ export default function DashboardModals() {
         submitText={editingPortlet ? t('dashboard.updatePortlet') : t('dashboard.addPortlet')}
         colorPalette={colorPalette}
         dashboardFilters={dashboardFilters}
+        dashboardRefresh={config.refresh}
       />
 
       {/* Text Portlet Modal */}

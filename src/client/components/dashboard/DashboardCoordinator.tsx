@@ -725,14 +725,17 @@ export default function DashboardCoordinator({
 
   // Interval refresh (features.refresh): one timer per interval group, each
   // tick going through the refresh button's action. Edit mode and the
-  // dashboard-level pause stop the timers.
+  // dashboard-level pause stop the timers; a paused portlet skips its ticks.
   const isRefreshPaused = useDashboardStore(state => state.isRefreshPaused)
+  const pausedPortletIds = useDashboardStore(state => state.pausedPortletIds)
   const toggleRefreshPaused = useDashboardStore(state => state.toggleRefreshPaused)
+  const togglePortletRefreshPaused = useDashboardStore(state => state.togglePortletRefreshPaused)
   const { hasRefresh } = useDashboardRefreshTimer({
     portlets: config.portlets,
     dashboardRefresh: config.refresh,
     features,
     stopped: isEditMode || isRefreshPaused,
+    pausedPortletIds,
     refreshPortlet: handlePortletRefresh,
   })
   const refreshState = useMemo(() => ({
@@ -905,8 +908,10 @@ export default function DashboardCoordinator({
     onEdit: handleEditPortlet,
     onDelete: handleDeletePortlet,
     onOpenFilterConfig: handleOpenFilterConfig,
+    onToggleRefreshPaused: togglePortletRefreshPaused,
   }), [
     handleToggleFilterForPortlet,
+    togglePortletRefreshPaused,
     handlePortletRefresh,
     handleDuplicatePortlet,
     handleEditPortlet,

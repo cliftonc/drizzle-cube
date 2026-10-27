@@ -6,7 +6,7 @@
  * - Modal state (portlet edit, analysis, filter config)
  * - Layout state (draftRows, drag state, initialization)
  * - Debug data (per-portlet debug information)
- * - Refresh pause state (dashboard-level)
+ * - Refresh pause state (dashboard-level and per-portlet)
  *
  * KEY ARCHITECTURE: Instance-based stores
  * - Each Dashboard gets its own store instance via Context
@@ -136,6 +136,8 @@ export interface DashboardStoreState {
   // =========================================================================
   /** Whether interval refresh is paused for the whole dashboard */
   isRefreshPaused: boolean
+  /** Portlets whose interval refresh the viewer paused */
+  pausedPortletIds: string[]
 }
 
 /**
@@ -217,6 +219,8 @@ export interface DashboardStoreActions {
   // =========================================================================
   /** Pause or resume interval refresh for the whole dashboard */
   toggleRefreshPaused: () => void
+  /** Pause or resume interval refresh for one portlet */
+  togglePortletRefreshPaused: (portletId: string) => void
 
   // =========================================================================
   // Utility Actions
@@ -274,6 +278,7 @@ const createDefaultState = (): DashboardStoreState => ({
 
   // Refresh state
   isRefreshPaused: false,
+  pausedPortletIds: [],
 })
 
 /**
@@ -435,6 +440,13 @@ function createStoreActions(
 
     toggleRefreshPaused: () =>
       set((state) => ({ isRefreshPaused: !state.isRefreshPaused })),
+
+    togglePortletRefreshPaused: (portletId) =>
+      set((state) => ({
+        pausedPortletIds: state.pausedPortletIds.includes(portletId)
+          ? state.pausedPortletIds.filter((id) => id !== portletId)
+          : [...state.pausedPortletIds, portletId],
+      })),
 
     // =================================================================
     // Utility Actions
@@ -684,6 +696,7 @@ export const selectAllActions = (state: DashboardStore) => ({
   setThumbnailDirty: state.setThumbnailDirty,
   // Refresh
   toggleRefreshPaused: state.toggleRefreshPaused,
+  togglePortletRefreshPaused: state.togglePortletRefreshPaused,
   // Utility
   reset: state.reset,
 })

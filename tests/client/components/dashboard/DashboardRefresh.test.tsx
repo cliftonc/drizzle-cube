@@ -188,11 +188,40 @@ describe('Dashboard interval refresh', () => {
       fireEvent.click(toggle)
     })
     expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    // The card shows the dashboard pause as a disabled play button
+    expect(screen.getByTestId('portlet-refresh-pause')).toBeDisabled()
+    expect(screen.getByTestId('portlet-refresh-pause')).toHaveAttribute('aria-pressed', 'true')
     await advanceSeconds(60)
     expect(refreshCalls).toHaveLength(0)
 
     await act(async () => {
       fireEvent.click(toggle)
+    })
+    await advanceSeconds(10)
+    expect(callsFor('a')).toHaveLength(1)
+  })
+
+  it('skips ticks for a portlet paused from its header, and shows it paused', async () => {
+    const config: DashboardConfig = {
+      layoutMode: 'grid',
+      refresh: { intervalSeconds: 10 },
+      portlets: [portlet('a'), portlet('b')]
+    }
+    render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
+
+    const [pauseA] = screen.getAllByTestId('portlet-refresh-pause')
+    await act(async () => {
+      fireEvent.click(pauseA)
+    })
+    expect(pauseA).toHaveAttribute('aria-pressed', 'true')
+    expect(pauseA).toHaveAttribute('title', 'Resume auto-refresh for this portlet')
+
+    await advanceSeconds(20)
+    expect(callsFor('a')).toHaveLength(0)
+    expect(callsFor('b')).toHaveLength(2)
+
+    await act(async () => {
+      fireEvent.click(pauseA)
     })
     await advanceSeconds(10)
     expect(callsFor('a')).toHaveLength(1)
@@ -236,6 +265,63 @@ describe('Dashboard interval refresh', () => {
       fireEvent.click(refreshButton, { shiftKey: true })
     })
     expect(callsFor('a')).toEqual([{ portlet: 'a', options: { bustCache: true } }])
+  })
+
+  describe('dashboard default interval control', () => {
+    async function renderInEditMode(config: DashboardConfig) {
+      const onConfigChange = vi.fn()
+      render(<DashboardGrid config={config} editable={true} onConfigChange={onConfigChange} />, { wrapper: TestWrapper })
+      await act(async () => {
+        fireEvent.click(screen.getByText('Edit'))
+      })
+      return { onConfigChange, select: screen.getByRole('combobox', { name: /Default auto-refresh/ }) }
+    }
+
+    it('sets the default interval, keeping pauseWhenHidden', async () => {
+      const config: DashboardConfig = {
+        layoutMode: 'grid',
+        refresh: { intervalSeconds: 30, pauseWhenHidden: true },
+        portlets: [portlet('a')]
+      }
+      const { onConfigChange, select } = await renderInEditMode(config)
+      expect(select).toHaveValue('30')
+
+      await act(async () => {
+        fireEvent.change(select, { target: { value: '300' } })
+      })
+      expect(onConfigChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ refresh: { intervalSeconds: 300, pauseWhenHidden: true } })
+      )
+    })
+
+    it('turns the default off by removing dashboard refresh', async () => {
+      const config: DashboardConfig = { layoutMode: 'grid', refresh: { intervalSeconds: 30 }, portlets: [portlet('a')] }
+      const { onConfigChange, select } = await renderInEditMode(config)
+
+      await act(async () => {
+        fireEvent.change(select, { target: { value: '' } })
+      })
+      expect(onConfigChange.mock.lastCall?.[0]).not.toHaveProperty('refresh')
+    })
+
+    it('offers presets at or above the minimum, plus a custom current interval', async () => {
+      mockFeatures = { refresh: { enabled: true, minIntervalSeconds: 60 } }
+      const config: DashboardConfig = { layoutMode: 'grid', refresh: { intervalSeconds: 90 }, portlets: [portlet('a')] }
+      const { select } = await renderInEditMode(config)
+
+      const values = Array.from((select as HTMLSelectElement).options).map((option) => option.value)
+      expect(values).toEqual(['', '60', '90', '300', '900', '3600'])
+    })
+
+    it('is not shown when interval refresh is off', async () => {
+      mockFeatures = {}
+      const config: DashboardConfig = { layoutMode: 'grid', portlets: [portlet('a')] }
+      render(<DashboardGrid config={config} editable={true} onConfigChange={vi.fn()} />, { wrapper: TestWrapper })
+      await act(async () => {
+        fireEvent.click(screen.getByText('Edit'))
+      })
+      expect(screen.queryByRole('combobox', { name: /Default auto-refresh/ })).toBeNull()
+    })
   })
 
   describe('freshness indicator', () => {
@@ -283,6 +369,7 @@ describe('Dashboard interval refresh', () => {
       render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
 
       expect(screen.queryByTestId('portlet-freshness')).toBeNull()
+      expect(screen.queryByTestId('portlet-refresh-pause')).toBeNull()
       await advanceSeconds(60)
       expect(refreshCalls).toHaveLength(0)
     })

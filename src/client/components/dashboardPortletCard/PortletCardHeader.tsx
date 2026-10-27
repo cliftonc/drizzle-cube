@@ -36,6 +36,8 @@ interface PortletCardHeaderProps {
   isFetching?: boolean
   /** Freshness indicator state; when absent (refresh feature off) the cache icon shows instead */
   freshness?: DataFreshnessIndicatorProps
+  /** Per-portlet refresh pause toggle; shown when the portlet refreshes on an interval */
+  refreshPause?: { isPaused: boolean; isDashboardPaused: boolean; onToggle: () => void }
   onRefresh: (options?: MaxAgeOptions) => void
   onHoverRefreshChange: (hovering: boolean) => void
   onCopyToClipboard: (event: React.MouseEvent | React.TouchEvent) => void
@@ -99,7 +101,7 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
     portlet, className, headerStyle, restHeaderProps, headerOnClick,
     editable, isEditMode, isInSelectionMode, debugData,
     copyAvailable, copySuccess, xlsExportAvailable, exportInProgress, showCacheBustIndicator,
-    unreachableDateFilterLabels, icons, isFetching = false, freshness, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
+    unreachableDateFilterLabels, icons, isFetching = false, freshness, refreshPause, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
     onOpenFilterConfig, onDuplicate, onEdit, onDelete, onExpand
   } = props
   const { t } = useTranslation()
@@ -111,6 +113,13 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
   const refreshTitle = isFetching
     ? t('dashboard.portlet.action.refreshing')
     : showCacheBustIndicator ? t('dashboard.portlet.action.refreshBypassCache') : t('dashboard.portlet.action.refreshTitle')
+  const PauseIcon = getIcon('pause')
+  const PlayIcon = getIcon('play')
+  const refreshPauseLabel = !refreshPause
+    ? undefined
+    : refreshPause.isDashboardPaused
+      ? t('dashboard.portlet.freshness.pausedTitle')
+      : refreshPause.isPaused ? t('dashboard.portlet.action.resumeRefresh') : t('dashboard.portlet.action.pauseRefresh')
 
   return (
     <div
@@ -142,6 +151,30 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
         {freshness
           ? <DataFreshnessIndicator {...freshness} />
           : debugData?.cacheInfo && <CacheIndicator cachedAt={debugData.cacheInfo.cachedAt} />}
+        {refreshPause && !isInSelectionMode && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              refreshPause.onToggle()
+            }}
+            onTouchEnd={(event) => {
+              event.stopPropagation()
+              event.preventDefault()
+              if (!refreshPause.isDashboardPaused) refreshPause.onToggle()
+            }}
+            disabled={refreshPause.isDashboardPaused}
+            className={`dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:transition-colors ${
+              refreshPause.isDashboardPaused ? 'dc:opacity-50 dc:cursor-default' : 'dc:cursor-pointer hover:bg-dc-surface-hover'
+            }`}
+            title={refreshPauseLabel}
+            aria-label={refreshPauseLabel}
+            aria-pressed={refreshPause.isPaused}
+            data-testid="portlet-refresh-pause"
+          >
+            {refreshPause.isPaused ? <PlayIcon style={ICON_STYLE} /> : <PauseIcon style={ICON_STYLE} />}
+          </button>
+        )}
         <button
           onClick={(event) => {
             event.stopPropagation()
