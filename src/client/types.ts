@@ -700,6 +700,12 @@ export interface AnalyticsPortletProps {
   dashboardFilters?: DashboardFilter[] // Dashboard-level filters to merge with portlet query
   dashboardFilterMapping?: DashboardFilterMapping // Dashboard filters that apply to this portlet (IDs or entries with member overrides)
   eagerLoad?: boolean // Force immediate loading (default: false, lazy load enabled)
+  /**
+   * The portlet refreshes on an interval: while scrolled away its queries are
+   * disabled, so ticks only mark them stale and it fetches once back in view.
+   * Without it a loaded portlet stays live when scrolled away.
+   */
+  hasIntervalRefresh?: boolean
   isVisible?: boolean // Whether the portlet is visible in the viewport (for lazy loading)
   height?: string | number
   title?: string

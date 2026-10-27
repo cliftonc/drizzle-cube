@@ -10,6 +10,7 @@ import DebugModal from '../DebugModal.js'
 import { getIcon } from '../../icons/registry.js'
 import type { PortletDebugDataEntry } from '../../stores/dashboardStore.js'
 import EditActionButtons, { ICON_STYLE, type CardIcons } from './EditActionButtons.js'
+import DataFreshnessIndicator, { type DataFreshnessIndicatorProps } from './DataFreshnessIndicator.js'
 import type { MaxAgeOptions } from '../../client/maxAge.js'
 
 
@@ -33,6 +34,8 @@ interface PortletCardHeaderProps {
   icons: CardIcons
   /** Whether the portlet is fetching; the refresh icon spins meanwhile */
   isFetching?: boolean
+  /** Freshness indicator state; when absent (refresh feature off) the cache icon shows instead */
+  freshness?: DataFreshnessIndicatorProps
   onRefresh: (options?: MaxAgeOptions) => void
   onHoverRefreshChange: (hovering: boolean) => void
   onCopyToClipboard: (event: React.MouseEvent | React.TouchEvent) => void
@@ -96,7 +99,7 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
     portlet, className, headerStyle, restHeaderProps, headerOnClick,
     editable, isEditMode, isInSelectionMode, debugData,
     copyAvailable, copySuccess, xlsExportAvailable, exportInProgress, showCacheBustIndicator,
-    unreachableDateFilterLabels, icons, isFetching = false, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
+    unreachableDateFilterLabels, icons, isFetching = false, freshness, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
     onOpenFilterConfig, onDuplicate, onEdit, onDelete, onExpand
   } = props
   const { t } = useTranslation()
@@ -135,8 +138,10 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
         )}
       </div>
       <div className="dc:flex dc:items-center dc:gap-1 dc:shrink-0 dc:ml-4 dc:-mr-2" {...STOP_HANDLERS}>
-        {/* Cache indicator - show when result was served from cache */}
-        {debugData?.cacheInfo && <CacheIndicator cachedAt={debugData.cacheInfo.cachedAt} />}
+        {/* Freshness indicator when refresh is on; otherwise the cache icon on a cache hit */}
+        {freshness
+          ? <DataFreshnessIndicator {...freshness} />
+          : debugData?.cacheInfo && <CacheIndicator cachedAt={debugData.cacheInfo.cachedAt} />}
         <button
           onClick={(event) => {
             event.stopPropagation()

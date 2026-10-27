@@ -112,7 +112,9 @@ src/client/
 │   ├── AnalyticsDashboard.tsx     Dashboard container
 │   ├── AnalyticsPage.tsx          Full analytics page layout
 │   ├── AnalyticsPortlet.tsx       Individual dashboard widget
-│   ├── analyticsPortlet/          AnalyticsPortlet.tsx sub-components + hooks (query, drill, debug)
+│   ├── analyticsPortlet/          AnalyticsPortlet.tsx sub-components + hooks (query, drill, debug,
+│   │                              visibility: queries disabled until first view, and for interval
+│   │                              portlets while scrolled away)
 │   ├── AnalysisBuilderLazy.tsx    Lazy-loaded AnalysisBuilder
 │   ├── ChartErrorBoundary.tsx     Chart error boundary
 │   ├── ChartTypeSelector.tsx      Chart type picker (driven by chartConfigRegistry)
@@ -121,6 +123,7 @@ src/client/
 │   │                              (RefreshPauseToggle: dashboard-wide pause)
 │   ├── DashboardPortletCard.tsx   Portlet card wrapper
 │   ├── dashboardPortletCard/      DashboardPortletCard.tsx sub-components + actions hook + helpers
+│   │                              (DataFreshnessIndicator: status dot + computed-at age, warning when stale)
 │   ├── portletAnalysisModal/      PortletAnalysisModal sibling helpers (save validation)
 │   ├── RowManagedLayout.tsx       Row-based layout engine
 │   ├── MobileStackedLayout.tsx    Mobile-responsive layout
@@ -201,7 +204,7 @@ src/client/
     ├── configMigration.ts         Config version migration
     ├── dashboardExport.ts         Dashboard JSON export envelope + import validation
     ├── drillQueryBuilder.ts       Drill-down query construction
-    ├── freshness.ts               Effective refresh interval; computed-at of a result
+    ├── freshness.ts               Effective refresh interval; computed-at of a result; stale check
     ├── filterUtils.ts             Filter manipulation
     ├── funnelExecution.ts, funnelValidation.ts  Funnel helpers
     ├── multiQueryUtils.ts, multiQueryValidation.ts  Multi-query helpers

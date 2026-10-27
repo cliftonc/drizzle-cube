@@ -229,6 +229,8 @@ export interface FunnelValidationResult {
 export interface UseFunnelQueryOptions {
   /** Skip execution */
   skip?: boolean
+  /** Whether the query may fetch; unlike `skip`, false keeps the key and data (default: true) */
+  enabled?: boolean
   /** Debounce delay in milliseconds */
   debounceMs?: number
   /** Callback when a step completes */

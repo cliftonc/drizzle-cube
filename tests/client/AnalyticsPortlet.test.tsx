@@ -331,9 +331,10 @@ describe('AnalyticsPortlet', () => {
         />
       )
 
-      // Query should be skipped when not in view and eagerLoad is false
+      // The query is disabled, not skipped, so it keeps its key for refreshes
+      // made before the first view
       const call = (useCubeLoadQuery as any).mock.calls[0]
-      expect(call[1]).toMatchObject({ skip: true })
+      expect(call[1]).toMatchObject({ skip: false, enabled: false })
     })
 
     it('should query immediately when eagerLoad is true', async () => {
@@ -413,6 +414,67 @@ describe('AnalyticsPortlet', () => {
       await waitFor(() => {
         expect(mockUseCubeLoadQueryResult.refetch).toHaveBeenCalledWith(undefined)
       })
+    })
+  })
+
+  describe('scrolled away', () => {
+    it('with interval refresh, disables its queries while scrolled away and passes refreshes straight to them', async () => {
+      const ref = createRef<AnalyticsPortletRef>()
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
+      const mockedHook = vi.mocked(useCubeLoadQuery)
+      // A fresh chartConfig each render gets past React.memo, standing in for
+      // the observer's own state update
+      const props = () => ({
+        query: JSON.stringify({ measures: ['Test.count'] }),
+        chartType: 'bar' as const,
+        chartConfig: { yAxis: ['Test.count'] },
+        hasIntervalRefresh: true
+      })
+
+      // Seen once: enabled, and the query is not skipped
+      mockInView = true
+      const { rerender } = render(<AnalyticsPortlet ref={ref} {...props()} />)
+      expect(mockedHook.mock.lastCall?.[1]).toMatchObject({ skip: false, enabled: true })
+
+      // Scrolled away: the query keeps its key and data, but is disabled
+      mockInView = false
+      rerender(<AnalyticsPortlet ref={ref} {...props()} />)
+      expect(mockedHook.mock.lastCall?.[1]).toMatchObject({ skip: false, enabled: false })
+
+      // A refresh goes straight to the hook, which holds it while disabled
+      act(() => {
+        ref.current?.refresh({ maxAgeSeconds: 30 })
+      })
+      expect(mockUseCubeLoadQueryResult.refetch).toHaveBeenCalledWith({ maxAgeSeconds: 30 })
+
+      // Back in view: enabled again, and TanStack refetches if stale
+      mockInView = true
+      rerender(<AnalyticsPortlet ref={ref} {...props()} />)
+      expect(mockedHook.mock.lastCall?.[1]).toMatchObject({ skip: false, enabled: true })
+    })
+  })
+
+  describe('scrolled away without interval refresh', () => {
+    it('keeps its queries enabled once loaded', async () => {
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
+      const mockedHook = vi.mocked(useCubeLoadQuery)
+      const props = () => ({
+        query: JSON.stringify({ measures: ['Test.count'] }),
+        chartType: 'bar' as const,
+        chartConfig: { yAxis: ['Test.count'] }
+      })
+
+      mockInView = true
+      const { rerender } = render(<AnalyticsPortlet {...props()} />)
+      mockInView = false
+      rerender(<AnalyticsPortlet {...props()} />)
+      expect(mockedHook.mock.lastCall?.[1]).toMatchObject({ skip: false, enabled: true })
+
+      mockInView = true
+      rerender(<AnalyticsPortlet {...props()} />)
+      expect(mockedHook.mock.lastCall?.[1]).toMatchObject({ skip: false, enabled: true })
     })
   })
 

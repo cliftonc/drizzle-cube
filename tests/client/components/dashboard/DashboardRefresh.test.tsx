@@ -4,16 +4,17 @@
  *
  * AnalyticsPortlet is replaced by a stub whose imperative `refresh` records
  * calls, so these tests observe exactly what the dashboard timer and the
- * refresh button ask a portlet to do.
+ * refresh button ask a portlet to do. The stub also reports freshness the way
+ * the real portlet does, to drive the header indicator.
  */
 
-import React, { useImperativeHandle } from 'react'
+import React, { useEffect, useImperativeHandle } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, fireEvent, act, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import DashboardGrid from '../../../../src/client/components/DashboardGrid'
 import { DashboardStoreProvider } from '../../../../src/client/stores/dashboardStore'
-import type { AnalyticsPortletProps, DashboardConfig, FeaturesConfig, PortletConfig } from '../../../../src/client/types'
+import type { AnalyticsPortletProps, DashboardConfig, FeaturesConfig, PortletConfig, PortletFreshness } from '../../../../src/client/types'
 import type { DashboardDisplayMode } from '../../../../src/client/hooks/useResponsiveDashboard'
 
 let mockFeatures: FeaturesConfig = {}
@@ -66,15 +67,23 @@ vi.mock('../../../../src/client/providers/ScrollContainerContext', () => ({
   ScrollContainerProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }))
 
-// Portlet stub: records refresh calls
+// Portlet stub: records refresh calls and reports freshness from `freshnessByTitle`
 const refreshCalls: Array<{ portlet: string; options: unknown }> = []
+const intervalRefreshByTitle: Record<string, boolean | undefined> = {}
+const freshnessByTitle: Record<string, PortletFreshness> = {}
 
 vi.mock('../../../../src/client/components/AnalyticsPortlet', () => ({
   default: React.forwardRef<unknown, AnalyticsPortletProps>(function PortletStub(props, ref) {
+    intervalRefreshByTitle[props.title ?? ''] = props.hasIntervalRefresh
     useImperativeHandle(ref, () => ({
       refresh: (options?: unknown) => refreshCalls.push({ portlet: props.title ?? '', options }),
       getViewState: () => ({})
     }))
+    const freshness = freshnessByTitle[props.title ?? '']
+    const { onFreshnessChange } = props
+    useEffect(() => {
+      if (freshness) onFreshnessChange?.(freshness)
+    }, [freshness, onFreshnessChange])
     return <div data-testid="analytics-portlet" />
   })
 }))
@@ -127,6 +136,7 @@ describe('Dashboard interval refresh', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     refreshCalls.length = 0
+    for (const key of Object.keys(freshnessByTitle)) delete freshnessByTitle[key]
     mockFeatures = { refresh: { enabled: true } }
   })
 
@@ -208,6 +218,15 @@ describe('Dashboard interval refresh', () => {
     expect(callsFor('a')).toHaveLength(1)
   })
 
+  it('tells each chart whether it refreshes on an interval', async () => {
+    const config: DashboardConfig = {
+      layoutMode: 'grid',
+      portlets: [portlet('a', { intervalSeconds: 30 }), portlet('b')]
+    }
+    render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
+    expect(intervalRefreshByTitle).toMatchObject({ a: true, b: false })
+  })
+
   it('keeps the refresh button on the same path (shift+click is a bust)', async () => {
     const config: DashboardConfig = { layoutMode: 'grid', portlets: [portlet('a')] }
     render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
@@ -217,5 +236,55 @@ describe('Dashboard interval refresh', () => {
       fireEvent.click(refreshButton, { shiftKey: true })
     })
     expect(callsFor('a')).toEqual([{ portlet: 'a', options: { bustCache: true } }])
+  })
+
+  describe('freshness indicator', () => {
+    it('shows computed-at, and the updating pulse while fetching', async () => {
+      vi.setSystemTime(new Date('2026-10-23T10:00:30Z'))
+      freshnessByTitle.a = { computedAt: '2026-10-23T10:00:00Z', isFetching: true }
+      const config: DashboardConfig = { layoutMode: 'grid', refresh: { intervalSeconds: 30 }, portlets: [portlet('a')] }
+      render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
+
+      expect(screen.getByTestId('portlet-freshness-age')).toHaveAttribute('data-computed-at', '2026-10-23T10:00:00Z')
+      expect(screen.getByTestId('portlet-freshness-age').textContent).toBe('30s ago')
+      expect(screen.getByTestId('portlet-freshness-dot')).toHaveAttribute('data-updating', 'true')
+    })
+
+    it('turns stale once computed-at is older than two intervals', async () => {
+      vi.setSystemTime(new Date('2026-10-23T10:00:50Z'))
+      freshnessByTitle.a = { computedAt: '2026-10-23T10:00:00Z', isFetching: false }
+      const config: DashboardConfig = { layoutMode: 'grid', portlets: [portlet('a', { intervalSeconds: 30 })] }
+      render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
+
+      expect(screen.getByTestId('portlet-freshness')).toHaveAttribute('data-state', 'fresh')
+
+      // 10:01:05 is 65 s after computed-at, past two 30 s intervals
+      await advanceSeconds(15)
+      expect(screen.getByTestId('portlet-freshness')).toHaveAttribute('data-state', 'stale')
+    })
+
+    it('shows paused instead of stale while the dashboard is paused', async () => {
+      vi.setSystemTime(new Date('2026-10-23T10:05:00Z'))
+      freshnessByTitle.a = { computedAt: '2026-10-23T10:00:00Z', isFetching: false }
+      const config: DashboardConfig = { layoutMode: 'grid', refresh: { intervalSeconds: 30 }, portlets: [portlet('a')] }
+      render(<DashboardGrid config={config} editable={false} />, { wrapper: TestWrapper })
+      expect(screen.getByTestId('portlet-freshness')).toHaveAttribute('data-state', 'stale')
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('dashboard-refresh-pause'))
+      })
+      expect(screen.getByTestId('portlet-freshness')).toHaveAttribute('data-state', 'paused')
+    })
+
+    it('shows no indicator and does not tick when the feature is off', async () => {
+      mockFeatures = {}
+      freshnessByTitle.a = { computedAt: '2026-10-23T10:00:00Z', isFetching: false }
+      const config: DashboardConfig = { layoutMode: 'grid', refresh: { intervalSeconds: 30 }, portlets: [portlet('a')] }
+      render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
+
+      expect(screen.queryByTestId('portlet-freshness')).toBeNull()
+      await advanceSeconds(60)
+      expect(refreshCalls).toHaveLength(0)
+    })
   })
 })

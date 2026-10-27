@@ -4,8 +4,6 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react'
-import { useInView } from 'react-intersection-observer'
-import { useScrollContainer } from '../providers/ScrollContainerContext.js'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
 import type { AnalyticsPortletProps, AnalyticsPortletRef, PortletViewState } from '../types.js'
 import { hasRunnableQuery, parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
@@ -14,6 +12,7 @@ import { usePortletDrillState } from './analyticsPortlet/usePortletDrillState.js
 import { usePortletPagination } from './analyticsPortlet/usePortletPagination.js'
 import { usePortletDeadMembers } from './analyticsPortlet/usePortletDeadMembers.js'
 import { usePortletQueryResults } from './analyticsPortlet/usePortletQueryResults.js'
+import { usePortletVisibility } from './analyticsPortlet/usePortletVisibility.js'
 import { usePortletDebugData } from './analyticsPortlet/usePortletDebugData.js'
 import { resolvePortletRenderKind } from './analyticsPortlet/portletRenderState.js'
 import { PortletChartView } from './analyticsPortlet/PortletChartView.js'
@@ -34,26 +33,20 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   colorPalette,
   loadingComponent,
   initialViewState,
+  hasIntervalRefresh = false,
   onDebugDataReady,
   onFreshnessChange
 }, ref) => {
   // The start view state is read one time, on mount, like the chart components do
   const [startViewState] = useState(() => initialViewState)
 
-  // Lazy loading: Use IntersectionObserver to detect when portlet is visible
-  // Get scroll container from context (null = viewport, element = container scroll)
-  const scrollContainer = useScrollContainer()
-  const { ref: inViewRef, inView } = useInView({
-    root: scrollContainer,
-    rootMargin: '500px',      // Start loading 500px before entering viewport (about half screen)
-    triggerOnce: true,        // Once visible, stay "visible" (don't unload data)
-    initialInView: false,     // Start as not visible, let observer determine actual state
-    skip: eagerLoad           // Skip observation entirely if eagerLoad is true
-  })
-
-  // Effective visibility: eagerLoad forces visible, otherwise use inView from IntersectionObserver
+  // Lazy loading: Use IntersectionObserver to detect when portlet is visible.
+  // eagerLoad forces visible. An interval-refreshed portlet's queries are
+  // disabled while scrolled away; any other stays live once loaded.
   // Note: Batching is handled by BatchCoordinator which collects queries for 100ms before flushing
-  const isVisible = eagerLoad || inView
+  const visibility = usePortletVisibility(eagerLoad)
+  const { inViewRef, isVisible } = visibility
+  const isScrolledAway = hasIntervalRefresh && visibility.isScrolledAway
 
   // `skipQuery` says the chart does not *require* a query, not that it can
   // never have one — a markdown portlet with a query renders its content as a
@@ -155,6 +148,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     shouldSkipQuery,
     eagerLoad,
     isVisible,
+    isScrolledAway,
     displayConfig
   })
 

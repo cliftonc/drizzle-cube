@@ -201,6 +201,40 @@ describe('usePortletQueryResults refresh path', () => {
     await waitFor(() => expect(seen).toEqual([{ endpoint: 'load', maxAge: '30', cacheControl: null }]))
   })
 
+  it('a scrolled-away portlet keeps its rows; a refresh fetches only once it is back', async () => {
+    const { wrapper } = createHookWrapper()
+    const { result, rerender } = renderHook(
+      (props: { isScrolledAway: boolean }) => usePortletQueryResults(baseParams({ activeQuery: singleQuery, isScrolledAway: props.isScrolledAway })),
+      { wrapper, initialProps: { isScrolledAway: false } }
+    )
+    await waitFor(() => expect(result.current.computedAt).toBeDefined())
+    const computedAt = result.current.computedAt
+
+    // Scrolled away and back without a refresh: the rows are still fresh
+    rerender({ isScrolledAway: true })
+    rerender({ isScrolledAway: false })
+    await expectNoFetch(result)
+    expect(seen).toHaveLength(1)
+
+    rerender({ isScrolledAway: true })
+    act(() => {
+      result.current.refresh({ maxAgeSeconds: 30 })
+      result.current.refresh({ maxAgeSeconds: 40 })
+    })
+    await expectNoFetch(result)
+    expect(seen).toHaveLength(1)
+    expect(result.current.computedAt).toBe(computedAt)
+
+    // Back in view: one fetch, with the stricter of the pending max-ages
+    rerender({ isScrolledAway: false })
+    await waitFor(() => expect(seen).toEqual([
+      { endpoint: 'load', maxAge: null, cacheControl: null },
+      { endpoint: 'load', maxAge: '30', cacheControl: null }
+    ]))
+    await expectNoFetch(result)
+    expect(seen).toHaveLength(2)
+  })
+
   it('goes through the batch coordinator with the max-age when batching is on', async () => {
     const { result } = renderPortlet({ activeQuery: singleQuery }, { enableBatching: true })
     await waitFor(() => expect(seen).toHaveLength(1))

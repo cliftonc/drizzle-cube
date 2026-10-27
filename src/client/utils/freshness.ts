@@ -59,6 +59,14 @@ export function resultSetComputedAt(resultSet: CubeResultSet | null | undefined)
   return resultSet.cacheInfo?.()?.cachedAt ?? resultSet.lastRefreshTime?.()
 }
 
+/** Stale: the rows are older than two refresh intervals. */
+export function isComputedAtStale(computedAt: string | undefined, intervalSeconds: number | undefined, nowMs: number): boolean {
+  if (!computedAt || intervalSeconds === undefined) return false
+  const computedMs = Date.parse(computedAt)
+  if (!Number.isFinite(computedMs)) return false
+  return nowMs - computedMs > intervalSeconds * 2 * 1000
+}
+
 /** The oldest of several computed-at times (a multi-query portlet is as old as its oldest result). */
 export function oldestComputedAt(times: Array<string | undefined>): string | undefined {
   let oldest: string | undefined

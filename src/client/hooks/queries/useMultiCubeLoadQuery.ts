@@ -64,6 +64,13 @@ export interface UseMultiCubeLoadQueryOptions {
    */
   skip?: boolean
   /**
+   * Whether the query may fetch. Unlike `skip`, false keeps the query key and
+   * its data; a refetch while disabled marks the query stale, and it fetches
+   * once enabled again.
+   * @default true
+   */
+  enabled?: boolean
+  /**
    * Debounce delay in milliseconds
    * @default 300
    */
@@ -154,6 +161,7 @@ export function useMultiCubeLoadQuery(
 ): UseMultiCubeLoadQueryResult {
   const {
     skip = false,
+    enabled = true,
     debounceMs = DEFAULT_DEBOUNCE_MS,
     resetResultSetOnChange: _resetResultSetOnChange = true,
     staleTime = 60 * 1000,
@@ -251,8 +259,8 @@ export function useMultiCubeLoadQuery(
         config: serverConfig,
       }
     },
-    enabled: !!serverConfig && !skip,
-    // A max-age recorded while skipped makes the cached result stale, so the query
+    enabled: !!serverConfig && !skip && enabled,
+    // A max-age recorded while skipped or disabled makes the cached result stale, so the query
     // fetches with it once enabled
     staleTime: () => (refetchMaxAge.hasPendingMaxAge() ? 0 : staleTime),
     placeholderData: keepPreviousData ? (prevData) => prevData : undefined,
@@ -264,8 +272,9 @@ export function useMultiCubeLoadQuery(
   const { refetch: refetchQuery } = queryResult
   const refetch = useCallback((options?: MaxAgeOptions) => {
     const cancelRefetch = refetchMaxAge.recordMaxAge(options)
-    if (serverConfig && !skip) void refetchQuery({ cancelRefetch })
-  }, [refetchMaxAge, serverConfig, skip, refetchQuery])
+    // A disabled query (scrolled away) fetches with the max-age once enabled
+    if (serverConfig && !skip && enabled) void refetchQuery({ cancelRefetch })
+  }, [refetchMaxAge, serverConfig, skip, enabled, refetchQuery])
 
   // Gap-fill for a chart when asked. Uses the config the result was fetched
   // with, so placeholder data from a previous config merges consistently.

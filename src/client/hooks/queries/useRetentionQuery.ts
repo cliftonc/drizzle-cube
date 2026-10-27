@@ -31,6 +31,8 @@ const DEFAULT_DEBOUNCE_MS = 300
 export interface UseRetentionQueryOptions {
   /** Skip execution */
   skip?: boolean
+  /** Whether the query may fetch; unlike `skip`, false keeps the key and data (default: true) */
+  enabled?: boolean
   /** Debounce delay in milliseconds */
   debounceMs?: number
   /** Callback when query completes */
@@ -234,7 +236,7 @@ export function useRetentionQuery(
   serverQuery: ServerRetentionQuery | null,
   options: UseRetentionQueryOptions = {}
 ): UseRetentionQueryResult {
-  const { skip = false, debounceMs = DEFAULT_DEBOUNCE_MS, onComplete, onError, getFieldLabel } = options
+  const { skip = false, enabled = true, debounceMs = DEFAULT_DEBOUNCE_MS, onComplete, onError, getFieldLabel } = options
 
   const { cubeApi } = useCubeApi()
   const queryClient = useQueryClient()
@@ -324,8 +326,8 @@ export function useRetentionQuery(
   const queryResult = useQuery({
     queryKey,
     queryFn: runRetentionQuery,
-    enabled: shouldExecute,
-    // 1 minute cache; a max-age recorded while skipped makes the cached result
+    enabled: shouldExecute && enabled,
+    // 1 minute cache; a max-age recorded while skipped or disabled makes the cached result
     // stale, so the query fetches with it once enabled
     staleTime: () => (refetchMaxAge.hasPendingMaxAge() ? 0 : 60000),
     gcTime: 5 * 60 * 1000, // 5 minute garbage collection
@@ -407,8 +409,9 @@ export function useRetentionQuery(
   const { refetch: refetchQuery } = queryResult
   const refetch = useCallback((options?: MaxAgeOptions) => {
     const cancelRefetch = refetchMaxAge.recordMaxAge(options)
-    if (debouncedQuery && !skip) void refetchQuery({ cancelRefetch })
-  }, [refetchMaxAge, debouncedQuery, skip, refetchQuery])
+    // A disabled query (scrolled away) fetches with the max-age once enabled
+    if (debouncedQuery && !skip && enabled) void refetchQuery({ cancelRefetch })
+  }, [refetchMaxAge, debouncedQuery, skip, enabled, refetchQuery])
 
   // Determine status
   const status = useMemo(() => {

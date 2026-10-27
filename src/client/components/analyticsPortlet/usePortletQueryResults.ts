@@ -33,7 +33,18 @@ export interface UsePortletQueryResultsParams {
   isRetentionMode: boolean
   shouldSkipQuery: boolean
   eagerLoad: boolean
+  /**
+   * Near the viewport now or before. Until then the hooks are disabled, not
+   * skipped: they keep their query key, so a refresh made before the first
+   * view applies to the first fetch.
+   */
   isVisible: boolean
+  /**
+   * Disable the hooks while the portlet is scrolled away (an interval-refreshed
+   * portlet): they keep their data, a refresh only marks them stale, and they
+   * fetch what is stale when the portlet is back.
+   */
+  isScrolledAway?: boolean
   /** Chart display config — its `fillMissingDates` drives client-side gap filling */
   displayConfig?: ChartDisplayConfig
 }
@@ -69,18 +80,20 @@ export function usePortletQueryResults(params: UsePortletQueryResultsParams): Po
     shouldSkipQuery,
     eagerLoad,
     isVisible,
+    isScrolledAway = false,
     displayConfig
   } = params
   const gapFill = { fillMissingDates: displayConfig?.fillMissingDates }
 
-  // Derive per-hook skip flags from visibility + mode. A hook runs only for its
-  // own mode, when the portlet is visible (or eager) and queries aren't skipped.
-  const notReady = shouldSkipQuery || (!eagerLoad && !isVisible)
-  const shouldSkipSingle = !activeQuery || notReady || isMultiQuery || isFunnelMode || isFlowMode || isRetentionMode
-  const shouldSkipMulti = !multiQueryConfig || notReady || isFunnelMode || isFlowMode || isRetentionMode
-  const shouldSkipFunnel = !isFunnelMode || notReady
-  const shouldSkipFlow = !isFlowMode || notReady
-  const shouldSkipRetention = !isRetentionMode || notReady
+  // Derive per-hook skip flags from mode. A hook runs only for its own mode,
+  // and fetches only while enabled: the portlet is near the viewport (or
+  // eager) and not disabled for being scrolled away.
+  const shouldSkipSingle = !activeQuery || shouldSkipQuery || isMultiQuery || isFunnelMode || isFlowMode || isRetentionMode
+  const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || isFunnelMode || isFlowMode || isRetentionMode
+  const shouldSkipFunnel = !isFunnelMode || shouldSkipQuery
+  const shouldSkipFlow = !isFlowMode || shouldSkipQuery
+  const shouldSkipRetention = !isRetentionMode || shouldSkipQuery
+  const enabled = (eagerLoad || isVisible) && !isScrolledAway
 
   // Note: Legacy funnel config via mergeStrategy === 'funnel' is no longer supported
   // Funnel mode now uses ServerFunnelQuery format exclusively
@@ -89,6 +102,7 @@ export function usePortletQueryResults(params: UsePortletQueryResultsParams): Po
   // Use activeQuery to support drill-down (which replaces the query temporarily)
   const singleQueryResult = useCubeLoadQuery(activeQuery, {
     skip: shouldSkipSingle,
+    enabled,
     resetResultSetOnChange: true,
     debounceMs: 100, // Lower debounce for portlets (faster response)
     gapFill,
@@ -96,6 +110,7 @@ export function usePortletQueryResults(params: UsePortletQueryResultsParams): Po
 
   const multiQueryResult = useMultiCubeLoadQuery(multiQueryConfig, {
     skip: shouldSkipMulti,
+    enabled,
     resetResultSetOnChange: true,
     debounceMs: 100,
     gapFill,
@@ -103,6 +118,7 @@ export function usePortletQueryResults(params: UsePortletQueryResultsParams): Po
 
   const funnelQueryResult = useFunnelQuery(funnelConfig, {
     skip: shouldSkipFunnel || (!funnelConfig && !serverFunnelQuery),
+    enabled,
     debounceMs: 100,
     // Pass prebuilt ServerFunnelQuery directly (new dedicated funnel mode)
     prebuiltServerQuery: serverFunnelQuery,
@@ -110,11 +126,13 @@ export function usePortletQueryResults(params: UsePortletQueryResultsParams): Po
 
   const flowQueryResult = useFlowQuery(serverFlowQuery, {
     skip: shouldSkipFlow,
+    enabled,
     debounceMs: 100,
   })
 
   const retentionQueryResult = useRetentionQuery(serverRetentionQuery, {
     skip: shouldSkipRetention,
+    enabled,
     debounceMs: 100,
   })
 

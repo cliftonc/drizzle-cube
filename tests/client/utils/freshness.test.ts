@@ -4,6 +4,7 @@
 
 import { describe, it, expect } from 'vitest'
 import {
+  isComputedAtStale,
   oldestComputedAt,
   resolveEffectiveRefresh,
   resultSetComputedAt
@@ -63,5 +64,15 @@ describe('computed-at', () => {
   it('takes the oldest time for a multi-query portlet', () => {
     expect(oldestComputedAt(['2026-10-23T10:00:30Z', undefined, '2026-10-23T10:00:00Z'])).toBe('2026-10-23T10:00:00Z')
     expect(oldestComputedAt([undefined])).toBeUndefined()
+  })
+})
+
+describe('isComputedAtStale', () => {
+  it('is stale only past two intervals', () => {
+    const computedAt = '2026-10-23T10:00:00Z'
+    const base = Date.parse(computedAt)
+    expect(isComputedAtStale(computedAt, 30, base + 60_000)).toBe(false)
+    expect(isComputedAtStale(computedAt, 30, base + 60_001)).toBe(true)
+    expect(isComputedAtStale(computedAt, undefined, base + 1e9)).toBe(false)
   })
 })

@@ -151,6 +151,7 @@ export function useFunnelQuery(
 ): UseFunnelQueryResult {
   const {
     skip = false,
+    enabled = true,
     debounceMs = DEFAULT_DEBOUNCE_MS,
     onComplete,
     onError,
@@ -279,8 +280,8 @@ export function useFunnelQuery(
     },
     // Enable when we have a server query (either prebuilt or built from config)
     // In manual refresh mode, only execute when explicitly triggered
-    enabled: shouldExecute,
-    // 1 minute cache; a max-age recorded while skipped makes the cached result
+    enabled: shouldExecute && enabled,
+    // 1 minute cache; a max-age recorded while skipped or disabled makes the cached result
     // stale, so the query fetches with it once enabled
     staleTime: () => (refetchMaxAge.hasPendingMaxAge() ? 0 : 60000),
     gcTime: 5 * 60 * 1000, // 5 minute garbage collection
@@ -404,13 +405,16 @@ export function useFunnelQuery(
     // Mark this query as executed (for manual refresh mode)
     setExecutedQueryKey(currentQueryKey)
 
+    // A disabled query (scrolled away) fetches with the max-age once enabled
+    if (!enabled) return result
+
     try {
       await refetchQuery({ cancelRefetch })
       return result
     } catch {
       return result
     }
-  }, [refetchMaxAge, serverQuery, skip, result, currentQueryKey, refetchQuery])
+  }, [refetchMaxAge, serverQuery, skip, enabled, result, currentQueryKey, refetchQuery])
 
   /**
    * Cancel is a no-op for TanStack Query (handled automatically)

@@ -942,6 +942,7 @@ export default function DashboardCoordinator({
       layoutMode={layoutMode}
       dashboardFilters={dashboardFilters}
       configEagerLoad={config.eagerLoad}
+      dashboardRefresh={config.refresh}
       loadingComponent={loadingComponent}
       colorPalette={colorPalette}
       containerProps={containerProps}
@@ -957,6 +958,7 @@ export default function DashboardCoordinator({
     layoutMode,
     dashboardFilters,
     config.eagerLoad,
+    config.refresh,
     loadingComponent,
     colorPalette,
     portletCallbacks,

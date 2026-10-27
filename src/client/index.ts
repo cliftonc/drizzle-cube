@@ -280,6 +280,7 @@ export type {
   RefreshFeatureConfig,
   PortletRefreshConfig,
   DashboardRefreshConfig,
+  PortletFreshness,
   // Portlet expand types
   PortletViewState,
   PortletExpandPayload,

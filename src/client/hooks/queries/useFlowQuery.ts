@@ -31,6 +31,8 @@ const DEFAULT_DEBOUNCE_MS = 300
 export interface UseFlowQueryOptions {
   /** Skip query execution */
   skip?: boolean
+  /** Whether the query may fetch; unlike `skip`, false keeps the key and data (default: true) */
+  enabled?: boolean
   /** Debounce delay in milliseconds */
   debounceMs?: number
   /** Callback when query completes successfully */
@@ -146,6 +148,7 @@ export function useFlowQuery(
 ): UseFlowQueryResult {
   const {
     skip = false,
+    enabled = true,
     debounceMs = DEFAULT_DEBOUNCE_MS,
     onComplete,
     onError,
@@ -263,8 +266,8 @@ export function useFlowQuery(
       }
     },
     // In manual refresh mode, only execute when explicitly triggered
-    enabled: shouldExecute,
-    // 1 minute cache; a max-age recorded while skipped makes the cached result
+    enabled: shouldExecute && enabled,
+    // 1 minute cache; a max-age recorded while skipped or disabled makes the cached result
     // stale, so the query fetches with it once enabled
     staleTime: () => (refetchMaxAge.hasPendingMaxAge() ? 0 : 60000),
     gcTime: 5 * 60 * 1000, // 5 minute garbage collection
@@ -325,8 +328,9 @@ export function useFlowQuery(
     // Mark this query as executed (for manual refresh mode)
     setExecutedQueryKey(currentQueryKey)
 
-    void refetchQuery({ cancelRefetch })
-  }, [refetchMaxAge, debouncedQuery, isValid, skip, currentQueryKey, refetchQuery])
+    // A disabled query (scrolled away) fetches with the max-age once enabled
+    if (enabled) void refetchQuery({ cancelRefetch })
+  }, [refetchMaxAge, debouncedQuery, isValid, skip, enabled, currentQueryKey, refetchQuery])
 
   /**
    * Reset clears the query cache

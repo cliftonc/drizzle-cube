@@ -4,7 +4,7 @@
  */
 
 import type { HTMLAttributes, ReactNode, ComponentType, CSSProperties } from 'react'
-import type { AnalyticsPortletRef, ChartType, DashboardFilter, DashboardLayoutMode, PortletConfig, PortletExpandPayload } from '../../types.js'
+import type { AnalyticsPortletRef, ChartType, DashboardFilter, DashboardLayoutMode, DashboardRefreshConfig, PortletConfig, PortletExpandPayload } from '../../types.js'
 import type { PortletCardVariant } from './cardStyles.js'
 import type { ColorPalette } from '../../utils/colorPalettes.js'
 import type { MaxAgeOptions } from '../../client/maxAge.js'
@@ -17,6 +17,8 @@ export interface DashboardPortletCardProps {
   variant?: PortletCardVariant
   dashboardFilters?: DashboardFilter[]
   configEagerLoad?: boolean
+  /** Dashboard default refresh, overridden by `portlet.refresh` */
+  dashboardRefresh?: DashboardRefreshConfig
   loadingComponent?: ReactNode
   colorPalette?: ColorPalette
   containerProps?: HTMLAttributes<HTMLDivElement>
@@ -66,7 +68,7 @@ export function shallowEqualObjects<T extends object>(
 
 const SCALAR_KEYS = ['editable', 'layoutMode', 'configEagerLoad', 'variant'] as const
 const REF_KEYS = [
-  'portlet', 'dashboardFilters', 'colorPalette', 'loadingComponent', 'callbacks', 'icons',
+  'portlet', 'dashboardFilters', 'dashboardRefresh', 'colorPalette', 'loadingComponent', 'callbacks', 'icons',
   'setPortletRef', 'setPortletComponentRef', 'onPortletExpand'
 ] as const
 

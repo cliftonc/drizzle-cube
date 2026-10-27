@@ -44,6 +44,13 @@ export interface UseCubeLoadQueryOptions {
    */
   skip?: boolean
   /**
+   * Whether the query may fetch. Unlike `skip`, false keeps the query key and
+   * its data; a refetch while disabled marks the query stale, and it fetches
+   * once enabled again.
+   * @default true
+   */
+  enabled?: boolean
+  /**
    * Debounce delay in milliseconds
    * @default 300
    */
@@ -145,6 +152,7 @@ export function useCubeLoadQuery(
 ): UseCubeLoadQueryResult {
   const {
     skip = false,
+    enabled = true,
     debounceMs = DEFAULT_DEBOUNCE_MS,
     resetResultSetOnChange = true,
     staleTime = 60 * 1000,
@@ -228,9 +236,9 @@ export function useCubeLoadQuery(
         return cubeApi.load(serverQuery, loadOptions)
       })
     },
-    enabled: shouldExecute,
-    // A max-age recorded while skipped makes the cached result stale, so the query
-    // fetches with it once enabled
+    enabled: shouldExecute && enabled,
+    // A max-age recorded while skipped or disabled makes the cached result stale,
+    // so the query fetches with it once enabled
     staleTime: () => (refetchMaxAge.hasPendingMaxAge() ? 0 : staleTime),
     placeholderData: keepPreviousData ? (prevData) => prevData : undefined,
   })
@@ -299,8 +307,10 @@ export function useCubeLoadQuery(
     // Mark this query as executed (for manual refresh mode)
     setExecutedQueryKey(currentQueryKey)
 
-    void refetchQuery({ cancelRefetch })
-  }, [refetchMaxAge, serverQuery, skip, currentQueryKey, refetchQuery])
+    // A disabled query (scrolled away) fetches with the max-age once enabled;
+    // the observer's refetch would run it now
+    if (enabled) void refetchQuery({ cancelRefetch })
+  }, [refetchMaxAge, serverQuery, skip, enabled, currentQueryKey, refetchQuery])
 
   // Refetch is an alias for executeQuery for backward compatibility
   const refetch = executeQuery

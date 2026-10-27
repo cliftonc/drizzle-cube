@@ -20,6 +20,8 @@ import { usePortletCardActions } from './dashboardPortletCard/usePortletCardActi
 import PortletCardHeader from './dashboardPortletCard/PortletCardHeader.js'
 import PortletFloatingActions from './dashboardPortletCard/PortletFloatingActions.js'
 import FilterFieldChip from './dashboardPortletCard/FilterFieldChip.js'
+import { useCubeFeatures } from '../providers/CubeFeaturesProvider.js'
+import { isRefreshFeatureEnabled, resolveEffectiveRefresh } from '../utils/freshness.js'
 import { buildContainerClassName, buildHeaderClassName, buildContainerStyle, resolveDisplayModes } from './dashboardPortletCard/cardStyles.js'
 
 interface PortletChartBodyProps {
@@ -33,6 +35,7 @@ interface PortletChartBodyProps {
   dashboardFilters?: DashboardFilter[]
   dashboardFilterMapping?: DashboardFilterMapping
   eagerLoad: boolean
+  hasIntervalRefresh: boolean
   title: string
   isMarkdownAutoHeight: boolean
   colorPalette?: ColorPalette
@@ -52,6 +55,7 @@ const PortletChartBody = React.memo(function PortletChartBody({
   dashboardFilters,
   dashboardFilterMapping,
   eagerLoad,
+  hasIntervalRefresh,
   title,
   isMarkdownAutoHeight,
   colorPalette,
@@ -73,6 +77,7 @@ const PortletChartBody = React.memo(function PortletChartBody({
         dashboardFilters={dashboardFilters}
         dashboardFilterMapping={dashboardFilterMapping}
         eagerLoad={eagerLoad}
+        hasIntervalRefresh={hasIntervalRefresh}
         title={title}
         height={isMarkdownAutoHeight ? 'auto' : '100%'}
         colorPalette={colorPalette}
@@ -91,6 +96,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   layoutMode = 'grid',
   dashboardFilters,
   configEagerLoad,
+  dashboardRefresh,
   loadingComponent,
   colorPalette,
   containerProps,
@@ -211,8 +217,25 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
 
   const eagerLoad = portlet.eagerLoad ?? configEagerLoad ?? false
 
-  // The portlet reports its freshness; the header spins the refresh icon while it fetches
+  // Interval refresh (features.refresh): the header shows freshness, the
+  // dashboard timer does the refreshing, and the chart holds its queries
+  // while scrolled away
+  const { features } = useCubeFeatures()
+  const refreshFeatureEnabled = isRefreshFeatureEnabled(features)
+  const effectiveRefresh = useMemo(
+    () => resolveEffectiveRefresh(portlet.refresh, dashboardRefresh, features),
+    [portlet.refresh, dashboardRefresh, features]
+  )
+  const isDashboardRefreshPaused = useDashboardStore(state => state.isRefreshPaused)
   const [freshness, setFreshness] = useState<PortletFreshness>({ isFetching: false })
+  const freshnessIndicator = refreshFeatureEnabled
+    ? {
+        computedAt: freshness.computedAt,
+        isFetching: freshness.isFetching,
+        intervalSeconds: effectiveRefresh?.intervalSeconds,
+        isPaused: !!effectiveRefresh && isDashboardRefreshPaused
+      }
+    : undefined
 
   // Expand hands the host the exact properties this card gives AnalyticsPortlet,
   // so a chart that the host renders from them shows the same data and shares
@@ -314,6 +337,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           unreachableDateFilterLabels={unreachableDateFilterLabels}
           icons={icons}
           isFetching={freshness.isFetching}
+          freshness={freshnessIndicator}
           onRefresh={(options) => callbacks.onRefresh(portlet.id, options)}
           onHoverRefreshChange={setIsHoveringRefresh}
           onCopyToClipboard={handleCopyToClipboard}
@@ -337,6 +361,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
         dashboardFilters={dashboardFilters}
         dashboardFilterMapping={portlet.dashboardFilterMapping}
         eagerLoad={eagerLoad}
+        hasIntervalRefresh={!!effectiveRefresh}
         title={portlet.title}
         isMarkdownAutoHeight={isMarkdownAutoHeight}
         colorPalette={colorPalette}
