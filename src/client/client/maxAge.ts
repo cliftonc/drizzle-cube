@@ -28,16 +28,6 @@ export function resolveMaxAgeSeconds(options?: MaxAgeOptions): number | undefine
 }
 
 /**
- * The stricter of two max-ages (undefined means no constraint), for requests
- * that coalesce into one fetch.
- */
-export function stricterMaxAge(a: number | undefined, b: number | undefined): number | undefined {
-  if (a === undefined) return b
-  if (b === undefined) return a
-  return Math.min(a, b)
-}
-
-/**
  * Request headers for a max-age. Max-age 0 also sends `X-Cache-Control:
  * no-cache` so a server that predates `x-cache-max-age` still bypasses its
  * cache.
@@ -51,17 +41,16 @@ export function maxAgeHeaders(maxAgeSeconds: number | undefined): Record<string,
 }
 
 /**
- * Merge two refetch requests into the options one fetch should use: the
- * stricter max-age wins and `bustCache` resolves to max-age 0. Returns `a`
- * itself when `b` asks for nothing stricter, and undefined when neither asks
- * for a max-age.
+ * Merge a refetch request into the pending options: the stricter max-age wins
+ * and `bustCache` resolves to max-age 0. Returns `current` itself when the
+ * request asks for nothing stricter.
  */
-export function mergeLoadOptions(a?: MaxAgeOptions, b?: MaxAgeOptions): MaxAgeOptions | undefined {
-  const current = resolveMaxAgeSeconds(a)
-  const merged = stricterMaxAge(current, resolveMaxAgeSeconds(b))
-  if (merged === undefined) return undefined
-  if (a && merged === current) return a
-  return { maxAgeSeconds: merged }
+export function mergeLoadOptions(current?: MaxAgeOptions, request?: MaxAgeOptions): MaxAgeOptions | undefined {
+  const requested = resolveMaxAgeSeconds(request)
+  if (requested === undefined) return current
+  const held = resolveMaxAgeSeconds(current)
+  if (held !== undefined && held <= requested) return current
+  return { maxAgeSeconds: requested }
 }
 
 /** Load options a refetch asked for, kept until a fetch with them succeeds. */
