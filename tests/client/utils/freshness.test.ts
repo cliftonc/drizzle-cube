@@ -41,6 +41,8 @@ describe('resolveEffectiveRefresh', () => {
       .toEqual({ intervalSeconds: 20, pauseWhenHidden: true })
     expect(resolveEffectiveRefresh({ intervalSeconds: 20, pauseWhenHidden: false }, { pauseWhenHidden: true }, on))
       .toEqual({ intervalSeconds: 20, pauseWhenHidden: false })
+    expect(resolveEffectiveRefresh({ pauseWhenHidden: false }, { intervalSeconds: 60, pauseWhenHidden: true }, on))
+      .toEqual({ intervalSeconds: 60, pauseWhenHidden: false })
   })
 
   it('floors the interval at 5 s by default, or at minIntervalSeconds', () => {

@@ -19,27 +19,28 @@ export interface RefreshSettingsValue {
 
 export function toRefreshSettingsValue(refresh: PortletRefreshConfig | undefined): RefreshSettingsValue {
   return {
-    intervalText: refresh ? String(refresh.intervalSeconds) : '',
+    intervalText: refresh?.intervalSeconds !== undefined ? String(refresh.intervalSeconds) : '',
     pauseWhenHidden: refresh?.pauseWhenHidden
   }
 }
 
 /**
- * The portlet `refresh` config for the form state, or undefined when no
- * interval is set (the portlet follows the dashboard default). The interval is
- * floored by `minIntervalSeconds`.
+ * The portlet `refresh` config for the form state, or undefined when neither
+ * field overrides the dashboard default. An empty or invalid interval inherits
+ * the dashboard's; a valid one is floored by `minIntervalSeconds`.
  */
 export function fromRefreshSettingsValue(
   value: RefreshSettingsValue,
   minIntervalSeconds: number
 ): PortletRefreshConfig | undefined {
+  const refresh: PortletRefreshConfig = {}
   const trimmed = value.intervalText.trim()
-  if (trimmed === '') return undefined
-  const interval = Number(trimmed)
-  if (!Number.isFinite(interval) || interval <= 0) return undefined
-  const refresh: PortletRefreshConfig = { intervalSeconds: Math.max(Math.ceil(interval), minIntervalSeconds) }
+  const interval = trimmed === '' ? NaN : Number(trimmed)
+  if (Number.isFinite(interval) && interval > 0) {
+    refresh.intervalSeconds = Math.max(Math.ceil(interval), minIntervalSeconds)
+  }
   if (value.pauseWhenHidden !== undefined) refresh.pauseWhenHidden = value.pauseWhenHidden
-  return refresh
+  return Object.keys(refresh).length > 0 ? refresh : undefined
 }
 
 export default function RefreshSettings({

@@ -327,6 +327,13 @@ describe('dashboardExport', () => {
       expect(result.config.refresh).toEqual({ intervalSeconds: 60 })
     })
 
+    it('keeps a portlet hidden-tab override without an interval', () => {
+      const result = parseDashboardExport({ portlets: [portlet('a', { refresh: { pauseWhenHidden: false } })] })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.config.portlets[0].refresh).toEqual({ pauseWhenHidden: false })
+    })
+
     it('rejects malformed refresh settings', () => {
       const badPortlet = parseDashboardExport({
         portlets: [portlet('a', { refresh: { intervalSeconds: -5 } })],

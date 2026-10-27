@@ -256,10 +256,10 @@ function isPositiveNumber(value: unknown): value is number {
 
 /** Read a portlet `refresh`; undefined when the shape is wrong. */
 function parsePortletRefresh(value: unknown): PortletRefreshConfig | undefined {
-  if (!isRecord(value) || !isPositiveNumber(value.intervalSeconds) || !isOptionalBoolean(value.pauseWhenHidden)) {
-    return undefined
-  }
-  const refresh: PortletRefreshConfig = { intervalSeconds: value.intervalSeconds }
+  if (!isRecord(value) || !isOptionalBoolean(value.pauseWhenHidden)) return undefined
+  if (value.intervalSeconds !== undefined && !isPositiveNumber(value.intervalSeconds)) return undefined
+  const refresh: PortletRefreshConfig = {}
+  if (value.intervalSeconds !== undefined) refresh.intervalSeconds = value.intervalSeconds
   if (value.pauseWhenHidden !== undefined) refresh.pauseWhenHidden = value.pauseWhenHidden
   return refresh
 }

@@ -371,8 +371,11 @@ export interface ChartDisplayConfig {
  * effect only when `features.refresh.enabled` is set.
  */
 export interface PortletRefreshConfig {
-  /** Refetch every this many seconds, accepting a server result at most this old. */
-  intervalSeconds: number
+  /**
+   * Refetch every this many seconds, accepting a server result at most this old.
+   * Unset inherits the dashboard's `intervalSeconds`.
+   */
+  intervalSeconds?: number
   /**
    * Skip refreshes while the browser tab is hidden. Unset inherits the
    * dashboard's `pauseWhenHidden`; `false` overrides it.
