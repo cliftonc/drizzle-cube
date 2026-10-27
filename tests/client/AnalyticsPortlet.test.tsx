@@ -648,6 +648,33 @@ describe('AnalyticsPortlet', () => {
     })
   })
 
+  describe('freshness callback', () => {
+    it('reports once when the host passes an inline callback that sets state', async () => {
+      const report = vi.fn()
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+
+      function Host() {
+        const [, setFreshness] = React.useState<unknown>(null)
+        return (
+          <AnalyticsPortlet
+            query={JSON.stringify({ measures: ['Test.count'] })}
+            chartType="bar"
+            chartConfig={{ yAxis: ['Test.count'] }}
+            onFreshnessChange={(freshness) => {
+              report(freshness)
+              setFreshness(freshness)
+            }}
+          />
+        )
+      }
+
+      render(<Host />)
+
+      await waitFor(() => expect(report).toHaveBeenCalledWith({ computedAt: undefined, isFetching: false }))
+      expect(report).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('view state', () => {
     const barQuery = JSON.stringify({ measures: ['Test.count'], dimensions: ['Test.category'] })
 

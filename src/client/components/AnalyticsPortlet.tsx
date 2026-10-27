@@ -162,10 +162,16 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     setDeadMemberError(error ?? null)
   }, [error])
 
+  // Keep the latest callback in a ref so an inline callback does not re-run the effect
+  const onFreshnessChangeRef = useRef(onFreshnessChange)
+  useEffect(() => {
+    onFreshnessChangeRef.current = onFreshnessChange
+  }, [onFreshnessChange])
+
   // Report freshness (computed-at, fetching) to the card header
   useEffect(() => {
-    onFreshnessChange?.({ computedAt, isFetching })
-  }, [onFreshnessChange, computedAt, isFetching])
+    onFreshnessChangeRef.current?.({ computedAt, isFetching })
+  }, [computedAt, isFetching])
 
   // Expose refresh and the view state through ref
   useImperativeHandle(ref, () => ({
