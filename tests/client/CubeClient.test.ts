@@ -175,9 +175,9 @@ describe('CubeClient', () => {
       return { ok: true, json: () => Promise.resolve(body) }
     }
 
-    function headersOfCall(index = 0): Record<string, string> {
+    function headersOfCall(index = 0): Headers {
       const init: { headers: Record<string, string> } = mockFetch.mock.calls[index][1]
-      return init.headers
+      return new Headers(init.headers)
     }
 
     const query: CubeQuery = { measures: ['Users.count'] }
@@ -187,8 +187,8 @@ describe('CubeClient', () => {
       await client.load(query)
 
       const headers = headersOfCall()
-      expect(headers['X-Cache-Max-Age']).toBeUndefined()
-      expect(headers['X-Cache-Control']).toBeUndefined()
+      expect(headers.get('x-cache-max-age')).toBeNull()
+      expect(headers.get('x-cache-control')).toBeNull()
     })
 
     it('sends x-cache-max-age on load', async () => {
@@ -196,8 +196,8 @@ describe('CubeClient', () => {
       await client.load(query, { maxAgeSeconds: 30 })
 
       const headers = headersOfCall()
-      expect(headers['X-Cache-Max-Age']).toBe('30')
-      expect(headers['X-Cache-Control']).toBeUndefined()
+      expect(headers.get('x-cache-max-age')).toBe('30')
+      expect(headers.get('x-cache-control')).toBeNull()
     })
 
     it('sends max-age 0 (and no-cache for older servers) for a bust on load', async () => {
@@ -205,8 +205,8 @@ describe('CubeClient', () => {
       await client.load(query, { bustCache: true })
 
       const headers = headersOfCall()
-      expect(headers['X-Cache-Max-Age']).toBe('0')
-      expect(headers['X-Cache-Control']).toBe('no-cache')
+      expect(headers.get('x-cache-max-age')).toBe('0')
+      expect(headers.get('x-cache-control')).toBe('no-cache')
     })
 
     it('rounds fractional max-ages down and ignores negative ones', async () => {
@@ -214,8 +214,8 @@ describe('CubeClient', () => {
       await client.load(query, { maxAgeSeconds: 12.9 })
       await client.load(query, { maxAgeSeconds: -1 })
 
-      expect(headersOfCall(0)['X-Cache-Max-Age']).toBe('12')
-      expect(headersOfCall(1)['X-Cache-Max-Age']).toBeUndefined()
+      expect(headersOfCall(0).get('x-cache-max-age')).toBe('12')
+      expect(headersOfCall(1).get('x-cache-max-age')).toBeNull()
     })
 
     it('sends x-cache-max-age on batchLoad', async () => {
@@ -225,8 +225,8 @@ describe('CubeClient', () => {
       const [url] = mockFetch.mock.calls[0]
       expect(url).toBe('http://localhost:4000/cubejs-api/v1/batch')
       const headers = headersOfCall()
-      expect(headers['X-Cache-Max-Age']).toBe('10')
-      expect(headers['Content-Type']).toBe('application/json')
+      expect(headers.get('x-cache-max-age')).toBe('10')
+      expect(headers.get('content-type')).toBe('application/json')
     })
 
     it('sends max-age 0 for a bust on batchLoad', async () => {
@@ -234,8 +234,8 @@ describe('CubeClient', () => {
       await client.batchLoad([query], { bustCache: true })
 
       const headers = headersOfCall()
-      expect(headers['X-Cache-Max-Age']).toBe('0')
-      expect(headers['X-Cache-Control']).toBe('no-cache')
+      expect(headers.get('x-cache-max-age')).toBe('0')
+      expect(headers.get('x-cache-control')).toBe('no-cache')
     })
   })
 
