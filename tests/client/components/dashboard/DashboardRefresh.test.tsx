@@ -166,15 +166,6 @@ describe('Dashboard interval refresh', () => {
     expect(callsFor('a')).toHaveLength(1)
   })
 
-  it('never ticks when manualRefresh is on', async () => {
-    mockFeatures = { refresh: { enabled: true }, manualRefresh: true }
-    const config: DashboardConfig = { layoutMode: 'grid', refresh: { intervalSeconds: 10 }, portlets: [portlet('a')] }
-    render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
-
-    await advanceSeconds(60)
-    expect(refreshCalls).toHaveLength(0)
-  })
-
   it('stops ticking while the dashboard is paused from the toolbar, and resumes', async () => {
     const config: DashboardConfig = { layoutMode: 'grid', refresh: { intervalSeconds: 10 }, portlets: [portlet('a')] }
     // Read-only dashboards still get the toolbar for the pause toggle

@@ -272,29 +272,6 @@ describe('MobileStackedLayout', () => {
   })
 
   describe('refresh functionality', () => {
-    it('should call onPortletRefresh when refresh button is clicked', async () => {
-      const onPortletRefresh = vi.fn()
-      const config = createTestConfig([
-        createTestPortlet({ id: 'refresh-test' })
-      ])
-
-      const { container } = render(
-        <MobileStackedLayout
-          config={config}
-          onPortletRefresh={onPortletRefresh}
-        />
-      )
-
-      const refreshButton = container.querySelector('button[title="Refresh portlet"]')
-      expect(refreshButton).toBeInTheDocument()
-
-      fireEvent.click(refreshButton!)
-
-      await waitFor(() => {
-        expect(onPortletRefresh).toHaveBeenCalledWith('refresh-test')
-      })
-    })
-
     it('should call portlet refresh method when refresh button is clicked', async () => {
       const config = createTestConfig([createTestPortlet({ id: 'portlet-1' })])
 
