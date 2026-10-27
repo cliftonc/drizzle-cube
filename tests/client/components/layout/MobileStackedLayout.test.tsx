@@ -308,6 +308,33 @@ describe('MobileStackedLayout', () => {
       })
     })
 
+    // The dashboard's refresh action (button and interval ticks) reaches
+    // mobile charts through the refs it registers, and refreshes them itself
+    it('registers charts with the dashboard and leaves refreshing to it', async () => {
+      const config = createTestConfig([createTestPortlet({ id: 'portlet-1' })])
+      const charts: Record<string, { refresh: (options?: { maxAgeSeconds?: number }) => void } | null> = {}
+      const setPortletComponentRef = vi.fn((portletId: string, element: (typeof charts)[string]) => {
+        charts[portletId] = element
+      })
+      const onPortletRefresh = vi.fn()
+
+      const { container } = render(
+        <MobileStackedLayout
+          config={config}
+          onPortletRefresh={onPortletRefresh}
+          setPortletComponentRef={setPortletComponentRef}
+        />
+      )
+
+      charts['portlet-1']?.refresh({ maxAgeSeconds: 30 })
+      expect(mockPortletRefresh).toHaveBeenCalledWith({ maxAgeSeconds: 30 })
+
+      mockPortletRefresh.mockClear()
+      fireEvent.click(container.querySelector('button[title="Refresh portlet"]')!)
+      expect(onPortletRefresh).toHaveBeenCalledWith('portlet-1')
+      expect(mockPortletRefresh).not.toHaveBeenCalled()
+    })
+
     it('should work without onPortletRefresh callback', async () => {
       const config = createTestConfig([createTestPortlet()])
 

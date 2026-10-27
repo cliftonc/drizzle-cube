@@ -174,6 +174,8 @@ export interface DashboardContextValue {
   handleSaveFilterConfig: (mapping: DashboardFilterMapping) => Promise<void>
   handlePortletSave: (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => Promise<void>
   handlePortletRefresh: (portletId: string, options?: MaxAgeOptions) => void
+  /** Registers a chart so handlePortletRefresh reaches it (used by the mobile layout) */
+  handleSetPortletComponentRef: (portletId: string, element: { refresh: (options?: MaxAgeOptions) => void } | null) => void
   handleLayoutChange: (layout: Layout) => void
   handleDragStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | null) => void
   handleResizeStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | null) => void

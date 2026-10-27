@@ -11,7 +11,7 @@ import AnalyticsPortlet from './AnalyticsPortlet.js'
 const RefreshIcon = getIcon('refresh')
 import { ScrollContainerProvider } from '../providers/ScrollContainerContext.js'
 import { useTranslation } from '../hooks/useTranslation.js'
-import type { DashboardFilter, DashboardConfig, PortletConfig, PortletGroup } from '../types.js'
+import type { AnalyticsPortletRef, DashboardFilter, DashboardConfig, PortletConfig, PortletGroup } from '../types.js'
 import type { ColorPalette } from '../utils/colorPalettes.js'
 import { resolveMobilePortletDisplay } from './mobileStackedLayout/memberDisplay.js'
 import { headerHasBottomRule, isAutoHeightMarkdownPortlet } from './rowManagedLayout/sections.js'
@@ -33,6 +33,12 @@ interface MobileStackedLayoutProps {
   colorPalette?: ColorPalette
   dashboardFilters?: DashboardFilter[]
   onPortletRefresh?: (portletId: string) => void
+  /**
+   * Registers each chart with the dashboard, so its refresh action (the
+   * refresh button and interval ticks) reaches mobile charts. When set, the
+   * refresh button leaves refreshing to `onPortletRefresh`.
+   */
+  setPortletComponentRef?: (portletId: string, element: AnalyticsPortletRef | null) => void
 }
 
 /**
@@ -43,7 +49,8 @@ export default function MobileStackedLayout({
   config,
   colorPalette,
   dashboardFilters,
-  onPortletRefresh
+  onPortletRefresh,
+  setPortletComponentRef
 }: MobileStackedLayoutProps) {
   const { t } = useTranslation()
   const portletComponentRefs = useRef<{ [key: string]: { refresh: () => void } | null }>({})
@@ -135,9 +142,8 @@ export default function MobileStackedLayout({
   }, [blocks, config.layoutMode])
 
   const handlePortletRefresh = (portletId: string) => {
-    // Refresh the specific portlet component
-    portletComponentRefs.current[portletId]?.refresh()
-    // Also call external handler if provided
+    // A dashboard that registers the charts refreshes them in onPortletRefresh
+    if (!setPortletComponentRef) portletComponentRefs.current[portletId]?.refresh()
     onPortletRefresh?.(portletId)
   }
 
@@ -199,7 +205,10 @@ export default function MobileStackedLayout({
           style={{ height: isAutoHeight ? 'auto' : contentHeight }}
         >
           <AnalyticsPortlet
-            ref={el => { portletComponentRefs.current[portlet.id] = el }}
+            ref={el => {
+              portletComponentRefs.current[portlet.id] = el
+              setPortletComponentRef?.(portlet.id, el)
+            }}
             query={display.query}
             chartType={display.chartType}
             chartConfig={display.chartConfig}

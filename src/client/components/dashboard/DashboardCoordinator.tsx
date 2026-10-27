@@ -134,7 +134,7 @@ export default function DashboardCoordinator({
 
   // Refs to store portlet refs for refresh functionality (kept local - DOM-specific)
   const portletRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
-  const portletComponentRefs = useRef<{ [key: string]: { refresh: () => void } | null }>({})
+  const portletComponentRefs = useRef<{ [key: string]: { refresh: (options?: MaxAgeOptions) => void } | null }>({})
   const draftRowsRef = useRef<RowLayout[] | null>(null)
   // Local ref for tracking latest drag rows synchronously (avoids stale reads from useEffect-synced ref)
   const latestDragRowsRef = useRef<RowLayout[] | null>(null)
@@ -873,7 +873,7 @@ export default function DashboardCoordinator({
     portletRefs.current[portletId] = element
   }, [])
 
-  const handleSetPortletComponentRef = useCallback((portletId: string, element: { refresh: () => void } | null) => {
+  const handleSetPortletComponentRef = useCallback((portletId: string, element: { refresh: (options?: MaxAgeOptions) => void } | null) => {
     portletComponentRefs.current[portletId] = element
   }, [])
 
@@ -1165,6 +1165,7 @@ export default function DashboardCoordinator({
     handleSaveFilterConfig,
     handlePortletSave,
     handlePortletRefresh,
+    handleSetPortletComponentRef,
     handleLayoutChange,
     handleDragStop,
     handleResizeStop,
