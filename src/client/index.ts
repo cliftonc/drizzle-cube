@@ -276,6 +276,10 @@ export type {
   ThumbnailFeatureConfig,
   DashboardImportExportFeatureConfig,
   DashboardMeta,
+  // Interval refresh types
+  RefreshFeatureConfig,
+  PortletRefreshConfig,
+  DashboardRefreshConfig,
   // Portlet expand types
   PortletViewState,
   PortletExpandPayload,

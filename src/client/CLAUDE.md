@@ -117,6 +117,8 @@ src/client/
 │   ├── ChartErrorBoundary.tsx     Chart error boundary
 │   ├── ChartTypeSelector.tsx      Chart type picker (driven by chartConfigRegistry)
 │   ├── DashboardGrid.tsx          Grid layout engine
+│   ├── dashboard/                 Dashboard coordinator, context, toolbar, edit bar, modals
+│   │                              (RefreshPauseToggle: dashboard-wide pause)
 │   ├── DashboardPortletCard.tsx   Portlet card wrapper
 │   ├── dashboardPortletCard/      DashboardPortletCard.tsx sub-components + actions hook + helpers
 │   ├── portletAnalysisModal/      PortletAnalysisModal sibling helpers (save validation)
@@ -140,6 +142,7 @@ src/client/
 │   │   ├── useDashboardController.ts, useGridLayoutEngine.ts
 │   │   ├── useRowLayoutEngine.ts, layoutUtils.ts
 │   │   ├── useDashboardImportExport.ts  Export/import flow (features.dashboardImportExport)
+│   │   ├── useDashboardRefreshTimer.ts  Interval refresh: one timer per interval group (features.refresh)
 │   ├── useAnalysisBuilderHook.ts  AnalysisBuilder public facade (useAnalysisBuilder)
 │   ├── useAnalysisState.ts        State: store reads/derivation, query specs, chart config, UI state
 │   ├── useAnalysisQuery.ts        Query: execution only (5 TanStack hooks, mode routing, hasDebounced)
@@ -198,7 +201,7 @@ src/client/
     ├── configMigration.ts         Config version migration
     ├── dashboardExport.ts         Dashboard JSON export envelope + import validation
     ├── drillQueryBuilder.ts       Drill-down query construction
-    ├── freshness.ts               Computed-at of a result
+    ├── freshness.ts               Effective refresh interval; computed-at of a result
     ├── filterUtils.ts             Filter manipulation
     ├── funnelExecution.ts, funnelValidation.ts  Funnel helpers
     ├── multiQueryUtils.ts, multiQueryValidation.ts  Multi-query helpers

@@ -366,6 +366,28 @@ export interface ChartDisplayConfig {
   showPercentage?: boolean
 }
 
+/**
+ * Interval refresh for one portlet. Overrides the dashboard default. Takes
+ * effect only when `features.refresh.enabled` is set.
+ */
+export interface PortletRefreshConfig {
+  /** Refetch every this many seconds, accepting a server result at most this old. */
+  intervalSeconds: number
+  /**
+   * Skip refreshes while the browser tab is hidden. Unset inherits the
+   * dashboard's `pauseWhenHidden`; `false` overrides it.
+   */
+  pauseWhenHidden?: boolean
+}
+
+/** Default interval refresh for every portlet on a dashboard. */
+export interface DashboardRefreshConfig {
+  /** Refetch every this many seconds unless a portlet sets its own interval. */
+  intervalSeconds?: number
+  /** Skip refreshes while the browser tab is hidden. */
+  pauseWhenHidden?: boolean
+}
+
 // Portlet configuration
 export interface PortletConfig {
   id: string
@@ -391,6 +413,8 @@ export interface PortletConfig {
   displayConfig?: ChartDisplayConfig
   dashboardFilterMapping?: DashboardFilterMapping // Dashboard filters that apply to this portlet (IDs or entries with member overrides)
   eagerLoad?: boolean // Force immediate loading (overrides dashboard lazy loading setting)
+  /** Interval refresh for this portlet (overrides `DashboardConfig.refresh`; needs `features.refresh.enabled`) */
+  refresh?: PortletRefreshConfig
   /** @deprecated Use analysisConfig.analysisType instead */
   analysisType?: AnalysisType // Optional - defaults to 'query' when undefined (backward compatible)
 
@@ -477,6 +501,8 @@ export interface DashboardConfig {
   colorPalette?: string // Name of the color palette to use (defaults to 'default')
   filters?: DashboardFilter[] // Dashboard-level filters that can be applied to portlets
   eagerLoad?: boolean // Force immediate loading for all portlets (default: false, lazy load enabled)
+  /** Default interval refresh for every portlet (needs `features.refresh.enabled`) */
+  refresh?: DashboardRefreshConfig
   // Thumbnail fields for dashboard preview/sharing
   thumbnailData?: string  // Transient: base64 data URI for upload (cleared by server after processing)
   thumbnailUrl?: string   // Permanent: CDN URL after server-side processing
@@ -872,6 +898,16 @@ export interface DashboardImportExportFeatureConfig {
   filenamePrefix?: string
 }
 
+/**
+ * Opt-in gate for dashboard and portlet interval refresh. Nothing refreshes on
+ * an interval unless `enabled` is true, and `manualRefresh` turns it off.
+ */
+export interface RefreshFeatureConfig {
+  enabled: boolean
+  /** Floor for every refresh interval, in seconds (default: 5) */
+  minIntervalSeconds?: number
+}
+
 // Features configuration
 export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
@@ -891,6 +927,7 @@ export interface FeaturesConfig {
   manualRefresh?: boolean // When true, queries don't auto-execute on config changes. User must click Refresh. (default: false)
   xlsExport?: XlsExportFeatureConfig // Optional XLSX data export from portlets (requires exceljs)
   dashboardImportExport?: DashboardImportExportFeatureConfig // Optional dashboard export/import as a JSON file (toolbar buttons)
+  refresh?: RefreshFeatureConfig // Optional interval refresh for dashboards and portlets (default: off)
   portletExpand?: boolean // Show an Expand button on dashboard cards in view mode. It opens the chart in a built-in modal, or calls AnalyticsDashboard's onPortletExpand when set. Not in the mobile stacked layout (default: false)
 }
 

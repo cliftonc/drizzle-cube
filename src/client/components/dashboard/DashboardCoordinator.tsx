@@ -33,6 +33,7 @@ import type { PortletCardVariant } from '../dashboardPortletCard/cardStyles.js'
 import { findPortletLocation, removeFromGroup, type SnapEdge } from '../../hooks/dashboard/groupUtils.js'
 import { ensureAnalysisConfig } from '../../utils/configMigration.js'
 import { useCubeFeatures } from '../../providers/CubeProvider.js'
+import { useDashboardRefreshTimer } from '../../hooks/dashboard/useDashboardRefreshTimer.js'
 import { useResponsiveDashboard } from '../../hooks/useResponsiveDashboard.js'
 import { ScrollContainerProvider } from '../../providers/ScrollContainerContext.js'
 import { useDashboard } from '../../hooks/useDashboardHook.js'
@@ -717,10 +718,28 @@ export default function DashboardCoordinator({
   }, [handlePortletDragEnd])
 
   // Handle portlet refresh - use action from hook
-  // { bustCache: true } (shift+click) is max-age 0
+  // { bustCache: true } (shift+click) is max-age 0; interval ticks pass { maxAgeSeconds }
   const handlePortletRefresh = useCallback((portletId: string, options?: MaxAgeOptions) => {
     actionsRef.current.refreshPortlet(portletId, options)
   }, [])
+
+  // Interval refresh (features.refresh): one timer per interval group, each
+  // tick going through the refresh button's action. Edit mode and the
+  // dashboard-level pause stop the timers.
+  const isRefreshPaused = useDashboardStore(state => state.isRefreshPaused)
+  const toggleRefreshPaused = useDashboardStore(state => state.toggleRefreshPaused)
+  const { hasRefresh } = useDashboardRefreshTimer({
+    portlets: config.portlets,
+    dashboardRefresh: config.refresh,
+    features,
+    stopped: isEditMode || isRefreshPaused,
+    refreshPortlet: handlePortletRefresh,
+  })
+  const refreshState = useMemo(() => ({
+    hasRefresh,
+    isPaused: isRefreshPaused,
+    togglePaused: toggleRefreshPaused,
+  }), [hasRefresh, isRefreshPaused, toggleRefreshPaused])
 
   // Handle portlet save with scroll-to-new behavior
   const handlePortletSave = useCallback(async (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => {
@@ -1123,6 +1142,7 @@ export default function DashboardCoordinator({
     // Features
     features,
     importExport,
+    refresh: refreshState,
 
     // Refs
     editBarRef,

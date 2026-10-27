@@ -26,6 +26,8 @@ import exclamationCircle from '@iconify-icons/heroicons-outline/exclamation-circ
 import sparkles from '@iconify-icons/heroicons-outline/sparkles'
 import eye from '@iconify-icons/heroicons-outline/eye'
 import eyeSlash from '@iconify-icons/heroicons-outline/eye-slash'
+import pauseOutline from '@iconify-icons/heroicons-outline/pause'
+import playOutline from '@iconify-icons/heroicons-outline/play'
 import adjustmentsHorizontal from '@iconify-icons/heroicons-outline/adjustments-horizontal'
 import computerDesktop from '@iconify-icons/heroicons-outline/computer-desktop'
 import tableCells from '@iconify-icons/heroicons-outline/table-cells'
@@ -140,6 +142,8 @@ export const DEFAULT_ICONS: IconRegistry = {
   cube: { icon: cubeOutline, category: 'action' },
   download: { icon: arrowDownTray, category: 'action' },
   upload: { icon: arrowUpTray, category: 'action' },
+  pause: { icon: pauseOutline, category: 'action' },
+  play: { icon: playOutline, category: 'action' },
 
   // Field type icons (solid for visual distinction)
   measure: { icon: chartBarSolid, category: 'field' },

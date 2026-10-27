@@ -3,7 +3,7 @@
  * DashboardContext; rendered only when the top toolbar variant is active.
  *
  * On a read-only dashboard (`editable` false) the editing controls are left out
- * and the bar carries only the export action.
+ * and the bar carries only the export action and the refresh pause toggle.
  */
 
 import { getIcon } from '../../icons/index.js'
@@ -13,6 +13,7 @@ import { TextIcon } from './dashboardGridUtils.js'
 import { useDashboardContext } from './DashboardContext.js'
 import DashboardImportExportActions from './DashboardImportExportActions.js'
 import LayoutModeToggle from './LayoutModeToggle.js'
+import RefreshPauseToggle from './RefreshPauseToggle.js'
 
 const EditIcon = getIcon('edit')
 const CheckIcon = getIcon('check')
@@ -113,6 +114,7 @@ export default function DashboardEditBar() {
     handleAddPortlet,
     handlePaletteChange,
     importExport,
+    refresh,
   } = useDashboardContext()
 
   return (
@@ -152,6 +154,11 @@ export default function DashboardEditBar() {
       )}
 
       <div className="dc:flex dc:items-center dc:gap-3">
+        {/* Edit mode already pauses refresh, so the toggle is a view-mode control */}
+        {refresh.hasRefresh && !isEditMode && (
+          <RefreshPauseToggle isPaused={refresh.isPaused} onToggle={refresh.togglePaused} />
+        )}
+
         {importExport.enabled && (
           <DashboardImportExportActions
             showExport={importExport.canExport && !isEditMode}

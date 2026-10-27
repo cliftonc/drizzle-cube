@@ -224,6 +224,24 @@ describe('FloatingEditToolbar', () => {
     })
   })
 
+  describe('refresh pause button', () => {
+    it('is hidden without a toggle, and pauses or resumes when given one', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      const onToggleRefreshPause = vi.fn()
+
+      const { rerender } = render(<FloatingEditToolbar {...props} />)
+      expect(screen.queryByTitle('Pause auto-refresh')).not.toBeInTheDocument()
+
+      rerender(<FloatingEditToolbar {...props} onToggleRefreshPause={onToggleRefreshPause} />)
+      await user.click(screen.getByTitle('Pause auto-refresh'))
+      expect(onToggleRefreshPause).toHaveBeenCalledTimes(1)
+
+      rerender(<FloatingEditToolbar {...props} isRefreshPaused onToggleRefreshPause={onToggleRefreshPause} />)
+      expect(screen.getByTitle('Resume auto-refresh')).toBeInTheDocument()
+    })
+  })
+
   describe('add portlet button', () => {
     it('should call onAddPortlet when clicked', async () => {
       const user = userEvent.setup()

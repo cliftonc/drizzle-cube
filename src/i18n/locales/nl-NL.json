@@ -1562,6 +1562,8 @@
   "dashboard.portlet.action.drag": "Portlet slepen",
   "dashboard.portlet.action.filterConfig": "Dashboardfilters configureren",
   "dashboard.portlet.action.filterConfigActive": "Dashboardfilters configureren ({count} actief)",
+  "dashboard.refresh.pause": "Automatisch vernieuwen pauzeren",
+  "dashboard.refresh.resume": "Automatisch vernieuwen hervatten",
   "dashboard.group.rename": "Groep hernoemen",
   "dashboard.group.drag": "Groep slepen",
   "dashboard.group.titlePlaceholder": "Groepstitel",

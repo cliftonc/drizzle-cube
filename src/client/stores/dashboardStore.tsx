@@ -6,6 +6,7 @@
  * - Modal state (portlet edit, analysis, filter config)
  * - Layout state (draftRows, drag state, initialization)
  * - Debug data (per-portlet debug information)
+ * - Refresh pause state (dashboard-level)
  *
  * KEY ARCHITECTURE: Instance-based stores
  * - Each Dashboard gets its own store instance via Context
@@ -129,6 +130,12 @@ export interface DashboardStoreState {
   // =========================================================================
   /** Whether the dashboard has been modified and needs a new thumbnail */
   thumbnailDirty: boolean
+
+  // =========================================================================
+  // Refresh State
+  // =========================================================================
+  /** Whether interval refresh is paused for the whole dashboard */
+  isRefreshPaused: boolean
 }
 
 /**
@@ -206,6 +213,12 @@ export interface DashboardStoreActions {
   setThumbnailDirty: (dirty: boolean) => void
 
   // =========================================================================
+  // Refresh Actions
+  // =========================================================================
+  /** Pause or resume interval refresh for the whole dashboard */
+  toggleRefreshPaused: () => void
+
+  // =========================================================================
   // Utility Actions
   // =========================================================================
   /** Reset store to initial state */
@@ -258,6 +271,9 @@ const createDefaultState = (): DashboardStoreState => ({
 
   // Thumbnail state
   thumbnailDirty: false,
+
+  // Refresh state
+  isRefreshPaused: false,
 })
 
 /**
@@ -412,6 +428,13 @@ function createStoreActions(
     // =================================================================
 
     setThumbnailDirty: (dirty) => set({ thumbnailDirty: dirty }),
+
+    // =================================================================
+    // Refresh Actions
+    // =================================================================
+
+    toggleRefreshPaused: () =>
+      set((state) => ({ isRefreshPaused: !state.isRefreshPaused })),
 
     // =================================================================
     // Utility Actions
@@ -659,6 +682,8 @@ export const selectAllActions = (state: DashboardStore) => ({
   clearDebugData: state.clearDebugData,
   // Thumbnail
   setThumbnailDirty: state.setThumbnailDirty,
+  // Refresh
+  toggleRefreshPaused: state.toggleRefreshPaused,
   // Utility
   reset: state.reset,
 })

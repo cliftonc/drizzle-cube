@@ -145,6 +145,8 @@ export interface DashboardContextValue {
   features: FeaturesConfig
   /** Dashboard JSON export/import flow (features.dashboardImportExport); `enabled` is false when the feature is off */
   importExport: DashboardImportExportState
+  /** Interval refresh (features.refresh): whether any portlet refreshes, and the dashboard-level pause */
+  refresh: DashboardRefreshState
 
   // ---- Refs (attached by the consuming pieces) ----
   editBarRef: MutableRefObject<HTMLDivElement | null>
@@ -181,6 +183,15 @@ export interface DashboardContextValue {
   handlePortletDragEnd: () => void
   handleRowDrop: (rowIndex: number, insertIndex: number | null) => void
   handleNewRowDrop: (insertIndex: number) => void
+}
+
+/** Dashboard-level interval refresh state published to the toolbar. */
+export interface DashboardRefreshState {
+  /** Whether any portlet has an effective refresh interval */
+  hasRefresh: boolean
+  /** Whether the viewer paused refresh for the whole dashboard */
+  isPaused: boolean
+  togglePaused: () => void
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null)

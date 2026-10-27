@@ -24,9 +24,11 @@ import type {
   DashboardGridSettings,
   DashboardLayoutMode,
   DashboardMeta,
+  DashboardRefreshConfig,
   PortletConfig,
   PortletGroup,
   PortletGroupCell,
+  PortletRefreshConfig,
   RowLayout,
   RowLayoutColumn,
 } from '../types.js'
@@ -248,6 +250,30 @@ function isGridSettings(value: unknown): value is DashboardGridSettings {
   return isRecord(value) && (['cols', 'rowHeight', 'minW', 'minH'] as const).every((key) => isFiniteNumber(value[key]))
 }
 
+function isPositiveNumber(value: unknown): value is number {
+  return isFiniteNumber(value) && value > 0
+}
+
+/** Read a portlet `refresh`; undefined when the shape is wrong. */
+function parsePortletRefresh(value: unknown): PortletRefreshConfig | undefined {
+  if (!isRecord(value) || !isPositiveNumber(value.intervalSeconds) || !isOptionalBoolean(value.pauseWhenHidden)) {
+    return undefined
+  }
+  const refresh: PortletRefreshConfig = { intervalSeconds: value.intervalSeconds }
+  if (value.pauseWhenHidden !== undefined) refresh.pauseWhenHidden = value.pauseWhenHidden
+  return refresh
+}
+
+/** Read a dashboard `refresh`; undefined when the shape is wrong. */
+function parseDashboardRefresh(value: unknown): DashboardRefreshConfig | undefined {
+  if (!isRecord(value) || !isOptionalBoolean(value.pauseWhenHidden)) return undefined
+  if (value.intervalSeconds !== undefined && !isPositiveNumber(value.intervalSeconds)) return undefined
+  const refresh: DashboardRefreshConfig = {}
+  if (value.intervalSeconds !== undefined) refresh.intervalSeconds = value.intervalSeconds
+  if (value.pauseWhenHidden !== undefined) refresh.pauseWhenHidden = value.pauseWhenHidden
+  return refresh
+}
+
 function isFilterMappingEntry(value: unknown): value is string | DashboardFilterMappingEntry {
   if (typeof value === 'string') return true
   return isRecord(value) && isNonEmptyString(value.filterId) && isOptionalString(value.member)
@@ -302,6 +328,11 @@ function parsePortlet(value: unknown, index: number): PortletParseResult {
   }
   if (!isOptionalBoolean(value.eagerLoad)) return fail('eagerLoad')
   if (value.eagerLoad !== undefined) portlet.eagerLoad = value.eagerLoad
+  if (value.refresh !== undefined) {
+    const refresh = parsePortletRefresh(value.refresh)
+    if (!refresh) return fail('refresh')
+    portlet.refresh = refresh
+  }
 
   // Query/chart definition: either a valid canonical analysisConfig, or the legacy
   // `query` JSON string (plus its sibling chart fields) that configMigration upgrades.
@@ -446,6 +477,11 @@ function parseConfig(value: unknown): ConfigParseResult {
   if (value.eagerLoad !== undefined) {
     if (typeof value.eagerLoad === 'boolean') config.eagerLoad = value.eagerLoad
     else invalid('eagerLoad')
+  }
+  if (value.refresh !== undefined) {
+    const refresh = parseDashboardRefresh(value.refresh)
+    if (refresh) config.refresh = refresh
+    else invalid('refresh')
   }
   if (value.layouts !== undefined) {
     if (isRecord(value.layouts)) config.layouts = value.layouts

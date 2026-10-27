@@ -1562,6 +1562,8 @@
   "dashboard.portlet.action.drag": "Drag portlet",
   "dashboard.portlet.action.filterConfig": "Configure dashboard filters",
   "dashboard.portlet.action.filterConfigActive": "Configure dashboard filters ({count} active)",
+  "dashboard.refresh.pause": "Pause auto-refresh",
+  "dashboard.refresh.resume": "Resume auto-refresh",
   "dashboard.group.rename": "Rename group",
   "dashboard.group.drag": "Drag group",
   "dashboard.group.titlePlaceholder": "Group title",
