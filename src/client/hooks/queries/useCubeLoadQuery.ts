@@ -23,6 +23,7 @@ import { stableStringify } from '../../shared/queryKey.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { withChartGapFilling, type ChartGapFillOptions } from '../../utils/gapFilling.js'
 import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
+import { resolveSubscribeIntervalSeconds, scheduleSubscription } from '../../client/subscription.js'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300
@@ -76,6 +77,15 @@ export interface UseCubeLoadQueryOptions {
    * are gap-filled per `ChartGapFillOptions`. Omit for raw rows.
    */
   gapFill?: ChartGapFillOptions
+  /**
+   * Keep the query current (Cube.js `subscribe`): every 10 seconds, raised to
+   * `features.refresh.minIntervalSeconds` when that is larger, refetch with
+   * max-age equal to the interval. Works
+   * with `features.refresh` off. Stops while the query is skipped or
+   * disabled, and in `manualRefresh` mode.
+   * @default false
+   */
+  subscribe?: boolean
 }
 
 /**
@@ -158,6 +168,7 @@ export function useCubeLoadQuery(
     staleTime = 60 * 1000,
     keepPreviousData = true,
     gapFill,
+    subscribe = false,
   } = options
   // Primitives, so an inline `gapFill` object doesn't re-wrap on every render
   const gapFillEnabled = !!gapFill
@@ -314,6 +325,15 @@ export function useCubeLoadQuery(
 
   // Refetch is an alias for executeQuery for backward compatibility
   const refetch = executeQuery
+
+  // Subscription: refetch on the subscribe interval while the query runs.
+  // executeQuery changes with the query, so a new query restarts the timer.
+  const subscribeIntervalSeconds = resolveSubscribeIntervalSeconds(features.refresh?.minIntervalSeconds)
+  const subscriptionActive = subscribe && !manualRefresh && shouldExecute && enabled
+  useEffect(() => {
+    if (!subscriptionActive) return
+    return scheduleSubscription(subscribeIntervalSeconds, executeQuery)
+  }, [subscriptionActive, subscribeIntervalSeconds, executeQuery])
 
   // Clear cache function
   const clearCache = () => {

@@ -94,6 +94,7 @@ export { useCubeFieldLabel } from './hooks/useCubeFieldLabel.js'
 export { createCubeClient } from './client/CubeClient.js'
 export { CubeClient, CubeQueryError } from './client/CubeClient.js'
 export type { MaxAgeOptions } from './client/maxAge.js'
+export type { CubeSubscribeCallback, CubeSubscription } from './client/CubeClient.js'
 
 // TanStack Query hooks for data fetching
 export {

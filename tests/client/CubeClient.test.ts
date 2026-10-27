@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
 import { CubeClient } from '../../src/client/client/CubeClient'
-import type { CubeQuery } from '../../src/client/types'
+import type { CubeQuery, CubeResultSet } from '../../src/client/types'
 import { server } from '../client-setup/msw-server'
 
 // This is a unit test file that mocks fetch directly
@@ -256,6 +256,147 @@ describe('CubeClient', () => {
 
       expect(resultSet.lastRefreshTime?.()).toBe('2026-10-23T10:00:30.000Z')
       expect(resultSet.cacheInfo?.()?.cachedAt).toBe('2026-10-23T10:00:00.000Z')
+    })
+  })
+
+  describe('subscribe (issue #271, Phase 0)', () => {
+    const query: CubeQuery = { measures: ['Users.count'] }
+    const calls: Array<{ error: Error | null; rows: unknown[] | null }> = []
+    const callback = (error: Error | null, resultSet: CubeResultSet | null) => {
+      calls.push({ error, rows: resultSet ? resultSet.rawData() : null })
+    }
+
+    function respondWith(rows: unknown[]) {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: rows }) })
+    }
+
+    function maxAgeOfCall(index: number): string | undefined {
+      const init: { headers: Record<string, string> } = mockFetch.mock.calls[index][1]
+      return init.headers['X-Cache-Max-Age']
+    }
+
+    async function advanceSeconds(seconds: number) {
+      await vi.advanceTimersByTimeAsync(seconds * 1000)
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      calls.length = 0
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('delivers the initial load, then refetches every 10 s with max-age 10', async () => {
+      respondWith([{ n: 1 }])
+      respondWith([{ n: 2 }])
+      respondWith([{ n: 3 }])
+      const subscription = client.subscribe(query, null, callback)
+
+      await advanceSeconds(0)
+      expect(calls).toEqual([{ error: null, rows: [{ n: 1 }] }])
+      expect(maxAgeOfCall(0)).toBeUndefined()
+
+      await advanceSeconds(9)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+
+      await advanceSeconds(1)
+      expect(calls[1]).toEqual({ error: null, rows: [{ n: 2 }] })
+      expect(maxAgeOfCall(1)).toBe('10')
+
+      await advanceSeconds(10)
+      expect(calls[2]).toEqual({ error: null, rows: [{ n: 3 }] })
+      expect(maxAgeOfCall(2)).toBe('10')
+
+      subscription.unsubscribe()
+    })
+
+    it('applies options to the initial load only', async () => {
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [] }) })
+      const subscription = client.subscribe(query, { bustCache: true }, callback)
+
+      await advanceSeconds(10)
+      expect(maxAgeOfCall(0)).toBe('0')
+      expect(maxAgeOfCall(1)).toBe('10')
+
+      subscription.unsubscribe()
+    })
+
+    it('stops refetching on unsubscribe', async () => {
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [] }) })
+      const subscription = client.subscribe(query, null, callback)
+
+      await advanceSeconds(10)
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+
+      subscription.unsubscribe()
+      await advanceSeconds(60)
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(calls).toHaveLength(2)
+    })
+
+    it('drops a result still in flight when unsubscribed', async () => {
+      let resolveLoad: (value: unknown) => void = () => {}
+      mockFetch.mockReturnValueOnce(new Promise(resolve => { resolveLoad = resolve }))
+      const subscription = client.subscribe(query, null, callback)
+
+      subscription.unsubscribe()
+      resolveLoad({ ok: true, json: () => Promise.resolve({ data: [{ n: 1 }] }) })
+      await advanceSeconds(30)
+
+      expect(calls).toHaveLength(0)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('delivers errors to the callback and keeps refetching', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500, text: () => Promise.resolve('{"error":"boom"}') })
+      respondWith([{ n: 2 }])
+      const subscription = client.subscribe(query, null, callback)
+
+      await advanceSeconds(0)
+      expect(calls).toHaveLength(1)
+      expect(calls[0].error).toBeInstanceOf(Error)
+      expect(calls[0].error?.message).toBe('boom')
+      expect(calls[0].rows).toBeNull()
+
+      await advanceSeconds(10)
+      expect(calls[1]).toEqual({ error: null, rows: [{ n: 2 }] })
+
+      subscription.unsubscribe()
+    })
+
+    it('skips a tick while the previous load is still in flight', async () => {
+      let resolveLoad: (value: unknown) => void = () => {}
+      mockFetch.mockReturnValueOnce(new Promise(resolve => { resolveLoad = resolve }))
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [{ n: 2 }] }) })
+      const subscription = client.subscribe(query, null, callback)
+
+      await advanceSeconds(10)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+
+      resolveLoad({ ok: true, json: () => Promise.resolve({ data: [{ n: 1 }] }) })
+      await advanceSeconds(10)
+      expect(calls.map(call => call.rows)).toEqual([[{ n: 1 }], [{ n: 2 }]])
+
+      subscription.unsubscribe()
+    })
+
+    it('floors the interval by minSubscribeIntervalSeconds', async () => {
+      const slowClient = new CubeClient(undefined, {
+        apiUrl: 'http://localhost:4000/cubejs-api/v1',
+        minSubscribeIntervalSeconds: 30
+      })
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [] }) })
+      const subscription = slowClient.subscribe(query, null, callback)
+
+      await advanceSeconds(29)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      await advanceSeconds(1)
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(maxAgeOfCall(1)).toBe('30')
+
+      subscription.unsubscribe()
     })
   })
 })

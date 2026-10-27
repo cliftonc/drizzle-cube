@@ -658,6 +658,7 @@ export function isMultiQueryConfig(obj: unknown): obj is MultiQueryConfig {
 export interface CubeQueryOptions {
   skip?: boolean
   resetResultSetOnChange?: boolean
+  /** Keep the query current by refetching it every 10 seconds (Cube.js `subscribe`). */
   subscribe?: boolean
 }
 
@@ -666,6 +667,12 @@ export interface CubeApiOptions {
   token?: string
   headers?: Record<string, string>
   credentials?: 'include' | 'omit' | 'same-origin'
+  /**
+   * Floor, in seconds, for how often `CubeClient.subscribe` refetches. It
+   * refetches every 10 seconds unless this is larger. (`useCubeQuery`'s
+   * `subscribe` is floored by `features.refresh.minIntervalSeconds` instead.)
+   */
+  minSubscribeIntervalSeconds?: number
 }
 
 // Result set types

@@ -12,6 +12,18 @@ import type {
   ExplainOptions
 } from '../types.js'
 import { maxAgeHeaders, resolveMaxAgeSeconds, type MaxAgeOptions } from './maxAge.js'
+import { resolveSubscribeIntervalSeconds, scheduleSubscription } from './subscription.js'
+
+/**
+ * Called with each result of a subscription, or with the error of a load that
+ * failed (Cube.js `subscribe` callback shape).
+ */
+export type CubeSubscribeCallback = (error: Error | null, resultSet: CubeResultSet | null) => void
+
+/** A live subscription. `unsubscribe` stops it; no callback follows. */
+export interface CubeSubscription {
+  unsubscribe: () => void
+}
 
 /**
  * A failed query, carrying the server's structured validation detail when it
@@ -62,6 +74,7 @@ export class CubeClient {
   private apiUrl: string
   private headers: Record<string, string>
   private credentials: 'include' | 'omit' | 'same-origin'
+  private subscribeIntervalSeconds: number
 
   constructor(token?: string, options: CubeApiOptions = {}) {
     this.apiUrl = options.apiUrl || '/cubejs-api/v1'
@@ -70,6 +83,7 @@ export class CubeClient {
       ...options.headers
     }
     this.credentials = options.credentials ?? 'include'
+    this.subscribeIntervalSeconds = resolveSubscribeIntervalSeconds(options.minSubscribeIntervalSeconds)
 
     if (token) {
       this.headers['Authorization'] = token
@@ -108,6 +122,53 @@ export class CubeClient {
 
     const result = await response.json()
     return new ResultSet(result)
+  }
+
+  /**
+   * Keep a query current (Cube.js `subscribe`). The callback receives the
+   * initial load, then a result every 10 seconds (or `minSubscribeIntervalSeconds`
+   * when larger), each fetched with max-age equal to the interval so
+   * subscribers in one security context share one server execution. A failed
+   * load calls back with the error and the subscription keeps going.
+   * `options` apply to the initial load only.
+   *
+   * `unsubscribe` stops the refetches and drops any result still in flight.
+   */
+  subscribe(
+    query: CubeQuery,
+    options: MaxAgeOptions | null | undefined,
+    callback: CubeSubscribeCallback
+  ): CubeSubscription {
+    let active = true
+    let inFlight = false
+
+    const deliver = async (loadOptions: MaxAgeOptions | undefined): Promise<void> => {
+      // One load at a time: a tick that lands while a slow load is still
+      // running is skipped, so results never arrive out of order.
+      if (inFlight) return
+      inFlight = true
+      let outcome: { error: Error | null; resultSet: CubeResultSet | null }
+      try {
+        outcome = { error: null, resultSet: await this.load(query, loadOptions) }
+      } catch (error) {
+        outcome = { error: error instanceof Error ? error : new Error(String(error)), resultSet: null }
+      } finally {
+        inFlight = false
+      }
+      if (active) callback(outcome.error, outcome.resultSet)
+    }
+
+    void deliver(options ?? undefined)
+    const stop = scheduleSubscription(this.subscribeIntervalSeconds, tickOptions => {
+      void deliver(tickOptions)
+    })
+
+    return {
+      unsubscribe: () => {
+        active = false
+        stop()
+      }
+    }
   }
 
   async meta(): Promise<any> {

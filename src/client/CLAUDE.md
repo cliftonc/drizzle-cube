@@ -49,6 +49,7 @@ src/client/
 ├── client/                        API client
 │   ├── CubeClient.ts             HTTP client for Cube-compatible API
 │   ├── BatchCoordinator.ts       Request batching (one queue per max-age)
+│   ├── subscription.ts           When a subscribed query refetches (Phase 0: interval with max-age)
 │   └── maxAge.ts                 Max-age options → headers; per-hook refetch max-age tracker
 │
 ├── components/                    React components
