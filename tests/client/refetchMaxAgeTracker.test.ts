@@ -62,6 +62,17 @@ describe('createRefetchMaxAgeTracker', () => {
     expect(tracker.hasPendingMaxAge()).toBe(false)
   })
 
+  it('reports whether a recorded max-age made the pending one stricter', async () => {
+    const tracker = createRefetchMaxAgeTracker()
+    expect(tracker.recordMaxAge(undefined)).toBe(false)
+    expect(tracker.recordMaxAge({ maxAgeSeconds: 30 })).toBe(true)
+    expect(tracker.recordMaxAge({ maxAgeSeconds: 30 })).toBe(false)
+    expect(tracker.recordMaxAge({ maxAgeSeconds: 60 })).toBe(false)
+    expect(tracker.recordMaxAge({ bustCache: true })).toBe(true)
+    await tracker.runFetch(() => Promise.resolve('rows'))
+    expect(tracker.recordMaxAge({ maxAgeSeconds: 30 })).toBe(true)
+  })
+
   it('keeps a stricter max-age recorded while a fetch is in flight', async () => {
     const tracker = createRefetchMaxAgeTracker()
     const { calls, ok } = recorder()

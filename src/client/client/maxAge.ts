@@ -54,8 +54,12 @@ export function retainStricterMaxAge(current?: MaxAgeOptions, incoming?: MaxAgeO
 
 /** A refetch's max-age, tracked per hook until a fetch with it succeeds. */
 export interface RefetchMaxAgeTracker {
-  /** Retain the stricter resolved max-age; an absent or invalid max-age adds nothing. Does not fetch. */
-  recordMaxAge: (options?: MaxAgeOptions) => void
+  /**
+   * Retain the stricter resolved max-age; an absent or invalid max-age adds
+   * nothing. Does not fetch. Returns whether the pending max-age became
+   * stricter, which is when a fetch already in flight no longer satisfies it.
+   */
+  recordMaxAge: (options?: MaxAgeOptions) => boolean
   /** Whether a max-age is waiting for a successful fetch, including while one is in flight. */
   hasPendingMaxAge: () => boolean
   /**
@@ -79,12 +83,18 @@ export interface RefetchMaxAgeTracker {
  * function picks it up when the hook is enabled and fetches. The max-age stays
  * pending through retries and clears when a fetch with it succeeds. It is held
  * as an object so a success clears only the max-age it fetched with, by identity.
+ *
+ * A refetch passes `cancelRefetch` only when its max-age is stricter than the
+ * pending one. Otherwise it joins the fetch in flight, so interval ticks that
+ * outpace a slow query do not cancel it on every tick.
  */
 export function createRefetchMaxAgeTracker(): RefetchMaxAgeTracker {
   let pending: MaxAgeOptions | undefined
   return {
     recordMaxAge(options) {
+      const previous = pending
       pending = retainStricterMaxAge(pending, options)
+      return pending !== previous
     },
     hasPendingMaxAge() {
       return pending !== undefined

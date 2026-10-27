@@ -319,13 +319,13 @@ export function useFlowQuery(
    */
   const { refetch: refetchQuery } = queryResult
   const refetch = useCallback((options?: MaxAgeOptions) => {
-    refetchMaxAge.recordMaxAge(options)
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options)
     if (!debouncedQuery || !isValid || skip) return
 
     // Mark this query as executed (for manual refresh mode)
     setExecutedQueryKey(currentQueryKey)
 
-    void refetchQuery()
+    void refetchQuery({ cancelRefetch })
   }, [refetchMaxAge, debouncedQuery, isValid, skip, currentQueryKey, refetchQuery])
 
   /**

@@ -293,13 +293,13 @@ export function useCubeLoadQuery(
   // the query is enabled and fetches.
   const { refetch: refetchQuery } = queryResult
   const executeQuery = useCallback((options?: RefetchOptions) => {
-    refetchMaxAge.recordMaxAge(options)
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options)
     if (!serverQuery || skip) return
 
     // Mark this query as executed (for manual refresh mode)
     setExecutedQueryKey(currentQueryKey)
 
-    void refetchQuery()
+    void refetchQuery({ cancelRefetch })
   }, [refetchMaxAge, serverQuery, skip, currentQueryKey, refetchQuery])
 
   // Refetch is an alias for executeQuery for backward compatibility

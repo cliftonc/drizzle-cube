@@ -395,7 +395,7 @@ export function useFunnelQuery(
    */
   const { refetch: refetchQuery } = queryResult
   const execute = useCallback(async (options?: MaxAgeOptions): Promise<FunnelExecutionResult | null> => {
-    refetchMaxAge.recordMaxAge(options)
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options)
     // Allow execution if we have a serverQuery (either from prebuiltServerQuery
     // or built from config). While skipped (an off-screen portlet) the max-age
     // waits until the query is enabled and fetches.
@@ -405,7 +405,7 @@ export function useFunnelQuery(
     setExecutedQueryKey(currentQueryKey)
 
     try {
-      await refetchQuery()
+      await refetchQuery({ cancelRefetch })
       return result
     } catch {
       return result

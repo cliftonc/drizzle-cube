@@ -263,8 +263,8 @@ export function useMultiCubeLoadQuery(
   // fetches.
   const { refetch: refetchQuery } = queryResult
   const refetch = useCallback((options?: MaxAgeOptions) => {
-    refetchMaxAge.recordMaxAge(options)
-    if (serverConfig && !skip) void refetchQuery()
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options)
+    if (serverConfig && !skip) void refetchQuery({ cancelRefetch })
   }, [refetchMaxAge, serverConfig, skip, refetchQuery])
 
   // Gap-fill for a chart when asked. Uses the config the result was fetched

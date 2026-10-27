@@ -377,6 +377,84 @@ describe('useCubeLoadQuery', () => {
       await waitFor(() => expect(maxAges.length).toBeGreaterThan(initialCount))
       expect(maxAges.slice(initialCount)).toEqual(['0'])
     })
+
+    // Interval ticks that outpace a slow query: each tick must join the fetch
+    // in flight, or the query is cancelled on every tick and never lands.
+    describe('while a refetch is in flight', () => {
+      function holdResponses() {
+        const maxAges: Array<string | null> = []
+        let holding = false
+        const held: Array<() => void> = []
+        const respond = async ({ request }: { request: Request }) => {
+          maxAges.push(request.headers.get('x-cache-max-age'))
+          if (holding) await new Promise<void>((resolve) => held.push(resolve))
+          return HttpResponse.json({
+            data: mockQueryData,
+            annotation: { measures: {}, dimensions: {}, timeDimensions: {} },
+            query: validQuery
+          })
+        }
+        server.use(http.get('*/cubejs-api/v1/load', respond), http.post('*/cubejs-api/v1/load', respond))
+        return {
+          maxAges,
+          hold: () => { holding = true },
+          release: () => {
+            holding = false
+            held.splice(0).forEach((resolve) => resolve())
+          }
+        }
+      }
+
+      it('joins it for a max-age no stricter than the pending one', async () => {
+        const responses = holdResponses()
+        const { wrapper } = createHookWrapper()
+        const { result } = renderHook(
+          () => useCubeLoadQuery(validQuery, { debounceMs: 0 }),
+          { wrapper }
+        )
+        await waitFor(() => expect(result.current.resultSet).not.toBeNull())
+        const initialCount = responses.maxAges.length
+
+        responses.hold()
+        act(() => {
+          result.current.refetch({ maxAgeSeconds: 30 })
+        })
+        await waitFor(() => expect(responses.maxAges.length).toBe(initialCount + 1))
+        act(() => {
+          result.current.refetch({ maxAgeSeconds: 30 })
+          result.current.refetch()
+        })
+        responses.release()
+
+        await waitFor(() => expect(result.current.isFetching).toBe(false))
+        expect(responses.maxAges.slice(initialCount)).toEqual(['30'])
+      })
+
+      it('cancels it for a stricter max-age', async () => {
+        const responses = holdResponses()
+        const { wrapper } = createHookWrapper()
+        const { result } = renderHook(
+          () => useCubeLoadQuery(validQuery, { debounceMs: 0 }),
+          { wrapper }
+        )
+        await waitFor(() => expect(result.current.resultSet).not.toBeNull())
+        const initialCount = responses.maxAges.length
+
+        responses.hold()
+        act(() => {
+          result.current.refetch({ maxAgeSeconds: 30 })
+        })
+        await waitFor(() => expect(responses.maxAges.length).toBe(initialCount + 1))
+        act(() => {
+          result.current.refetch({ bustCache: true })
+        })
+        await waitFor(() => expect(responses.maxAges.length).toBe(initialCount + 2))
+        responses.release()
+
+        await waitFor(() => expect(result.current.isFetching).toBe(false))
+        expect(responses.maxAges.slice(initialCount)).toEqual(['30', '0'])
+      })
+    })
   })
 
   describe('clearCache', () => {

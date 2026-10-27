@@ -406,8 +406,8 @@ export function useRetentionQuery(
   // fetches.
   const { refetch: refetchQuery } = queryResult
   const refetch = useCallback((options?: MaxAgeOptions) => {
-    refetchMaxAge.recordMaxAge(options)
-    if (debouncedQuery && !skip) void refetchQuery()
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options)
+    if (debouncedQuery && !skip) void refetchQuery({ cancelRefetch })
   }, [refetchMaxAge, debouncedQuery, skip, refetchQuery])
 
   // Determine status
