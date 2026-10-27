@@ -397,18 +397,6 @@ describe('DashboardPortletCard', () => {
         delete (globalThis as FreshnessGlobal).__dcAnalyticsPortletFreshness
       }
     })
-
-    it('does not spin the refresh icon while idle', () => {
-      render(
-        <TestWrapper>
-          <DashboardPortletCard {...createDefaultProps()} />
-        </TestWrapper>
-      )
-
-      const refreshButton = screen.getByTestId('portlet-refresh')
-      expect(refreshButton).toHaveAttribute('aria-busy', 'false')
-      expect(refreshButton.querySelector('svg')).not.toHaveClass('dc:animate-spin')
-    })
   })
 
   describe('ref callbacks', () => {

@@ -144,7 +144,9 @@ export function renderWithQueryClient(
  * })
  * ```
  */
-export function createHookWrapper(options: Omit<RenderWithProvidersOptions, 'queryClient'> = {}) {
+export function createHookWrapper(
+  options: Omit<RenderWithProvidersOptions, 'queryClient'> & { enableBatching?: boolean } = {}
+) {
   const queryClient = createTestQueryClient()
 
   const wrapper = ({ children }: WrapperProps) => (
@@ -154,7 +156,7 @@ export function createHookWrapper(options: Omit<RenderWithProvidersOptions, 'que
         token={options.token}
         features={options.features}
         queryClient={queryClient}
-        enableBatching={false}  // Disable batching in tests for more predictable behavior
+        enableBatching={options.enableBatching ?? false}  // Off by default for more predictable behavior
       >
         {children}
       </CubeProvider>

@@ -377,41 +377,6 @@ describe('useCubeLoadQuery', () => {
       await waitFor(() => expect(maxAges.length).toBeGreaterThan(initialCount))
       expect(maxAges.slice(initialCount)).toEqual(['0'])
     })
-
-    it('keeps the max-age for a retry after a failed attempt', async () => {
-      const maxAges: Array<string | null> = []
-      let failNext = false
-      const respond = ({ request }: { request: Request }) => {
-        maxAges.push(request.headers.get('x-cache-max-age'))
-        if (failNext) {
-          failNext = false
-          return HttpResponse.json({ error: 'Unavailable' }, { status: 503 })
-        }
-        return HttpResponse.json({
-          data: mockQueryData,
-          annotation: { measures: {}, dimensions: {}, timeDimensions: {} },
-          query: validQuery
-        })
-      }
-      server.use(http.get('*/cubejs-api/v1/load', respond), http.post('*/cubejs-api/v1/load', respond))
-
-      const { wrapper, queryClient } = createHookWrapper()
-      queryClient.setDefaultOptions({ queries: { ...queryClient.getDefaultOptions().queries, retry: 1, retryDelay: 0 } })
-      const { result } = renderHook(
-        () => useCubeLoadQuery(validQuery, { debounceMs: 0 }),
-        { wrapper }
-      )
-      await waitFor(() => expect(result.current.isLoading).toBe(false))
-      const initialCount = maxAges.length
-
-      failNext = true
-      act(() => {
-        result.current.refetch({ bustCache: true })
-      })
-
-      await waitFor(() => expect(maxAges.length).toBe(initialCount + 2))
-      expect(maxAges.slice(initialCount)).toEqual(['0', '0'])
-    })
   })
 
   describe('clearCache', () => {

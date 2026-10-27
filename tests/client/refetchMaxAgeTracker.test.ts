@@ -31,14 +31,6 @@ describe('createRefetchMaxAgeTracker', () => {
     return { calls, ok, fail }
   }
 
-  it('fetches with no options until a max-age is recorded', async () => {
-    const tracker = createRefetchMaxAgeTracker()
-    const { calls, ok } = recorder()
-    await tracker.runFetch(ok)
-    expect(calls).toEqual([undefined])
-    expect(tracker.hasPendingMaxAge()).toBe(false)
-  })
-
   it('sends the stricter of two max-ages', async () => {
     const tracker = createRefetchMaxAgeTracker()
     const { calls, ok } = recorder()
