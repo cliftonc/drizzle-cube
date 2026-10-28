@@ -400,7 +400,7 @@
     "@types/cors": "^2.8.17",
     "@types/d3": "^7.4.3",
     "@types/express": "^5.0.0",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/supertest": "^7.0.0",
