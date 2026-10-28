@@ -216,10 +216,12 @@ export class CubeClient {
     return batchResponse.results.map((result: any) => {
       // If this individual query failed, create a ResultSet with error info
       if (!result.success && result.error) {
-        // Create a result set that will throw when accessed
+        // Create a result set that will throw when accessed. Keep the
+        // structured issues: BatchCoordinator puts them on the CubeQueryError.
         return {
           ...new ResultSet({ data: [], annotation: {} }),
-          error: result.error
+          error: result.error,
+          issues: result.issues
         }
       }
 

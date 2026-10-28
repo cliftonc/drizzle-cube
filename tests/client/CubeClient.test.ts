@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vites
 import { CubeClient } from '../../src/client/client/CubeClient'
 import type { CubeQuery } from '../../src/client/types'
 import { server } from '../client-setup/msw-server'
+import { BatchCoordinator } from '../../src/client/client/BatchCoordinator'
 
 // This is a unit test file that mocks fetch directly
 // We need to close MSW server to prevent it from intercepting requests
@@ -105,6 +106,52 @@ describe('CubeClient', () => {
       await expect(
         client.load({ measures: ['Users.count'] })
       ).rejects.toThrow('Cube query failed: 500')
+    })
+  })
+
+  describe('batchLoad method', () => {
+    const issues = [
+      { source: 'dimension', member: 'Users.removed', message: "Dimension 'Users.removed' not found" }
+    ]
+
+    function mockBatchResponse() {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          results: [
+            { success: true, data: [{ 'Users.count': 5 }], annotation: {} },
+            {
+              success: false,
+              error: "Dimension 'Users.removed' not found",
+              issues,
+              query: { dimensions: ['Users.removed'] }
+            }
+          ]
+        })
+      })
+    }
+
+    it('should keep the error and the validation issues of a failed query', async () => {
+      mockBatchResponse()
+
+      const [succeeded, failed] = await client.batchLoad([
+        { measures: ['Users.count'] },
+        { dimensions: ['Users.removed'] }
+      ])
+
+      expect(succeeded.rawData()).toEqual([{ 'Users.count': 5 }])
+      expect(failed).toMatchObject({ error: "Dimension 'Users.removed' not found", issues })
+    })
+
+    it('should reject a batched query with the validation issues of its failed result', async () => {
+      mockBatchResponse()
+      const coordinator = new BatchCoordinator(queries => client.batchLoad(queries), 0)
+
+      const succeeded = coordinator.register({ measures: ['Users.count'] })
+      const failed = coordinator.register({ dimensions: ['Users.removed'] })
+
+      await expect(failed).rejects.toMatchObject({ name: 'CubeQueryError', status: 400, issues })
+      await expect(succeeded.then(result => result.rawData())).resolves.toEqual([{ 'Users.count': 5 }])
     })
   })
 
