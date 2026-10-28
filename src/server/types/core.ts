@@ -100,8 +100,19 @@ export interface SqlResult {
  * Options for query execution
  */
 export interface ExecutionOptions {
-  /** Skip the cache lookup (but still cache the result for future requests) */
+  /**
+   * Skip the cache lookup (but still cache the result for future requests).
+   * Alias for `maxAgeMs: 0`; when both are set, the smaller max-age wins.
+   */
   skipCache?: boolean
+  /**
+   * Max-age: the oldest cached result this request will accept, in milliseconds.
+   * A cached entry older than this counts as a miss, so the query runs and the
+   * fresh result is written back. `0` skips the read and still writes. Values
+   * that are not finite and non-negative are ignored. Has no effect when
+   * caching is disabled or no cache provider is configured.
+   */
+  maxAgeMs?: number
   /**
    * Identifies the cube definitions that produced the result, as
    * `setId:baseGeneration.setGeneration`. Appended unconditionally to the query

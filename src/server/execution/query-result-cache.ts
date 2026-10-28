@@ -6,7 +6,7 @@
  * reported via onError) so caching never blocks query execution.
  */
 
-import type { SecurityContext, SemanticQuery, QueryResult, CacheConfig } from '../types/index.js'
+import type { SecurityContext, SemanticQuery, QueryResult, CacheConfig, ExecutionOptions } from '../types/index.js'
 import { generateCacheKey } from '../cache-utils.js'
 
 export class QueryResultCache {
@@ -31,14 +31,31 @@ export class QueryResultCache {
    * Look up a cached result. Returns the cached value (with cache metadata
    * attached) on a hit, or undefined on miss / bypass / no-cache. Emits
    * hit/miss events; lookup errors are non-fatal.
+   *
+   * `options.maxAgeMs` is the oldest entry the caller accepts: an older entry
+   * (or one whose age is unknown) counts as a miss. `skipCache` is an alias for
+   * max-age 0, which skips the read entirely. A `maxAgeMs` that is not a finite
+   * non-negative number is ignored. Callers still store the fresh result in
+   * every case.
    */
-  async lookup(cacheKey: string | undefined, skipCache: boolean): Promise<QueryResult | undefined> {
+  async lookup(
+    cacheKey: string | undefined,
+    options?: Pick<ExecutionOptions, 'skipCache' | 'maxAgeMs'>
+  ): Promise<QueryResult | undefined> {
     if (!cacheKey || !this.cacheConfig?.provider) {
       return undefined
     }
 
-    // skipCache requested - emit a bypass event (miss) and skip the lookup
-    if (skipCache) {
+    // skipCache is max-age 0, which is always the smaller value
+    const requestedMaxAgeMs = options?.maxAgeMs
+    const maxAgeMs = options?.skipCache
+      ? 0
+      : requestedMaxAgeMs !== undefined && Number.isFinite(requestedMaxAgeMs) && requestedMaxAgeMs >= 0
+        ? requestedMaxAgeMs
+        : undefined
+
+    // max-age 0 requested - emit a bypass event (miss) and skip the lookup
+    if (maxAgeMs === 0) {
       this.cacheConfig.onCacheEvent?.({
         type: 'miss',
         key: cacheKey,
@@ -50,7 +67,11 @@ export class QueryResultCache {
     try {
       const startTime = Date.now()
       const cacheResult = await this.cacheConfig.provider.get<QueryResult>(cacheKey)
-      if (cacheResult) {
+      const fresh = cacheResult && (
+        maxAgeMs === undefined ||
+        (cacheResult.metadata && Date.now() - cacheResult.metadata.cachedAt <= maxAgeMs)
+      )
+      if (cacheResult && fresh) {
         this.cacheConfig.onCacheEvent?.({
           type: 'hit',
           key: cacheKey,

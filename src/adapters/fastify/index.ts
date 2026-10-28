@@ -38,7 +38,7 @@ import {
   validateOriginHeader,
   originOptionsFromMcp
 } from '../mcp-transport.js'
-import { ensureLocaleHeader } from '../locale.js'
+import { ensureClientRequestHeaders } from '../cors-headers.js'
 import { createCubeHttpHandler, withLocaleFromHeaders, type McpHttpPort } from '../core/index.js'
 
 /** Read a Fastify request header as a single string (first value when an array). */
@@ -198,11 +198,11 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
 
   // Register CORS plugin if configured
   if (corsConfig) {
-    const localeAwareCorsConfig: FastifyCorsOptions = {
+    const clientAwareCorsConfig: FastifyCorsOptions = {
       ...corsConfig,
-      allowedHeaders: ensureLocaleHeader(corsConfig.allowedHeaders as string[] | string | undefined)
+      allowedHeaders: ensureClientRequestHeaders(corsConfig.allowedHeaders as string[] | string | undefined)
     }
-    fastify.register(import('@fastify/cors'), localeAwareCorsConfig)
+    fastify.register(import('@fastify/cors'), clientAwareCorsConfig)
   }
 
   // Configure body limit - just a placeholder hook that doesn't use reply

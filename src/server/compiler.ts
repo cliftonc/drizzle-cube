@@ -579,6 +579,7 @@ export class SemanticLayerCompiler {
   /**
    * Unified query execution method that handles both single and multi-cube queries
    * @param options.skipCache - Skip cache lookup (but still cache the fresh result)
+   * @param options.maxAgeMs - Oldest cached result to accept; older entries are a miss
    */
   async execute(
     query: SemanticQuery,
@@ -596,6 +597,7 @@ export class SemanticLayerCompiler {
   /**
    * Execute a multi-cube query
    * @param options.skipCache - Skip cache lookup (but still cache the fresh result)
+   * @param options.maxAgeMs - Oldest cached result to accept; older entries are a miss
    */
   async executeMultiCubeQuery(
     query: SemanticQuery,

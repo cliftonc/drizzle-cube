@@ -10,7 +10,8 @@ import type {
   QueryAnalysis,
   QuerySuggestion,
   AIValidationResult,
-  QueryValidationIssue
+  QueryValidationIssue,
+  ExecutionOptions
 } from '../server/index.js'
 import {
   suggestQuery,
@@ -547,15 +548,10 @@ export function formatErrorResponse(
 }
 
 /**
- * Options for batch request handling
+ * Options for batch request handling: the result-cache execution options
+ * (`skipCache`, `maxAgeMs`), applied to every query in the batch.
  */
-export interface BatchRequestOptions {
-  /**
-   * Whether to bypass server-side cache for all queries in the batch
-   * When true, all queries will be executed fresh without cache
-   */
-  skipCache?: boolean
-}
+export type BatchRequestOptions = Pick<ExecutionOptions, 'skipCache' | 'maxAgeMs'>
 
 /**
  * Handle batch query requests - wrapper around existing single query execution
@@ -564,7 +560,7 @@ export interface BatchRequestOptions {
  * @param queries - Array of semantic queries to execute
  * @param securityContext - Security context (extracted once, shared across all queries)
  * @param semanticLayer - Semantic layer compiler instance
- * @param options - Optional batch request options (e.g., skipCache)
+ * @param options - Optional batch request options (skipCache, maxAgeMs)
  * @returns Array of results matching input query order (successful or error results)
  */
 export async function handleBatchRequest(
@@ -578,10 +574,8 @@ export async function handleBatchRequest(
   const settledResults = await Promise.allSettled(
     queries.map(async (query) => {
       // Use EXISTING single query execution logic - NO CODE DUPLICATION
-      // Pass skipCache option to bypass server-side caching when requested
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, {
-        skipCache: options?.skipCache
-      })
+      // Pass cache options through so max-age / bypass apply to every query
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, options)
 
       // Use EXISTING response formatter - NO CODE DUPLICATION
       return formatCubeResponse(query, result, semanticLayer)

@@ -39,7 +39,7 @@ import {
   validateOriginHeader,
   originOptionsFromMcp
 } from '../mcp-transport.js'
-import { ensureLocaleHeader } from '../locale.js'
+import { ensureClientRequestHeaders } from '../cors-headers.js'
 import { createCubeHttpHandler, withLocaleFromHeaders, type McpHttpPort } from '../core/index.js'
 
 /**
@@ -196,11 +196,11 @@ export function createCubeRouter(
 
   // Configure CORS if provided
   if (corsConfig) {
-    const localeAwareCorsConfig: CorsOptions = {
+    const clientAwareCorsConfig: CorsOptions = {
       ...corsConfig,
-      allowedHeaders: ensureLocaleHeader(corsConfig.allowedHeaders)
+      allowedHeaders: ensureClientRequestHeaders(corsConfig.allowedHeaders)
     }
-    router.use(cors(localeAwareCorsConfig))
+    router.use(cors(clientAwareCorsConfig))
   }
 
   // JSON body parser with size limit

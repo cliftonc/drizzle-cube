@@ -161,6 +161,7 @@ export class QueryExecutor {
   /**
    * Unified query execution method that handles both single and multi-cube queries
    * @param options.skipCache - Skip cache lookup (but still cache the fresh result)
+   * @param options.maxAgeMs - Oldest cached result to accept; older entries are a miss
    */
   async execute(
     cubes: Map<string, Cube>,
@@ -173,9 +174,10 @@ export class QueryExecutor {
       this.modeRouter.validateForMode(mode, cubes, query)
 
       // Check cache BEFORE expensive operations (after validation, includes security context)
-      // Skip cache lookup if options.skipCache is true (but still cache the result later)
+      // Entries older than max-age are a miss; max-age 0 (or skipCache) skips the
+      // lookup. The fresh result is still cached later either way.
       const cacheKey = this.resultCache.generateKey(query, securityContext, options?.cubeSetKey)
-      const cached = await this.resultCache.lookup(cacheKey, options?.skipCache ?? false)
+      const cached = await this.resultCache.lookup(cacheKey, options)
       if (cached) {
         return cached
       }
