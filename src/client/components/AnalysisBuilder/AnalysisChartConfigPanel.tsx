@@ -19,7 +19,15 @@ import type { MetricItem, BreakdownItem } from './types.js'
 import type { ChartAvailabilityMap } from '../../shared/chartDefaults.js'
 import type { MetaResponse } from '../../shared/types.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
 import { applyAxisDrop, applyAxisRemove, applyAxisReorder } from './utils/axisConfigUtils.js'
+
+/**
+ * Chart types that only the funnel, flow and retention modes can render. The
+ * picker always leaves them out here; `features.hiddenChartTypes` adds to this
+ * list and never replaces it.
+ */
+const MODE_ONLY_CHART_TYPES: ChartType[] = ['funnel', 'sankey', 'sunburst', 'retentionHeatmap', 'retentionCombined']
 
 const MeasureIcon = getIcon('measure')
 const DimensionIcon = getIcon('dimension')
@@ -60,6 +68,11 @@ export default function AnalysisChartConfigPanel({
   onDisplayConfigChange
 }: AnalysisChartConfigPanelProps) {
   const { t } = useTranslation()
+  const { features } = useCubeFeatures()
+  const excludedChartTypes = useMemo(
+    () => [...MODE_ONLY_CHART_TYPES, ...(features.hiddenChartTypes ?? [])],
+    [features.hiddenChartTypes]
+  )
   // Track currently dragging item for immediate state updates
   const [draggedItem, setDraggedItem] = useState<{
     field: string
@@ -266,7 +279,7 @@ export default function AnalysisChartConfigPanel({
             selectedType={chartType}
             onTypeChange={onChartTypeChange}
             availability={chartAvailability}
-            excludeTypes={['funnel', 'sankey', 'sunburst', 'retentionHeatmap', 'retentionCombined']}
+            excludeTypes={excludedChartTypes}
             compact
           />
         </div>
@@ -311,7 +324,7 @@ export default function AnalysisChartConfigPanel({
           selectedType={chartType}
           onTypeChange={onChartTypeChange}
           availability={chartAvailability}
-          excludeTypes={['funnel', 'sankey', 'sunburst', 'retentionHeatmap', 'retentionCombined']}
+          excludeTypes={excludedChartTypes}
           compact
         />
       </div>

@@ -18,6 +18,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Mock } from 'vitest'
 import ChartTypeSelector from '../../../../src/client/components/ChartTypeSelector'
+import { chartPluginRegistry } from '../../../../src/client/charts/chartPlugin'
 import type { ChartType } from '../../../../src/client/types'
 import type { ChartAvailabilityMap } from '../../../../src/client/shared/chartDefaults'
 
@@ -239,6 +240,68 @@ describe('ChartTypeSelector', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Funnel Chart')).toBeDefined()
+      })
+    })
+
+    it('should keep showing the icon and label of a selected type that is excluded', () => {
+      render(
+        <ChartTypeSelector
+          selectedType="table"
+          onTypeChange={onTypeChange}
+          excludeTypes={['table']}
+        />
+      )
+
+      const button = screen.getByRole('button', { name: /data table/i })
+      expect(button.querySelector('svg')).not.toBeNull()
+    })
+
+    describe('custom chart types', () => {
+      const customLabel = 'Hidden Custom Chart'
+
+      beforeEach(() => {
+        chartPluginRegistry.register({
+          type: 'hiddenCustom',
+          label: customLabel,
+          config: { label: customLabel, dropZones: [] },
+          component: () => null,
+        })
+      })
+
+      afterEach(() => {
+        chartPluginRegistry.unregister('hiddenCustom')
+      })
+
+      it('should list a registered custom chart type', async () => {
+        render(
+          <ChartTypeSelector
+            selectedType="bar"
+            onTypeChange={onTypeChange}
+          />
+        )
+
+        fireEvent.click(screen.getByRole('button', { name: /bar chart/i }))
+
+        await waitFor(() => {
+          expect(screen.getByText(customLabel)).toBeDefined()
+        })
+      })
+
+      it('should not list an excluded custom chart type', async () => {
+        render(
+          <ChartTypeSelector
+            selectedType="bar"
+            onTypeChange={onTypeChange}
+            excludeTypes={['hiddenCustom']}
+          />
+        )
+
+        fireEvent.click(screen.getByRole('button', { name: /bar chart/i }))
+
+        await waitFor(() => {
+          expect(screen.getByText('Line Chart')).toBeDefined()
+        })
+        expect(screen.queryByText(customLabel)).toBeNull()
       })
     })
   })
