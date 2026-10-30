@@ -476,6 +476,24 @@ describe('AnalyticsPortlet', () => {
       rerender(<AnalyticsPortlet {...props()} />)
       expect(mockedHook.mock.lastCall?.[1]).toMatchObject({ skip: false, enabled: true })
     })
+
+    it('stops observing once seen, unless it has interval refresh', async () => {
+      const { useInView } = await import('react-intersection-observer')
+      const mockedUseInView = vi.mocked(useInView)
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      const props = {
+        query: JSON.stringify({ measures: ['Test.count'] }),
+        chartType: 'bar' as const,
+        chartConfig: { yAxis: ['Test.count'] }
+      }
+
+      const { unmount } = render(<AnalyticsPortlet {...props} />)
+      expect(mockedUseInView.mock.lastCall?.[0]).toMatchObject({ triggerOnce: true })
+      unmount()
+
+      render(<AnalyticsPortlet {...props} hasIntervalRefresh />)
+      expect(mockedUseInView.mock.lastCall?.[0]).toMatchObject({ triggerOnce: false })
+    })
   })
 
   describe('chart rendering', () => {

@@ -41,12 +41,11 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   const [startViewState] = useState(() => initialViewState)
 
   // Lazy loading: Use IntersectionObserver to detect when portlet is visible.
-  // eagerLoad forces visible. An interval-refreshed portlet's queries are
-  // disabled while scrolled away; any other stays live once loaded.
+  // eagerLoad forces visible. An interval-refreshed portlet keeps observing and
+  // its queries are disabled while scrolled away; any other stops observing
+  // and stays live once loaded.
   // Note: Batching is handled by BatchCoordinator which collects queries for 100ms before flushing
-  const visibility = usePortletVisibility(eagerLoad)
-  const { inViewRef, isVisible } = visibility
-  const isScrolledAway = hasIntervalRefresh && visibility.isScrolledAway
+  const { inViewRef, isVisible, isScrolledAway } = usePortletVisibility(eagerLoad, hasIntervalRefresh)
 
   // `skipQuery` says the chart does not *require* a query, not that it can
   // never have one — a markdown portlet with a query renders its content as a
