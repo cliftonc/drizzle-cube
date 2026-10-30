@@ -80,6 +80,8 @@ export interface IconRegistry {
   cube: IconDefinition
   download: IconDefinition
   upload: IconDefinition
+  pause: IconDefinition
+  play: IconDefinition
 
   // Field type icons
   measure: IconDefinition

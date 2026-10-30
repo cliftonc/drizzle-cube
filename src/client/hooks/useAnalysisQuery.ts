@@ -32,6 +32,7 @@ import type { ServerFlowQuery, FlowChartData } from '../types/flow.js'
 import type { ServerRetentionQuery, RetentionChartData } from '../types/retention.js'
 import { buildFunnelConfigFromQueries } from '../utils/funnelExecution.js'
 import { resolveActiveMode, pickByMode, computeExecutionResults, deriveModeOutputs, computeSkipFlags, computeExecutionStatus } from './analysisQueryExecutionModes.js'
+import type { MaxAgeOptions } from '../client/maxAge.js'
 
 export interface UseAnalysisQueryOptions {
   /** Current query (for single-query mode) */
@@ -106,7 +107,7 @@ export interface UseAnalysisQueryResult {
   /** Whether query has been debounced (for smart defaults trigger) */
   hasDebounced: boolean
   /** Refetch function. Pass { bustCache: true } to bypass client and server caches. */
-  refetch: (options?: { bustCache?: boolean }) => void
+  refetch: (options?: MaxAgeOptions) => void
   /**
    * In funnel mode, these are the actually executed queries with:
    * - Binding key dimension auto-added
@@ -337,7 +338,7 @@ export function useAnalysisQuery(
 
   // Unified refetch function
   // Pass options (including bustCache) through to underlying hooks
-  const refetch = useCallback((options?: { bustCache?: boolean }) => {
+  const refetch = useCallback((options?: MaxAgeOptions) => {
     switch (activeMode) {
       case 'retention':
         // Retention uses execute for bustCache support

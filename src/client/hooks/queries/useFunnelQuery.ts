@@ -19,6 +19,9 @@ import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import type { CubeQuery } from '../../types.js'
+import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
+import { resultSetComputedAt, resultSetServedAgeMs } from '../../utils/freshness.js'
+import { useShownRowsAge } from './useShownRowsAge.js'
 import type {
   FunnelConfig,
   FunnelChartData,
@@ -149,6 +152,7 @@ export function useFunnelQuery(
 ): UseFunnelQueryResult {
   const {
     skip = false,
+    enabled = true,
     debounceMs = DEFAULT_DEBOUNCE_MS,
     onComplete,
     onError,
@@ -242,6 +246,9 @@ export function useFunnelQuery(
     }
   }, [manualRefresh, serverQuery, skip, currentQueryKey])
 
+  // Max-age recorded by execute, kept until a fetch with it succeeds
+  const [refetchMaxAge] = useState(createRefetchMaxAgeTracker)
+
   // Execute funnel query via TanStack Query
   const queryResult = useQuery({
     queryKey,
@@ -251,10 +258,11 @@ export function useFunnelQuery(
       }
 
       const startTime = performance.now()
-
       try {
         // Send funnel query to server (single request)
-        const resultSet = await cubeApi.load(serverQuery as unknown as CubeQuery)
+        const resultSet = await refetchMaxAge.runFetch((loadOptions) =>
+          cubeApi.load(serverQuery as unknown as CubeQuery, loadOptions)
+        )
         const rawData = resultSet.rawData()
         const executionTime = performance.now() - startTime
         const cacheInfo = resultSet.cacheInfo?.()
@@ -263,6 +271,8 @@ export function useFunnelQuery(
           rawData,
           executionTime,
           cacheInfo,
+          computedAt: resultSetComputedAt(resultSet),
+          servedAgeMs: resultSetServedAgeMs(resultSet),
         }
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error))
@@ -272,8 +282,10 @@ export function useFunnelQuery(
     },
     // Enable when we have a server query (either prebuilt or built from config)
     // In manual refresh mode, only execute when explicitly triggered
-    enabled: shouldExecute,
-    staleTime: 60000, // 1 minute cache
+    enabled: shouldExecute && enabled,
+    // 1 minute cache; a max-age recorded while skipped or disabled makes the cached result
+    // stale, so the query fetches with it once enabled
+    staleTime: () => (refetchMaxAge.hasPendingMaxAge() ? 0 : 60000),
     gcTime: 5 * 60 * 1000, // 5 minute garbage collection
   })
 
@@ -378,43 +390,34 @@ export function useFunnelQuery(
   const status: FunnelExecutionResult['status'] = deriveFunnelStatus(queryResult)
 
   /**
-   * Manually execute/refetch the funnel query
-   * Pass { bustCache: true } to bypass both client and server caches
+   * Manually execute/refetch the funnel query.
+   * `{ maxAgeSeconds }` accepts a cached server result at most that old;
+   * `{ bustCache: true }` is max-age 0.
+   * A skipped (off-screen) query keeps the max-age and fetches with it when
+   * it is enabled again.
    */
-  const execute = useCallback(async (options?: { bustCache?: boolean }): Promise<FunnelExecutionResult | null> => {
-    // Allow execution if we have a serverQuery (either from prebuiltServerQuery or built from config)
-    if (!serverQuery) return null
+  const { refetch: refetchQuery } = queryResult
+  const shownRowsAge = useShownRowsAge(queryResult.data?.servedAgeMs, queryResult.dataUpdatedAt)
+  const execute = useCallback(async (options?: MaxAgeOptions): Promise<FunnelExecutionResult | null> => {
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options, shownRowsAge())
+    // Allow execution if we have a serverQuery (either from prebuiltServerQuery
+    // or built from config). While skipped (an off-screen portlet) the max-age
+    // waits until the query is enabled and fetches.
+    if (!serverQuery || skip) return null
 
     // Mark this query as executed (for manual refresh mode)
     setExecutedQueryKey(currentQueryKey)
 
+    // A disabled query (scrolled away) fetches with the max-age once enabled
+    if (!enabled) return result
+
     try {
-      if (options?.bustCache) {
-        // Remove from TanStack Query cache first
-        queryClient.removeQueries({ queryKey })
-        // Fetch with cache bust header
-        await queryClient.fetchQuery({
-          queryKey,
-          queryFn: async () => {
-            const startTime = performance.now()
-            const resultSet = await cubeApi.load(
-              serverQuery as unknown as CubeQuery,
-              { bustCache: true }
-            )
-            const rawData = resultSet.rawData()
-            const executionTime = performance.now() - startTime
-            const cacheInfo = resultSet.cacheInfo?.()
-            return { rawData, executionTime, cacheInfo }
-          },
-        })
-      } else {
-        await queryResult.refetch()
-      }
+      await refetchQuery({ cancelRefetch })
       return result
     } catch {
       return result
     }
-  }, [serverQuery, queryResult, result, queryClient, queryKey, cubeApi, currentQueryKey])
+  }, [refetchMaxAge, shownRowsAge, serverQuery, skip, enabled, result, currentQueryKey, refetchQuery])
 
   /**
    * Cancel is a no-op for TanStack Query (handled automatically)
@@ -449,6 +452,7 @@ export function useFunnelQuery(
     // This is the actual { funnel: {...} } query sent to the server
     serverQuery,
     cacheInfo: queryResult.data?.cacheInfo ?? null,
+    computedAt: queryResult.data?.computedAt ?? null,
     // Manual refresh mode support
     needsRefresh,
   }

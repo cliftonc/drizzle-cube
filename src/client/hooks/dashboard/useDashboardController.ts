@@ -3,6 +3,7 @@ import type { StoreApi } from 'zustand'
 import { captureThumbnail } from '../../utils/thumbnail.js'
 import type {
   DashboardConfig,
+  DashboardRefreshConfig,
   DashboardFilterMapping,
   DashboardGridSettings,
   DashboardLayoutMode,
@@ -30,6 +31,7 @@ import {
   ungroup,
   type SnapEdge,
 } from './groupUtils.js'
+import type { MaxAgeOptions } from '../../client/maxAge.js'
 
 interface UseDashboardControllerOptions {
   allowedModes: DashboardLayoutMode[]
@@ -68,8 +70,8 @@ interface UseDashboardControllerOptions {
     save?: boolean,
     portletsOverride?: PortletConfig[]
   ) => Promise<void>
-  portletComponentRefs?: MutableRefObject<Record<string, { refresh: (options?: { bustCache?: boolean }) => void } | null>>
-  onPortletRefresh?: (portletId: string, options?: { bustCache?: boolean }) => void
+  portletComponentRefs?: MutableRefObject<Record<string, { refresh: (options?: MaxAgeOptions) => void } | null>>
+  onPortletRefresh?: (portletId: string, options?: MaxAgeOptions) => void
 }
 
 export function useDashboardController({
@@ -582,7 +584,7 @@ export function useDashboardController({
   )
 
   const refreshPortlet = useCallback(
-    (portletId: string, options?: { bustCache?: boolean }) => {
+    (portletId: string, options?: MaxAgeOptions) => {
       const portletComponent = portletComponentRefs?.current?.[portletId]
       if (portletComponent?.refresh) {
         portletComponent.refresh(options)
@@ -687,6 +689,19 @@ export function useDashboardController({
     [configRef, onConfigChangeRef, saveConfig]
   )
 
+  // Dashboard default interval refresh; undefined removes it
+  const handleRefreshDefaultChange = useCallback(
+    async (refresh: DashboardRefreshConfig | undefined) => {
+      if (!onConfigChangeRef.current) return
+
+      const { refresh: _previous, ...rest } = configRef.current
+      const updatedConfig: DashboardConfig = refresh ? { ...rest, refresh } : rest
+
+      await saveConfig(updatedConfig, 'Auto-save failed:')
+    },
+    [configRef, onConfigChangeRef, saveConfig]
+  )
+
   return {
     enterEditMode,
     exitEditMode,
@@ -707,6 +722,7 @@ export function useDashboardController({
     selectAllForFilter,
     saveFilterConfig,
     handlePaletteChange,
+    handleRefreshDefaultChange,
     importConfig,
     snapPortletIntoGroup,
     ungroupGroup,

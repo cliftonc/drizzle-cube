@@ -13,7 +13,7 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import { useCubeApi } from '../../providers/CubeApiProvider.js'
 import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
 import type { CubeQuery, CubeResultSet } from '../../types.js'
@@ -22,6 +22,10 @@ import { cleanQueryForServer } from '../../shared/utils.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { withChartGapFilling, type ChartGapFillOptions } from '../../utils/gapFilling.js'
+import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
+import { resolveSubscribeIntervalSeconds, scheduleSubscription } from '../../client/subscription.js'
+import { resultSetServedAgeMs } from '../../utils/freshness.js'
+import { useShownRowsAge } from './useShownRowsAge.js'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300
@@ -42,6 +46,13 @@ export interface UseCubeLoadQueryOptions {
    * @default false
    */
   skip?: boolean
+  /**
+   * Whether the query may fetch. Unlike `skip`, false keeps the query key and
+   * its data; a refetch while disabled marks the query stale, and it fetches
+   * once enabled again.
+   * @default true
+   */
+  enabled?: boolean
   /**
    * Debounce delay in milliseconds
    * @default 300
@@ -68,13 +79,22 @@ export interface UseCubeLoadQueryOptions {
    * are gap-filled per `ChartGapFillOptions`. Omit for raw rows.
    */
   gapFill?: ChartGapFillOptions
+  /**
+   * Keep the query current (Cube.js `subscribe`): every 10 seconds, raised to
+   * `features.refresh.minIntervalSeconds` when that is larger, refetch with
+   * max-age equal to the interval, lowered to just under the age of the rows
+   * shown so a tick never gets them back. Works with `features.refresh` off. Stops while the query is skipped or
+   * disabled, and in `manualRefresh` mode.
+   * @default false
+   */
+  subscribe?: boolean
 }
 
-/** Options for the refetch function */
-export interface RefetchOptions {
-  /** If true, bypasses both client and server caches */
-  bustCache?: boolean
-}
+/**
+ * Options for the refetch function. `maxAgeSeconds` is the oldest cached
+ * server result accepted; `bustCache: true` is max-age 0.
+ */
+export type RefetchOptions = MaxAgeOptions
 
 export interface UseCubeLoadQueryResult {
   /** The result set from the query */
@@ -95,7 +115,10 @@ export interface UseCubeLoadQueryResult {
   debouncedQuery: CubeQuery | null
   /** Whether the current query is valid */
   isValidQuery: boolean
-  /** Manually refetch the data. Pass { bustCache: true } to bypass caches. */
+  /**
+   * Manually refetch the data. Pass `{ maxAgeSeconds }` to accept a cached
+   * server result at most that old, or `{ bustCache: true }` to bypass caches.
+   */
   refetch: (options?: RefetchOptions) => void
   /** Clear the query cache */
   clearCache: () => void
@@ -141,11 +164,13 @@ export function useCubeLoadQuery(
 ): UseCubeLoadQueryResult {
   const {
     skip = false,
+    enabled = true,
     debounceMs = DEFAULT_DEBOUNCE_MS,
     resetResultSetOnChange = true,
     staleTime = 60 * 1000,
     keepPreviousData = true,
     gapFill,
+    subscribe = false,
   } = options
   // Primitives, so an inline `gapFill` object doesn't re-wrap on every render
   const gapFillEnabled = !!gapFill
@@ -203,9 +228,8 @@ export function useCubeLoadQuery(
     return executedQueryKey === currentQueryKey
   }, [serverQuery, skip, manualRefresh, executedQueryKey, currentQueryKey])
 
-  // Ref to track when the next fetch should bust the cache
-  // This is used instead of replacing the queryFn to avoid the queryFn getting "stuck" with bustCache=true
-  const bustCacheRef = useRef(false)
+  // Max-age recorded by refetch, kept until a fetch with it succeeds
+  const [refetchMaxAge] = useState(createRefetchMaxAgeTracker)
 
   // Execute query with TanStack Query
   const queryResult = useQuery({
@@ -213,26 +237,22 @@ export function useCubeLoadQuery(
     queryFn: async () => {
       if (!serverQuery) throw new Error('No query provided')
 
-      // Check if this fetch should bust the cache
-      const shouldBustCache = bustCacheRef.current
-      // Reset the flag immediately so subsequent fetches don't bust cache
-      bustCacheRef.current = false
+      // With the max-age asked for by the refetch that triggered this fetch, if any
+      return refetchMaxAge.runFetch((loadOptions) => {
+        // Use batch coordinator if enabled (collects queries for a short window,
+        // one queue per max-age, so a bust is the max-age 0 queue)
+        if (enableBatching && batchCoordinator) {
+          return batchCoordinator.register(serverQuery, loadOptions)
+        }
 
-      // When busting cache, bypass batch coordinator and make direct API call
-      if (shouldBustCache) {
-        return cubeApi.load(serverQuery, { bustCache: true })
-      }
-
-      // Use batch coordinator if enabled (collects queries for 100ms window)
-      if (enableBatching && batchCoordinator) {
-        return batchCoordinator.register(serverQuery)
-      }
-
-      // Fall back to direct load when batching disabled
-      return cubeApi.load(serverQuery)
+        // Fall back to direct load when batching disabled
+        return cubeApi.load(serverQuery, loadOptions)
+      })
     },
-    enabled: shouldExecute,
-    staleTime,
+    enabled: shouldExecute && enabled,
+    // A max-age recorded while skipped or disabled makes the cached result stale,
+    // so the query fetches with it once enabled
+    staleTime: () => (refetchMaxAge.hasPendingMaxAge() ? 0 : staleTime),
     placeholderData: keepPreviousData ? (prevData) => prevData : undefined,
   })
 
@@ -290,25 +310,36 @@ export function useCubeLoadQuery(
 
   // Execute query function - for manual refresh mode, triggers execution
   // Also serves as refetch in auto mode
+  // While the hook is skipped (an off-screen portlet) the max-age waits until
+  // the query is enabled and fetches.
+  const { refetch: refetchQuery } = queryResult
+  const shownRowsAge = useShownRowsAge(
+    queryResult.isPlaceholderData ? undefined : resultSetServedAgeMs(queryResult.data),
+    queryResult.dataUpdatedAt
+  )
   const executeQuery = useCallback((options?: RefetchOptions) => {
-    if (!serverQuery) return
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options, shownRowsAge())
+    if (!serverQuery || skip) return
 
     // Mark this query as executed (for manual refresh mode)
     setExecutedQueryKey(currentQueryKey)
 
-    if (options?.bustCache) {
-      // Set the ref flag so the queryFn knows to bypass cache
-      // The flag is reset inside queryFn after reading it
-      bustCacheRef.current = true
-    }
-
-    // Invalidate and refetch - invalidateQueries marks as stale AND triggers refetch
-    // when the query is being observed (which it is, via useQuery)
-    queryClient.invalidateQueries({ queryKey: createQueryKey(serverQuery) })
-  }, [serverQuery, currentQueryKey, queryClient])
+    // A disabled query (scrolled away) fetches with the max-age once enabled;
+    // the observer's refetch would run it now
+    if (enabled) void refetchQuery({ cancelRefetch })
+  }, [refetchMaxAge, shownRowsAge, serverQuery, skip, enabled, currentQueryKey, refetchQuery])
 
   // Refetch is an alias for executeQuery for backward compatibility
   const refetch = executeQuery
+
+  // Subscription: refetch on the subscribe interval while the query runs.
+  // executeQuery changes with the query, so a new query restarts the timer.
+  const subscribeIntervalSeconds = resolveSubscribeIntervalSeconds(features.refresh?.minIntervalSeconds)
+  const subscriptionActive = subscribe && !manualRefresh && shouldExecute && enabled
+  useEffect(() => {
+    if (!subscriptionActive) return
+    return scheduleSubscription(subscribeIntervalSeconds, executeQuery)
+  }, [subscriptionActive, subscribeIntervalSeconds, executeQuery])
 
   // Clear cache function
   const clearCache = () => {

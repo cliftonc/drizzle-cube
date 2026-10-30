@@ -75,7 +75,7 @@ export function CubeApiProvider({
   // Create BatchCoordinator - only recreates when cubeApi or batching config changes
   const batchCoordinator = useMemo(() => {
     if (!enableBatching) return null
-    return new BatchCoordinator((queries) => cubeApi.batchLoad(queries), batchDelayMs)
+    return new BatchCoordinator((queries, batchOptions) => cubeApi.batchLoad(queries, batchOptions), batchDelayMs)
   }, [enableBatching, cubeApi, batchDelayMs])
 
   // Stable callback for updating config

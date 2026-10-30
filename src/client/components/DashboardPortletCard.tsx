@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, type ReactNode } from 'react'
+import React, { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import type {
   AnalyticsPortletProps,
   AnalyticsPortletRef,
@@ -6,7 +6,8 @@ import type {
   ChartDisplayConfig,
   ChartType,
   DashboardFilter,
-  DashboardFilterMapping
+  DashboardFilterMapping,
+  PortletFreshness
 } from '../types.js'
 import AnalyticsPortlet from './AnalyticsPortlet.js'
 import type { ColorPalette } from '../utils/colorPalettes.js'
@@ -19,6 +20,8 @@ import { usePortletCardActions } from './dashboardPortletCard/usePortletCardActi
 import PortletCardHeader from './dashboardPortletCard/PortletCardHeader.js'
 import PortletFloatingActions from './dashboardPortletCard/PortletFloatingActions.js'
 import FilterFieldChip from './dashboardPortletCard/FilterFieldChip.js'
+import { useCubeFeatures } from '../providers/CubeFeaturesProvider.js'
+import { isRefreshFeatureEnabled, resolveEffectiveRefresh } from '../utils/freshness.js'
 import { buildContainerClassName, buildHeaderClassName, buildContainerStyle, resolveDisplayModes } from './dashboardPortletCard/cardStyles.js'
 
 interface PortletChartBodyProps {
@@ -32,11 +35,13 @@ interface PortletChartBodyProps {
   dashboardFilters?: DashboardFilter[]
   dashboardFilterMapping?: DashboardFilterMapping
   eagerLoad: boolean
+  hasIntervalRefresh: boolean
   title: string
   isMarkdownAutoHeight: boolean
   colorPalette?: ColorPalette
   loadingComponent?: ReactNode
   onDebugDataReady: (data: PortletDebugDataEntry) => void
+  onFreshnessChange?: (freshness: PortletFreshness) => void
 }
 
 const PortletChartBody = React.memo(function PortletChartBody({
@@ -50,11 +55,13 @@ const PortletChartBody = React.memo(function PortletChartBody({
   dashboardFilters,
   dashboardFilterMapping,
   eagerLoad,
+  hasIntervalRefresh,
   title,
   isMarkdownAutoHeight,
   colorPalette,
   loadingComponent,
   onDebugDataReady,
+  onFreshnessChange,
 }: PortletChartBodyProps) {
   return (
     <div
@@ -70,11 +77,13 @@ const PortletChartBody = React.memo(function PortletChartBody({
         dashboardFilters={dashboardFilters}
         dashboardFilterMapping={dashboardFilterMapping}
         eagerLoad={eagerLoad}
+        hasIntervalRefresh={hasIntervalRefresh}
         title={title}
         height={isMarkdownAutoHeight ? 'auto' : '100%'}
         colorPalette={colorPalette}
         loadingComponent={loadingComponent}
         onDebugDataReady={onDebugDataReady}
+        onFreshnessChange={onFreshnessChange}
       />
     </div>
   )
@@ -87,6 +96,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   layoutMode = 'grid',
   dashboardFilters,
   configEagerLoad,
+  dashboardRefresh,
   loadingComponent,
   colorPalette,
   containerProps,
@@ -207,6 +217,37 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
 
   const eagerLoad = portlet.eagerLoad ?? configEagerLoad ?? false
 
+  // Interval refresh (features.refresh): the header shows freshness and a
+  // pause toggle, the dashboard timer does the refreshing, and the chart
+  // holds its queries while scrolled away
+  const { features } = useCubeFeatures()
+  const refreshFeatureEnabled = isRefreshFeatureEnabled(features)
+  const effectiveRefresh = useMemo(
+    () => resolveEffectiveRefresh(portlet.refresh, dashboardRefresh, features),
+    [portlet.refresh, dashboardRefresh, features]
+  )
+  const isDashboardRefreshPaused = useDashboardStore(state => state.isRefreshPaused)
+  const isPortletRefreshPaused = useDashboardStore(state => state.pausedPortletIds.includes(portlet.id))
+  const [freshness, setFreshness] = useState<PortletFreshness>({ isFetching: false })
+  const onToggleRefreshPaused = callbacks.onToggleRefreshPaused
+  const refreshPause = useMemo(() => {
+    if (!effectiveRefresh || isEditMode || !onToggleRefreshPaused) return undefined
+    // A dashboard-wide pause shows here as a disabled play button; the toolbar resumes it
+    return {
+      isPaused: isDashboardRefreshPaused || isPortletRefreshPaused,
+      isDashboardPaused: isDashboardRefreshPaused,
+      onToggle: () => onToggleRefreshPaused(portlet.id)
+    }
+  }, [effectiveRefresh, isEditMode, onToggleRefreshPaused, isDashboardRefreshPaused, isPortletRefreshPaused, portlet.id])
+  const freshnessIndicator = refreshFeatureEnabled
+    ? {
+        computedAt: freshness.computedAt,
+        isFetching: freshness.isFetching,
+        intervalSeconds: effectiveRefresh?.intervalSeconds,
+        isPaused: !!effectiveRefresh && (isDashboardRefreshPaused || isPortletRefreshPaused)
+      }
+    : undefined
+
   // Expand hands the host the exact properties this card gives AnalyticsPortlet,
   // so a chart that the host renders from them shows the same data and shares
   // the card's query cache entry. Only offered in view mode: edit mode and
@@ -306,6 +347,9 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           showCacheBustIndicator={showCacheBustIndicator}
           unreachableDateFilterLabels={unreachableDateFilterLabels}
           icons={icons}
+          isFetching={freshness.isFetching}
+          freshness={freshnessIndicator}
+          refreshPause={refreshPause}
           onRefresh={(options) => callbacks.onRefresh(portlet.id, options)}
           onHoverRefreshChange={setIsHoveringRefresh}
           onCopyToClipboard={handleCopyToClipboard}
@@ -329,11 +373,13 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
         dashboardFilters={dashboardFilters}
         dashboardFilterMapping={portlet.dashboardFilterMapping}
         eagerLoad={eagerLoad}
+        hasIntervalRefresh={!!effectiveRefresh}
         title={portlet.title}
         isMarkdownAutoHeight={isMarkdownAutoHeight}
         colorPalette={colorPalette}
         loadingComponent={loadingComponent}
         onDebugDataReady={handleDebugDataReady}
+        onFreshnessChange={setFreshness}
       />
     </div>
   )

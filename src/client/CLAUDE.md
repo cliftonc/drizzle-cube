@@ -48,7 +48,9 @@ src/client/
 │
 ├── client/                        API client
 │   ├── CubeClient.ts             HTTP client for Cube-compatible API
-│   └── BatchCoordinator.ts       Request batching
+│   ├── BatchCoordinator.ts       Request batching (one queue per max-age)
+│   ├── subscription.ts           When a subscribed query refetches (Phase 0: interval with max-age)
+│   └── maxAge.ts                 Max-age options → headers; per-hook refetch max-age tracker
 │
 ├── components/                    React components
 │   ├── AnalysisBuilder/           Query builder (~50 files, see AnalysisBuilder CLAUDE.md)
@@ -111,14 +113,20 @@ src/client/
 │   ├── AnalyticsDashboard.tsx     Dashboard container
 │   ├── AnalyticsPage.tsx          Full analytics page layout
 │   ├── AnalyticsPortlet.tsx       Individual dashboard widget
-│   ├── analyticsPortlet/          AnalyticsPortlet.tsx sub-components + hooks (query, drill, debug)
+│   ├── analyticsPortlet/          AnalyticsPortlet.tsx sub-components + hooks (query, drill, debug,
+│   │                              visibility: queries disabled until first view, and for interval
+│   │                              portlets while scrolled away)
 │   ├── AnalysisBuilderLazy.tsx    Lazy-loaded AnalysisBuilder
 │   ├── ChartErrorBoundary.tsx     Chart error boundary
 │   ├── ChartTypeSelector.tsx      Chart type picker (driven by chartConfigRegistry)
 │   ├── DashboardGrid.tsx          Grid layout engine
+│   ├── dashboard/                 Dashboard coordinator, context, toolbar, edit bar, modals
+│   │                              (RefreshPauseToggle: dashboard-wide pause; DashboardRefreshSelector:
+│   │                              edit-bar default interval)
 │   ├── DashboardPortletCard.tsx   Portlet card wrapper
 │   ├── dashboardPortletCard/      DashboardPortletCard.tsx sub-components + actions hook + helpers
-│   ├── portletAnalysisModal/      PortletAnalysisModal sibling helpers (save validation)
+│   │                              (DataFreshnessIndicator: status dot + computed-at age, warning when stale)
+│   ├── portletAnalysisModal/      PortletAnalysisModal sibling helpers (save validation, RefreshSettings)
 │   ├── RowManagedLayout.tsx       Row-based layout engine
 │   ├── MobileStackedLayout.tsx    Mobile-responsive layout
 │   └── (modals & misc)            ConfirmModal, DashboardEditModal, DebugModal, Modal,
@@ -139,6 +147,7 @@ src/client/
 │   │   ├── useDashboardController.ts, useGridLayoutEngine.ts
 │   │   ├── useRowLayoutEngine.ts, layoutUtils.ts
 │   │   ├── useDashboardImportExport.ts  Export/import flow (features.dashboardImportExport)
+│   │   ├── useDashboardRefreshTimer.ts  Interval refresh: one timer per interval group (features.refresh)
 │   ├── useAnalysisBuilderHook.ts  AnalysisBuilder public facade (useAnalysisBuilder)
 │   ├── useAnalysisState.ts        State: store reads/derivation, query specs, chart config, UI state
 │   ├── useAnalysisQuery.ts        Query: execution only (5 TanStack hooks, mode routing, hasDebounced)
@@ -197,6 +206,7 @@ src/client/
     ├── configMigration.ts         Config version migration
     ├── dashboardExport.ts         Dashboard JSON export envelope + import validation
     ├── drillQueryBuilder.ts       Drill-down query construction
+    ├── freshness.ts               Effective refresh interval; computed-at of a result; stale check
     ├── filterUtils.ts             Filter manipulation
     ├── funnelExecution.ts, funnelValidation.ts  Funnel helpers
     ├── multiQueryUtils.ts, multiQueryValidation.ts  Multi-query helpers

@@ -50,6 +50,7 @@ import type { DebugDataEntry } from './queries/index.js'
 import type { MultiQueryValidationResult } from '../utils/multiQueryValidation.js'
 import type { MetaField } from '../shared/types.js'
 import type { ValidationResult } from '../adapters/modeAdapter.js'
+import type { MaxAgeOptions } from '../client/maxAge.js'
 
 // ============================================================================
 // Types
@@ -302,7 +303,7 @@ export interface UseAnalysisBuilderResult {
     share: () => Promise<void>
     clearQuery: () => void
     clearCurrentMode: () => void
-    refetch: (options?: { bustCache?: boolean }) => void
+    refetch: (options?: MaxAgeOptions) => void
     handleFieldSelected: (
       field: MetaField,
       fieldType: 'measure' | 'dimension' | 'timeDimension',

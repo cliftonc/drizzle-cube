@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import {
@@ -315,6 +315,148 @@ describe('useCubeLoadQuery', () => {
     })
   })
 
+  describe('refetch max-age', () => {
+    function recordMaxAges(): Array<string | null> {
+      const maxAges: Array<string | null> = []
+      const respond = ({ request }: { request: Request }) => {
+        maxAges.push(request.headers.get('x-cache-max-age'))
+        return HttpResponse.json({
+          data: mockQueryData,
+          annotation: { measures: {}, dimensions: {}, timeDimensions: {} },
+          query: validQuery
+        })
+      }
+      server.use(http.get('*/cubejs-api/v1/load', respond), http.post('*/cubejs-api/v1/load', respond))
+      return maxAges
+    }
+
+    // A dashboard card and the expand modal showing the same portlet: one
+    // TanStack query, two observers. The modal renders last, so the query
+    // holds the modal's options; each refetch must still run its own queryFn.
+    it.each([
+      { observer: 'card' as const, maxAgeSeconds: 10 },
+      { observer: 'modal' as const, maxAgeSeconds: 20 }
+    ])('sends the $observer max-age when two hooks observe the same query', async ({ observer, maxAgeSeconds }) => {
+      const maxAges = recordMaxAges()
+      const { wrapper } = createHookWrapper()
+      const { result } = renderHook(
+        () => ({
+          card: useCubeLoadQuery(validQuery, { debounceMs: 0 }),
+          modal: useCubeLoadQuery(validQuery, { debounceMs: 0 })
+        }),
+        { wrapper }
+      )
+      await waitFor(() => expect(result.current.card.isLoading).toBe(false))
+      const initialCount = maxAges.length
+
+      act(() => {
+        result.current[observer].refetch({ maxAgeSeconds })
+      })
+
+      await waitFor(() => expect(maxAges.length).toBeGreaterThan(initialCount))
+      expect(maxAges.slice(initialCount)).toEqual([String(maxAgeSeconds)])
+    })
+
+    it('keeps the old rows visible while a bust refetches', async () => {
+      const maxAges = recordMaxAges()
+      const { wrapper } = createHookWrapper()
+      const { result } = renderHook(
+        () => useCubeLoadQuery(validQuery, { debounceMs: 0 }),
+        { wrapper }
+      )
+      await waitFor(() => expect(result.current.resultSet).not.toBeNull())
+      const initialCount = maxAges.length
+
+      act(() => {
+        result.current.refetch({ bustCache: true })
+      })
+
+      await waitFor(() => expect(result.current.isFetching).toBe(true))
+      expect(result.current.resultSet).not.toBeNull()
+      expect(result.current.isLoading).toBe(false)
+      await waitFor(() => expect(maxAges.length).toBeGreaterThan(initialCount))
+      expect(maxAges.slice(initialCount)).toEqual(['0'])
+    })
+
+    // Interval ticks that outpace a slow query: each tick must join the fetch
+    // in flight, or the query is cancelled on every tick and never lands.
+    describe('while a refetch is in flight', () => {
+      function holdResponses() {
+        const maxAges: Array<string | null> = []
+        let holding = false
+        const held: Array<() => void> = []
+        const respond = async ({ request }: { request: Request }) => {
+          maxAges.push(request.headers.get('x-cache-max-age'))
+          if (holding) await new Promise<void>((resolve) => held.push(resolve))
+          return HttpResponse.json({
+            data: mockQueryData,
+            annotation: { measures: {}, dimensions: {}, timeDimensions: {} },
+            query: validQuery
+          })
+        }
+        server.use(http.get('*/cubejs-api/v1/load', respond), http.post('*/cubejs-api/v1/load', respond))
+        return {
+          maxAges,
+          hold: () => { holding = true },
+          release: () => {
+            holding = false
+            held.splice(0).forEach((resolve) => resolve())
+          }
+        }
+      }
+
+      it('joins it for a max-age no stricter than the pending one', async () => {
+        const responses = holdResponses()
+        const { wrapper } = createHookWrapper()
+        const { result } = renderHook(
+          () => useCubeLoadQuery(validQuery, { debounceMs: 0 }),
+          { wrapper }
+        )
+        await waitFor(() => expect(result.current.resultSet).not.toBeNull())
+        const initialCount = responses.maxAges.length
+
+        responses.hold()
+        act(() => {
+          result.current.refetch({ maxAgeSeconds: 30 })
+        })
+        await waitFor(() => expect(responses.maxAges.length).toBe(initialCount + 1))
+        act(() => {
+          result.current.refetch({ maxAgeSeconds: 30 })
+          result.current.refetch()
+        })
+        responses.release()
+
+        await waitFor(() => expect(result.current.isFetching).toBe(false))
+        expect(responses.maxAges.slice(initialCount)).toEqual(['30'])
+      })
+
+      it('cancels it for a stricter max-age', async () => {
+        const responses = holdResponses()
+        const { wrapper } = createHookWrapper()
+        const { result } = renderHook(
+          () => useCubeLoadQuery(validQuery, { debounceMs: 0 }),
+          { wrapper }
+        )
+        await waitFor(() => expect(result.current.resultSet).not.toBeNull())
+        const initialCount = responses.maxAges.length
+
+        responses.hold()
+        act(() => {
+          result.current.refetch({ maxAgeSeconds: 30 })
+        })
+        await waitFor(() => expect(responses.maxAges.length).toBe(initialCount + 1))
+        act(() => {
+          result.current.refetch({ bustCache: true })
+        })
+        await waitFor(() => expect(responses.maxAges.length).toBe(initialCount + 2))
+        responses.release()
+
+        await waitFor(() => expect(result.current.isFetching).toBe(false))
+        expect(responses.maxAges.slice(initialCount)).toEqual(['30', '0'])
+      })
+    })
+  })
+
   describe('clearCache', () => {
     it('should provide clearCache function', async () => {
       const { wrapper } = createHookWrapper()
@@ -458,6 +600,165 @@ describe('useCubeLoadQuery', () => {
         'Employees.createdAt': '2026-08-02T00:00:00.000Z',
         'Employees.count': null
       })
+    })
+  })
+
+  describe('subscribe (issue #271, Phase 0)', () => {
+    const loads: Array<string | null> = []
+    // Rows the server reports as computed this long before it answered
+    let cachedAgeMs = 5_000
+
+    // React flushes renders when an act() scope ends, so advance in small
+    // steps: a timer that fires in one step has rendered by the next.
+    async function advanceSeconds(seconds: number) {
+      for (let step = 0; step < seconds * 10; step++) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(100)
+        })
+      }
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      loads.length = 0
+      cachedAgeMs = 5_000
+      server.use(
+        http.get('*/cubejs-api/v1/load', ({ request }) => {
+          loads.push(request.headers.get('x-cache-max-age'))
+          const respondedAt = Date.parse('2026-10-23T10:00:30.000Z')
+          return HttpResponse.json({
+            data: mockQueryData,
+            annotation: { measures: {}, dimensions: {}, timeDimensions: {} },
+            query: validQuery,
+            lastRefreshTime: new Date(respondedAt).toISOString(),
+            ...(cachedAgeMs > 0
+              ? { cache: { hit: true, cachedAt: new Date(respondedAt - cachedAgeMs).toISOString(), ttlMs: 300000, ttlRemainingMs: 300000 - cachedAgeMs } }
+              : {})
+          })
+        })
+      )
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('refetches every 10 s with max-age 10 without features.refresh', async () => {
+      const { wrapper } = createHookWrapper()
+      const { unmount } = renderHook(
+        () => useCubeLoadQuery(validQuery, { debounceMs: 0, subscribe: true }),
+        { wrapper }
+      )
+
+      await advanceSeconds(9)
+      expect(loads).toEqual([null])
+
+      await advanceSeconds(2)
+      expect(loads).toEqual([null, '10'])
+
+      await advanceSeconds(10)
+      expect(loads).toEqual([null, '10', '10'])
+
+      unmount()
+      await advanceSeconds(30)
+      expect(loads).toHaveLength(3)
+    })
+
+    it('lowers the max-age under the age of the rows shown, so a tick never gets them back', async () => {
+      // Each answer is a fresh execution, so at the next tick the rows shown
+      // are one interval old, and an entry that old must not be served again
+      cachedAgeMs = 0
+      const { wrapper } = createHookWrapper()
+      renderHook(() => useCubeLoadQuery(validQuery, { debounceMs: 0, subscribe: true }), { wrapper })
+
+      await advanceSeconds(11)
+      expect(loads).toEqual([null, '9'])
+
+      await advanceSeconds(10)
+      expect(loads).toEqual([null, '9', '9'])
+    })
+
+    it('two subscribed hooks on one query each refetch with the max-age; the server shares the execution', async () => {
+      const { wrapper } = createHookWrapper()
+      renderHook(() => ({
+        a: useCubeLoadQuery(validQuery, { debounceMs: 0, subscribe: true }),
+        b: useCubeLoadQuery(validQuery, { debounceMs: 0, subscribe: true })
+      }), { wrapper })
+
+      // Each hook keeps its own pending max-age, so each tick sends one request
+      // per hook, both with max-age 10
+      await advanceSeconds(11)
+      expect(loads).toEqual([null, '10', '10'])
+    })
+
+    it('does not refetch on a timer without subscribe', async () => {
+      const { wrapper } = createHookWrapper()
+      renderHook(() => useCubeLoadQuery(validQuery, { debounceMs: 0 }), { wrapper })
+
+      await advanceSeconds(30)
+      expect(loads).toEqual([null])
+    })
+
+    it('stops when subscribe is turned off', async () => {
+      const { wrapper } = createHookWrapper()
+      const { rerender } = renderHook(
+        ({ subscribe }: { subscribe: boolean }) => useCubeLoadQuery(validQuery, { debounceMs: 0, subscribe }),
+        { wrapper, initialProps: { subscribe: true } }
+      )
+
+      await advanceSeconds(11)
+      expect(loads).toEqual([null, '10'])
+
+      rerender({ subscribe: false })
+      await advanceSeconds(30)
+      expect(loads).toEqual([null, '10'])
+    })
+
+    it('does not tick while skipped or disabled', async () => {
+      const { wrapper } = createHookWrapper()
+      renderHook(() => useCubeLoadQuery(validQuery, { debounceMs: 0, subscribe: true, skip: true }), { wrapper })
+      renderHook(() => useCubeLoadQuery(validQuery, { debounceMs: 0, subscribe: true, enabled: false }), { wrapper })
+
+      await advanceSeconds(30)
+      expect(loads).toEqual([])
+    })
+
+    it('does not tick in manualRefresh mode', async () => {
+      const { wrapper } = createHookWrapper({ features: { manualRefresh: true } })
+      renderHook(() => useCubeLoadQuery(validQuery, { debounceMs: 0, subscribe: true }), { wrapper })
+
+      await advanceSeconds(30)
+      expect(loads).toEqual([null])
+    })
+
+    it('floors the interval by features.refresh.minIntervalSeconds', async () => {
+      const { wrapper } = createHookWrapper({ features: { refresh: { enabled: false, minIntervalSeconds: 30 } } })
+      renderHook(() => useCubeLoadQuery(validQuery, { debounceMs: 0, subscribe: true }), { wrapper })
+
+      await advanceSeconds(29)
+      expect(loads).toEqual([null])
+
+      await advanceSeconds(2)
+      expect(loads).toEqual([null, '30'])
+    })
+
+    it('restarts the interval when the query changes', async () => {
+      const otherQuery: CubeQuery = { measures: ['Employees.count'] }
+      const { wrapper } = createHookWrapper()
+      const { rerender } = renderHook(
+        ({ query }: { query: CubeQuery }) => useCubeLoadQuery(query, { debounceMs: 0, subscribe: true }),
+        { wrapper, initialProps: { query: validQuery } }
+      )
+
+      await advanceSeconds(6)
+      rerender({ query: otherQuery })
+
+      // The first query's timer would have fired at 10 s; the new one fires 10 s after the change
+      await advanceSeconds(9)
+      expect(loads).toEqual([null, null])
+
+      await advanceSeconds(2)
+      expect(loads).toEqual([null, null, '10'])
     })
   })
 })

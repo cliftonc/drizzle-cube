@@ -14,6 +14,7 @@ import type { PortletConfig } from '../../types.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
 import EditActionButtons, { ICON_STYLE, type CardIcons } from './EditActionButtons.js'
 import { getIcon } from '../../icons/registry.js'
+import type { MaxAgeOptions } from '../../client/maxAge.js'
 
 interface PortletFloatingActionsProps {
   portlet: PortletConfig
@@ -24,7 +25,7 @@ interface PortletFloatingActionsProps {
   copySuccess: boolean
   xlsExportAvailable: boolean
   exportInProgress: boolean
-  onRefresh: (options?: { bustCache?: boolean }) => void
+  onRefresh: (options?: MaxAgeOptions) => void
   onCopyToClipboard: (event: React.MouseEvent | React.TouchEvent) => void
   onExportXlsx: (event: React.MouseEvent | React.TouchEvent) => void
   onOpenFilterConfig: () => void

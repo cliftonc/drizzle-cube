@@ -44,6 +44,7 @@ import { useCubeFeatures } from '../providers/CubeProvider.js'
 import type { LayoutItem } from 'react-grid-layout'
 import type {
   DashboardConfig,
+  DashboardRefreshConfig,
   PortletConfig,
   RowLayout,
   PortletGroup,
@@ -57,6 +58,7 @@ import { useRowLayoutEngine } from './dashboard/useRowLayoutEngine.js'
 import { useDashboardController } from './dashboard/useDashboardController.js'
 import type { SnapEdge } from './dashboard/groupUtils.js'
 import type { LayoutUpdate } from './dashboard/useRowLayoutEngine.js'
+import type { MaxAgeOptions } from '../client/maxAge.js'
 
 // ============================================================================
 // Types
@@ -84,9 +86,9 @@ export interface UseDashboardOptions {
   /** Grid width for row calculations */
   gridWidth?: number
   /** Portlet component refs for refresh functionality */
-  portletComponentRefs?: React.MutableRefObject<Record<string, { refresh: (options?: { bustCache?: boolean }) => void } | null>>
+  portletComponentRefs?: React.MutableRefObject<Record<string, { refresh: (options?: MaxAgeOptions) => void } | null>>
   /** Portlet refresh handler (external) */
-  onPortletRefresh?: (portletId: string, options?: { bustCache?: boolean }) => void
+  onPortletRefresh?: (portletId: string, options?: MaxAgeOptions) => void
   /** Ref to the dashboard container element for thumbnail capture */
   dashboardRef?: React.RefObject<HTMLElement | null>
 }
@@ -185,7 +187,7 @@ export interface UseDashboardActions {
   savePortlet: (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => Promise<string | null>
   deletePortlet: (portletId: string) => Promise<void>
   duplicatePortlet: (portletId: string) => Promise<string | undefined>
-  refreshPortlet: (portletId: string, options?: { bustCache?: boolean }) => void
+  refreshPortlet: (portletId: string, options?: MaxAgeOptions) => void
 
   // Filter Operations
   toggleFilterForPortlet: (portletId: string, filterId: string) => Promise<void>
@@ -194,6 +196,8 @@ export interface UseDashboardActions {
 
   // Config Operations
   handlePaletteChange: (paletteName: string) => Promise<void>
+  /** Set the dashboard default refresh (features.refresh); undefined removes it */
+  handleRefreshDefaultChange: (refresh: DashboardRefreshConfig | undefined) => Promise<void>
   /** Replace the entire config (dashboard import); saves like any other edit */
   importConfig: (config: DashboardConfig) => Promise<void>
 
@@ -409,6 +413,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     selectAllForFilter,
     saveFilterConfig,
     handlePaletteChange,
+    handleRefreshDefaultChange,
     importConfig,
     snapPortletIntoGroup,
     ungroupGroup,
@@ -487,6 +492,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
       // Config operations
       handlePaletteChange,
+      handleRefreshDefaultChange,
       importConfig,
 
       // Group operations
@@ -528,6 +534,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       selectAllForFilter,
       saveFilterConfig,
       handlePaletteChange,
+      handleRefreshDefaultChange,
       importConfig,
       snapPortletIntoGroup,
       ungroupGroup,

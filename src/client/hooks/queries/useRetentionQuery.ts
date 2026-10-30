@@ -12,6 +12,9 @@ import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import type { CubeQuery } from '../../types.js'
+import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
+import { resultSetComputedAt, resultSetServedAgeMs } from '../../utils/freshness.js'
+import { useShownRowsAge } from './useShownRowsAge.js'
 import type {
   ServerRetentionQuery,
   RetentionChartData,
@@ -29,6 +32,8 @@ const DEFAULT_DEBOUNCE_MS = 300
 export interface UseRetentionQueryOptions {
   /** Skip execution */
   skip?: boolean
+  /** Whether the query may fetch; unlike `skip`, false keeps the key and data (default: true) */
+  enabled?: boolean
   /** Debounce delay in milliseconds */
   debounceMs?: number
   /** Callback when query completes */
@@ -66,12 +71,14 @@ export interface UseRetentionQueryResult {
 
   /** Cache metadata when served from cache */
   cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
+  /** When the rows were computed on the server (cache time on a hit, else response time) */
+  computedAt?: string | null
 
   /** Execute the query (for manual refresh mode) */
-  execute: (options?: { bustCache?: boolean }) => Promise<RetentionChartData | null>
+  execute: (options?: MaxAgeOptions) => Promise<RetentionChartData | null>
 
   /** Refetch the query */
-  refetch: () => void
+  refetch: (options?: MaxAgeOptions) => void
 
   /**
    * Whether the query needs to be refreshed (manual refresh mode only).
@@ -230,7 +237,7 @@ export function useRetentionQuery(
   serverQuery: ServerRetentionQuery | null,
   options: UseRetentionQueryOptions = {}
 ): UseRetentionQueryResult {
-  const { skip = false, debounceMs = DEFAULT_DEBOUNCE_MS, onComplete, onError, getFieldLabel } = options
+  const { skip = false, enabled = true, debounceMs = DEFAULT_DEBOUNCE_MS, onComplete, onError, getFieldLabel } = options
 
   const { cubeApi } = useCubeApi()
   const queryClient = useQueryClient()
@@ -284,36 +291,47 @@ export function useRetentionQuery(
     }
   }, [manualRefresh, debouncedQuery, skip, currentQueryKey])
 
+  // Max-age recorded by refetch/execute, kept until a fetch with it succeeds
+  const [refetchMaxAge] = useState(createRefetchMaxAgeTracker)
+
+  // One server round trip, shared by the query and execute()
+  const runRetentionQuery = useCallback(async () => {
+    if (!debouncedQuery) {
+      throw new Error('No retention query available')
+    }
+
+    const startTime = performance.now()
+    try {
+      // Send retention query to server
+      const resultSet = await refetchMaxAge.runFetch((loadOptions) =>
+        cubeApi.load(debouncedQuery as unknown as CubeQuery, loadOptions)
+      )
+      const rawData = resultSet.rawData()
+      const executionTime = performance.now() - startTime
+      const cacheInfo = resultSet.cacheInfo?.()
+
+      return {
+        rawData,
+        executionTime,
+        cacheInfo,
+        computedAt: resultSetComputedAt(resultSet),
+        servedAgeMs: resultSetServedAgeMs(resultSet),
+      }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error))
+      onError?.(err)
+      throw err
+    }
+  }, [debouncedQuery, cubeApi, onError, refetchMaxAge])
+
   // Execute retention query via TanStack Query
   const queryResult = useQuery({
     queryKey,
-    queryFn: async () => {
-      if (!debouncedQuery) {
-        throw new Error('No retention query available')
-      }
-
-      const startTime = performance.now()
-
-      try {
-        // Send retention query to server
-        const resultSet = await cubeApi.load(debouncedQuery as unknown as CubeQuery)
-        const rawData = resultSet.rawData()
-        const executionTime = performance.now() - startTime
-        const cacheInfo = resultSet.cacheInfo?.()
-
-        return {
-          rawData,
-          executionTime,
-          cacheInfo,
-        }
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error))
-        onError?.(err)
-        throw err
-      }
-    },
-    enabled: shouldExecute,
-    staleTime: 60000, // 1 minute cache
+    queryFn: runRetentionQuery,
+    enabled: shouldExecute && enabled,
+    // 1 minute cache; a max-age recorded while skipped or disabled makes the cached result
+    // stale, so the query fetches with it once enabled
+    staleTime: () => (refetchMaxAge.hasPendingMaxAge() ? 0 : 60000),
     gcTime: 5 * 60 * 1000, // 5 minute garbage collection
   })
 
@@ -369,38 +387,39 @@ export function useRetentionQuery(
     return result
   }, [queryResult.data, queryResult.isSuccess, queryResult.isFetching, onComplete, granularity, bindingKeyLabel])
 
-  // Execute function for manual refresh mode
+  // Execute function for manual refresh mode. `{ maxAgeSeconds }` accepts a
+  // cached server result at most that old; `{ bustCache: true }` is max-age 0.
+  const shownRowsAge = useShownRowsAge(queryResult.data?.servedAgeMs, queryResult.dataUpdatedAt)
   const execute = useCallback(
-    async (executeOptions?: { bustCache?: boolean }) => {
+    async (executeOptions?: MaxAgeOptions) => {
+      const cancelRefetch = refetchMaxAge.recordMaxAge(executeOptions, shownRowsAge())
       if (!debouncedQuery) return null
-
-      if (executeOptions?.bustCache) {
-        queryClient.removeQueries({ queryKey })
-      }
 
       // Update executed query key to trigger execution
       setExecutedQueryKey(currentQueryKey)
 
+      // A stricter max-age cancels a fetch in flight rather than joining it, as
+      // refetch({ cancelRefetch }) does. Not awaited: the new fetch must start
+      // before the cancelled one settles, so its awaiters get the new result
+      if (cancelRefetch) void queryClient.cancelQueries({ queryKey, exact: true }, { silent: true })
+
       // Wait for the query to complete
-      const result = await queryClient.fetchQuery({
-        queryKey,
-        queryFn: async () => {
-          const resultSet = await cubeApi.load(debouncedQuery as unknown as CubeQuery)
-          const rawData = resultSet.rawData()
-          const cacheInfo = resultSet.cacheInfo?.()
-          return { rawData, executionTime: 0, cacheInfo }
-        },
-      })
+      const result = await queryClient.fetchQuery({ queryKey, queryFn: runRetentionQuery })
 
       return transformRetentionResult(result.rawData, granularity, bindingKeyLabel)
     },
-    [debouncedQuery, queryClient, queryKey, cubeApi, currentQueryKey, granularity, bindingKeyLabel]
+    [refetchMaxAge, shownRowsAge, debouncedQuery, queryClient, queryKey, currentQueryKey, granularity, bindingKeyLabel, runRetentionQuery]
   )
 
-  // Refetch function
-  const refetch = useCallback(() => {
-    queryResult.refetch()
-  }, [queryResult])
+  // Refetch with the requested max-age. While the hook is skipped (an
+  // off-screen portlet) the max-age waits until the query is enabled and
+  // fetches.
+  const { refetch: refetchQuery } = queryResult
+  const refetch = useCallback((options?: MaxAgeOptions) => {
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options, shownRowsAge())
+    // A disabled query (scrolled away) fetches with the max-age once enabled
+    if (debouncedQuery && !skip && enabled) void refetchQuery({ cancelRefetch })
+  }, [refetchMaxAge, shownRowsAge, debouncedQuery, skip, enabled, refetchQuery])
 
   // Determine status
   const status = useMemo(() => {
@@ -419,6 +438,7 @@ export function useRetentionQuery(
     isDebouncing,
     error: queryResult.error as Error | null,
     cacheInfo: queryResult.data?.cacheInfo ?? null,
+    computedAt: queryResult.data?.computedAt ?? null,
     execute,
     refetch,
     needsRefresh,

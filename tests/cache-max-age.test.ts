@@ -4,11 +4,12 @@
  * count as a miss: the query runs and the fresh result is written back.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { SemanticLayerCompiler, MemoryCacheProvider } from '../src/server'
 import type { CacheEvent, CacheGetResult, SemanticQuery } from '../src/server/types'
 import { createTestDatabaseExecutor } from './helpers/test-database'
 import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
+import { capToShownRows, resolveMaxAgeSeconds } from '../src/client/client/maxAge'
 
 /** Memory provider whose entries report a `cachedAt` pushed back by `ageMs`. */
 class AgedMemoryCacheProvider extends MemoryCacheProvider {
@@ -117,6 +118,56 @@ describe('Cache max-age', () => {
 
     expect(negative.cache?.hit).toBe(true)
     expect(notANumber.cache?.hit).toBe(true)
+  })
+
+  describe('interval refresh ticks with a slow query', () => {
+    // A 10 s interval and a 6 s query: a tick's result is stored 6 s after the
+    // tick, so at the next tick the rows shown are 4 s old
+    const tick = { maxAgeSeconds: 10, newerThanShown: true }
+    const storedAt = Date.parse('2026-10-30T10:00:00.000Z')
+    const nextTickAt = storedAt + 4000
+
+    const tickMaxAgeMs = (shownAgeMs: number) => (resolveMaxAgeSeconds(capToShownRows(tick, shownAgeMs)) ?? 0) * 1000
+
+    beforeEach(async () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(storedAt)
+      await semanticLayer.execute(query, securityContext, { maxAgeMs: 0 })
+      cacheEvents.length = 0
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('max-age equal to the interval serves the next tick the rows it already shows', async () => {
+      vi.setSystemTime(nextTickAt)
+
+      const result = await semanticLayer.execute(query, securityContext, { maxAgeMs: 10_000 })
+
+      expect(result.cache?.hit).toBe(true)
+    })
+
+    it('max-age under the shown age makes the next tick run the query', async () => {
+      vi.setSystemTime(nextTickAt)
+
+      const result = await semanticLayer.execute(query, securityContext, { maxAgeMs: tickMaxAgeMs(4000) })
+
+      expect(result.cache).toBeUndefined()
+      expect(eventTypes()).toEqual(['miss', 'set'])
+    })
+
+    it('still serves a result another viewer stored after the shown rows', async () => {
+      vi.setSystemTime(storedAt + 2000)
+      await semanticLayer.execute(query, securityContext, { maxAgeMs: 0 })
+      cacheEvents.length = 0
+      vi.setSystemTime(nextTickAt)
+
+      const result = await semanticLayer.execute(query, securityContext, { maxAgeMs: tickMaxAgeMs(4000) })
+
+      expect(result.cache?.hit).toBe(true)
+      expect(eventTypes()).toEqual(['hit'])
+    })
   })
 
   it('has no effect when caching is disabled', async () => {

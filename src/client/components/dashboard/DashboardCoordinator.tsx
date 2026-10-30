@@ -33,6 +33,7 @@ import type { PortletCardVariant } from '../dashboardPortletCard/cardStyles.js'
 import { findPortletLocation, removeFromGroup, type SnapEdge } from '../../hooks/dashboard/groupUtils.js'
 import { ensureAnalysisConfig } from '../../utils/configMigration.js'
 import { useCubeFeatures } from '../../providers/CubeProvider.js'
+import { useDashboardRefreshTimer } from '../../hooks/dashboard/useDashboardRefreshTimer.js'
 import { useResponsiveDashboard } from '../../hooks/useResponsiveDashboard.js'
 import { ScrollContainerProvider } from '../../providers/ScrollContainerContext.js'
 import { useDashboard } from '../../hooks/useDashboardHook.js'
@@ -58,6 +59,7 @@ import DashboardContext, {
   type DashboardContextValue,
   type DashboardProviderProps
 } from './DashboardContext.js'
+import type { MaxAgeOptions } from '../../client/maxAge.js'
 
 const RefreshIcon = getIcon('refresh')
 const EditIcon = getIcon('edit')
@@ -132,7 +134,7 @@ export default function DashboardCoordinator({
 
   // Refs to store portlet refs for refresh functionality (kept local - DOM-specific)
   const portletRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
-  const portletComponentRefs = useRef<{ [key: string]: { refresh: () => void } | null }>({})
+  const portletComponentRefs = useRef<{ [key: string]: { refresh: (options?: MaxAgeOptions) => void } | null }>({})
   const draftRowsRef = useRef<RowLayout[] | null>(null)
   // Local ref for tracking latest drag rows synchronously (avoids stale reads from useEffect-synced ref)
   const latestDragRowsRef = useRef<RowLayout[] | null>(null)
@@ -716,10 +718,36 @@ export default function DashboardCoordinator({
   }, [handlePortletDragEnd])
 
   // Handle portlet refresh - use action from hook
-  // Pass { bustCache: true } to bypass client and server caches (shift+click)
-  const handlePortletRefresh = useCallback((portletId: string, options?: { bustCache?: boolean }) => {
+  // { bustCache: true } (shift+click) is max-age 0; interval ticks pass { maxAgeSeconds }
+  const handlePortletRefresh = useCallback((portletId: string, options?: MaxAgeOptions) => {
     actionsRef.current.refreshPortlet(portletId, options)
   }, [])
+
+  // Interval refresh (features.refresh): one timer per interval group, each
+  // tick going through the refresh button's action. Edit mode and the
+  // dashboard-level pause stop the timers; a paused portlet skips its ticks.
+  const isRefreshPaused = useDashboardStore(state => state.isRefreshPaused)
+  const pausedPortletIds = useDashboardStore(state => state.pausedPortletIds)
+  const toggleRefreshPaused = useDashboardStore(state => state.toggleRefreshPaused)
+  const togglePortletRefreshPaused = useDashboardStore(state => state.togglePortletRefreshPaused)
+  const prunePausedPortletIds = useDashboardStore(state => state.prunePausedPortletIds)
+  // A removed portlet's pause is forgotten
+  useEffect(() => {
+    prunePausedPortletIds(config.portlets.map(p => p.id))
+  }, [config.portlets, prunePausedPortletIds])
+  const { hasRefresh } = useDashboardRefreshTimer({
+    portlets: config.portlets,
+    dashboardRefresh: config.refresh,
+    features,
+    stopped: isEditMode || isRefreshPaused,
+    pausedPortletIds,
+    refreshPortlet: handlePortletRefresh,
+  })
+  const refreshState = useMemo(() => ({
+    hasRefresh,
+    isPaused: isRefreshPaused,
+    togglePaused: toggleRefreshPaused,
+  }), [hasRefresh, isRefreshPaused, toggleRefreshPaused])
 
   // Handle portlet save with scroll-to-new behavior
   const handlePortletSave = useCallback(async (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => {
@@ -853,7 +881,7 @@ export default function DashboardCoordinator({
     portletRefs.current[portletId] = element
   }, [])
 
-  const handleSetPortletComponentRef = useCallback((portletId: string, element: { refresh: () => void } | null) => {
+  const handleSetPortletComponentRef = useCallback((portletId: string, element: { refresh: (options?: MaxAgeOptions) => void } | null) => {
     portletComponentRefs.current[portletId] = element
   }, [])
 
@@ -885,8 +913,10 @@ export default function DashboardCoordinator({
     onEdit: handleEditPortlet,
     onDelete: handleDeletePortlet,
     onOpenFilterConfig: handleOpenFilterConfig,
+    onToggleRefreshPaused: togglePortletRefreshPaused,
   }), [
     handleToggleFilterForPortlet,
+    togglePortletRefreshPaused,
     handlePortletRefresh,
     handleDuplicatePortlet,
     handleEditPortlet,
@@ -922,6 +952,7 @@ export default function DashboardCoordinator({
       layoutMode={layoutMode}
       dashboardFilters={dashboardFilters}
       configEagerLoad={config.eagerLoad}
+      dashboardRefresh={config.refresh}
       loadingComponent={loadingComponent}
       colorPalette={colorPalette}
       containerProps={containerProps}
@@ -937,6 +968,7 @@ export default function DashboardCoordinator({
     layoutMode,
     dashboardFilters,
     config.eagerLoad,
+    config.refresh,
     loadingComponent,
     colorPalette,
     portletCallbacks,
@@ -1122,6 +1154,7 @@ export default function DashboardCoordinator({
     // Features
     features,
     importExport,
+    refresh: refreshState,
 
     // Refs
     editBarRef,
@@ -1144,6 +1177,7 @@ export default function DashboardCoordinator({
     handleSaveFilterConfig,
     handlePortletSave,
     handlePortletRefresh,
+    handleSetPortletComponentRef,
     handleLayoutChange,
     handleDragStop,
     handleResizeStop,
