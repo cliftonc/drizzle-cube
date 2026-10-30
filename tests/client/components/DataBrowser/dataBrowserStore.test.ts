@@ -55,6 +55,14 @@ describe('DataBrowserStore', () => {
       )
       expect(result.current).toEqual([])
     })
+
+    it('should have empty search text', () => {
+      const { result } = renderHook(
+        () => useDataBrowserStore((s) => s.searchText),
+        { wrapper: createWrapper() }
+      )
+      expect(result.current).toBe('')
+    })
   })
 
   describe('selectCube', () => {
@@ -76,16 +84,18 @@ describe('DataBrowserStore', () => {
       expect(result.current.visibleColumns).toEqual(['Employees.id', 'Employees.name'])
     })
 
-    it('should reset page, sort, and filters on cube switch', () => {
+    it('should reset page, sort, filters, and search text on cube switch', () => {
       const { result } = renderHook(
         () => ({
           page: useDataBrowserStore((s) => s.page),
           sortColumn: useDataBrowserStore((s) => s.sortColumn),
           filters: useDataBrowserStore((s) => s.filters),
+          searchText: useDataBrowserStore((s) => s.searchText),
           selectCube: useDataBrowserStore((s) => s.selectCube),
           setPage: useDataBrowserStore((s) => s.setPage),
           setSort: useDataBrowserStore((s) => s.setSort),
           setFilters: useDataBrowserStore((s) => s.setFilters),
+          setSearchText: useDataBrowserStore((s) => s.setSearchText),
         }),
         { wrapper: createWrapper() }
       )
@@ -97,6 +107,7 @@ describe('DataBrowserStore', () => {
       act(() => {
         result.current.setSort('Employees.id')
         result.current.setFilters([{ member: 'Employees.name', operator: 'equals', values: ['Alice'] }])
+        result.current.setSearchText('alice')
       })
       act(() => {
         result.current.setPage(3)
@@ -105,6 +116,7 @@ describe('DataBrowserStore', () => {
       expect(result.current.page).toBe(3)
       expect(result.current.sortColumn).toBe('Employees.id')
       expect(result.current.filters).toHaveLength(1)
+      expect(result.current.searchText).toBe('alice')
 
       // Switch cube — should reset
       act(() => {
@@ -114,6 +126,70 @@ describe('DataBrowserStore', () => {
       expect(result.current.page).toBe(0)
       expect(result.current.sortColumn).toBeNull()
       expect(result.current.filters).toEqual([])
+      expect(result.current.searchText).toBe('')
+    })
+  })
+
+  describe('Search text', () => {
+    it('should update search text and reset page when changed', () => {
+      const { result } = renderHook(
+        () => ({
+          page: useDataBrowserStore((s) => s.page),
+          searchText: useDataBrowserStore((s) => s.searchText),
+          setPage: useDataBrowserStore((s) => s.setPage),
+          setSearchText: useDataBrowserStore((s) => s.setSearchText),
+        }),
+        { wrapper: createWrapper() }
+      )
+
+      act(() => result.current.setPage(4))
+      expect(result.current.page).toBe(4)
+
+      act(() => result.current.setSearchText('alice'))
+
+      expect(result.current.searchText).toBe('alice')
+      expect(result.current.page).toBe(0)
+    })
+
+    it('should not reset page when setting the same search text', () => {
+      const { result } = renderHook(
+        () => ({
+          page: useDataBrowserStore((s) => s.page),
+          searchText: useDataBrowserStore((s) => s.searchText),
+          setPage: useDataBrowserStore((s) => s.setPage),
+          setSearchText: useDataBrowserStore((s) => s.setSearchText),
+        }),
+        { wrapper: createWrapper() }
+      )
+
+      act(() => result.current.setSearchText('alice'))
+      act(() => result.current.setPage(4))
+      act(() => result.current.setSearchText('alice'))
+
+      expect(result.current.searchText).toBe('alice')
+      expect(result.current.page).toBe(4)
+    })
+
+    it('should clear search text and reset page', () => {
+      const { result } = renderHook(
+        () => ({
+          page: useDataBrowserStore((s) => s.page),
+          searchText: useDataBrowserStore((s) => s.searchText),
+          setPage: useDataBrowserStore((s) => s.setPage),
+          setSearchText: useDataBrowserStore((s) => s.setSearchText),
+          clearSearchText: useDataBrowserStore((s) => s.clearSearchText),
+        }),
+        { wrapper: createWrapper() }
+      )
+
+      act(() => result.current.setSearchText('alice'))
+      act(() => result.current.setPage(4))
+      expect(result.current.page).toBe(4)
+
+      act(() => result.current.clearSearchText())
+
+      expect(result.current.searchText).toBe('')
+      expect(result.current.page).toBe(0)
     })
   })
 
