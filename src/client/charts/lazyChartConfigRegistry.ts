@@ -5,7 +5,7 @@
  * This enables code splitting - each chart config loads only when needed.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import type { ChartType } from '../types.js'
 import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs.js'
 import { defaultChartConfig } from './chartConfigs.js'
@@ -13,6 +13,30 @@ import { chartRegistry, getChartEntry, composeChartConfig } from './chartRegistr
 
 // Cache for loaded configs
 const configCache = new Map<ChartType, ChartTypeConfig>()
+
+// Version of the plugin configs in the cache, for useSyncExternalStore. Only
+// the plugin system changes it; a lazy load fills the cache for the hook that
+// asked for it, so no other hook needs to know.
+let pluginConfigVersion = 0
+const pluginConfigListeners = new Set<() => void>()
+
+function subscribeToPluginConfigs(listener: () => void): () => void {
+  pluginConfigListeners.add(listener)
+  return () => {
+    pluginConfigListeners.delete(listener)
+  }
+}
+
+function getPluginConfigVersion(): number {
+  return pluginConfigVersion
+}
+
+function notifyPluginConfigChange(): void {
+  pluginConfigVersion++
+  for (const listener of pluginConfigListeners) {
+    listener()
+  }
+}
 
 /**
  * Get a chart config asynchronously
@@ -107,9 +131,19 @@ export function useChartConfig(chartType: ChartType | undefined): {
   const [loading, setLoading] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
+  // Custom charts can register after mount (CubeProvider registers them in an
+  // effect, after its children's effects), and a type can register again with
+  // a new config. Resolve the config again when a plugin config changes.
+  const pluginVersion = useSyncExternalStore(
+    subscribeToPluginConfigs,
+    getPluginConfigVersion,
+    getPluginConfigVersion
+  )
+
   useEffect(() => {
     if (!chartType) {
       setConfig(defaultChartConfig)
+      setLoading(false)
       setLoaded(false)
       return
     }
@@ -117,14 +151,17 @@ export function useChartConfig(chartType: ChartType | undefined): {
     // Check cache synchronously first
     if (configCache.has(chartType)) {
       setConfig(configCache.get(chartType)!)
+      setLoading(false)
       setLoaded(true)
       return
     }
 
-    // Load async
+    // Load async. Ignore a load that ends after chartType or a plugin config changed.
+    let stale = false
     setLoading(true)
     getChartConfigAsync(chartType)
       .then((loadedConfig) => {
+        if (stale) return
         if (loadedConfig) {
           setConfig(loadedConfig)
           setLoaded(true)
@@ -133,8 +170,14 @@ export function useChartConfig(chartType: ChartType | undefined): {
           setLoaded(true)
         }
       })
-      .finally(() => setLoading(false))
-  }, [chartType])
+      .finally(() => {
+        if (!stale) setLoading(false)
+      })
+
+    return () => {
+      stale = true
+    }
+  }, [chartType, pluginVersion])
 
   return { config, loading, loaded }
 }
@@ -203,16 +246,18 @@ export function clearChartConfigCache(): void {
 
 /**
  * Register a custom chart config directly into the cache.
- * Used by the chart plugin system.
+ * Used by the chart plugin system. Mounted `useChartConfig` hooks update.
  */
 export function registerConfigToCache(type: string, config: ChartTypeConfig): void {
   configCache.set(type as ChartType, config)
+  notifyPluginConfigChange()
 }
 
 /**
  * Remove a custom chart config from the cache.
- * Used by the chart plugin system.
+ * Used by the chart plugin system. Mounted `useChartConfig` hooks update.
  */
 export function unregisterConfigFromCache(type: string): void {
   configCache.delete(type as ChartType)
+  notifyPluginConfigChange()
 }
