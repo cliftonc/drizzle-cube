@@ -13,6 +13,9 @@ import EditActionButtons, { ICON_STYLE, type CardIcons } from './EditActionButto
 import DataFreshnessIndicator, { type DataFreshnessIndicatorProps } from './DataFreshnessIndicator.js'
 import type { MaxAgeOptions } from '../../client/maxAge.js'
 
+const PauseIcon = getIcon('pause')
+const PlayIcon = getIcon('play')
+
 
 interface PortletCardHeaderProps {
   portlet: PortletConfig
@@ -113,8 +116,6 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
   const refreshTitle = isFetching
     ? t('dashboard.portlet.action.refreshing')
     : showCacheBustIndicator ? t('dashboard.portlet.action.refreshBypassCache') : t('dashboard.portlet.action.refreshTitle')
-  const PauseIcon = getIcon('pause')
-  const PlayIcon = getIcon('play')
   const refreshPauseLabel = !refreshPause
     ? undefined
     : refreshPause.isDashboardPaused
