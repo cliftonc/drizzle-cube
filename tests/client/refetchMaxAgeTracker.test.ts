@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createRefetchMaxAgeTracker, retainStricterMaxAge, type MaxAgeOptions } from '../../src/client/client/maxAge'
+import { capToShownRows, createRefetchMaxAgeTracker, retainStricterMaxAge, type MaxAgeOptions } from '../../src/client/client/maxAge'
 
 describe('retainStricterMaxAge', () => {
   it('keeps the stricter max-age and resolves bustCache to 0', () => {
@@ -14,6 +14,26 @@ describe('retainStricterMaxAge', () => {
     const current = { maxAgeSeconds: 10 }
     expect(retainStricterMaxAge(current, { maxAgeSeconds: 30 })).toBe(current)
     expect(retainStricterMaxAge(current, undefined)).toBe(current)
+  })
+})
+
+describe('capToShownRows', () => {
+  const tick = { maxAgeSeconds: 10, newerThanShown: true }
+
+  it('lowers the max-age to whole seconds strictly under the age of the rows shown', () => {
+    expect(capToShownRows(tick, 7400)).toEqual({ maxAgeSeconds: 7 })
+    expect(capToShownRows(tick, 7000)).toEqual({ maxAgeSeconds: 6 })
+    expect(capToShownRows(tick, 400)).toEqual({ maxAgeSeconds: 0 })
+  })
+
+  it('keeps a max-age already under the shown age', () => {
+    expect(capToShownRows(tick, 30_000)).toBe(tick)
+  })
+
+  it('applies the options as they are without newerThanShown or rows shown', () => {
+    const plain = { maxAgeSeconds: 10 }
+    expect(capToShownRows(plain, 7400)).toBe(plain)
+    expect(capToShownRows(tick, undefined)).toBe(tick)
   })
 })
 

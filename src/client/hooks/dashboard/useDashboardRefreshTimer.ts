@@ -3,9 +3,11 @@
  *
  * Groups portlets by effective refresh interval and runs one timer per group.
  * Each tick calls the same portlet refresh action as the refresh button, with
- * max-age equal to the interval, so viewers in one security context share one
- * server execution per interval, and portlets in one group share one batch
- * call. A per-observer `refetchInterval` would split that batch.
+ * max-age equal to the interval and `newerThanShown`: each query hook lowers
+ * the max-age to just under the age of the rows it shows, so a tick never gets
+ * those rows back, however long the query took. Viewers in one security
+ * context still share any newer result, and portlets in one group share one
+ * batch call. A per-observer `refetchInterval` would split that batch.
  *
  * Nothing ticks unless `features.refresh.enabled` is set; `manualRefresh`,
  * edit mode and a dashboard-level pause stop every timer; a per-portlet pause
@@ -15,6 +17,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { DashboardRefreshConfig, FeaturesConfig, PortletConfig } from '../../types.js'
 import { resolveEffectiveRefresh } from '../../utils/freshness.js'
+import type { MaxAgeOptions } from '../../client/maxAge.js'
 
 /** One portlet in an interval group. */
 export interface RefreshGroupMember {
@@ -52,7 +55,7 @@ export interface UseDashboardRefreshTimerParams {
   /** Portlets the viewer paused; their ticks are skipped */
   pausedPortletIds: string[]
   /** The refresh button's action */
-  refreshPortlet: (portletId: string, options: { maxAgeSeconds: number }) => void
+  refreshPortlet: (portletId: string, options: MaxAgeOptions) => void
 }
 
 export interface DashboardRefreshTimerState {
@@ -102,7 +105,7 @@ export function useDashboardRefreshTimer({
         for (const member of members) {
           if (pausedRef.current.includes(member.portletId)) continue
           if (hidden && member.pauseWhenHidden) continue
-          refreshPortletRef.current(member.portletId, { maxAgeSeconds: intervalSeconds })
+          refreshPortletRef.current(member.portletId, { maxAgeSeconds: intervalSeconds, newerThanShown: true })
         }
       }, intervalSeconds * 1000)
     )

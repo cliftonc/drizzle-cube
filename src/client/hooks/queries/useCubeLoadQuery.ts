@@ -24,6 +24,8 @@ import { useDebounceQuery } from '../useDebounceQuery.js'
 import { withChartGapFilling, type ChartGapFillOptions } from '../../utils/gapFilling.js'
 import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
 import { resolveSubscribeIntervalSeconds, scheduleSubscription } from '../../client/subscription.js'
+import { resultSetServedAgeMs } from '../../utils/freshness.js'
+import { useShownRowsAge } from './useShownRowsAge.js'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300
@@ -80,8 +82,8 @@ export interface UseCubeLoadQueryOptions {
   /**
    * Keep the query current (Cube.js `subscribe`): every 10 seconds, raised to
    * `features.refresh.minIntervalSeconds` when that is larger, refetch with
-   * max-age equal to the interval. Works
-   * with `features.refresh` off. Stops while the query is skipped or
+   * max-age equal to the interval, lowered to just under the age of the rows
+   * shown so a tick never gets them back. Works with `features.refresh` off. Stops while the query is skipped or
    * disabled, and in `manualRefresh` mode.
    * @default false
    */
@@ -311,8 +313,12 @@ export function useCubeLoadQuery(
   // While the hook is skipped (an off-screen portlet) the max-age waits until
   // the query is enabled and fetches.
   const { refetch: refetchQuery } = queryResult
+  const shownRowsAge = useShownRowsAge(
+    queryResult.isPlaceholderData ? undefined : resultSetServedAgeMs(queryResult.data),
+    queryResult.dataUpdatedAt
+  )
   const executeQuery = useCallback((options?: RefetchOptions) => {
-    const cancelRefetch = refetchMaxAge.recordMaxAge(options)
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options, shownRowsAge())
     if (!serverQuery || skip) return
 
     // Mark this query as executed (for manual refresh mode)
@@ -321,7 +327,7 @@ export function useCubeLoadQuery(
     // A disabled query (scrolled away) fetches with the max-age once enabled;
     // the observer's refetch would run it now
     if (enabled) void refetchQuery({ cancelRefetch })
-  }, [refetchMaxAge, serverQuery, skip, enabled, currentQueryKey, refetchQuery])
+  }, [refetchMaxAge, shownRowsAge, serverQuery, skip, enabled, currentQueryKey, refetchQuery])
 
   // Refetch is an alias for executeQuery for backward compatibility
   const refetch = executeQuery

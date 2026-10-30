@@ -144,7 +144,7 @@ describe('Dashboard interval refresh', () => {
     vi.useRealTimers()
   })
 
-  it('runs one timer per interval group, each tick refreshing with max-age = interval', async () => {
+  it('runs one timer per interval group, each tick refreshing with max-age = interval, newer than shown', async () => {
     const config: DashboardConfig = {
       layoutMode: 'grid',
       refresh: { intervalSeconds: 30 },
@@ -153,13 +153,13 @@ describe('Dashboard interval refresh', () => {
     render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
 
     await advanceSeconds(10)
-    expect(callsFor('c')).toEqual([{ portlet: 'c', options: { maxAgeSeconds: 10 } }])
+    expect(callsFor('c')).toEqual([{ portlet: 'c', options: { maxAgeSeconds: 10, newerThanShown: true } }])
     expect(callsFor('a')).toHaveLength(0)
 
     await advanceSeconds(20)
     expect(callsFor('c')).toHaveLength(3)
-    expect(callsFor('a')).toEqual([{ portlet: 'a', options: { maxAgeSeconds: 30 } }])
-    expect(callsFor('b')).toEqual([{ portlet: 'b', options: { maxAgeSeconds: 30 } }])
+    expect(callsFor('a')).toEqual([{ portlet: 'a', options: { maxAgeSeconds: 30, newerThanShown: true } }])
+    expect(callsFor('b')).toEqual([{ portlet: 'b', options: { maxAgeSeconds: 30, newerThanShown: true } }])
   })
 
   it('stops ticking in edit mode', async () => {

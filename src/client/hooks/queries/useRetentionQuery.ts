@@ -13,7 +13,8 @@ import { useDebounceQuery } from '../useDebounceQuery.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import type { CubeQuery } from '../../types.js'
 import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
-import { resultSetComputedAt } from '../../utils/freshness.js'
+import { resultSetComputedAt, resultSetServedAgeMs } from '../../utils/freshness.js'
+import { useShownRowsAge } from './useShownRowsAge.js'
 import type {
   ServerRetentionQuery,
   RetentionChartData,
@@ -314,6 +315,7 @@ export function useRetentionQuery(
         executionTime,
         cacheInfo,
         computedAt: resultSetComputedAt(resultSet),
+        servedAgeMs: resultSetServedAgeMs(resultSet),
       }
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error))
@@ -387,9 +389,10 @@ export function useRetentionQuery(
 
   // Execute function for manual refresh mode. `{ maxAgeSeconds }` accepts a
   // cached server result at most that old; `{ bustCache: true }` is max-age 0.
+  const shownRowsAge = useShownRowsAge(queryResult.data?.servedAgeMs, queryResult.dataUpdatedAt)
   const execute = useCallback(
     async (executeOptions?: MaxAgeOptions) => {
-      refetchMaxAge.recordMaxAge(executeOptions)
+      refetchMaxAge.recordMaxAge(executeOptions, shownRowsAge())
       if (!debouncedQuery) return null
 
       // Update executed query key to trigger execution
@@ -400,7 +403,7 @@ export function useRetentionQuery(
 
       return transformRetentionResult(result.rawData, granularity, bindingKeyLabel)
     },
-    [refetchMaxAge, debouncedQuery, queryClient, queryKey, currentQueryKey, granularity, bindingKeyLabel, runRetentionQuery]
+    [refetchMaxAge, shownRowsAge, debouncedQuery, queryClient, queryKey, currentQueryKey, granularity, bindingKeyLabel, runRetentionQuery]
   )
 
   // Refetch with the requested max-age. While the hook is skipped (an
@@ -408,10 +411,10 @@ export function useRetentionQuery(
   // fetches.
   const { refetch: refetchQuery } = queryResult
   const refetch = useCallback((options?: MaxAgeOptions) => {
-    const cancelRefetch = refetchMaxAge.recordMaxAge(options)
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options, shownRowsAge())
     // A disabled query (scrolled away) fetches with the max-age once enabled
     if (debouncedQuery && !skip && enabled) void refetchQuery({ cancelRefetch })
-  }, [refetchMaxAge, debouncedQuery, skip, enabled, refetchQuery])
+  }, [refetchMaxAge, shownRowsAge, debouncedQuery, skip, enabled, refetchQuery])
 
   // Determine status
   const status = useMemo(() => {

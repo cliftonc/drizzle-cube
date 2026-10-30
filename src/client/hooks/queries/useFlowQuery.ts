@@ -15,7 +15,8 @@ import { useDebounceQuery } from '../useDebounceQuery.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import type { CubeQuery } from '../../types.js'
 import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
-import { resultSetComputedAt } from '../../utils/freshness.js'
+import { resultSetComputedAt, resultSetServedAgeMs } from '../../utils/freshness.js'
+import { useShownRowsAge } from './useShownRowsAge.js'
 import type {
   ServerFlowQuery,
   FlowChartData,
@@ -254,6 +255,7 @@ export function useFlowQuery(
         executionTime,
         cacheInfo,
         computedAt: resultSetComputedAt(resultSet),
+        servedAgeMs: resultSetServedAgeMs(resultSet),
         // Include query key in result so we can detect stale data
         // (data from a different query key, e.g., sankey vs sunburst mode)
           // We store the RAW query key so we can compare against the current raw query
@@ -321,8 +323,12 @@ export function useFlowQuery(
    * the query is enabled and fetches.
    */
   const { refetch: refetchQuery } = queryResult
+  const shownRowsAge = useShownRowsAge(
+    isDataStale ? undefined : queryResult.data?.servedAgeMs,
+    queryResult.dataUpdatedAt
+  )
   const refetch = useCallback((options?: MaxAgeOptions) => {
-    const cancelRefetch = refetchMaxAge.recordMaxAge(options)
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options, shownRowsAge())
     if (!debouncedQuery || !isValid || skip) return
 
     // Mark this query as executed (for manual refresh mode)
@@ -330,7 +336,7 @@ export function useFlowQuery(
 
     // A disabled query (scrolled away) fetches with the max-age once enabled
     if (enabled) void refetchQuery({ cancelRefetch })
-  }, [refetchMaxAge, debouncedQuery, isValid, skip, enabled, currentQueryKey, refetchQuery])
+  }, [refetchMaxAge, shownRowsAge, debouncedQuery, isValid, skip, enabled, currentQueryKey, refetchQuery])
 
   /**
    * Reset clears the query cache

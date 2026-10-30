@@ -664,21 +664,18 @@ describe('useCubeLoadQuery', () => {
       expect(loads).toHaveLength(3)
     })
 
-    it('fetches on every tick even when each answer is a fresh execution', async () => {
-      // Rows computed when they arrived are still within 10 s at the next
-      // tick, but they came from a fetch made before that tick
+    it('lowers the max-age under the age of the rows shown, so a tick never gets them back', async () => {
+      // Each answer is a fresh execution, so at the next tick the rows shown
+      // are one interval old, and an entry that old must not be served again
       cachedAgeMs = 0
       const { wrapper } = createHookWrapper()
       renderHook(() => useCubeLoadQuery(validQuery, { debounceMs: 0, subscribe: true }), { wrapper })
 
       await advanceSeconds(11)
-      expect(loads).toEqual([null, '10'])
+      expect(loads).toEqual([null, '9'])
 
       await advanceSeconds(10)
-      expect(loads).toEqual([null, '10', '10'])
-
-      await advanceSeconds(10)
-      expect(loads).toEqual([null, '10', '10', '10'])
+      expect(loads).toEqual([null, '9', '9'])
     })
 
     it('two subscribed hooks on one query each refetch with the max-age; the server shares the execution', async () => {

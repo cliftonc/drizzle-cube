@@ -7,7 +7,9 @@ import {
   isComputedAtStale,
   oldestComputedAt,
   resolveEffectiveRefresh,
-  resultSetComputedAt
+  resultSetComputedAt,
+  resultSetServedAgeMs,
+  shownRowsAgeMs
 } from '../../../src/client/utils/freshness'
 import type { CubeResultSet } from '../../../src/client/types'
 
@@ -66,6 +68,20 @@ describe('computed-at', () => {
   it('takes the oldest time for a multi-query portlet', () => {
     expect(oldestComputedAt(['2026-10-23T10:00:30Z', undefined, '2026-10-23T10:00:00Z'])).toBe('2026-10-23T10:00:00Z')
     expect(oldestComputedAt([undefined])).toBeUndefined()
+  })
+})
+
+describe('shown rows age', () => {
+  it('is the served age on the server clock plus the time since arrival', () => {
+    const hit = resultSet('2026-10-23T10:00:00.000Z', '2026-10-23T10:00:03.000Z')
+    expect(resultSetServedAgeMs(hit)).toBe(3000)
+    expect(resultSetServedAgeMs(resultSet(undefined, '2026-10-23T10:00:03.000Z'))).toBe(0)
+    expect(resultSetServedAgeMs(resultSet(undefined, undefined))).toBeUndefined()
+
+    expect(shownRowsAgeMs(3000, 1_000, 8_000)).toBe(10_000)
+    expect(shownRowsAgeMs(undefined, 1_000, 8_000)).toBeUndefined()
+    // TanStack's dataUpdatedAt is 0 before any data
+    expect(shownRowsAgeMs(3000, 0, 8_000)).toBeUndefined()
   })
 })
 

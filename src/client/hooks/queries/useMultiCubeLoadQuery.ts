@@ -19,6 +19,8 @@ import { stableStringify } from '../../shared/queryKey.js'
 import { useDebounceQuery } from '../useDebounceQuery.js'
 import { withChartGapFilling, type ChartGapFillOptions } from '../../utils/gapFilling.js'
 import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
+import { resultSetServedAgeMs } from '../../utils/freshness.js'
+import { useShownRowsAge } from './useShownRowsAge.js'
 
 type MultiQueryServerConfig = MultiQueryConfig & { queries: CubeQuery[] }
 
@@ -270,11 +272,19 @@ export function useMultiCubeLoadQuery(
   // off-screen portlet) the max-age waits until the query is enabled and
   // fetches.
   const { refetch: refetchQuery } = queryResult
+  // The youngest result: a max-age under its age is under every result's
+  const servedAges = queryResult.isPlaceholderData
+    ? []
+    : (queryResult.data?.resultSets ?? []).map(resultSetServedAgeMs).filter((age) => age !== undefined)
+  const shownRowsAge = useShownRowsAge(
+    servedAges.length > 0 ? Math.min(...servedAges) : undefined,
+    queryResult.dataUpdatedAt
+  )
   const refetch = useCallback((options?: MaxAgeOptions) => {
-    const cancelRefetch = refetchMaxAge.recordMaxAge(options)
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options, shownRowsAge())
     // A disabled query (scrolled away) fetches with the max-age once enabled
     if (serverConfig && !skip && enabled) void refetchQuery({ cancelRefetch })
-  }, [refetchMaxAge, serverConfig, skip, enabled, refetchQuery])
+  }, [refetchMaxAge, shownRowsAge, serverConfig, skip, enabled, refetchQuery])
 
   // Gap-fill for a chart when asked. Uses the config the result was fetched
   // with, so placeholder data from a previous config merges consistently.

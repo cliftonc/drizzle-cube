@@ -11,7 +11,8 @@ import type {
   ExplainResult,
   ExplainOptions
 } from '../types.js'
-import { maxAgeHeaders, resolveMaxAgeSeconds, type MaxAgeOptions } from './maxAge.js'
+import { capToShownRows, maxAgeHeaders, resolveMaxAgeSeconds, type MaxAgeOptions } from './maxAge.js'
+import { resultSetServedAgeMs, shownRowsAgeMs } from '../utils/freshness.js'
 import { resolveSubscribeIntervalSeconds, scheduleSubscription } from './subscription.js'
 
 /**
@@ -127,8 +128,10 @@ export class CubeClient {
   /**
    * Keep a query current (Cube.js `subscribe`). The callback receives the
    * initial load, then a result every 10 seconds (or `minSubscribeIntervalSeconds`
-   * when larger), each fetched with max-age equal to the interval so
-   * subscribers in one security context share one server execution. A failed
+   * when larger), each fetched with max-age equal to the interval, lowered to
+   * just under the age of the last delivered rows: a tick never gets those
+   * rows back, and subscribers in one security context share any newer
+   * result. A failed
    * load calls back with the error and the subscription keeps going.
    * `options` apply to the initial load only.
    *
@@ -141,6 +144,8 @@ export class CubeClient {
   ): CubeSubscription {
     let active = true
     let inFlight = false
+    // The last delivered rows: their age when served, and when they arrived
+    let shown: { servedAgeMs: number | undefined; receivedAtMs: number } | undefined
 
     const deliver = async (loadOptions: MaxAgeOptions | undefined): Promise<void> => {
       // One load at a time: a tick that lands while a slow load is still
@@ -149,7 +154,9 @@ export class CubeClient {
       inFlight = true
       let outcome: { error: Error | null; resultSet: CubeResultSet | null }
       try {
-        outcome = { error: null, resultSet: await this.load(query, loadOptions) }
+        const resultSet = await this.load(query, capToShownRows(loadOptions, shown && shownRowsAgeMs(shown.servedAgeMs, shown.receivedAtMs)))
+        shown = { servedAgeMs: resultSetServedAgeMs(resultSet), receivedAtMs: Date.now() }
+        outcome = { error: null, resultSet }
       } catch (error) {
         outcome = { error: error instanceof Error ? error : new Error(String(error)), resultSet: null }
       } finally {

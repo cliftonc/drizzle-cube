@@ -59,6 +59,28 @@ export function resultSetComputedAt(resultSet: CubeResultSet | null | undefined)
   return resultSet.cacheInfo?.()?.cachedAt ?? resultSet.lastRefreshTime?.()
 }
 
+/**
+ * How old a result's rows were when the server sent them: its response time
+ * minus the cache's computed time, both on the server's clock, as in the
+ * server's own max-age check. 0 for a fresh execution.
+ */
+export function resultSetServedAgeMs(resultSet: CubeResultSet | null | undefined): number | undefined {
+  const sentMs = Date.parse(resultSet?.lastRefreshTime?.() ?? '')
+  const computedMs = Date.parse(resultSetComputedAt(resultSet) ?? '')
+  if (!Number.isFinite(sentMs) || !Number.isFinite(computedMs)) return undefined
+  return Math.max(0, sentMs - computedMs)
+}
+
+/**
+ * The age of rows a query shows now: their age when served plus the time
+ * since they arrived (`receivedAtMs`, TanStack's `dataUpdatedAt`). Mixing no
+ * server and browser times keeps clock skew out.
+ */
+export function shownRowsAgeMs(servedAgeMs: number | undefined, receivedAtMs: number, nowMs = Date.now()): number | undefined {
+  if (servedAgeMs === undefined || receivedAtMs === 0) return undefined
+  return servedAgeMs + Math.max(0, nowMs - receivedAtMs)
+}
+
 /** Stale: the rows are older than two refresh intervals. */
 export function isComputedAtStale(computedAt: string | undefined, intervalSeconds: number | undefined, nowMs: number): boolean {
   if (!computedAt || intervalSeconds === undefined) return false

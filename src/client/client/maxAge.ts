@@ -13,6 +13,12 @@ export interface MaxAgeOptions {
   maxAgeSeconds?: number
   /** Shorthand for `maxAgeSeconds: 0` (shift+click on refresh). */
   bustCache?: boolean
+  /**
+   * Accept only rows computed after the ones the hook shows: the max-age is
+   * lowered to just under their age. Interval refresh ticks send it, so a tick
+   * never gets back the rows it already shows, however long the query took.
+   */
+  newerThanShown?: boolean
 }
 
 /**
@@ -52,14 +58,28 @@ export function retainStricterMaxAge(current?: MaxAgeOptions, incoming?: MaxAgeO
   return { maxAgeSeconds: requested }
 }
 
+/**
+ * Resolve `newerThanShown` against the age of the rows shown: a max-age in
+ * whole seconds strictly under that age, so the server, which serves an entry
+ * no older than the max-age, rejects the entry those rows came from but still
+ * serves a newer one another viewer stored. With no rows shown the options
+ * apply as they are.
+ */
+export function capToShownRows(options: MaxAgeOptions | undefined, shownAgeMs: number | undefined): MaxAgeOptions | undefined {
+  if (!options?.newerThanShown || shownAgeMs === undefined) return options
+  return retainStricterMaxAge(options, { maxAgeSeconds: Math.max(0, Math.ceil(shownAgeMs / 1000) - 1) })
+}
+
 /** A refetch's max-age, tracked per hook until a fetch with it succeeds. */
 export interface RefetchMaxAgeTracker {
   /**
    * Retain the stricter resolved max-age; an absent or invalid max-age adds
-   * nothing. Does not fetch. Returns whether the pending max-age became
-   * stricter, which is when a fetch already in flight no longer satisfies it.
+   * nothing. `shownAgeMs`, the age of the rows the hook shows, resolves
+   * `newerThanShown`. Does not fetch. Returns whether the pending max-age
+   * became stricter, which is when a fetch already in flight no longer
+   * satisfies it.
    */
-  recordMaxAge: (options?: MaxAgeOptions) => boolean
+  recordMaxAge: (options?: MaxAgeOptions, shownAgeMs?: number) => boolean
   /** Whether a max-age is waiting for a successful fetch, including while one is in flight. */
   hasPendingMaxAge: () => boolean
   /**
@@ -91,9 +111,9 @@ export interface RefetchMaxAgeTracker {
 export function createRefetchMaxAgeTracker(): RefetchMaxAgeTracker {
   let pending: MaxAgeOptions | undefined
   return {
-    recordMaxAge(options) {
+    recordMaxAge(options, shownAgeMs) {
       const previous = pending
-      pending = retainStricterMaxAge(pending, options)
+      pending = retainStricterMaxAge(pending, capToShownRows(options, shownAgeMs))
       return pending !== previous
     },
     hasPendingMaxAge() {

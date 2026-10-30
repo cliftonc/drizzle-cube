@@ -20,7 +20,8 @@ import { useDebounceQuery } from '../useDebounceQuery.js'
 import { stableStringify } from '../../shared/queryKey.js'
 import type { CubeQuery } from '../../types.js'
 import { createRefetchMaxAgeTracker, type MaxAgeOptions } from '../../client/maxAge.js'
-import { resultSetComputedAt } from '../../utils/freshness.js'
+import { resultSetComputedAt, resultSetServedAgeMs } from '../../utils/freshness.js'
+import { useShownRowsAge } from './useShownRowsAge.js'
 import type {
   FunnelConfig,
   FunnelChartData,
@@ -271,6 +272,7 @@ export function useFunnelQuery(
           executionTime,
           cacheInfo,
           computedAt: resultSetComputedAt(resultSet),
+          servedAgeMs: resultSetServedAgeMs(resultSet),
         }
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error))
@@ -395,8 +397,9 @@ export function useFunnelQuery(
    * it is enabled again.
    */
   const { refetch: refetchQuery } = queryResult
+  const shownRowsAge = useShownRowsAge(queryResult.data?.servedAgeMs, queryResult.dataUpdatedAt)
   const execute = useCallback(async (options?: MaxAgeOptions): Promise<FunnelExecutionResult | null> => {
-    const cancelRefetch = refetchMaxAge.recordMaxAge(options)
+    const cancelRefetch = refetchMaxAge.recordMaxAge(options, shownRowsAge())
     // Allow execution if we have a serverQuery (either from prebuiltServerQuery
     // or built from config). While skipped (an off-screen portlet) the max-age
     // waits until the query is enabled and fetches.
@@ -414,7 +417,7 @@ export function useFunnelQuery(
     } catch {
       return result
     }
-  }, [refetchMaxAge, serverQuery, skip, enabled, result, currentQueryKey, refetchQuery])
+  }, [refetchMaxAge, shownRowsAge, serverQuery, skip, enabled, result, currentQueryKey, refetchQuery])
 
   /**
    * Cancel is a no-op for TanStack Query (handled automatically)

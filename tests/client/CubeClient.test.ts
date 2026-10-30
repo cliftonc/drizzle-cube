@@ -312,6 +312,20 @@ describe('CubeClient', () => {
       subscription.unsubscribe()
     })
 
+    it('lowers the tick max-age under the age of the rows last delivered', async () => {
+      // A fresh execution each time: at the next tick the rows are 10 s old
+      mockFetch.mockImplementation(() => Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ data: [], lastRefreshTime: new Date().toISOString() })
+      }))
+      const subscription = client.subscribe(query, null, callback)
+
+      await advanceSeconds(10)
+      expect(maxAgeOfCall(1)).toBe('9')
+
+      subscription.unsubscribe()
+    })
+
     it('applies options to the initial load only', async () => {
       mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: [] }) })
       const subscription = client.subscribe(query, { bustCache: true }, callback)
