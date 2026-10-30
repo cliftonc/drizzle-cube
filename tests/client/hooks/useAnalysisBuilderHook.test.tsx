@@ -10,11 +10,12 @@
  */
 
 import React from 'react'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useAnalysisBuilder } from '../../../src/client/hooks/useAnalysisBuilderHook'
 import { AnalysisBuilderStoreProvider } from '../../../src/client/stores/analysisBuilderStore'
+import { useCubeFeatures } from '../../../src/client/providers/CubeProvider'
 import type { CubeMeta, CubeQuery, SimpleFilter } from '../../../src/client/types'
 
 // ============================================================================
@@ -607,6 +608,52 @@ describe('useAnalysisBuilder', () => {
   // ==========================================================================
   // Filter Actions Tests
   // ==========================================================================
+  describe('Chart type auto-switch', () => {
+    const mockedFeatures = vi.mocked(useCubeFeatures)
+    const sharedImplementation = mockedFeatures.getMockImplementation()
+
+    afterEach(() => {
+      if (sharedImplementation) mockedFeatures.mockImplementation(sharedImplementation)
+    })
+
+    it('should switch a dimension-only query to the data table', async () => {
+      const { result } = renderHook(() => useAnalysisBuilder(), {
+        wrapper: createWrapper(),
+      })
+
+      act(() => {
+        result.current.actions.addBreakdown('Employees.department', false)
+      })
+
+      await waitFor(() => {
+        expect(result.current.chartType).toBe('table')
+      })
+    })
+
+    it('should keep the chart type when the host hides the data table', async () => {
+      mockedFeatures.mockImplementation(() => ({
+        features: { enableAI: false, hiddenChartTypes: ['table'] },
+        dashboardModes: ['grid', 'rows'],
+        updateFeatures: vi.fn(),
+      }))
+
+      const { result } = renderHook(() => useAnalysisBuilder(), {
+        wrapper: createWrapper(),
+      })
+
+      act(() => {
+        result.current.actions.addBreakdown('Employees.department', false)
+      })
+
+      // The effect fills an empty chart config when it keeps the type, so a
+      // filled config shows that the effect ran.
+      await waitFor(() => {
+        expect(result.current.chartConfig.xAxis).toEqual(['Employees.department'])
+      })
+      expect(result.current.chartType).toBe('bar')
+    })
+  })
+
   describe('Filter Actions', () => {
     it('actions.setFilters() should replace all filters', () => {
       const { result } = renderHook(() => useAnalysisBuilder(), {

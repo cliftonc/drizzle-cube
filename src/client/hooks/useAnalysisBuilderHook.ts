@@ -329,7 +329,7 @@ export function useAnalysisBuilder(
 ): UseAnalysisBuilderResult {
   const { initialData, externalColorPalette, onQueryChange, onChartConfigChange } = options
 
-  // Get context (AI endpoint for Effects)
+  // Get context (AI endpoint and hidden chart types for Effects)
   const { features } = useCubeFeatures()
 
   // =========================================================================
@@ -363,6 +363,7 @@ export function useAnalysisBuilder(
     state,
     query,
     aiEndpoint: features?.aiEndpoint,
+    hiddenChartTypes: features?.hiddenChartTypes,
     onQueryChange,
     onChartConfigChange,
   })

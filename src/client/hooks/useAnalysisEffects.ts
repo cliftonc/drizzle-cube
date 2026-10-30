@@ -44,6 +44,8 @@ export interface UseAnalysisEffectsOptions {
   query: UseAnalysisQueryResult
   /** AI endpoint URL */
   aiEndpoint?: string
+  /** Chart types the host hid (`features.hiddenChartTypes`); the auto-switch never picks them */
+  hiddenChartTypes?: ChartType[]
   /** Callback when query changes */
   onQueryChange?: (query: CubeQuery) => void
   /** Callback when chart config changes */
@@ -55,7 +57,7 @@ export interface UseAnalysisEffectsOptions {
 }
 
 export function useAnalysisEffects(options: UseAnalysisEffectsOptions) {
-  const { state, query, aiEndpoint = '/api/ai', onQueryChange, onChartConfigChange } = options
+  const { state, query, aiEndpoint = '/api/ai', hiddenChartTypes, onQueryChange, onChartConfigChange } = options
   const { storeApi, actions } = state
 
   // Provider headers for AI fetch calls
@@ -122,14 +124,16 @@ export function useAnalysisEffects(options: UseAnalysisEffectsOptions) {
       combinedMetrics,
       combinedBreakdowns,
       chartType,
-      userManuallySelectedChart
+      userManuallySelectedChart,
+      hiddenChartTypes
     )
 
     if (newChartType) {
       const { chartConfig: newConfig } = getSmartChartDefaults(
         combinedMetrics,
         combinedBreakdowns,
-        newChartType
+        newChartType,
+        hiddenChartTypes
       )
       setChartType(newChartType)
       setChartConfig(newConfig)
@@ -164,7 +168,8 @@ export function useAnalysisEffects(options: UseAnalysisEffectsOptions) {
           const { chartConfig: smartDefaults } = getSmartChartDefaults(
             combinedMetrics,
             combinedBreakdowns,
-            chartType
+            chartType,
+            hiddenChartTypes
           )
           setChartConfig(smartDefaults)
         }
@@ -176,6 +181,7 @@ export function useAnalysisEffects(options: UseAnalysisEffectsOptions) {
     combinedBreakdowns,
     chartType,
     userManuallySelectedChart,
+    hiddenChartTypes,
     chartConfig,
     setChartType,
     setChartConfig,

@@ -875,6 +875,7 @@ export interface FeaturesConfig {
   xlsExport?: XlsExportFeatureConfig // Optional XLSX data export from portlets (requires exceljs)
   dashboardImportExport?: DashboardImportExportFeatureConfig // Optional dashboard export/import as a JSON file (toolbar buttons)
   portletExpand?: boolean // Show an Expand button on dashboard cards in view mode. It opens the chart in a built-in modal, or calls AnalyticsDashboard's onPortletExpand when set. Not in the mobile stacked layout (default: false)
+  hiddenChartTypes?: ChartType[] // Chart types to leave out of the AnalysisBuilder chart type picker and its automatic chart switch. Built-in or custom; they stay registered, so saved portlets of these types still render (default: [])
 }
 
 // Grid layout types (simplified)
