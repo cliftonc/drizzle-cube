@@ -369,7 +369,7 @@
   },
   "optionalDependencies": {
     "@duckdb/node-api": ">=1.4.4-r.1 <1.6.0",
-    "@leonardovida-md/drizzle-neo-duckdb": "^1.5.2"
+    "@leonardovida-md/drizzle-neo-duckdb": "^2.0.0"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.132.0",
