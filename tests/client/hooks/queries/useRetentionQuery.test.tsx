@@ -536,6 +536,53 @@ describe('useRetentionQuery', () => {
 
       expect(result.current.chartData).not.toBeNull()
     })
+
+    // A bust during a fetch must not join it, or it gets the non-busted result
+    // and the stricter max-age stays pending with nothing left to fetch it.
+    it('cancels a fetch in flight for a stricter max-age', async () => {
+      const maxAges: Array<string | null> = []
+      let holding = false
+      const held: Array<() => void> = []
+      const respond = async ({ request }: { request: Request }) => {
+        maxAges.push(request.headers.get('x-cache-max-age'))
+        if (holding) await new Promise<void>((resolve) => held.push(resolve))
+        return HttpResponse.json({
+          data: mockRetentionData,
+          annotation: { measures: {}, dimensions: {}, timeDimensions: {} },
+          query: validRetentionQuery,
+        })
+      }
+      server.use(http.get('*/cubejs-api/v1/load', respond), http.post('*/cubejs-api/v1/load', respond))
+
+      const { wrapper } = createHookWrapper({ features: { manualRefresh: true } })
+      const { result } = renderHook(
+        () => useRetentionQuery(validRetentionQuery, { debounceMs: 0 }),
+        { wrapper }
+      )
+      await waitFor(() => expect(result.current.status).toBe('success'))
+      const initialCount = maxAges.length
+
+      holding = true
+      let first: Promise<unknown> | undefined
+      let second: Promise<unknown> | undefined
+      act(() => {
+        first = result.current.execute({ maxAgeSeconds: 30 })
+      })
+      await waitFor(() => expect(maxAges.length).toBe(initialCount + 1))
+      act(() => {
+        second = result.current.execute({ bustCache: true })
+      })
+      await waitFor(() => expect(maxAges.length).toBe(initialCount + 2))
+      holding = false
+      held.splice(0).forEach((resolve) => resolve())
+
+      // The earlier execute gets the busted result instead of a cancellation
+      await act(async () => {
+        await expect(first).resolves.not.toBeNull()
+        await expect(second).resolves.not.toBeNull()
+      })
+      expect(maxAges.slice(initialCount)).toEqual(['30', '0'])
+    })
   })
 
   describe('binding key label extraction', () => {

@@ -392,11 +392,16 @@ export function useRetentionQuery(
   const shownRowsAge = useShownRowsAge(queryResult.data?.servedAgeMs, queryResult.dataUpdatedAt)
   const execute = useCallback(
     async (executeOptions?: MaxAgeOptions) => {
-      refetchMaxAge.recordMaxAge(executeOptions, shownRowsAge())
+      const cancelRefetch = refetchMaxAge.recordMaxAge(executeOptions, shownRowsAge())
       if (!debouncedQuery) return null
 
       // Update executed query key to trigger execution
       setExecutedQueryKey(currentQueryKey)
+
+      // A stricter max-age cancels a fetch in flight rather than joining it, as
+      // refetch({ cancelRefetch }) does. Not awaited: the new fetch must start
+      // before the cancelled one settles, so its awaiters get the new result
+      if (cancelRefetch) void queryClient.cancelQueries({ queryKey, exact: true }, { silent: true })
 
       // Wait for the query to complete
       const result = await queryClient.fetchQuery({ queryKey, queryFn: runRetentionQuery })
