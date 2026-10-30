@@ -247,6 +247,95 @@ describe('Dashboard interval refresh', () => {
     expect(callsFor('a')).toHaveLength(1)
   })
 
+  describe('when the tab becomes visible again', () => {
+    function setVisibility(state: Document['visibilityState']) {
+      return vi.spyOn(document, 'visibilityState', 'get').mockReturnValue(state)
+    }
+
+    async function showTab() {
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+    }
+
+    it('refreshes the portlets whose tick was skipped while hidden', async () => {
+      const config: DashboardConfig = {
+        layoutMode: 'grid',
+        portlets: [portlet('a', { intervalSeconds: 10, pauseWhenHidden: true }), portlet('b', { intervalSeconds: 10 })]
+      }
+      render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
+
+      const visibility = setVisibility('hidden')
+      try {
+        await advanceSeconds(15)
+        expect(callsFor('a')).toHaveLength(0)
+      } finally {
+        visibility.mockRestore()
+      }
+
+      await showTab()
+      expect(callsFor('a')).toEqual([{ portlet: 'a', options: { maxAgeSeconds: 10, newerThanShown: true } }])
+      // b ticked while hidden, so it has nothing to catch up
+      expect(callsFor('b')).toHaveLength(1)
+
+      // A second visibility change does not refresh again
+      await showTab()
+      expect(callsFor('a')).toHaveLength(1)
+    })
+
+    it('refreshes nothing when no tick fell while hidden', async () => {
+      const config: DashboardConfig = {
+        layoutMode: 'grid',
+        portlets: [portlet('a', { intervalSeconds: 10, pauseWhenHidden: true })]
+      }
+      render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
+
+      const visibility = setVisibility('hidden')
+      try {
+        await advanceSeconds(5)
+      } finally {
+        visibility.mockRestore()
+      }
+      await showTab()
+      expect(callsFor('a')).toHaveLength(0)
+    })
+
+    it('does not refresh a portlet paused from its header', async () => {
+      const config: DashboardConfig = {
+        layoutMode: 'grid',
+        portlets: [portlet('a', { intervalSeconds: 10, pauseWhenHidden: true })]
+      }
+      render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
+
+      const visibility = setVisibility('hidden')
+      try {
+        await advanceSeconds(10)
+        await act(async () => {
+          fireEvent.click(screen.getByTestId('portlet-refresh-pause'))
+        })
+      } finally {
+        visibility.mockRestore()
+      }
+      await showTab()
+      expect(callsFor('a')).toHaveLength(0)
+    })
+  })
+
+  it('forgets the pause of a portlet that is removed', async () => {
+    const withA: DashboardConfig = { layoutMode: 'grid', refresh: { intervalSeconds: 10 }, portlets: [portlet('a')] }
+    const { rerender } = render(<DashboardGrid config={withA} />, { wrapper: TestWrapper })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('portlet-refresh-pause'))
+    })
+    rerender(<DashboardGrid config={{ ...withA, portlets: [] }} />)
+    rerender(<DashboardGrid config={{ ...withA, portlets: [portlet('a')] }} />)
+
+    expect(screen.getByTestId('portlet-refresh-pause')).toHaveAttribute('aria-pressed', 'false')
+    await advanceSeconds(10)
+    expect(callsFor('a')).toHaveLength(1)
+  })
+
   it('tells each chart whether it refreshes on an interval', async () => {
     const config: DashboardConfig = {
       layoutMode: 'grid',

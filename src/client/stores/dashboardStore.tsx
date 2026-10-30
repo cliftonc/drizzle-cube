@@ -221,6 +221,8 @@ export interface DashboardStoreActions {
   toggleRefreshPaused: () => void
   /** Pause or resume interval refresh for one portlet */
   togglePortletRefreshPaused: (portletId: string) => void
+  /** Forget pauses of portlets that are not in `portletIds` */
+  prunePausedPortletIds: (portletIds: string[]) => void
 
   // =========================================================================
   // Utility Actions
@@ -447,6 +449,12 @@ function createStoreActions(
           ? state.pausedPortletIds.filter((id) => id !== portletId)
           : [...state.pausedPortletIds, portletId],
       })),
+
+    prunePausedPortletIds: (portletIds) =>
+      set((state) => {
+        const kept = state.pausedPortletIds.filter((id) => portletIds.includes(id))
+        return kept.length === state.pausedPortletIds.length ? state : { pausedPortletIds: kept }
+      }),
 
     // =================================================================
     // Utility Actions
@@ -697,6 +705,7 @@ export const selectAllActions = (state: DashboardStore) => ({
   // Refresh
   toggleRefreshPaused: state.toggleRefreshPaused,
   togglePortletRefreshPaused: state.togglePortletRefreshPaused,
+  prunePausedPortletIds: state.prunePausedPortletIds,
   // Utility
   reset: state.reset,
 })

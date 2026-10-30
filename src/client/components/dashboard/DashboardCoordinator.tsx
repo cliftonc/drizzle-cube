@@ -730,6 +730,11 @@ export default function DashboardCoordinator({
   const pausedPortletIds = useDashboardStore(state => state.pausedPortletIds)
   const toggleRefreshPaused = useDashboardStore(state => state.toggleRefreshPaused)
   const togglePortletRefreshPaused = useDashboardStore(state => state.togglePortletRefreshPaused)
+  const prunePausedPortletIds = useDashboardStore(state => state.prunePausedPortletIds)
+  // A removed portlet's pause is forgotten
+  useEffect(() => {
+    prunePausedPortletIds(config.portlets.map(p => p.id))
+  }, [config.portlets, prunePausedPortletIds])
   const { hasRefresh } = useDashboardRefreshTimer({
     portlets: config.portlets,
     dashboardRefresh: config.refresh,
