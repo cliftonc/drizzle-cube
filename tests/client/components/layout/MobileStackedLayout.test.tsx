@@ -8,6 +8,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import MobileStackedLayout from '../../../../src/client/components/MobileStackedLayout'
+import { useCubeFeatures } from '../../../../src/client/providers/CubeFeaturesProvider'
 import type { DashboardConfig, PortletConfig, DashboardFilter } from '../../../../src/client/types'
 import type { ColorPalette } from '../../../../src/client/utils/colorPalettes'
 
@@ -59,7 +60,7 @@ vi.mock('../../../../src/client/components/AnalyticsPortlet', () => ({
     // Expose refresh method through ref
     React.useImperativeHandle(ref, () => ({
       refresh: mockPortletRefresh
-    }))
+    }), [])
     return (
       <div
         data-testid="analytics-portlet"
@@ -68,6 +69,7 @@ vi.mock('../../../../src/client/components/AnalyticsPortlet', () => ({
         data-height={props.height}
         data-title={props.title}
         data-eager-load={props.eagerLoad}
+        data-has-interval-refresh={String(props.hasIntervalRefresh)}
       >
         Mock Portlet: {props.title}
       </div>
@@ -310,6 +312,53 @@ describe('MobileStackedLayout', () => {
       fireEvent.click(container.querySelector('button[title="Refresh portlet"]')!)
       expect(onPortletRefresh).toHaveBeenCalledWith('portlet-1')
       expect(mockPortletRefresh).not.toHaveBeenCalled()
+    })
+
+    it('keeps each chart registered across re-renders', () => {
+      const config = createTestConfig([createTestPortlet({ id: 'portlet-1' })])
+      const setPortletComponentRef = vi.fn()
+
+      const { rerender } = render(
+        <MobileStackedLayout config={config} setPortletComponentRef={setPortletComponentRef} />
+      )
+      setPortletComponentRef.mockClear()
+      rerender(<MobileStackedLayout config={{ ...config }} setPortletComponentRef={setPortletComponentRef} />)
+
+      expect(setPortletComponentRef).not.toHaveBeenCalled()
+    })
+
+    // Off-screen charts hold their queries between ticks only when they know
+    // they are interval-refreshed, as in the grid and rows layouts
+    it('tells charts whether interval refresh applies to them', () => {
+      vi.mocked(useCubeFeatures).mockReturnValue({
+        features: { refresh: { enabled: true } },
+        dashboardModes: ['grid', 'mobile'],
+        updateFeatures: vi.fn()
+      } as unknown as ReturnType<typeof useCubeFeatures>)
+      const config: DashboardConfig = {
+        ...createTestConfig([
+          createTestPortlet({ id: 'inherits', title: 'Inherits', y: 0 }),
+          createTestPortlet({ id: 'own', title: 'Own', y: 1, refresh: { intervalSeconds: 60 } })
+        ]),
+        refresh: { intervalSeconds: 30 }
+      }
+
+      const { rerender } = render(<MobileStackedLayout config={config} />)
+      expect(screen.getAllByTestId('analytics-portlet').map(el => el.dataset.hasIntervalRefresh))
+        .toEqual(['true', 'true'])
+
+      rerender(<MobileStackedLayout config={{ ...config, refresh: undefined }} />)
+      expect(screen.getAllByTestId('analytics-portlet').map(el => el.dataset.hasIntervalRefresh))
+        .toEqual(['false', 'true'])
+
+      vi.mocked(useCubeFeatures).mockReturnValue({
+        features: {},
+        dashboardModes: ['grid', 'mobile'],
+        updateFeatures: vi.fn()
+      } as unknown as ReturnType<typeof useCubeFeatures>)
+      rerender(<MobileStackedLayout config={{ ...config }} />)
+      expect(screen.getAllByTestId('analytics-portlet').map(el => el.dataset.hasIntervalRefresh))
+        .toEqual(['false', 'false'])
     })
 
     it('should work without onPortletRefresh callback', async () => {

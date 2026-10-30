@@ -10,6 +10,8 @@ import AnalyticsPortlet from './AnalyticsPortlet.js'
 
 const RefreshIcon = getIcon('refresh')
 import { ScrollContainerProvider } from '../providers/ScrollContainerContext.js'
+import { useCubeFeatures } from '../providers/CubeFeaturesProvider.js'
+import { resolveEffectiveRefresh } from '../utils/freshness.js'
 import { useTranslation } from '../hooks/useTranslation.js'
 import type { AnalyticsPortletRef, DashboardFilter, DashboardConfig, PortletConfig, PortletGroup } from '../types.js'
 import type { ColorPalette } from '../utils/colorPalettes.js'
@@ -53,7 +55,25 @@ export default function MobileStackedLayout({
   setPortletComponentRef
 }: MobileStackedLayoutProps) {
   const { t } = useTranslation()
+  const { features } = useCubeFeatures()
   const portletComponentRefs = useRef<{ [key: string]: { refresh: () => void } | null }>({})
+
+  // One ref callback per portlet, so a re-render does not unregister and
+  // re-register every chart with the dashboard
+  const getPortletRefCallback = useMemo(() => {
+    const callbacks = new Map<string, (el: AnalyticsPortletRef | null) => void>()
+    return (portletId: string) => {
+      let callback = callbacks.get(portletId)
+      if (!callback) {
+        callback = (el: AnalyticsPortletRef | null) => {
+          portletComponentRefs.current[portletId] = el
+          setPortletComponentRef?.(portletId, el)
+        }
+        callbacks.set(portletId, callback)
+      }
+      return callback
+    }
+  }, [setPortletComponentRef])
 
   // Scroll container detection for lazy loading
   const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null)
@@ -205,10 +225,7 @@ export default function MobileStackedLayout({
           style={{ height: isAutoHeight ? 'auto' : contentHeight }}
         >
           <AnalyticsPortlet
-            ref={el => {
-              portletComponentRefs.current[portlet.id] = el
-              setPortletComponentRef?.(portlet.id, el)
-            }}
+            ref={getPortletRefCallback(portlet.id)}
             query={display.query}
             chartType={display.chartType}
             chartConfig={display.chartConfig}
@@ -219,6 +236,7 @@ export default function MobileStackedLayout({
             title={portlet.title}
             height={isAutoHeight ? 'auto' : contentHeight}
             colorPalette={colorPalette}
+            hasIntervalRefresh={!!resolveEffectiveRefresh(portlet.refresh, config.refresh, features)}
           />
         </div>
       </div>
