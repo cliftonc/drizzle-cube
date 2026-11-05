@@ -314,6 +314,25 @@ describe('pivotUtils', () => {
       )
       expect(widgetJohnRow?.values['2024-01']).toBe(100)
     })
+
+    it('should keep the values of every query when multi-query rows share a dimension and period', () => {
+      const data = [
+        { 'Products.name': 'Widget', 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100, __queryIndex: 0, __queryLabel: 'Query 1' },
+        { 'Products.name': 'Widget', 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.quantity': 10, __queryIndex: 1, __queryLabel: 'Query 2' }
+      ]
+
+      const result = pivotTableData(data, {
+        timeDimension: 'Sales.date',
+        granularity: 'month',
+        dimensions: ['Products.name'],
+        measures: ['Sales.revenue', 'Sales.quantity']
+      }, mockGetFieldLabel)
+
+      expect(result.rows.map(row => [row.measureField, row.values['2024-01']])).toEqual([
+        ['Sales.revenue', 100],
+        ['Sales.quantity', 10]
+      ])
+    })
   })
 
   describe('getMeasureType', () => {

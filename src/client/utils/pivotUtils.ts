@@ -238,11 +238,15 @@ function groupByDimensions(
       grouped.set(dimKey, new Map())
     }
 
-    // Store data point by formatted time value
+    // Store data point by formatted time value. Rows of a multi-query portlet
+    // can share a dimension combo and period but carry different measures:
+    // merge them, so a later query's row does not erase an earlier one's values.
     const rawTime = row[config.timeDimension]
     if (rawTime != null) {
       const formattedTime = formatTimeValue(rawTime, config.granularity)
-      grouped.get(dimKey)!.set(formattedTime, row)
+      const timeMap = grouped.get(dimKey)!
+      const existing = timeMap.get(formattedTime)
+      timeMap.set(formattedTime, existing ? { ...existing, ...row } : row)
     }
   })
 

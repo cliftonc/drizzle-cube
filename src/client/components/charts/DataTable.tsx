@@ -19,6 +19,7 @@ import {
   type PivotRow
 } from '../../utils/pivotUtils.js'
 import { formatAxisValue } from '../../utils/chartUtils.js'
+import { getDataColumns } from '../../utils/multiQueryUtils.js'
 import type { ChartProps, AxisFormatConfig } from '../../types.js'
 
 const DataTable = React.memo(function DataTable({
@@ -266,8 +267,9 @@ function FlatTable({
   leftYAxisFormat?: AxisFormatConfig
 }) {
   const { t } = useTranslation()
-  // Get all columns available in data
-  const allColumns = Object.keys(data[0] || {})
+  // Get all columns available in data. Rows of a multi-query portlet carry
+  // different fields, so every row counts, not only the first.
+  const allColumns = useMemo(() => getDataColumns(data), [data])
 
   // Determine column order with proper fallback:
   // 1. If xAxis is configured, use that order

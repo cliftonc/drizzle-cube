@@ -17,6 +17,51 @@ export interface MultiQueryMetadata {
   __queryLabel: string
 }
 
+/** The fields `mergeResultsConcat` adds to each row. They are not data. */
+const MULTI_QUERY_METADATA_FIELDS = new Set<string>(['__queryIndex', '__queryLabel'])
+
+/**
+ * The data fields of a result, in the order the rows first carry them.
+ *
+ * Reads every row, not only the first: after a multi-query merge, rows from
+ * different queries carry different fields ('concat' appends each query's
+ * rows; 'merge' starts a row from whichever query has its key first). Drops
+ * the multi-query metadata, which no other chart shows either.
+ *
+ * @param rows - Result rows, merged or from a single query
+ * @returns Field names, without duplicates
+ */
+export function getDataColumns(rows: readonly unknown[]): string[] {
+  const columns = new Set<string>()
+  for (const row of rows) {
+    if (typeof row !== 'object' || row === null) continue
+    for (const field of Object.keys(row)) {
+      if (!MULTI_QUERY_METADATA_FIELDS.has(field)) columns.add(field)
+    }
+  }
+  return Array.from(columns)
+}
+
+/**
+ * The query a chart reads when a portlet has several queries: the first query
+ * with the measures of every query. Charts use it to order columns, pivot a
+ * time dimension and format dates. The AnalysisBuilder preview and the
+ * dashboard portlet both use it, so a card renders the same in both places.
+ *
+ * @param queries - The queries of the portlet, in order
+ * @returns The only query when there is one, else the combined query;
+ *   undefined when there is none
+ */
+export function combineQueriesForChart(queries: readonly CubeQuery[]): CubeQuery | undefined {
+  if (queries.length === 0) return undefined
+  if (queries.length === 1) return queries[0]
+
+  // Dimensions are shared and come from Q1. A measure that two queries share
+  // is listed once, or a table renders it as two columns with one key.
+  const measures = Array.from(new Set(queries.flatMap(query => query?.measures ?? [])))
+  return { ...queries[0], measures }
+}
+
 /**
  * Check if data contains multi-query metadata
  */
