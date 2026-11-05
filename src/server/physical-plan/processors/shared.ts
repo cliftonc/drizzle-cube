@@ -22,6 +22,8 @@ export interface DownstreamJoinState {
     sourceColumnObj?: any
     targetColumnObj?: any
   }>
+  /** See DownstreamJoinKeyInfo.throughJunction */
+  throughJunction?: boolean
 }
 
 export interface CTEBuildState {
