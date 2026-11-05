@@ -14,6 +14,7 @@ import ConfirmModal from '../ConfirmModal.js'
 import { useExplainQuery } from '../../hooks/queries/useExplainQuery.js'
 import { useExplainAI } from '../../hooks/queries/useExplainAI.js'
 import type { CubeQuery } from '../../types.js'
+import { combineQueriesForChart } from '../../utils/multiQueryUtils.js'
 import { ExecutionPlanPanel } from './ExecutionPlanPanel.js'
 import ResultsHeader from './AnalysisResultsHeader.js'
 import type { ResultsSummary, ResultsToolbarActions, ResultsDisplayFlags } from './AnalysisResultsHeader.js'
@@ -277,18 +278,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     }
   }, [isCurrentChartRenderable, activeView, onActiveViewChange, isFunnelMode, analysisType])
 
-  // Create a combined query object for the chart (includes measures from ALL queries)
-  const combinedQueryForChart = useMemo(() => {
-    if (!allQueries || allQueries.length === 0) return undefined
-    if (allQueries.length === 1) return allQueries[0]
-
-    // Combine measures from all queries, dimensions are shared (from Q1)
-    const allMeasures = allQueries.flatMap(q => q?.measures || [])
-    return {
-      ...allQueries[0],
-      measures: allMeasures
-    }
-  }, [allQueries])
+  // Create a combined query object for the chart (includes measures from ALL
+  // queries). The dashboard portlet gives its chart the same query.
+  const combinedQueryForChart = useMemo(() => combineQueriesForChart(allQueries ?? []), [allQueries])
 
   // Icons
   const SuccessIcon = getIcon('success')
