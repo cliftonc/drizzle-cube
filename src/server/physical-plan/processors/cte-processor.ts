@@ -107,7 +107,8 @@ function registerDownstreamCubes(
   for (const downstream of cteInfo.downstreamJoinKeys) {
     downstreamCubeMap.set(downstream.targetCubeName, {
       cteAlias: cteInfo.cteAlias,
-      joinKeys: downstream.joinKeys
+      joinKeys: downstream.joinKeys,
+      throughJunction: downstream.throughJunction
     })
   }
 }
