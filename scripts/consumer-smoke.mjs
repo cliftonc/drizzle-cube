@@ -39,7 +39,7 @@ const fixtures = requested.length > 0 ? requested : all
 const work = mkdtempSync(join(tmpdir(), 'dc-consumers-'))
 // A clean npm environment: the repo's .npmrc sets legacy-peer-deps, which hides
 // exactly the peer problems these fixtures exist to catch.
-const env = { ...process.env, npm_config_legacy_peer_deps: 'false', npm_config_audit: 'false', npm_config_fund: 'false' }
+const env = { ...process.env, npm_config_legacy_peer_deps: 'false', npm_config_audit: 'false', npm_config_fund: 'false', DC_SMOKE_REPO_ROOT: root }
 for (const key of Object.keys(env)) {
   if (key.startsWith('npm_package_') || key === 'npm_config_userconfig' || key === 'INIT_CWD') delete env[key]
 }

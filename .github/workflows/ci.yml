@@ -345,6 +345,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Install Chromium (vite-runtime renders the app)
+        run: npx playwright install --with-deps chromium
+
       - name: Run consumer smoke tests
         run: npm run test:consumers
 

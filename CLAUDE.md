@@ -60,7 +60,7 @@ Each engine has a dedicated executor in `src/server/executors/`. Auto-detection 
 
 ### Packaging changes: run the consumer smoke tests
 
-Any change to `package.json` dependencies/peers, a `vite.config.*.ts`, a package entry, or what a public `.d.ts` imports can break consumers in ways the in-repo suites cannot see (they install with `legacy-peer-deps` and resolve everything from the repo). After `npm run build`, run `npm run test:consumers`: it installs the packed tarball into fresh server-only, Vite 8, webpack 5 and React 18 apps with plain npm, with and without the optional peers. `--tarball <file.tgz>` tests any tarball, e.g. a published version, for comparison. CI runs it as `test-consumers`.
+Any change to `package.json` dependencies/peers, a `vite.config.*.ts`, a package entry, or what a public `.d.ts` imports can break consumers in ways the in-repo suites cannot see (they install with `legacy-peer-deps` and resolve everything from the repo). After `npm run build`, run `npm run test:consumers`: it installs the packed tarball into fresh server-only, Vite 8, webpack 5 and React 18 apps with plain npm, with and without the optional peers, and renders a dashboard in headless Chromium (`npx playwright install chromium` once). `--tarball <file.tgz>` tests any tarball, e.g. a published version, for comparison. CI runs it as `test-consumers`.
 
 ### Testing in a constrained environment (CI sandboxes, agents, containers)
 

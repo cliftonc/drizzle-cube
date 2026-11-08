@@ -12,6 +12,10 @@ npm run test:consumers   # all fixtures
 npm run test:consumers -- vite-minimal webpack-minimal   # some
 ```
 
+`vite-runtime` uses the repo's Playwright (`npx playwright install chromium`
+once). It exists because a chunking bug can pass every build check and still
+crash in the browser (#1438).
+
 Each fixture is a directory with a `package.json` (its dependencies, without
 `drizzle-cube`) and a `check` script. The runner copies it to a temp dir,
 installs the tarball plus its dependencies, and runs `npm run check`.
@@ -24,3 +28,4 @@ installs the tarball plus its dependencies, and runs `npm run check`.
 | `webpack-minimal` | `react react-dom recharts` + webpack 5 | build has 0 errors with no optional peers |
 | `vite-full-peers` | every client peer | `tsc` and `vite build` |
 | `webpack-full-peers` | every client peer | build has 0 errors and 0 warnings |
+| `vite-runtime` | every client peer | renders a dashboard with 24 chart types in headless Chromium against a mocked Cube API, then opens the lazy edit modals; fails on any page or console error |
