@@ -1746,5 +1746,7 @@
   "dashboard.import.error.invalidJson": "Het bestand is geen geldige JSON.",
   "dashboard.import.error.unknownFormat": "Het bestand is geen drizzle-cube dashboardexport.",
   "dashboard.import.error.invalidConfig": "De dashboardconfiguratie is ongeldig ({path}).",
-  "dashboard.import.error.invalidPortlet": "Portlet {index} is ongeldig ({path})."
+  "dashboard.import.error.invalidPortlet": "Portlet {index} is ongeldig ({path}).",
+  "dashboard.missingGridLayout.title": "Rasterindeling vereist react-grid-layout",
+  "dashboard.missingGridLayout.description": "Installeer het om dit dashboard als raster te tonen, of zet het dashboard op rij-indeling:"
 }

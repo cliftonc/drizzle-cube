@@ -277,7 +277,6 @@
     "@nivo/heatmap": "^0.99.0",
     "@xyflow/react": "^12.0.0",
     "cors": "^2.8.5",
-    "d3": "^7.9.0",
     "drizzle-orm": "^0.45.0",
     "elkjs": "^0.9.0 || ^0.11.1 || ^0.12.0",
     "exceljs": ">=4.0.0",
@@ -293,6 +292,66 @@
     "recharts": "^3.5.1"
   },
   "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": {
+      "optional": true
+    },
+    "@duckdb/node-api": {
+      "optional": true
+    },
+    "@google/generative-ai": {
+      "optional": true
+    },
+    "@leonardovida-md/drizzle-neo-duckdb": {
+      "optional": true
+    },
+    "@neondatabase/serverless": {
+      "optional": true
+    },
+    "@nivo/heatmap": {
+      "optional": true
+    },
+    "@xyflow/react": {
+      "optional": true
+    },
+    "cors": {
+      "optional": true
+    },
+    "databend-driver": {
+      "optional": true
+    },
+    "drizzle-databend": {
+      "optional": true
+    },
+    "drizzle-orm": {
+      "optional": true
+    },
+    "drizzle-snowflake": {
+      "optional": true
+    },
+    "elkjs": {
+      "optional": true
+    },
+    "exceljs": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    },
+    "fastify": {
+      "optional": true
+    },
+    "hono": {
+      "optional": true
+    },
+    "modern-screenshot": {
+      "optional": true
+    },
+    "next": {
+      "optional": true
+    },
+    "openai": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },
@@ -305,67 +364,10 @@
     "react-is": {
       "optional": true
     },
-    "drizzle-orm": {
-      "optional": true
-    },
-    "hono": {
-      "optional": true
-    },
-    "express": {
-      "optional": true
-    },
-    "fastify": {
-      "optional": true
-    },
-    "cors": {
-      "optional": true
-    },
-    "@neondatabase/serverless": {
-      "optional": true
-    },
-    "next": {
-      "optional": true
-    },
-    "@nivo/heatmap": {
-      "optional": true
-    },
-    "modern-screenshot": {
-      "optional": true
-    },
-    "@duckdb/node-api": {
-      "optional": true
-    },
-    "@leonardovida-md/drizzle-neo-duckdb": {
-      "optional": true
-    },
-    "databend-driver": {
-      "optional": true
-    },
-    "drizzle-databend": {
+    "recharts": {
       "optional": true
     },
     "snowflake-sdk": {
-      "optional": true
-    },
-    "drizzle-snowflake": {
-      "optional": true
-    },
-    "@anthropic-ai/sdk": {
-      "optional": true
-    },
-    "openai": {
-      "optional": true
-    },
-    "@google/generative-ai": {
-      "optional": true
-    },
-    "@xyflow/react": {
-      "optional": true
-    },
-    "elkjs": {
-      "optional": true
-    },
-    "exceljs": {
       "optional": true
     }
   },
@@ -414,7 +416,12 @@
     "better-sqlite3": "^13.0.0",
     "concurrently": "^10.0.0",
     "cors": "^2.8.5",
-    "d3": "^7.9.0",
+    "d3-array": "^3.2.4",
+    "d3-axis": "^3.0.0",
+    "d3-scale": "^4.0.2",
+    "d3-selection": "^3.0.0",
+    "d3-shape": "^3.2.0",
+    "d3-transition": "^3.0.1",
     "databend-driver": "^0.34.2",
     "dotenv": "^18.0.0",
     "drizzle-databend": "^0.1.12",
@@ -474,6 +481,7 @@
     }
   },
   "dependencies": {
+    "@iconify/types": "^2.0.0",
     "@tanstack/react-query": "^5.90.12",
     "zustand": "^5.0.9"
   }

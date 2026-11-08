@@ -19,7 +19,7 @@ import {
   type MouseEvent,
   type MutableRefObject
 } from 'react'
-import type { LayoutItem, Layout } from 'react-grid-layout'
+import type { GridLayoutItem as LayoutItem, GridLayout as Layout } from '../../types/gridLayout.js'
 import type { UseDashboardActions } from '../../hooks/useDashboardHook.js'
 import type { DashboardDisplayMode } from '../../hooks/useResponsiveDashboard.js'
 import type { DashboardImportExportState } from '../../hooks/dashboard/useDashboardImportExport.js'

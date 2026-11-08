@@ -10,7 +10,8 @@
 import React from 'react'
 import { render, fireEvent, waitFor, screen, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
+import { loadGridLayout } from '../../../../src/client/components/dashboard/gridLayoutModule'
 import DashboardProvider from '../../../../src/client/components/dashboard/DashboardProvider'
 import DashboardToolbar from '../../../../src/client/components/dashboard/DashboardToolbar'
 import DashboardGridSurface from '../../../../src/client/components/dashboard/DashboardGridSurface'
@@ -171,6 +172,13 @@ function renderDashboard(config: DashboardConfig, props: Partial<React.Component
     </QueryClientProvider>
   )
 }
+
+
+// react-grid-layout loads with import() (it is an optional peer). Settle it once
+// so grid dashboards render on first render, as they do after the first load.
+beforeAll(async () => {
+  await loadGridLayout()
+})
 
 describe('Dashboard import / export add-on', () => {
   const originalCreate = URL.createObjectURL

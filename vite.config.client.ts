@@ -115,7 +115,6 @@ export default defineConfig({
         'react-resizable',
         'recharts',
         '@nivo/heatmap',
-        'd3',
         '@xyflow/react',
         'elkjs',
         'elkjs/lib/elk.bundled.js',

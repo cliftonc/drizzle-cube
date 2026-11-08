@@ -1746,5 +1746,7 @@
   "dashboard.import.error.invalidJson": "The file is not valid JSON.",
   "dashboard.import.error.unknownFormat": "The file is not a drizzle-cube dashboard export.",
   "dashboard.import.error.invalidConfig": "The dashboard configuration is invalid ({path}).",
-  "dashboard.import.error.invalidPortlet": "Portlet {index} is invalid ({path})."
+  "dashboard.import.error.invalidPortlet": "Portlet {index} is invalid ({path}).",
+  "dashboard.missingGridLayout.title": "Grid layout needs react-grid-layout",
+  "dashboard.missingGridLayout.description": "Install it to show this dashboard as a grid, or switch the dashboard to row layout:"
 }

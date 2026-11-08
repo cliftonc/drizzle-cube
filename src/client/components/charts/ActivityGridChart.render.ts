@@ -5,7 +5,9 @@
  * function per concern (layout, cells, labels) to keep complexity low.
  */
 import type React from 'react'
-import { select, scaleQuantize, max, min, type Selection } from 'd3'
+import { select, type Selection } from 'd3-selection'
+import { scaleQuantize } from 'd3-scale'
+import { max, min } from 'd3-array'
 import { CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants.js'
 import { getThemeColor } from './BubbleChart.helpers.js'
 import type { GridCell, GridMapping } from './ActivityGridChart.helpers.js'
