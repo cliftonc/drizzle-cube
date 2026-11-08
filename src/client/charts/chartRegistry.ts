@@ -132,7 +132,6 @@ export const chartRegistry: Record<BuiltInChartType, ChartRegistryEntry> = {
       if (dimensionCount < 1) return { available: false, reason: 'chart.availability.bubble' }
       return { available: true }
     },
-    dependencies: RECHARTS_DEP,
     config: async () => (await import('../components/charts/BubbleChart.config.js')).bubbleChartConfig,
   },
   radar: {
@@ -333,7 +332,6 @@ export const chartRegistry: Record<BuiltInChartType, ChartRegistryEntry> = {
     description: 'chart.gauge.description',
     useCase: 'chart.gauge.useCase',
     isAvailable: requiresMeasure,
-    dependencies: { packageName: 'd3-shape', installCommand: 'npm install d3-shape' },
     config: async () => (await import('../components/charts/GaugeChart.config.js')).gaugeChartConfig,
   },
 }
