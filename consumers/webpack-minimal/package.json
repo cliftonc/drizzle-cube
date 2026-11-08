@@ -1,0 +1,23 @@
+{
+  "name": "consumer-webpack-minimal",
+  "private": true,
+  "type": "module",
+  "description": "webpack 5 with only react, react-dom and recharts: 0 errors (missing optional peers are warnings).",
+  "consumerSmoke": {
+    "sharedApp": true
+  },
+  "scripts": {
+    "check": "node webpack-check.mjs"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^3.5.1"
+  },
+  "devDependencies": {
+    "webpack": "^5.100.0",
+    "esbuild-loader": "^4.5.0",
+    "style-loader": "^4.0.0",
+    "css-loader": "^7.1.0"
+  }
+}

@@ -47,6 +47,7 @@ Each engine has a dedicated executor in `src/server/executors/`. Auto-detection 
 | Test | `npm run test:cli` | Run CLI / generator tests — no Docker |
 | Test | `npm run test:client` | Run client component tests — no Docker |
 | Test | `npm run test:e2e` | Run Playwright end-to-end tests |
+| Test | `npm run test:consumers` | Install the packed tarball into fresh apps and build them (after `npm run build`) — see `consumers/README.md` |
 | Test | `npm run test:setup` | Start test containers (docker-compose up) |
 | Test | `npm run test:teardown` | Stop test containers (docker-compose down) |
 | Quality | `npm run typecheck` | TypeScript type checking |
@@ -56,6 +57,10 @@ Each engine has a dedicated executor in `src/server/executors/`. Auto-detection 
 ### Checked-in MCP app bundle
 
 `src/mcp-app/generated-html.ts` is generated from client code **and committed**. Any client, i18n or shared change can make it stale, and CI's `build` job fails when it is. Run `npm run build:mcp-app` (≈1s; `npm run build` includes it) and commit the result before pushing. A `pre-push` hook in `.githooks/` enforces this — `npm install` enables it via the `prepare` script (`git config core.hooksPath .githooks`).
+
+### Packaging changes: run the consumer smoke tests
+
+Any change to `package.json` dependencies/peers, a `vite.config.*.ts`, a package entry, or what a public `.d.ts` imports can break consumers in ways the in-repo suites cannot see (they install with `legacy-peer-deps` and resolve everything from the repo). After `npm run build`, run `npm run test:consumers`: it installs the packed tarball into fresh server-only, Vite 8, webpack 5 and React 18 apps with plain npm, with and without the optional peers. `--tarball <file.tgz>` tests any tarball, e.g. a published version, for comparison. CI runs it as `test-consumers`.
 
 ### Testing in a constrained environment (CI sandboxes, agents, containers)
 

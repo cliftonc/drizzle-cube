@@ -185,6 +185,7 @@
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "test:cli": "vitest run --project cli",
+    "test:consumers": "node scripts/consumer-smoke.mjs",
     "test:cli:watch": "vitest --watch --project cli",
     "test:server": "vitest run --config vitest.config.server.ts",
     "test:server:watch": "vitest --watch --config vitest.config.server.ts",

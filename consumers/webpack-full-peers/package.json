@@ -1,0 +1,30 @@
+{
+  "name": "consumer-webpack-full-peers",
+  "private": true,
+  "type": "module",
+  "description": "webpack 5 with every client peer installed: 0 errors and 0 warnings.",
+  "consumerSmoke": {
+    "sharedApp": true
+  },
+  "scripts": {
+    "check": "node webpack-check.mjs --no-warnings"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^3.5.1",
+    "@nivo/heatmap": "^0.99.0",
+    "@xyflow/react": "^12.0.0",
+    "elkjs": "^0.11.1",
+    "exceljs": "^4.4.0",
+    "modern-screenshot": "^4.6.0",
+    "react-grid-layout": "^2.1.1",
+    "react-is": "^19.0.0"
+  },
+  "devDependencies": {
+    "webpack": "^5.100.0",
+    "esbuild-loader": "^4.5.0",
+    "style-loader": "^4.0.0",
+    "css-loader": "^7.1.0"
+  }
+}
