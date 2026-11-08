@@ -4,7 +4,7 @@
  * Pure data-shaping + legend computation extracted from the component. No
  * behaviour change — mirrors the original inline logic exactly.
  */
-import { scaleQuantize, scaleOrdinal } from 'd3'
+import { scaleQuantize, scaleOrdinal } from 'd3-scale'
 import { CHART_COLORS, CHART_COLORS_GRADIENT } from '../../utils/chartConstants.js'
 import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils.js'
 import type { AxisFormatConfig, ChartAxisConfig, ColorPalette, CubeQuery } from '../../types.js'

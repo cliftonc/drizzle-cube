@@ -6,7 +6,8 @@
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, fireEvent, act, within } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
+import { loadGridLayout } from '../../src/client/components/dashboard/gridLayoutModule'
 import DashboardGrid from '../../src/client/components/DashboardGrid'
 import { DashboardStoreProvider } from '../../src/client/stores/dashboardStore'
 import type { DashboardConfig, FeaturesConfig, PortletConfig } from '../../src/client/types'
@@ -173,6 +174,13 @@ function createTestConfig(portletCount = 2): DashboardConfig {
   }
   return { portlets, layoutMode: 'grid' }
 }
+
+
+// react-grid-layout loads with import() (it is an optional peer). Settle it once
+// so grid dashboards render on first render, as they do after the first load.
+beforeAll(async () => {
+  await loadGridLayout()
+})
 
 describe('DashboardGrid', () => {
   beforeEach(() => {

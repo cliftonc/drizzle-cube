@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import type { LayoutItem } from 'react-grid-layout'
+import type { GridLayoutItem as LayoutItem } from '../../types/gridLayout.js'
 import type { StoreApi } from 'zustand'
 import type { DashboardStore } from '../../stores/dashboardStore.js'
 

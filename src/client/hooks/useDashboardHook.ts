@@ -41,7 +41,7 @@ import {
   type PortletDebugDataEntry,
 } from '../stores/dashboardStore.js'
 import { useCubeFeatures } from '../providers/CubeProvider.js'
-import type { LayoutItem } from 'react-grid-layout'
+import type { GridLayoutItem as LayoutItem } from '../types/gridLayout.js'
 import type {
   DashboardConfig,
   DashboardRefreshConfig,

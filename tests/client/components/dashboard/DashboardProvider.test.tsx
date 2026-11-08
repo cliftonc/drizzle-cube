@@ -7,7 +7,8 @@
 import React from 'react'
 import { render as rtlRender, fireEvent, waitFor, type RenderOptions } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
+import { loadGridLayout } from '../../../../src/client/components/dashboard/gridLayoutModule'
 import DashboardGrid from '../../../../src/client/components/DashboardGrid'
 import DashboardProvider from '../../../../src/client/components/dashboard/DashboardProvider'
 import DashboardToolbar from '../../../../src/client/components/dashboard/DashboardToolbar'
@@ -119,6 +120,13 @@ function createTestConfig(portletCount = 2): DashboardConfig {
   }
   return { portlets, layoutMode: 'grid' }
 }
+
+
+// react-grid-layout loads with import() (it is an optional peer). Settle it once
+// so grid dashboards render on first render, as they do after the first load.
+beforeAll(async () => {
+  await loadGridLayout()
+})
 
 describe('DashboardProvider / composable pieces', () => {
   beforeEach(() => {

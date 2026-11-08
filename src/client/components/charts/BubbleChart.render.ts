@@ -5,22 +5,19 @@
  * original inline D3 exactly; only the structure changed (one function per
  * concern) to keep each helper's complexity low.
  */
+import { select, type Selection } from 'd3-selection'
 import {
-  select,
   scaleLinear,
   scaleSqrt,
   scaleOrdinal,
   scaleQuantize,
-  extent,
-  max,
-  axisBottom,
-  axisLeft,
-  type Selection,
   type ScaleLinear,
   type ScalePower,
   type ScaleOrdinal,
   type ScaleQuantize
-} from 'd3'
+} from 'd3-scale'
+import { extent, max } from 'd3-array'
+import { axisBottom, axisLeft } from 'd3-axis'
 import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants.js'
 import { formatAxisValue } from '../../utils/chartUtils.js'
 import { resolveThemeColors } from './BubbleChart.helpers.js'

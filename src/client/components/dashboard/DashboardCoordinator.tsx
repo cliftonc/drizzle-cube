@@ -21,7 +21,8 @@ import {
   type MouseEvent,
   type Ref
 } from 'react'
-import ReactGridLayout, { verticalCompactor, type LayoutItem, type Layout } from 'react-grid-layout'
+import type { GridLayoutItem as LayoutItem, GridLayout as Layout } from '../../types/gridLayout.js'
+import { useGridLayoutModule, MissingGridLayoutFallback } from './gridLayoutModule.js'
 import { getIcon } from '../../icons/index.js'
 import { useScrollDetection } from '../../hooks/useScrollDetection.js'
 import { useElementVisibility } from '../../hooks/useElementVisibility.js'
@@ -997,7 +998,13 @@ export default function DashboardCoordinator({
   }))
 
   // Render the portlet grid content (shared between desktop and scaled modes)
-  const renderGridContent = useCallback((): ReactNode => (
+  const gridLayout = useGridLayoutModule(layoutMode !== 'rows')
+
+  const renderGridContent = useCallback((): ReactNode => {
+    if (gridLayout === null) return <MissingGridLayoutFallback />
+    if (!gridLayout) return null
+    const { default: ReactGridLayout, verticalCompactor } = gridLayout
+    return (
     <ReactGridLayout
       className="layout"
       layout={baseLayout}
@@ -1037,7 +1044,8 @@ export default function DashboardCoordinator({
           </div>
         ))}
     </ReactGridLayout>
-  ), [baseLayout, handleLayoutChange, handleDragStop, handleResizeStop, gridWidth, gridSettings, canEdit, config.portlets, renderPortletCard])
+    )
+  }, [gridLayout, baseLayout, handleLayoutChange, handleDragStop, handleResizeStop, gridWidth, gridSettings, canEdit, config.portlets, renderPortletCard])
 
   const portletsById = useMemo(
     () => new Map(config.portlets.map(portlet => [portlet.id, portlet])),

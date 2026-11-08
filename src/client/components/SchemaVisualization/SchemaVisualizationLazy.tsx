@@ -3,8 +3,10 @@
  * when @xyflow/react is not installed.
  *
  * All @xyflow/react imports are dynamic here so the built chunk
- * has NO static imports from @xyflow/react. This prevents consuming
- * projects from failing at build time when xyflow is not installed.
+ * has NO static imports from @xyflow/react, and the import() sits inside
+ * `try`. This prevents consuming projects from failing at build time when
+ * xyflow is not installed: Vite stubs the missing module, and webpack only
+ * warns about an unresolvable import() inside a try block.
  */
 
 import { lazy, Suspense, useState, useEffect } from 'react'
@@ -60,14 +62,17 @@ export function SchemaVisualizationLazy(props: SchemaVisualizationProps) {
     if (loadFailed) return
     let cancelled = false
 
-    import('@xyflow/react')
-      .then((mod) => {
-        if (!cancelled) setXyflow(mod as XyflowModule)
-      })
-      .catch(() => {
+    void (async () => {
+      try {
+        // Lexically inside `try`: webpack then treats a missing @xyflow/react
+        // as optional (a warning), not a consumer build error.
+        const mod = await import('@xyflow/react')
+        if (!cancelled) setXyflow(mod)
+      } catch {
         loadFailed = true
         if (!cancelled) setFailed(true)
-      })
+      }
+    })()
 
     return () => { cancelled = true }
   }, [])

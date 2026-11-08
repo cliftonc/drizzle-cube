@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react'
 import { useTranslation } from '../../hooks/useTranslation.js'
-import { transition as _transition } from 'd3'
+import { transition as _transition } from 'd3-transition'
 // _transition import is for side effects only - it extends Selection.prototype with .transition()
 void _transition
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel.js'

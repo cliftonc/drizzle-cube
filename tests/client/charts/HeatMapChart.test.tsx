@@ -92,30 +92,30 @@ describe('HeatMapChart', () => {
   })
 
   describe('rendering with valid config', () => {
-    it('should render heatmap with valid data and config', () => {
+    it('should render heatmap with valid data and config', async () => {
       render(
         <HeatMapChart
           data={sampleData}
           chartConfig={sampleChartConfig}
         />
       )
-      expect(screen.getByTestId('nivo-heatmap')).toBeInTheDocument()
+      expect(await screen.findByTestId('nivo-heatmap')).toBeInTheDocument()
     })
 
-    it('should transform data correctly - creates rows for each Y value', () => {
+    it('should transform data correctly - creates rows for each Y value', async () => {
       render(
         <HeatMapChart
           data={sampleData}
           chartConfig={sampleChartConfig}
         />
       )
-      expect(screen.getByTestId('heatmap-row-East')).toBeInTheDocument()
-      expect(screen.getByTestId('heatmap-row-West')).toBeInTheDocument()
+      expect(await screen.findByTestId('heatmap-row-East')).toBeInTheDocument()
+      expect(await screen.findByTestId('heatmap-row-West')).toBeInTheDocument()
     })
   })
 
   describe('data transformation', () => {
-    it('should handle sparse matrices', () => {
+    it('should handle sparse matrices', async () => {
       const sparseData = [
         { 'Region.name': 'East', 'Product.category': 'Electronics', 'Sales.total': 1500 },
         { 'Region.name': 'West', 'Product.category': 'Clothing', 'Sales.total': 950 },
@@ -126,10 +126,10 @@ describe('HeatMapChart', () => {
           chartConfig={sampleChartConfig}
         />
       )
-      expect(screen.getByTestId('nivo-heatmap')).toBeInTheDocument()
+      expect(await screen.findByTestId('nivo-heatmap')).toBeInTheDocument()
     })
 
-    it('should coerce string measure values to numbers', () => {
+    it('should coerce string measure values to numbers', async () => {
       const stringValueData = [
         { 'Region.name': 'East', 'Product.category': 'Electronics', 'Sales.total': '1500' },
       ]
@@ -139,10 +139,10 @@ describe('HeatMapChart', () => {
           chartConfig={sampleChartConfig}
         />
       )
-      expect(screen.getByTestId('nivo-heatmap')).toBeInTheDocument()
+      expect(await screen.findByTestId('nivo-heatmap')).toBeInTheDocument()
     })
 
-    it('should handle null dimension values by showing Unknown', () => {
+    it('should handle null dimension values by showing Unknown', async () => {
       const nullData = [
         { 'Region.name': null, 'Product.category': 'Electronics', 'Sales.total': 1500 },
         { 'Region.name': 'East', 'Product.category': 'Electronics', 'Sales.total': 800 },
@@ -154,8 +154,8 @@ describe('HeatMapChart', () => {
         />
       )
       // Should have Unknown row for null values (formatTimeValue returns 'Unknown' for null)
-      expect(screen.getByTestId('heatmap-row-Unknown')).toBeInTheDocument()
-      expect(screen.getByTestId('heatmap-row-East')).toBeInTheDocument()
+      expect(await screen.findByTestId('heatmap-row-Unknown')).toBeInTheDocument()
+      expect(await screen.findByTestId('heatmap-row-East')).toBeInTheDocument()
     })
   })
 
@@ -231,7 +231,7 @@ describe('HeatMapChart', () => {
       expect(screen.getByText(/original: 1x60/)).toBeInTheDocument()
     })
 
-    it('should not show warning when data is within limits', () => {
+    it('should not show warning when data is within limits', async () => {
       render(
         <HeatMapChart
           data={sampleData}
@@ -243,7 +243,7 @@ describe('HeatMapChart', () => {
       expect(screen.queryByText(/Data truncated/)).not.toBeInTheDocument()
     })
 
-    it('should limit rows to 50 when exceeding limit', () => {
+    it('should limit rows to 50 when exceeding limit', async () => {
       // Generate data with 60 unique Y values
       const largeData = []
       for (let i = 0; i < 60; i++) {
@@ -262,7 +262,7 @@ describe('HeatMapChart', () => {
       )
 
       // Should only have 50 rows rendered
-      const heatmap = screen.getByTestId('nivo-heatmap')
+      const heatmap = await screen.findByTestId('nivo-heatmap')
       const rows = heatmap.querySelectorAll('[data-testid^="heatmap-row-"]')
       expect(rows.length).toBe(50)
     })

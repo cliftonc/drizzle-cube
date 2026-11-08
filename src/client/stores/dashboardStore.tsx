@@ -20,7 +20,7 @@
 import { createContext, useContext, useRef, type ReactNode } from 'react'
 import { createStore, useStore, type StoreApi } from 'zustand'
 import { devtools, subscribeWithSelector } from 'zustand/middleware'
-import type { LayoutItem } from 'react-grid-layout'
+import type { GridLayoutItem as LayoutItem } from '../types/gridLayout.js'
 import type {
   PortletConfig,
   RowLayout,
