@@ -11,6 +11,20 @@ import type {
   ExplainResult,
   ExplainOptions
 } from '../types.js'
+import { capToShownRows, maxAgeHeaders, resolveMaxAgeSeconds, type MaxAgeOptions } from './maxAge.js'
+import { resultSetServedAgeMs, shownRowsAgeMs } from '../utils/freshness.js'
+import { resolveSubscribeIntervalSeconds, scheduleSubscription } from './subscription.js'
+
+/**
+ * Called with each result of a subscription, or with the error of a load that
+ * failed (Cube.js `subscribe` callback shape).
+ */
+export type CubeSubscribeCallback = (error: Error | null, resultSet: CubeResultSet | null) => void
+
+/** A live subscription. `unsubscribe` stops it; no callback follows. */
+export interface CubeSubscription {
+  unsubscribe: () => void
+}
 
 /**
  * A failed query, carrying the server's structured validation detail when it
@@ -61,6 +75,7 @@ export class CubeClient {
   private apiUrl: string
   private headers: Record<string, string>
   private credentials: 'include' | 'omit' | 'same-origin'
+  private subscribeIntervalSeconds: number
 
   constructor(token?: string, options: CubeApiOptions = {}) {
     this.apiUrl = options.apiUrl || '/cubejs-api/v1'
@@ -69,27 +84,31 @@ export class CubeClient {
       ...options.headers
     }
     this.credentials = options.credentials ?? 'include'
+    this.subscribeIntervalSeconds = resolveSubscribeIntervalSeconds(options.minSubscribeIntervalSeconds)
 
     if (token) {
       this.headers['Authorization'] = token
     }
   }
 
-  async load(query: CubeQuery, options?: { bustCache?: boolean }): Promise<CubeResultSet> {
+  /**
+   * Load one query. `maxAgeSeconds` sends `x-cache-max-age`, so the server
+   * answers from its cache only when the cached result is at most that old;
+   * `bustCache: true` is max-age 0.
+   */
+  async load(query: CubeQuery, options?: MaxAgeOptions): Promise<CubeResultSet> {
     // Use GET with query parameter for standard Cube.js compatibility
     const queryString = JSON.stringify(query)
     const queryParam = encodeURIComponent(queryString)
     const url = `${this.apiUrl}/load?query=${queryParam}`
 
-    // Build headers, optionally adding cache bust header
+    // Build headers, adding the max-age headers when one was asked for
     const requestHeaders: Record<string, string> = {
       // Remove Content-Type for GET request
       ...Object.fromEntries(
         Object.entries(this.headers).filter(([key]) => key !== 'Content-Type')
-      )
-    }
-    if (options?.bustCache) {
-      requestHeaders['X-Cache-Control'] = 'no-cache'
+      ),
+      ...maxAgeHeaders(resolveMaxAgeSeconds(options))
     }
 
     const response = await fetch(url, {
@@ -104,6 +123,59 @@ export class CubeClient {
 
     const result = await response.json()
     return new ResultSet(result)
+  }
+
+  /**
+   * Keep a query current (Cube.js `subscribe`). The callback receives the
+   * initial load, then a result every 10 seconds (or `minSubscribeIntervalSeconds`
+   * when larger), each fetched with max-age equal to the interval, lowered to
+   * just under the age of the last delivered rows: a tick never gets those
+   * rows back, and subscribers in one security context share any newer
+   * result. A failed
+   * load calls back with the error and the subscription keeps going.
+   * `options` apply to the initial load only.
+   *
+   * `unsubscribe` stops the refetches and drops any result still in flight.
+   */
+  subscribe(
+    query: CubeQuery,
+    options: MaxAgeOptions | null | undefined,
+    callback: CubeSubscribeCallback
+  ): CubeSubscription {
+    let active = true
+    let inFlight = false
+    // The last delivered rows: their age when served, and when they arrived
+    let shown: { servedAgeMs: number | undefined; receivedAtMs: number } | undefined
+
+    const deliver = async (loadOptions: MaxAgeOptions | undefined): Promise<void> => {
+      // One load at a time: a tick that lands while a slow load is still
+      // running is skipped, so results never arrive out of order.
+      if (inFlight) return
+      inFlight = true
+      let outcome: { error: Error | null; resultSet: CubeResultSet | null }
+      try {
+        const resultSet = await this.load(query, capToShownRows(loadOptions, shown && shownRowsAgeMs(shown.servedAgeMs, shown.receivedAtMs)))
+        shown = { servedAgeMs: resultSetServedAgeMs(resultSet), receivedAtMs: Date.now() }
+        outcome = { error: null, resultSet }
+      } catch (error) {
+        outcome = { error: error instanceof Error ? error : new Error(String(error)), resultSet: null }
+      } finally {
+        inFlight = false
+      }
+      if (active) callback(outcome.error, outcome.resultSet)
+    }
+
+    void deliver(options ?? undefined)
+    const stop = scheduleSubscription(this.subscribeIntervalSeconds, tickOptions => {
+      void deliver(tickOptions)
+    })
+
+    return {
+      unsubscribe: () => {
+        active = false
+        stop()
+      }
+    }
   }
 
   async meta(): Promise<any> {
@@ -186,16 +258,16 @@ export class CubeClient {
 
   /**
    * Execute multiple queries in a single batch request
-   * Used by BatchCoordinator to optimize network requests
-   * Pass { bustCache: true } to bypass server-side cache
+   * Used by BatchCoordinator to optimize network requests.
+   * `maxAgeSeconds` applies to every query in the batch; `bustCache: true` is
+   * max-age 0.
    */
-  async batchLoad(queries: CubeQuery[], options?: { bustCache?: boolean }): Promise<CubeResultSet[]> {
+  async batchLoad(queries: CubeQuery[], options?: MaxAgeOptions): Promise<CubeResultSet[]> {
     const url = `${this.apiUrl}/batch`
 
-    // Build headers with optional cache bypass
-    const requestHeaders: Record<string, string> = { ...this.headers }
-    if (options?.bustCache) {
-      requestHeaders['X-Cache-Control'] = 'no-cache'
+    const requestHeaders: Record<string, string> = {
+      ...this.headers,
+      ...maxAgeHeaders(resolveMaxAgeSeconds(options))
     }
 
     const response = await fetch(url, {
@@ -291,6 +363,17 @@ class ResultSet implements CubeResultSet {
       return this.loadResponse.results[0].cache
     }
     return this.loadResponse.cache
+  }
+
+  /**
+   * When the server sent this response (ISO string). For a cache miss that is
+   * when the rows were computed; on a hit, `cacheInfo().cachedAt` is.
+   */
+  lastRefreshTime(): string | undefined {
+    if (this.loadResponse.results && this.loadResponse.results[0]) {
+      return this.loadResponse.results[0].lastRefreshTime
+    }
+    return this.loadResponse.lastRefreshTime
   }
 }
 

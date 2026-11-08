@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Modal from './Modal.js'
 import AnalysisBuilder from './AnalysisBuilderLazy.js'
 import type { AnalysisBuilderRef, AnalysisBuilderInitialFunnelState, AnalysisBuilderInitialFlowState, AnalysisBuilderInitialRetentionState } from './AnalysisBuilder/types.js'
-import type { PortletConfig, ColorPalette, CubeQuery, MultiQueryConfig, DashboardFilter, AnalysisType } from '../types.js'
+import type { PortletConfig, DashboardRefreshConfig, ColorPalette, CubeQuery, MultiQueryConfig, DashboardFilter, AnalysisType } from '../types.js'
 import type { AnalysisConfig } from '../types/analysisConfig.js'
 import { ensureAnalysisConfig } from '../utils/configMigration.js'
 import { funnelModeAdapter } from '../adapters/funnelModeAdapter.js'
@@ -10,6 +10,13 @@ import { flowModeAdapter } from '../adapters/flowModeAdapter.js'
 import { retentionModeAdapter } from '../adapters/retentionModeAdapter.js'
 import { useTranslation } from '../hooks/useTranslation.js'
 import { analysisConfigHasContent, getEmptyContentMessage } from './portletAnalysisModal/saveValidation.js'
+import RefreshSettings, {
+  fromRefreshSettingsValue,
+  toRefreshSettingsValue,
+  type RefreshSettingsValue
+} from './portletAnalysisModal/RefreshSettings.js'
+import { useCubeFeatures } from '../providers/CubeFeaturesProvider.js'
+import { DEFAULT_MIN_REFRESH_INTERVAL_SECONDS, isRefreshFeatureEnabled } from '../utils/freshness.js'
 
 interface PortletAnalysisModalProps {
   isOpen: boolean
@@ -23,6 +30,8 @@ interface PortletAnalysisModalProps {
   colorPalette?: ColorPalette
   /** @deprecated Dashboard filters are no longer merged into the editor - they are applied at execution time */
   dashboardFilters?: DashboardFilter[]
+  /** Dashboard refresh default, so the refresh settings show what the portlet inherits */
+  dashboardRefresh?: DashboardRefreshConfig
 }
 
 /**
@@ -44,7 +53,8 @@ export default function PortletAnalysisModal({
   initialData,
   title: modalTitle,
   submitText,
-  colorPalette
+  colorPalette,
+  dashboardRefresh
 }: PortletAnalysisModalProps) {
   const { t } = useTranslation()
 
@@ -53,6 +63,12 @@ export default function PortletAnalysisModal({
 
   // Title state
   const [formTitle, setFormTitle] = useState('')
+
+  // Refresh settings (only shown and saved when features.refresh is on)
+  const { features } = useCubeFeatures()
+  const showRefreshSettings = isRefreshFeatureEnabled(features)
+  const minRefreshIntervalSeconds = features.refresh?.minIntervalSeconds ?? DEFAULT_MIN_REFRESH_INTERVAL_SECONDS
+  const [refreshSettings, setRefreshSettings] = useState<RefreshSettingsValue>(() => toRefreshSettingsValue(undefined))
 
   // =========================================================================
   // Load from analysisConfig (migrating from legacy format if needed)
@@ -186,6 +202,7 @@ export default function PortletAnalysisModal({
   useEffect(() => {
     if (isOpen) {
       setFormTitle(portlet?.title || '')
+      setRefreshSettings(toRefreshSettingsValue(portlet?.refresh))
     }
   }, [isOpen, portlet])
 
@@ -212,9 +229,17 @@ export default function PortletAnalysisModal({
       return
     }
 
+    // Refresh settings from the form; when the section is hidden the portlet
+    // keeps whatever it had
+    const { refresh: existingRefresh, ...portletWithoutRefresh } = portlet || {}
+    const refresh = showRefreshSettings
+      ? fromRefreshSettingsValue(refreshSettings, minRefreshIntervalSeconds)
+      : existingRefresh
+
     // Build portlet config with ONLY analysisConfig (no more legacy fields)
     const portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'> = {
-      ...(portlet || {}),
+      ...portletWithoutRefresh,
+      ...(refresh ? { refresh } : {}),
       title: formTitle.trim(),
 
       // === Canonical format - single source of truth ===
@@ -231,7 +256,7 @@ export default function PortletAnalysisModal({
 
     onSave(portletData)
     onClose()
-  }, [formTitle, portlet, onSave, onClose])
+  }, [formTitle, portlet, onSave, onClose, showRefreshSettings, refreshSettings, minRefreshIntervalSeconds])
 
   // Handle cancel
   const handleCancel = useCallback(() => {
@@ -289,6 +314,16 @@ export default function PortletAnalysisModal({
               autoFocus
             />
           </div>
+          {showRefreshSettings && (
+            <div className="dc:mt-3">
+              <RefreshSettings
+                value={refreshSettings}
+                minIntervalSeconds={minRefreshIntervalSeconds}
+                inheritedPauseWhenHidden={dashboardRefresh?.pauseWhenHidden}
+                onChange={setRefreshSettings}
+              />
+            </div>
+          )}
         </div>
 
         {/* AnalysisBuilder content */}

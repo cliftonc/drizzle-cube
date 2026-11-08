@@ -9,7 +9,8 @@
  * a host can either omit this component or pass `hideToolbar` to suppress it.
  *
  * A read-only dashboard (`editable` false) normally has no toolbar at all. When the
- * dashboard export feature is on it still gets one, reduced to the Export button.
+ * dashboard export feature is on, or a portlet refreshes on an interval, it still
+ * gets one, reduced to the Export button and the refresh pause toggle.
  */
 
 import { useRef } from 'react'
@@ -34,10 +35,11 @@ export default function DashboardToolbar() {
     config,
     actions,
     importExport,
+    refresh,
   } = useDashboardContext()
 
   if (hideToolbar) return null
-  if (!editable && !importExport.enabled) return null
+  if (!editable && !importExport.enabled && !refresh.hasRefresh) return null
 
   const showExport = importExport.enabled && importExport.canExport && !isEditMode
   const showImport = importExport.enabled && importExport.canImport
@@ -64,6 +66,9 @@ export default function DashboardToolbar() {
           onAddText={actions.openAddText}
           onExportDashboard={showExport ? importExport.exportDashboard : undefined}
           onImportDashboard={showImport ? () => fileInputRef.current?.click() : undefined}
+          // Edit mode already pauses refresh, so the toggle is a view-mode control
+          isRefreshPaused={refresh.isPaused}
+          onToggleRefreshPause={refresh.hasRefresh && !isEditMode ? refresh.togglePaused : undefined}
         />
       )}
       {showImport && (

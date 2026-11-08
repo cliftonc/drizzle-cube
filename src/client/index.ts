@@ -93,6 +93,8 @@ export { ScrollContainerProvider, useScrollContainer } from './providers/ScrollC
 export { useCubeFieldLabel } from './hooks/useCubeFieldLabel.js'
 export { createCubeClient } from './client/CubeClient.js'
 export { CubeClient, CubeQueryError } from './client/CubeClient.js'
+export type { MaxAgeOptions } from './client/maxAge.js'
+export type { CubeSubscribeCallback, CubeSubscription } from './client/CubeClient.js'
 
 // TanStack Query hooks for data fetching
 export {
@@ -275,6 +277,11 @@ export type {
   ThumbnailFeatureConfig,
   DashboardImportExportFeatureConfig,
   DashboardMeta,
+  // Interval refresh types
+  RefreshFeatureConfig,
+  PortletRefreshConfig,
+  DashboardRefreshConfig,
+  PortletFreshness,
   // Portlet expand types
   PortletViewState,
   PortletExpandPayload,

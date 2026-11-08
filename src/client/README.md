@@ -197,6 +197,31 @@ The client expects a Cube.js compatible API with these endpoints:
 
 See `drizzle-cube/adapters/hono` for server implementation.
 
+### Keeping a query current (`subscribe`)
+
+As in Cube.js, a query can subscribe to updates. Both forms refetch every 10 seconds with
+`x-cache-max-age: 10`, so the server answers from a cached result no older than that and viewers in one
+security context share one execution. Subscriptions do not need `features.refresh`.
+
+```tsx
+import { useCubeQuery, createCubeClient } from 'drizzle-cube/client'
+
+// In a component: refetches while mounted and not skipped
+const { resultSet } = useCubeQuery(query, { subscribe: true })
+
+// Outside React: the callback gets the initial load, then each refetch (or the error of a failed one)
+const cubeApi = createCubeClient(token, { apiUrl: '/cubejs-api/v1' })
+const { unsubscribe } = cubeApi.subscribe(query, null, (error, resultSet) => {
+  if (error) console.error(error)
+  else render(resultSet)
+})
+unsubscribe() // stops refetching; a result still in flight is dropped
+```
+
+The 10-second interval is raised by `features.refresh.minIntervalSeconds` for the hook and by the client
+option `minSubscribeIntervalSeconds` for `cubeApi.subscribe`, when either is larger. `manualRefresh` stops
+hook subscriptions.
+
 ## Requirements
 
 - React 18+

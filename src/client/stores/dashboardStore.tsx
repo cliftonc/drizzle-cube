@@ -6,6 +6,7 @@
  * - Modal state (portlet edit, analysis, filter config)
  * - Layout state (draftRows, drag state, initialization)
  * - Debug data (per-portlet debug information)
+ * - Refresh pause state (dashboard-level and per-portlet)
  *
  * KEY ARCHITECTURE: Instance-based stores
  * - Each Dashboard gets its own store instance via Context
@@ -129,6 +130,14 @@ export interface DashboardStoreState {
   // =========================================================================
   /** Whether the dashboard has been modified and needs a new thumbnail */
   thumbnailDirty: boolean
+
+  // =========================================================================
+  // Refresh State
+  // =========================================================================
+  /** Whether interval refresh is paused for the whole dashboard */
+  isRefreshPaused: boolean
+  /** Portlets whose interval refresh the viewer paused */
+  pausedPortletIds: string[]
 }
 
 /**
@@ -206,6 +215,16 @@ export interface DashboardStoreActions {
   setThumbnailDirty: (dirty: boolean) => void
 
   // =========================================================================
+  // Refresh Actions
+  // =========================================================================
+  /** Pause or resume interval refresh for the whole dashboard */
+  toggleRefreshPaused: () => void
+  /** Pause or resume interval refresh for one portlet */
+  togglePortletRefreshPaused: (portletId: string) => void
+  /** Forget pauses of portlets that are not in `portletIds` */
+  prunePausedPortletIds: (portletIds: string[]) => void
+
+  // =========================================================================
   // Utility Actions
   // =========================================================================
   /** Reset store to initial state */
@@ -258,6 +277,10 @@ const createDefaultState = (): DashboardStoreState => ({
 
   // Thumbnail state
   thumbnailDirty: false,
+
+  // Refresh state
+  isRefreshPaused: false,
+  pausedPortletIds: [],
 })
 
 /**
@@ -412,6 +435,26 @@ function createStoreActions(
     // =================================================================
 
     setThumbnailDirty: (dirty) => set({ thumbnailDirty: dirty }),
+
+    // =================================================================
+    // Refresh Actions
+    // =================================================================
+
+    toggleRefreshPaused: () =>
+      set((state) => ({ isRefreshPaused: !state.isRefreshPaused })),
+
+    togglePortletRefreshPaused: (portletId) =>
+      set((state) => ({
+        pausedPortletIds: state.pausedPortletIds.includes(portletId)
+          ? state.pausedPortletIds.filter((id) => id !== portletId)
+          : [...state.pausedPortletIds, portletId],
+      })),
+
+    prunePausedPortletIds: (portletIds) =>
+      set((state) => {
+        const kept = state.pausedPortletIds.filter((id) => portletIds.includes(id))
+        return kept.length === state.pausedPortletIds.length ? state : { pausedPortletIds: kept }
+      }),
 
     // =================================================================
     // Utility Actions
@@ -659,6 +702,10 @@ export const selectAllActions = (state: DashboardStore) => ({
   clearDebugData: state.clearDebugData,
   // Thumbnail
   setThumbnailDirty: state.setThumbnailDirty,
+  // Refresh
+  toggleRefreshPaused: state.toggleRefreshPaused,
+  togglePortletRefreshPaused: state.togglePortletRefreshPaused,
+  prunePausedPortletIds: state.prunePausedPortletIds,
   // Utility
   reset: state.reset,
 })

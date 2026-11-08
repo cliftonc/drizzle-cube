@@ -660,6 +660,27 @@ describe('DashboardStore', () => {
   })
 
   // ==========================================================================
+  // Refresh Actions
+  // ==========================================================================
+  describe('Refresh Actions', () => {
+    describe('prunePausedPortletIds', () => {
+      it('drops paused ids of portlets that no longer exist', () => {
+        store.getState().togglePortletRefreshPaused('a')
+        store.getState().togglePortletRefreshPaused('b')
+        store.getState().prunePausedPortletIds(['b', 'c'])
+        expect(store.getState().pausedPortletIds).toEqual(['b'])
+      })
+
+      it('keeps the same array when nothing is dropped', () => {
+        store.getState().togglePortletRefreshPaused('a')
+        const before = store.getState().pausedPortletIds
+        store.getState().prunePausedPortletIds(['a', 'b'])
+        expect(store.getState().pausedPortletIds).toBe(before)
+      })
+    })
+  })
+
+  // ==========================================================================
   // Reset Action
   // ==========================================================================
   describe('Reset Action', () => {

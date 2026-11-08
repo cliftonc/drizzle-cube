@@ -118,6 +118,7 @@ export function withChartGapFilling(
     annotation: () => resultSet.annotation(),
     loadResponse: resultSet.loadResponse,
     cacheInfo: resultSet.cacheInfo ? () => resultSet.cacheInfo?.() : undefined,
+    lastRefreshTime: resultSet.lastRefreshTime ? () => resultSet.lastRefreshTime?.() : undefined,
     totalCount: resultSet.totalCount ? () => resultSet.totalCount?.() : undefined
   }
 }

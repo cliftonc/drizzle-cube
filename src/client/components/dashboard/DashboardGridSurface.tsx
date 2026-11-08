@@ -30,6 +30,7 @@ export default function DashboardGridSurface() {
     colorPalette,
     dashboardFilters,
     handlePortletRefresh,
+    handleSetPortletComponentRef,
     renderActiveLayout,
     editable,
     handleAddText,
@@ -111,6 +112,7 @@ export default function DashboardGridSurface() {
           colorPalette={colorPalette}
           dashboardFilters={dashboardFilters}
           onPortletRefresh={handlePortletRefresh}
+          setPortletComponentRef={handleSetPortletComponentRef}
         />
       ) : displayMode === 'scaled' ? (
         <ScaledGridWrapper scaleFactor={scaleFactor} designWidth={designWidth}>

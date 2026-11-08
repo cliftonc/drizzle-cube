@@ -4,9 +4,10 @@
  */
 
 import type { HTMLAttributes, ReactNode, ComponentType, CSSProperties } from 'react'
-import type { AnalyticsPortletRef, ChartType, DashboardFilter, DashboardLayoutMode, PortletConfig, PortletExpandPayload } from '../../types.js'
+import type { AnalyticsPortletRef, ChartType, DashboardFilter, DashboardLayoutMode, DashboardRefreshConfig, PortletConfig, PortletExpandPayload } from '../../types.js'
 import type { PortletCardVariant } from './cardStyles.js'
 import type { ColorPalette } from '../../utils/colorPalettes.js'
+import type { MaxAgeOptions } from '../../client/maxAge.js'
 
 // Shape mirrors DashboardPortletCardProps; kept here to type the comparators.
 export interface DashboardPortletCardProps {
@@ -16,6 +17,8 @@ export interface DashboardPortletCardProps {
   variant?: PortletCardVariant
   dashboardFilters?: DashboardFilter[]
   configEagerLoad?: boolean
+  /** Dashboard default refresh, overridden by `portlet.refresh` */
+  dashboardRefresh?: DashboardRefreshConfig
   loadingComponent?: ReactNode
   colorPalette?: ColorPalette
   containerProps?: HTMLAttributes<HTMLDivElement>
@@ -24,11 +27,13 @@ export interface DashboardPortletCardProps {
   setPortletComponentRef: (portletId: string, element: AnalyticsPortletRef | null) => void
   callbacks: {
     onToggleFilter: (portletId: string, filterId: string) => void
-    onRefresh: (portletId: string, options?: { bustCache?: boolean }) => void
+    onRefresh: (portletId: string, options?: MaxAgeOptions) => void
     onDuplicate: (portletId: string) => void
     onEdit: (portlet: PortletConfig) => void
     onDelete: (portletId: string) => void
     onOpenFilterConfig: (portlet: PortletConfig) => void
+    /** Pause or resume this portlet's interval refresh */
+    onToggleRefreshPaused?: (portletId: string) => void
   }
   icons: {
     RefreshIcon: ComponentType<{ className?: string; style?: CSSProperties }>
@@ -65,7 +70,7 @@ export function shallowEqualObjects<T extends object>(
 
 const SCALAR_KEYS = ['editable', 'layoutMode', 'configEagerLoad', 'variant'] as const
 const REF_KEYS = [
-  'portlet', 'dashboardFilters', 'colorPalette', 'loadingComponent', 'callbacks', 'icons',
+  'portlet', 'dashboardFilters', 'dashboardRefresh', 'colorPalette', 'loadingComponent', 'callbacks', 'icons',
   'setPortletRef', 'setPortletComponentRef', 'onPortletExpand'
 ] as const
 

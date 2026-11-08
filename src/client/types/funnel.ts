@@ -6,6 +6,7 @@
  */
 
 import type { CubeQuery } from '../types.js'
+import type { MaxAgeOptions } from '../client/maxAge.js'
 
 /**
  * Binding key configuration - the dimension that links funnel steps together.
@@ -228,6 +229,8 @@ export interface FunnelValidationResult {
 export interface UseFunnelQueryOptions {
   /** Skip execution */
   skip?: boolean
+  /** Whether the query may fetch; unlike `skip`, false keeps the key and data (default: true) */
+  enabled?: boolean
   /** Debounce delay in milliseconds */
   debounceMs?: number
   /** Callback when a step completes */
@@ -275,11 +278,17 @@ export interface UseFunnelQueryResult {
   /** Cache metadata when served from cache */
   cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
 
+  /** When the rows were computed on the server (cache time on a hit, else response time) */
+  computedAt?: string | null
+
   /** Error if execution failed */
   error: Error | null
 
-  /** Execute the funnel. Pass { bustCache: true } to bypass client and server caches. */
-  execute: (options?: { bustCache?: boolean }) => Promise<FunnelExecutionResult | null>
+  /**
+   * Execute the funnel. Pass `{ maxAgeSeconds }` to accept a cached server
+   * result at most that old, or `{ bustCache: true }` to bypass caches.
+   */
+  execute: (options?: MaxAgeOptions) => Promise<FunnelExecutionResult | null>
 
   /** Cancel current execution */
   cancel: () => void

@@ -316,6 +316,38 @@ describe('dashboardExport', () => {
       expect(result.warnings).toEqual([])
     })
 
+    it('keeps portlet and dashboard refresh settings', () => {
+      const result = parseDashboardExport({
+        portlets: [portlet('a', { refresh: { intervalSeconds: 30, pauseWhenHidden: true } })],
+        refresh: { intervalSeconds: 60 },
+      })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.config.portlets[0].refresh).toEqual({ intervalSeconds: 30, pauseWhenHidden: true })
+      expect(result.config.refresh).toEqual({ intervalSeconds: 60 })
+    })
+
+    it('keeps a portlet hidden-tab override without an interval', () => {
+      const result = parseDashboardExport({ portlets: [portlet('a', { refresh: { pauseWhenHidden: false } })] })
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.config.portlets[0].refresh).toEqual({ pauseWhenHidden: false })
+    })
+
+    it('rejects malformed refresh settings', () => {
+      const badPortlet = parseDashboardExport({
+        portlets: [portlet('a', { refresh: { intervalSeconds: -5 } })],
+      })
+      expect(badPortlet.ok).toBe(false)
+      if (badPortlet.ok) return
+      expect(badPortlet.errors).toEqual([{ code: 'invalidPortlet', index: 0, path: 'refresh' }])
+
+      const badDashboard = parseDashboardExport({ portlets: [portlet('a')], refresh: { intervalSeconds: 'often' } })
+      expect(badDashboard.ok).toBe(false)
+      if (badDashboard.ok) return
+      expect(badDashboard.errors).toEqual([{ code: 'invalidConfig', path: 'refresh' }])
+    })
+
     it('rejects a malformed filter mapping', () => {
       const result = parseDashboardExport({ portlets: [portlet('a', { dashboardFilterMapping: [{ member: 'x' }] as never })] })
       expect(result.ok).toBe(false)

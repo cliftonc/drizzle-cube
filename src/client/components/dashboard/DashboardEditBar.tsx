@@ -3,7 +3,7 @@
  * DashboardContext; rendered only when the top toolbar variant is active.
  *
  * On a read-only dashboard (`editable` false) the editing controls are left out
- * and the bar carries only the export action.
+ * and the bar carries only the export action and the refresh pause toggle.
  */
 
 import { getIcon } from '../../icons/index.js'
@@ -13,6 +13,10 @@ import { TextIcon } from './dashboardGridUtils.js'
 import { useDashboardContext } from './DashboardContext.js'
 import DashboardImportExportActions from './DashboardImportExportActions.js'
 import LayoutModeToggle from './LayoutModeToggle.js'
+import RefreshPauseToggle from './RefreshPauseToggle.js'
+import DashboardRefreshSelector from './DashboardRefreshSelector.js'
+import { DEFAULT_MIN_REFRESH_INTERVAL_SECONDS, isRefreshFeatureEnabled } from '../../utils/freshness.js'
+import type { DashboardRefreshConfig } from '../../types.js'
 
 const EditIcon = getIcon('edit')
 const CheckIcon = getIcon('check')
@@ -53,13 +57,22 @@ function EditToggleButton({
   )
 }
 
-/** Right-hand edit actions: palette, add text, add portlet. */
+/** Default refresh control props, when interval refresh is enabled */
+interface RefreshDefaultControl {
+  refresh: DashboardRefreshConfig | undefined
+  minIntervalSeconds: number
+  onChange: (refresh: DashboardRefreshConfig | undefined) => void
+}
+
+/** Right-hand edit actions: default refresh, palette, add text, add portlet. */
 function EditActions({
+  refreshDefault,
   colorPalette,
   onPaletteChange,
   onAddText,
   onAddPortlet
 }: {
+  refreshDefault?: RefreshDefaultControl
   colorPalette: string | undefined
   onPaletteChange: (palette: string) => void
   onAddText: () => void
@@ -69,6 +82,8 @@ function EditActions({
 
   return (
     <div className="dc:flex dc:items-center dc:gap-3">
+      {refreshDefault && <DashboardRefreshSelector {...refreshDefault} />}
+
       <ColorPaletteSelector
         currentPalette={colorPalette}
         onPaletteChange={onPaletteChange}
@@ -113,7 +128,17 @@ export default function DashboardEditBar() {
     handleAddPortlet,
     handlePaletteChange,
     importExport,
+    refresh,
+    features,
   } = useDashboardContext()
+
+  const refreshDefault: RefreshDefaultControl | undefined = isRefreshFeatureEnabled(features)
+    ? {
+        refresh: config.refresh,
+        minIntervalSeconds: features.refresh?.minIntervalSeconds ?? DEFAULT_MIN_REFRESH_INTERVAL_SECONDS,
+        onChange: (next) => { void actions.handleRefreshDefaultChange(next) }
+      }
+    : undefined
 
   return (
     <div
@@ -152,6 +177,11 @@ export default function DashboardEditBar() {
       )}
 
       <div className="dc:flex dc:items-center dc:gap-3">
+        {/* Edit mode already pauses refresh, so the toggle is a view-mode control */}
+        {refresh.hasRefresh && !isEditMode && (
+          <RefreshPauseToggle isPaused={refresh.isPaused} onToggle={refresh.togglePaused} />
+        )}
+
         {importExport.enabled && (
           <DashboardImportExportActions
             showExport={importExport.canExport && !isEditMode}
@@ -162,6 +192,7 @@ export default function DashboardEditBar() {
         {/* Color Palette Selector and Add Portlet - Only show in edit mode */}
         {editable && isEditMode && (
           <EditActions
+            refreshDefault={refreshDefault}
             colorPalette={config.colorPalette}
             onPaletteChange={handlePaletteChange}
             onAddText={handleAddText}

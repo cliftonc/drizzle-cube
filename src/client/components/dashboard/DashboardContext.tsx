@@ -38,6 +38,7 @@ import type {
   DashboardMeta,
   PortletExpandPayload
 } from '../../types.js'
+import type { MaxAgeOptions } from '../../client/maxAge.js'
 
 /**
  * Props accepted by DashboardProvider (the public composable entry point).
@@ -144,6 +145,8 @@ export interface DashboardContextValue {
   features: FeaturesConfig
   /** Dashboard JSON export/import flow (features.dashboardImportExport); `enabled` is false when the feature is off */
   importExport: DashboardImportExportState
+  /** Interval refresh (features.refresh): whether any portlet refreshes, and the dashboard-level pause */
+  refresh: DashboardRefreshState
 
   // ---- Refs (attached by the consuming pieces) ----
   editBarRef: MutableRefObject<HTMLDivElement | null>
@@ -170,7 +173,9 @@ export interface DashboardContextValue {
   handleSelectAllForFilter: (filterId: string) => Promise<void>
   handleSaveFilterConfig: (mapping: DashboardFilterMapping) => Promise<void>
   handlePortletSave: (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => Promise<void>
-  handlePortletRefresh: (portletId: string, options?: { bustCache?: boolean }) => void
+  handlePortletRefresh: (portletId: string, options?: MaxAgeOptions) => void
+  /** Registers a chart so handlePortletRefresh reaches it (used by the mobile layout) */
+  handleSetPortletComponentRef: (portletId: string, element: { refresh: (options?: MaxAgeOptions) => void } | null) => void
   handleLayoutChange: (layout: Layout) => void
   handleDragStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | null) => void
   handleResizeStop: (layout: Layout, oldItem: LayoutItem | null, newItem: LayoutItem | null, placeholder: LayoutItem | null, e: Event, element: HTMLElement | null) => void
@@ -180,6 +185,15 @@ export interface DashboardContextValue {
   handlePortletDragEnd: () => void
   handleRowDrop: (rowIndex: number, insertIndex: number | null) => void
   handleNewRowDrop: (insertIndex: number) => void
+}
+
+/** Dashboard-level interval refresh state published to the toolbar. */
+export interface DashboardRefreshState {
+  /** Whether any portlet has an effective refresh interval */
+  hasRefresh: boolean
+  /** Whether the viewer paused refresh for the whole dashboard */
+  isPaused: boolean
+  togglePaused: () => void
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null)

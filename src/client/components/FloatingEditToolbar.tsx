@@ -23,6 +23,8 @@ const EditIcon = getIcon('edit')
 const CheckIcon = getIcon('check')
 const DownloadIcon = getIcon('download')
 const UploadIcon = getIcon('upload')
+const PauseIcon = getIcon('pause')
+const PlayIcon = getIcon('play')
 const GridIcon = getIcon('segment')
 const RowsIcon = getIcon('table')
 const AddIcon = getIcon('add')
@@ -67,6 +69,10 @@ interface FloatingEditToolbarProps {
   onExportDashboard?: () => void
   /** Import a dashboard JSON file, replacing this one; button hidden when absent, edit mode only */
   onImportDashboard?: () => void
+  /** Whether dashboard interval refresh is paused */
+  isRefreshPaused?: boolean
+  /** Pause or resume dashboard interval refresh; button hidden when absent */
+  onToggleRefreshPause?: () => void
 }
 
 export default function FloatingEditToolbar({
@@ -84,7 +90,9 @@ export default function FloatingEditToolbar({
   onAddPortlet,
   onAddText,
   onExportDashboard,
-  onImportDashboard
+  onImportDashboard,
+  isRefreshPaused = false,
+  onToggleRefreshPause
 }: FloatingEditToolbarProps) {
   const { t } = useTranslation()
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
@@ -148,10 +156,23 @@ export default function FloatingEditToolbar({
         />
       )}
 
+      {/* Refresh pause - the caller passes the toggle only in view mode */}
+      {onToggleRefreshPause && (
+        <>
+          {canEdit && <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />}
+          <ToolbarButton
+            icon={isRefreshPaused ? PlayIcon : PauseIcon}
+            tooltip={isRefreshPaused ? t('dashboard.refresh.resume') : t('dashboard.refresh.pause')}
+            isActive={isRefreshPaused}
+            onClick={onToggleRefreshPause}
+          />
+        </>
+      )}
+
       {/* Export / Import - export in any mode, import only while editing */}
       {(onExportDashboard || (isEditMode && onImportDashboard)) && (
         <>
-          {canEdit && <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />}
+          {(canEdit || onToggleRefreshPause) && <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />}
           {onExportDashboard && (
             <ToolbarButton
               icon={DownloadIcon}
