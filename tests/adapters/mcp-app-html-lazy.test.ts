@@ -8,6 +8,8 @@ import '../../src/adapters/hono'
 import '../../src/adapters/express'
 import '../../src/adapters/fastify'
 import '../../src/adapters/nextjs'
+// `drizzle-cube/mcp` too: getCubeTools takes the HTML from the host (#1423).
+import { getCubeTools } from '../../src/adapters/mcp-tools'
 
 /**
  * Guards the bundle-size invariant: the ~2 MB MCP App HTML
@@ -85,6 +87,8 @@ describe('MCP App HTML is loaded lazily', () => {
 
     createCubeHttpHandler({ semanticLayer: createStubSemanticLayer(), onError: () => {}, mcp: { enabled: false } })
     createCubeHttpHandler({ semanticLayer: createStubSemanticLayer(), onError: () => {}, mcp: { app: true } })
+    getCubeTools({ semanticLayer: createStubSemanticLayer(), getSecurityContext: getBaseSC })
+    getCubeTools({ semanticLayer: createStubSemanticLayer(), getSecurityContext: getBaseSC, app: { html: '<html></html>' } })
     expect(htmlModule.loads).toBe(0)
   })
 

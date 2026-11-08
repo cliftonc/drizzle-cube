@@ -11,9 +11,9 @@
  * `fastify`, `nextjs`, `core`, `utils`) may import this module — or
  * `../mcp-app/generated-html.js` — statically. A static import drags the blob
  * into every consumer's server bundle even with `mcp.enabled: false`
- * (`tests/adapters/mcp-app-html-lazy.test.ts` guards this). The one deliberate
- * static importer is `mcp-tools.ts` (`drizzle-cube/mcp`), whose `resources`
- * array is synchronous public API.
+ * (`tests/adapters/mcp-app-html-lazy.test.ts` guards this). `drizzle-cube/mcp`
+ * (`mcp-tools.ts`) does not import it either: a host that wants the app with
+ * `getCubeTools` imports this subpath itself and passes `app: { html: mcpAppHtml }`.
  *
  * In the published build the transport's `import()` targets the bare specifier
  * `drizzle-cube/mcp-app-html` (see `vite.config.adapters.ts`), so bundlers that
