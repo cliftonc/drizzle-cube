@@ -320,6 +320,37 @@ jobs:
       - name: Run client tests
         run: npm run test:client
 
+  # Install the packed tarball into fresh apps (server-only, Vite 8, webpack 5,
+  # React 18, with and without the optional peers) using plain npm, and check
+  # they install, build and typecheck. Catches packaging bugs the in-repo suites
+  # cannot see. See consumers/README.md.
+  test-consumers:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-test == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Chromium (vite-runtime renders the app)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run consumer smoke tests
+        run: npm run test:consumers
+
   # The package supports React 18 and 19 (peer range), but dev/test runs on 19.
   # Re-run the client suite on React 18 so 19-only APIs can't slip in.
   test-client-react18:
