@@ -8,13 +8,19 @@
  */
 
 import { useTranslation } from '../../hooks/useTranslation.js'
-import PortletAnalysisModal from '../PortletAnalysisModal.js'
-import TextPortletModal from '../TextPortletModal.js'
+import { lazy, Suspense } from 'react'
 import PortletFilterConfigModal from '../PortletFilterConfigModal.js'
 import ConfirmModal from '../ConfirmModal.js'
 import { useDashboardContext } from './DashboardContext.js'
 import DashboardImportModals from './DashboardImportModals.js'
 import PortletExpandModal from './PortletExpandModal.js'
+
+// Edit-only modals, loaded when first opened. A read-only dashboard never opens
+// them, and statically they pulled the analysis builder and the markdown
+// renderer (markdown-to-jsx, knap, dayjs) into every dashboard (#1422). Both
+// render nothing while closed, so mounting them only while open is equivalent.
+const PortletAnalysisModal = lazy(() => import('../PortletAnalysisModal.js'))
+const TextPortletModal = lazy(() => import('../TextPortletModal.js'))
 
 export default function DashboardModals() {
   const { t } = useTranslation()
@@ -46,27 +52,35 @@ export default function DashboardModals() {
   return (
     <>
       {/* Portlet Modal */}
-      <PortletAnalysisModal
-        isOpen={isPortletModalOpen}
-        onClose={actions.closePortletModal}
-        onSave={handlePortletSave}
-        portlet={editingPortlet}
-        title={editingPortlet ? t('dashboard.editPortlet') : t('dashboard.addNewPortlet')}
-        submitText={editingPortlet ? t('dashboard.updatePortlet') : t('dashboard.addPortlet')}
-        colorPalette={colorPalette}
-        dashboardFilters={dashboardFilters}
-        dashboardRefresh={config.refresh}
-      />
+      {isPortletModalOpen && (
+        <Suspense fallback={null}>
+          <PortletAnalysisModal
+            isOpen
+            onClose={actions.closePortletModal}
+            onSave={handlePortletSave}
+            portlet={editingPortlet}
+            title={editingPortlet ? t('dashboard.editPortlet') : t('dashboard.addNewPortlet')}
+            submitText={editingPortlet ? t('dashboard.updatePortlet') : t('dashboard.addPortlet')}
+            colorPalette={colorPalette}
+            dashboardFilters={dashboardFilters}
+            dashboardRefresh={config.refresh}
+          />
+        </Suspense>
+      )}
 
       {/* Text Portlet Modal */}
-      <TextPortletModal
-        isOpen={isTextModalOpen}
-        onClose={actions.closeTextModal}
-        onSave={handlePortletSave}
-        portlet={editingTextPortlet}
-        colorPalette={colorPalette}
-        existingTitles={config.portlets.map(p => p.title)}
-      />
+      {isTextModalOpen && (
+        <Suspense fallback={null}>
+          <TextPortletModal
+            isOpen
+            onClose={actions.closeTextModal}
+            onSave={handlePortletSave}
+            portlet={editingTextPortlet}
+            colorPalette={colorPalette}
+            existingTitles={config.portlets.map(p => p.title)}
+          />
+        </Suspense>
+      )}
 
       {/* Filter Configuration Modal */}
       <PortletFilterConfigModal

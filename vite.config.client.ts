@@ -102,6 +102,10 @@ export default defineConfig({
     cssCodeSplit: false,
     sourcemap: true,
     rollupOptions: {
+      // Required with codeSplitting.includeDependenciesRecursively: false (see
+      // output). An entry may then also export internal bindings that other
+      // chunks share; its public exports are unchanged.
+      preserveEntrySignatures: 'allow-extension',
       treeshake: {
         moduleSideEffects: false,
         propertyReadSideEffects: false,
@@ -147,7 +151,20 @@ export default defineConfig({
           }
           return assetInfo.name ?? 'assets/[name]-[hash][extname]'
         },
-        manualChunks(id) {
+        // Rolldown (Vite 8) turns `manualChunks` into one group that also pulls
+        // in every dependency of a captured module (includeDependenciesRecursively,
+        // on by default). The first chart chunk to capture a module took its
+        // shared dependencies with it (CubeMetaContext, I18nProvider, chartUtils,
+        // d3…), so the "lazy" chart chunks were statically imported by every
+        // entry (#1422). Name only the modules listed below; shared code goes to
+        // the chunks Rolldown derives from who imports it.
+        // Not `strictExecutionOrder`: it wraps modules in init functions that
+        // the entries call as bare statements, and a consumer's bundler drops
+        // those (this package's JS is sideEffects: false), leaving exports
+        // undefined at runtime. The consumer smoke tests render the dashboard.
+        codeSplitting: {
+          includeDependenciesRecursively: false,
+          groups: [{ name(id: string) {
           const normalizedId = normalizeId(id)
 
           if (normalizedId.endsWith('/src/client/charts/ChartLoader.tsx')) {
@@ -162,15 +179,7 @@ export default defineConfig({
             return 'charts-loader'
           }
 
-          if (normalizedId.endsWith('/src/client/hooks/useCubeFieldLabel.ts')) {
-            return 'charts-core'
-          }
-
           if (normalizedId.endsWith('/src/client/components/charts/ChartContainer.tsx')) {
-            return 'charts-core'
-          }
-
-          if (normalizedId.endsWith('/src/client/components/LoadingIndicator.tsx')) {
             return 'charts-core'
           }
 
@@ -194,13 +203,11 @@ export default defineConfig({
             return 'icons'
           }
 
-          if (
-            normalizedId.endsWith('/src/client/utils/chartConstants.ts') ||
-            normalizedId.endsWith('/src/client/utils/chartUtils.ts') ||
-            normalizedId.endsWith('/src/client/utils/targetUtils.ts') ||
-            normalizedId.endsWith('/src/client/components/charts/ChartTooltip.tsx') ||
-            normalizedId.endsWith('/src/client/components/charts/AxisFormatControls.tsx')
-          ) {
+          // Only the shared chart pieces that import recharts. Helpers the
+          // dashboard uses everywhere (LoadingIndicator, useCubeFieldLabel,
+          // chartUtils…) stay out: grouped here they made every dashboard load
+          // recharts eagerly (#1422).
+          if (normalizedId.endsWith('/src/client/components/charts/ChartTooltip.tsx')) {
             return 'charts-core'
           }
 
@@ -228,6 +235,8 @@ export default defineConfig({
           if (isVendorModule(id)) {
             return 'vendor'
           }
+          return null
+        } }]
         }
       }
     }
