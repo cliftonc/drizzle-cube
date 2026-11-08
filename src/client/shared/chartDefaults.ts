@@ -143,11 +143,13 @@ export function getAllChartAvailability(
  *    - Has dimension + measure → bar
  *    - Has measures only → bar (or kpiNumber if single measure + no breakdowns)
  *    - No fields → keep current
+ * 3. Never switch to a type in `hiddenChartTypes` — keep current instead
  */
 export function selectBestChartType(
   metrics: MetricItem[],
   breakdowns: BreakdownItem[],
-  currentChartType: ChartType
+  currentChartType: ChartType,
+  hiddenChartTypes: readonly ChartType[] = []
 ): ChartType {
   // Check if current chart type is still valid
   const currentAvailability = getChartAvailability(currentChartType, metrics, breakdowns)
@@ -160,6 +162,23 @@ export function selectBestChartType(
     return currentChartType
   }
 
+  const recommendedType = recommendChartType(metrics, breakdowns)
+
+  // The host hid the recommended type - keep current
+  if (hiddenChartTypes.includes(recommendedType)) {
+    return currentChartType
+  }
+
+  return recommendedType
+}
+
+/**
+ * Pick the chart type that best fits the selected fields, ignoring the current type
+ */
+function recommendChartType(
+  metrics: MetricItem[],
+  breakdowns: BreakdownItem[]
+): ChartType {
   const hasTimeDimension = getTimeDimensions(breakdowns).length > 0
   const hasDimension = getDimensions(breakdowns).length > 0
   const hasMeasure = metrics.length > 0
@@ -194,10 +213,11 @@ export function selectBestChartType(
 export function getSmartChartDefaults(
   metrics: MetricItem[],
   breakdowns: BreakdownItem[],
-  currentChartType: ChartType
+  currentChartType: ChartType,
+  hiddenChartTypes: readonly ChartType[] = []
 ): SmartChartDefaults {
   // First, determine the best chart type
-  const chartType = selectBestChartType(metrics, breakdowns, currentChartType)
+  const chartType = selectBestChartType(metrics, breakdowns, currentChartType, hiddenChartTypes)
 
   // Then, auto-configure the chart axes based on chart type
   const chartConfig = buildChartConfig(chartType, metrics, breakdowns)
@@ -236,12 +256,14 @@ function buildChartConfig(
  * @param breakdowns - Current breakdowns selection
  * @param currentChartType - Current chart type
  * @param userManuallySelected - Whether user manually selected the current chart type
+ * @param hiddenChartTypes - Chart types the host hid; never recommended
  */
 export function shouldAutoSwitchChartType(
   metrics: MetricItem[],
   breakdowns: BreakdownItem[],
   currentChartType: ChartType,
-  userManuallySelected: boolean
+  userManuallySelected: boolean,
+  hiddenChartTypes: readonly ChartType[] = []
 ): ChartType | null {
   // If user manually selected this chart type, only switch if it becomes invalid
   if (userManuallySelected) {
@@ -252,7 +274,7 @@ export function shouldAutoSwitchChartType(
   }
 
   // Check if a better chart type should be used
-  const recommendedType = selectBestChartType(metrics, breakdowns, currentChartType)
+  const recommendedType = selectBestChartType(metrics, breakdowns, currentChartType, hiddenChartTypes)
 
   // Only suggest switch if recommended type is different
   if (recommendedType !== currentChartType) {

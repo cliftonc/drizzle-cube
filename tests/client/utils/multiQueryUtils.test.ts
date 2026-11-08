@@ -13,7 +13,9 @@ import {
   mergeQueryResults,
   getCombinedFields,
   generateQueryLabel,
-  validateMergeKey
+  validateMergeKey,
+  getDataColumns,
+  combineQueriesForChart
 } from '../../../src/client/utils/multiQueryUtils'
 import type { CubeResultSet, CubeQuery } from '../../../src/client/types'
 
@@ -722,6 +724,86 @@ describe('multiQueryUtils', () => {
     it('should handle single part measure name', () => {
       const query: CubeQuery = { measures: ['count'] }
       expect(generateQueryLabel(query, 0)).toBe('count')
+    })
+  })
+
+  describe('getDataColumns', () => {
+    it('should return the fields of every query of concat rows, without the metadata', () => {
+      const merged = mergeResultsConcat(
+        [
+          createMockResultSet([{ 'Employees.department': 'Engineering', 'Employees.count': 10 }]),
+          createMockResultSet([{ 'Employees.department': 'Engineering', 'Productivity.linesOfCode': 1000 }])
+        ],
+        []
+      )
+
+      expect(getDataColumns(merged)).toEqual([
+        'Employees.department',
+        'Employees.count',
+        'Productivity.linesOfCode'
+      ])
+    })
+
+    it('should return a field that the first merged row does not carry', () => {
+      const rows = [
+        { 'Employees.department': 'Admin', 'Productivity.linesOfCode': 50 },
+        { 'Employees.department': 'Engineering', 'Employees.count': 10, 'Productivity.linesOfCode': 1000 }
+      ]
+
+      expect(getDataColumns(rows)).toEqual([
+        'Employees.department',
+        'Productivity.linesOfCode',
+        'Employees.count'
+      ])
+    })
+
+    it('should return the row keys of a single query', () => {
+      expect(getDataColumns([{ a: 1, b: 2 }, { a: 3, b: 4 }])).toEqual(['a', 'b'])
+    })
+
+    it('should return no columns for no rows', () => {
+      expect(getDataColumns([])).toEqual([])
+    })
+  })
+
+  describe('combineQueriesForChart', () => {
+    it('should return undefined for no queries', () => {
+      expect(combineQueriesForChart([])).toBeUndefined()
+    })
+
+    it('should return the only query unchanged', () => {
+      const query: CubeQuery = { measures: ['Employees.count'], dimensions: ['Employees.department'] }
+
+      expect(combineQueriesForChart([query])).toBe(query)
+    })
+
+    it('should return the first query with the measures of every query', () => {
+      const queries: CubeQuery[] = [
+        {
+          measures: ['Employees.count'],
+          dimensions: ['Employees.department'],
+          timeDimensions: [{ dimension: 'Employees.createdAt', granularity: 'month' }]
+        },
+        { measures: ['Productivity.linesOfCode'], dimensions: ['Productivity.team'] }
+      ]
+
+      expect(combineQueriesForChart(queries)).toEqual({
+        measures: ['Employees.count', 'Productivity.linesOfCode'],
+        dimensions: ['Employees.department'],
+        timeDimensions: [{ dimension: 'Employees.createdAt', granularity: 'month' }]
+      })
+    })
+
+    it('should list a measure that two queries share once', () => {
+      const queries: CubeQuery[] = [
+        { measures: ['Employees.count'], filters: [{ member: 'Employees.active', operator: 'equals', values: ['true'] }] },
+        { measures: ['Employees.count', 'Employees.avgSalary'] }
+      ]
+
+      expect(combineQueriesForChart(queries)).toEqual({
+        measures: ['Employees.count', 'Employees.avgSalary'],
+        filters: [{ member: 'Employees.active', operator: 'equals', values: ['true'] }]
+      })
     })
   })
 

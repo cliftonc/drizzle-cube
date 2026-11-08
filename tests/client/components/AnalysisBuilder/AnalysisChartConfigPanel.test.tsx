@@ -3,8 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AnalysisChartConfigPanel from '../../../../src/client/components/AnalysisBuilder/AnalysisChartConfigPanel'
 import { useChartConfig } from '../../../../src/client/charts/lazyChartConfigRegistry'
+import { CubeFeaturesProvider } from '../../../../src/client/providers/CubeFeaturesProvider'
 import type { MetricItem, BreakdownItem } from '../../../../src/client/components/AnalysisBuilder/types'
-import type { ChartType, ChartAxisConfig } from '../../../../src/client/types'
+import type { ChartType, ChartAxisConfig, FeaturesConfig } from '../../../../src/client/types'
 import type { MetaResponse } from '../../../../src/client/shared/types'
 import type { ChartAvailabilityMap, ChartAvailability } from '../../../../src/client/shared/chartDefaults'
 
@@ -227,6 +228,63 @@ describe('AnalysisChartConfigPanel', () => {
 
       // Unavailable charts should be disabled
       // (specific implementation depends on ChartTypeSelector)
+    })
+  })
+
+  // A host hides chart types through `features.hiddenChartTypes`. The panel adds
+  // them to the types that only the funnel, flow and retention modes can render.
+  describe('host-hidden chart types', () => {
+    const modeOnlyLabels = [
+      'Funnel Chart',
+      'Sankey Chart',
+      'Sunburst Chart',
+      'Retention Matrix',
+      'Retention Chart',
+    ]
+
+    function renderWithFeatures(features: FeaturesConfig, chartType: ChartType = 'bar') {
+      render(
+        <CubeFeaturesProvider features={features}>
+          <AnalysisChartConfigPanel {...defaultProps} chartType={chartType} />
+        </CubeFeaturesProvider>
+      )
+    }
+
+    it('should not list a chart type that the host hides', () => {
+      renderWithFeatures({ hiddenChartTypes: ['table'] })
+
+      fireEvent.click(screen.getByRole('button', { name: /bar chart/i }))
+
+      expect(screen.getByText('Line Chart')).toBeInTheDocument()
+      expect(screen.queryByText('Data Table')).toBeNull()
+    })
+
+    it('should keep the mode-only chart types out when the host hides other types', () => {
+      renderWithFeatures({ hiddenChartTypes: ['table'] })
+
+      fireEvent.click(screen.getByRole('button', { name: /bar chart/i }))
+
+      for (const label of modeOnlyLabels) {
+        expect(screen.queryByText(label)).toBeNull()
+      }
+    })
+
+    it('should list the same chart types as before when the host hides none', () => {
+      renderWithFeatures({})
+
+      fireEvent.click(screen.getByRole('button', { name: /bar chart/i }))
+
+      expect(screen.getByText('Data Table')).toBeInTheDocument()
+      expect(screen.getByText('Records Table')).toBeInTheDocument()
+      for (const label of modeOnlyLabels) {
+        expect(screen.queryByText(label)).toBeNull()
+      }
+    })
+
+    it('should show the label of a selected hidden type on the selector button', () => {
+      renderWithFeatures({ hiddenChartTypes: ['table'] }, 'table')
+
+      expect(screen.getByRole('button', { name: /data table/i })).toBeInTheDocument()
     })
   })
 

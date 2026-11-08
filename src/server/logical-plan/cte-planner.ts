@@ -459,8 +459,8 @@ export class CTEPlanner {
     cteCube: Cube,
     query: SemanticQuery,
     _allCubes: Map<string, Cube>
-  ): Array<{ targetCubeName: string; joinKeys: CTEJoinKey[] }> {
-    const downstreamJoinKeys: Array<{ targetCubeName: string; joinKeys: CTEJoinKey[] }> = []
+  ): Array<{ targetCubeName: string; joinKeys: CTEJoinKey[]; throughJunction: boolean }> {
+    const downstreamJoinKeys: Array<{ targetCubeName: string; joinKeys: CTEJoinKey[]; throughJunction: boolean }> = []
 
     // Cubes contributing dimensions / time dimensions / filter members (excluding CTE cube)
     const dimensionCubeNames = collectDimensionCubeNames(query, cteCube.name)
@@ -479,7 +479,8 @@ export class CTEPlanner {
       if (dimensionCubeNames.has(targetCubeName)) {
         downstreamJoinKeys.push({
           targetCubeName,
-          joinKeys: deriveDownstreamJoinKeys(joinDef as CubeJoin)
+          joinKeys: deriveDownstreamJoinKeys(joinDef as CubeJoin),
+          throughJunction: joinDef.relationship === 'belongsToMany' && !!joinDef.through
         })
       }
     }

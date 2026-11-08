@@ -8,7 +8,8 @@
  *
  * **Filters are deliberately not pruned.** Dropping a projected member narrows
  * what is displayed; dropping a filter would widen the result set, showing rows
- * the author meant to exclude. That stays a hard error.
+ * the author meant to exclude. That stays a hard error. A time dimension with a
+ * `dateRange` or a `compareDateRange` filters too, so it is not pruned either.
  *
  * Pruning is reactive rather than pre-emptive on purpose: a `shown: false`
  * dimension is absent from `/meta` yet perfectly queryable — exactly how large
@@ -19,7 +20,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CubeQuery, CubeValidationIssue } from '../../types.js'
 
-/** Sources whose members can be dropped without changing which rows match. */
+/**
+ * Sources whose members can be dropped without changing which rows match. A
+ * time dimension qualifies only while it carries no date range — see
+ * `prunableMembers`.
+ */
 const PRUNABLE_SOURCES = new Set<CubeValidationIssue['source']>([
   'measure',
   'dimension',
@@ -45,13 +50,25 @@ export interface UsePortletDeadMembersResult {
  *
  * A single unknown *filter* member makes the whole error unrecoverable, even
  * alongside prunable ones: re-running without the dead columns would still
- * carry the dead filter.
+ * carry the dead filter. An unknown time dimension that carries a date range in
+ * `query` is a filter in the same way: `withoutMembers` removes its complete
+ * entry, and the date predicate with it.
  */
-export function prunableMembers(error: unknown): string[] | null {
+export function prunableMembers(error: unknown, query: CubeQuery): string[] | null {
   const issues = (error as { issues?: CubeValidationIssue[] } | null)?.issues
   if (!Array.isArray(issues) || issues.length === 0) return null
   if (issues.some(issue => !PRUNABLE_SOURCES.has(issue.source))) return null
+  if (issues.some(issue => issue.source === 'timeDimension' && filtersByDate(query, issue.member))) {
+    return null
+  }
   return [...new Set(issues.map(issue => issue.member))]
+}
+
+/** Whether a time dimension entry of `query` for `member` restricts the dates. */
+function filtersByDate(query: CubeQuery, member: string): boolean {
+  return query.timeDimensions?.some(
+    td => td.dimension === member && (td.dateRange !== undefined || td.compareDateRange !== undefined)
+  ) ?? false
 }
 
 /** Remove members from everything that projects or orders by them. */
@@ -92,8 +109,18 @@ export function usePortletDeadMembers({
     }
   }, [queryJson])
 
+  // The failure is checked against the query that is current when it arrives.
+  // A ref, because a new query alone must not re-check an earlier failure: the
+  // new query has not run yet.
+  const queryObjectRef = useRef(queryObject)
   useEffect(() => {
-    const members = prunableMembers(error)
+    queryObjectRef.current = queryObject
+  }, [queryObject])
+
+  useEffect(() => {
+    const latestQuery = queryObjectRef.current
+    if (!latestQuery) return
+    const members = prunableMembers(error, latestQuery)
     if (!members) return
     setDroppedMembers(current => {
       // Only grow. Without this the effect would re-fire on every render for

@@ -8,6 +8,7 @@ import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
 import type { AnalyticsPortletProps, AnalyticsPortletRef, PortletViewState } from '../types.js'
 import { hasRunnableQuery, parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
 import { getRegularDashboardFilters } from '../utils/filterUtils.js'
+import { combineQueriesForChart } from '../utils/multiQueryUtils.js'
 import { usePortletDrillState } from './analyticsPortlet/usePortletDrillState.js'
 import { usePortletPagination } from './analyticsPortlet/usePortletPagination.js'
 import { usePortletDeadMembers } from './analyticsPortlet/usePortletDeadMembers.js'
@@ -185,6 +186,16 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     [pagination, resultSet]
   )
 
+  // A multi-query portlet runs no single query, so it has no active query. Its
+  // chart still reads one to order and pivot columns and to format dates: give
+  // it the query the AnalysisBuilder preview gives, so the card looks the same
+  // on the dashboard. Only the chart reads it; loading, paging and drill keep
+  // the null active query.
+  const chartQuery = useMemo(
+    () => (multiQueryConfig ? combineQueriesForChart(multiQueryConfig.queries) ?? null : paginatedQuery),
+    [multiQueryConfig, paginatedQuery]
+  )
+
   // Send debug data to parent when ready
   usePortletDebugData({
     onDebugDataReady,
@@ -291,7 +302,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         multiQueryData={multiQueryData}
         flowChartData={flowChartData}
         retentionChartData={retentionChartData}
-        activeQuery={paginatedQuery}
+        activeQuery={chartQuery}
         pagination={chartPagination}
         droppedMembers={droppedMembers}
         drill={drill}

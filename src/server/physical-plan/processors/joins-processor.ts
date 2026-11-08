@@ -150,7 +150,7 @@ function applyJunctionTable(
   allWhereConditions: SQL[]
 ): any {
   const junctionTable = joinCube.junctionTable
-  if (!junctionTable) {
+  if (!junctionTable || joinsThroughDownstreamCTE(joinCube, cteState)) {
     return drizzleQuery
   }
 
@@ -239,6 +239,39 @@ function resolveJunctionJoinCondition(
   return junctionJoinCondition
 }
 
+/**
+ * True when a belongsToMany target must join through a pre-aggregation CTE
+ * instead of through its junction table.
+ *
+ * The join plan can reach a cube through a junction that starts at a non-CTE
+ * cube (usually the primary), while the CTE planner also puts that cube's join
+ * key in a CTE, through a direct join of the CTE cube (downstream join keys).
+ * The junction joins on the source cube's key only, so every CTE row repeats
+ * once per junction row, and a filter or dimension on the target does not apply
+ * to the CTE rows. The CTE rows already carry the target's key, so the target
+ * joins on that key and the junction is dropped.
+ *
+ * Example: Departments (primary) hasMany TimeEntries (CTE) belongsTo Employees,
+ * and Departments belongsToMany Employees through time_entries. An Employees
+ * filter must apply to the TimeEntries CTE rows, not to a second copy of
+ * time_entries.
+ */
+function joinsThroughDownstreamCTE(
+  joinCube: JoinCubePlanEntry,
+  cteState: CTEBuildState
+): boolean {
+  const junctionTable = joinCube.junctionTable
+  if (!junctionTable) {
+    return false
+  }
+  // A junction that starts at a CTE cube is rewritten by resolveJunctionJoinCondition.
+  if (junctionTable.sourceCubeName && cteState.cteAliasMap.has(junctionTable.sourceCubeName)) {
+    return false
+  }
+  const downstreamInfo = cteState.downstreamCubeMap.get(joinCube.cube.name)
+  return !!downstreamInfo && !downstreamInfo.throughJunction && downstreamInfo.joinKeys.length > 0
+}
+
 interface CubeJoinTarget {
   joinTarget: any
   joinCondition: any
@@ -282,11 +315,12 @@ function resolveCubeJoinTarget(
   const joinCubeBase = joinCube.cube.sql(context)
 
   let joinCondition: any
-  if (downstreamInfo && !joinCube.junctionTable) {
+  if (downstreamInfo && (!joinCube.junctionTable || joinsThroughDownstreamCTE(joinCube, cteState))) {
     // This cube joins THROUGH a CTE - build join condition referencing CTE alias
-    // (e.g., Teams.id = employeeteams_agg.team_id). Skipped when a junction
-    // table is present (belongsToMany): the junction handles CTE-to-junction
-    // separately and the target cube uses its original joinCondition.
+    // (e.g., Teams.id = employeeteams_agg.team_id). Skipped when the junction
+    // table (belongsToMany) starts at the CTE cube: the junction handles
+    // CTE-to-junction separately and the target cube uses its original
+    // joinCondition.
     const conditions: SQL[] = []
     for (const joinKey of downstreamInfo.joinKeys) {
       const cteCol = sql`${sql.identifier(downstreamInfo.cteAlias)}.${sql.identifier(joinKey.sourceColumn)}`

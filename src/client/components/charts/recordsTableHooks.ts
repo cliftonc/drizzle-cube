@@ -10,6 +10,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getOrderedColumnsFromQuery } from '../../utils/pivotUtils.js'
+import { getDataColumns } from '../../utils/multiQueryUtils.js'
 import {
   DEFAULT_COLUMN_WIDTH,
   MIN_COLUMN_WIDTH,
@@ -92,7 +93,8 @@ function resolveColumns(
   chartConfig: ChartAxisConfig | undefined,
   queryObject: CubeQuery | undefined
 ): string[] {
-  const available = Object.keys(rows[0] ?? {})
+  // Every row counts: rows of a multi-query portlet carry different fields.
+  const available = getDataColumns(rows)
   const hidden = new Set(chartConfig?.hiddenColumns ?? [])
 
   const configured = chartConfig?.columns?.filter(column => available.includes(column))

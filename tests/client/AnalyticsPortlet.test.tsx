@@ -122,6 +122,7 @@ vi.mock('../../src/client/charts/ChartLoader', () => ({
     <div
       data-testid={`${chartType}-chart`}
       data-config={JSON.stringify(props.chartConfig)}
+      data-query={JSON.stringify(props.queryObject ?? null)}
       data-initial-view-state={JSON.stringify(props.initialViewState ?? null)}
     >
       <button type="button" onClick={() => props.onViewStateChange?.({ page: 3 })}>
@@ -567,6 +568,53 @@ describe('AnalyticsPortlet', () => {
 
       const barChart = getByTestId('bar-chart')
       expect(barChart.getAttribute('data-config')).toBe(JSON.stringify(chartConfig))
+    })
+
+    it('should pass the single query to the chart', () => {
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+
+      const { getByTestId } = render(
+        <AnalyticsPortlet
+          query={JSON.stringify({ measures: ['Test.count'], dimensions: ['Test.name'] })}
+          chartType="table"
+          chartConfig={{}}
+        />
+      )
+
+      expect(JSON.parse(getByTestId('table-chart').getAttribute('data-query') ?? 'null')).toEqual({
+        measures: ['Test.count'],
+        dimensions: ['Test.name'],
+        filters: [],
+        timeDimensions: []
+      })
+    })
+
+    it('should pass a multi-query chart the first query with the measures of every query', () => {
+      mockUseMultiCubeLoadQueryResult.mergedData = [
+        { 'Test.name': 'A', 'Test.count': 10, __queryIndex: 0, __queryLabel: 'Query 1' },
+        { 'Test.name': 'A', 'Other.total': 5, __queryIndex: 1, __queryLabel: 'Query 2' }
+      ]
+
+      const { getByTestId } = render(
+        <AnalyticsPortlet
+          query={JSON.stringify({
+            queries: [
+              { measures: ['Test.count'], dimensions: ['Test.name'] },
+              { measures: ['Other.total'], dimensions: ['Test.name'] }
+            ],
+            mergeStrategy: 'concat'
+          })}
+          chartType="table"
+          chartConfig={{}}
+        />
+      )
+
+      expect(JSON.parse(getByTestId('table-chart').getAttribute('data-query') ?? 'null')).toEqual({
+        measures: ['Test.count', 'Other.total'],
+        dimensions: ['Test.name'],
+        filters: [],
+        timeDimensions: []
+      })
     })
 
     it('should show unsupported chart type message for unknown types', () => {
