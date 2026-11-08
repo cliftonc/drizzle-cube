@@ -297,9 +297,16 @@ function getCorsHeaders(request: NextRequest, corsOptions: NextCorsOptions): Rec
     headers['Access-Control-Allow-Methods'] = corsOptions.methods.join(', ')
   }
 
-  // Handle headers
+  // Handle headers. With no configured list, allow what the preflight asks
+  // for, as the cors / @fastify/cors / hono/cors middlewares do.
   if (corsOptions.allowedHeaders) {
     headers['Access-Control-Allow-Headers'] = corsOptions.allowedHeaders.join(', ')
+  } else {
+    const requested = request.headers.get('access-control-request-headers')
+    if (requested) {
+      headers['Access-Control-Allow-Headers'] = requested
+      headers['Vary'] = 'Origin, Access-Control-Request-Headers'
+    }
   }
 
   // Handle credentials

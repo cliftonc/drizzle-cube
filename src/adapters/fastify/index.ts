@@ -198,10 +198,10 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
 
   // Register CORS plugin if configured
   if (corsConfig) {
-    const clientAwareCorsConfig: FastifyCorsOptions = {
-      ...corsConfig,
-      allowedHeaders: ensureClientRequestHeaders(corsConfig.allowedHeaders as string[] | string | undefined)
-    }
+    // Only set allowedHeaders when one is configured: @fastify/cors allows the
+    // headers the preflight asks for only while it keeps its default (null).
+    const allowedHeaders = ensureClientRequestHeaders(corsConfig.allowedHeaders)
+    const clientAwareCorsConfig: FastifyCorsOptions = allowedHeaders ? { ...corsConfig, allowedHeaders } : corsConfig
     fastify.register(import('@fastify/cors'), clientAwareCorsConfig)
   }
 

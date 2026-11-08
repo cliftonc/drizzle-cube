@@ -23,6 +23,7 @@ installs the tarball plus its dependencies, and runs `npm run check`.
 | Fixture | Installs | Checks |
 |---|---|---|
 | `server-only` | `drizzle-orm` | no client/React-Router/DuckDB/d3 packages installed; `server` + `mcp` run and bundle without the MCP App HTML |
+| `server-express` | `drizzle-orm`, `express` (no `cors`) | the Express adapter loads (ESM + CJS) and serves without the optional `cors` peer; with the `cors` option it fails with the install hint; its `.d.ts` doesn't import `cors` |
 | `vite-minimal` | `react react-dom recharts` + Vite 8 | `tsc` (`skipLibCheck: false`) and `vite build` with no optional peers |
 | `vite-react18` | as above, React 18 | same |
 | `webpack-minimal` | `react react-dom recharts` + webpack 5 | build has 0 errors with no optional peers |

@@ -29,7 +29,9 @@ describe('ensureClientRequestHeaders', () => {
     ])
   })
 
-  it('handles empty input', () => {
-    expect(ensureClientRequestHeaders()).toEqual(['X-DC-Locale', 'X-Cache-Max-Age', 'X-Cache-Control'])
+  it('leaves an unconfigured list unset, so the CORS library allows the requested headers', () => {
+    expect(ensureClientRequestHeaders()).toBeUndefined()
+    expect(ensureClientRequestHeaders([])).toBeUndefined()
+    expect(ensureClientRequestHeaders('  ')).toBeUndefined()
   })
 })
