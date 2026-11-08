@@ -581,6 +581,13 @@ export interface DownstreamJoinKeyInfo {
   targetCubeName: string
   /** Join keys from CTE cube to downstream cube */
   joinKeys: JoinKeyInfo[]
+  /**
+   * True when the CTE cube reaches the downstream cube through its own
+   * belongsToMany junction. The join keys then point at that junction table,
+   * not at the downstream cube, so they cannot replace a join to the
+   * downstream cube.
+   */
+  throughJunction?: boolean
 }
 
 /**
