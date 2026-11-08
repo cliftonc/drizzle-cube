@@ -270,7 +270,9 @@
   },
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.30.0",
+    "@duckdb/node-api": ">=1.4.4-r.1 <1.6.0",
     "@google/generative-ai": ">=0.21.0",
+    "@leonardovida-md/drizzle-neo-duckdb": "^1.5.2",
     "@neondatabase/serverless": "^1.0.1",
     "@nivo/heatmap": "^0.99.0",
     "@xyflow/react": "^12.0.0",
@@ -367,14 +369,11 @@
       "optional": true
     }
   },
-  "optionalDependencies": {
-    "@duckdb/node-api": ">=1.4.4-r.1 <1.6.0",
-    "@leonardovida-md/drizzle-neo-duckdb": "^1.5.2"
-  },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.132.0",
     "@arethetypeswrong/cli": "^0.18.3",
     "@crowdin/cli": "^5.0.0",
+    "@duckdb/node-api": ">=1.4.4-r.1 <1.6.0",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^10.0.0",
     "@fastify/cors": "^11.1.0",
@@ -384,6 +383,7 @@
     "@iconify-icons/heroicons-solid": "^2.0.0",
     "@iconify-icons/tabler": "^2.0.0",
     "@iconify/react": "^6.0.0",
+    "@leonardovida-md/drizzle-neo-duckdb": "^1.5.2",
     "@modelcontextprotocol/client": "^2.2.0",
     "@modelcontextprotocol/core": "^2.2.0",
     "@modelcontextprotocol/ext-apps": "^2.0.3",
@@ -430,9 +430,13 @@
     "fallow": "3.33.0",
     "fastify": "^5.6.2",
     "globals": "^17.0.0",
+    "highlight.js": "^11.9.0",
     "hono": "^4.0.0",
     "html2canvas": "^1.4.1",
     "jsdom": "^30.0.0",
+    "knap": "^0.6.0",
+    "lz-string": "^1.5.0",
+    "markdown-to-jsx": "^9.7.6",
     "modern-screenshot": "^4.6.7",
     "msw": "^3.0.0",
     "mysql2": "^3.14.3",
@@ -445,8 +449,10 @@
     "react-dom": "^19.0.0",
     "react-grid-layout": "^2.1.1",
     "react-hook-form": "^7.68.0",
+    "react-intersection-observer": "^11.0.0",
     "react-is": "^19.3.0",
     "react-resizable": "^4.0.0",
+    "react-router-dom": "^7.10.1",
     "recharts": "^3.5.1",
     "rollup-plugin-visualizer": "^7.0.0",
     "snowflake-sdk": "^3.0.0",
@@ -468,14 +474,7 @@
     }
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.28.0",
     "@tanstack/react-query": "^5.90.12",
-    "highlight.js": "^11.9.0",
-    "knap": "^0.6.0",
-    "lz-string": "^1.5.0",
-    "markdown-to-jsx": "^9.7.6",
-    "react-intersection-observer": "^11.0.0",
-    "react-router-dom": "^7.10.1",
     "zustand": "^5.0.9"
   }
 }
