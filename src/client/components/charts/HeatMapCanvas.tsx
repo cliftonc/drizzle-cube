@@ -1,4 +1,5 @@
-import { ResponsiveHeatMap } from '@nivo/heatmap'
+import { useEffect, useState } from 'react'
+import { MissingDependencyFallback } from './MissingDependencyFallback.js'
 import {
   getContrastingTextColor,
   makeAxisFormatter,
@@ -6,6 +7,46 @@ import {
   resolveHeatMapColors,
   type HeatMapDisplayOptions
 } from './HeatMapChart.helpers.js'
+
+type NivoHeatmapModule = typeof import('@nivo/heatmap')
+
+let nivoHeatmapPromise: Promise<NivoHeatmapModule | null> | null = null
+
+/**
+ * Load @nivo/heatmap, an optional peer, once. There is no static import of it,
+ * so a consumer without it can still build: the `import()` sits lexically
+ * inside `try`, which webpack treats as optional (a warning, not a build error),
+ * and Vite swaps in a stub that throws here. Resolves `null` when it is missing.
+ */
+function loadNivoHeatmap(): Promise<NivoHeatmapModule | null> {
+  if (!nivoHeatmapPromise) {
+    nivoHeatmapPromise = (async () => {
+      try {
+        return await import('@nivo/heatmap')
+      } catch (error) {
+        console.warn(
+          '[drizzle-cube] Failed to load @nivo/heatmap:',
+          error instanceof Error ? error.message : error
+        )
+        return null
+      }
+    })()
+  }
+  return nivoHeatmapPromise
+}
+
+/** `undefined` while loading, `null` when @nivo/heatmap is not installed. */
+function useNivoHeatmap(): NivoHeatmapModule | null | undefined {
+  const [nivo, setNivo] = useState<NivoHeatmapModule | null | undefined>(undefined)
+  useEffect(() => {
+    let cancelled = false
+    void loadNivoHeatmap().then(mod => {
+      if (!cancelled) setNivo(mod)
+    })
+    return () => { cancelled = true }
+  }, [])
+  return nivo
+}
 
 interface HeatMapDatum {
   x: string
@@ -61,6 +102,20 @@ export function HeatMapCanvas({
   valueField,
 }: HeatMapCanvasProps) {
   const { showLabels, cellShape, showLegend, xAxisFormat, yAxisFormat, valueFormat } = options
+  const nivo = useNivoHeatmap()
+
+  if (nivo === null) {
+    return (
+      <MissingDependencyFallback
+        chartType="heatmap"
+        packageName="@nivo/heatmap"
+        installCommand="npm install @nivo/heatmap"
+        height="100%"
+      />
+    )
+  }
+  if (!nivo) return null
+  const { ResponsiveHeatMap } = nivo
 
   return (
     <ResponsiveHeatMap

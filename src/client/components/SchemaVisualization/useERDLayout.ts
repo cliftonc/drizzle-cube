@@ -79,14 +79,19 @@ let elkLoadPromise: Promise<ELKInstance | null> | null = null
 
 function loadElk(): Promise<ELKInstance | null> {
   if (elkLoadPromise) return elkLoadPromise
-  // elkjs is an optional peer dependency - if not installed, the catch() handles it.
-  elkLoadPromise = import('elkjs/lib/elk.bundled.js')
-    .then((mod) => {
+  // elkjs is an optional peer dependency. The import() sits lexically inside
+  // `try`, so webpack treats a missing elkjs as optional (a warning, not a
+  // consumer build error), and the catch resolves null.
+  elkLoadPromise = (async () => {
+    try {
+      const mod = await import('elkjs/lib/elk.bundled.js')
       const ELK = (mod as unknown as { default?: new () => ELKInstance }).default || mod
       elkInstance = new (ELK as unknown as new () => ELKInstance)()
       return elkInstance
-    })
-    .catch(() => null)
+    } catch {
+      return null
+    }
+  })()
   return elkLoadPromise
 }
 

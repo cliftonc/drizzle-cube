@@ -119,6 +119,9 @@ export default defineConfig({
         '@xyflow/react',
         'elkjs',
         'elkjs/lib/elk.bundled.js',
+        // Optional peer, loaded with import() only when features.xlsExport is
+        // on. Bundling it put a ~900 kB chunk in every consumer's build (#1422).
+        'exceljs',
       ],
       output: {
         entryFileNames: '[name].js',
