@@ -52,11 +52,10 @@ import {
   MCP_APP_RESOURCE_URI,
   MCP_APP_MIME_TYPE
 } from './mcp-transport.js'
-// Deliberately static: `getCubeTools().resources` is a synchronous array, so the
-// MCP App HTML must be in hand at construction. This entry (`drizzle-cube/mcp`)
-// is only imported by servers that want MCP, so the blob is expected here —
-// unlike the framework adapters, which load it lazily via `getMcpAppHtml`.
-import { mcpAppHtml } from './mcp-app-html.js'
+// No import of the MCP App HTML here, static or dynamic. `getCubeTools().resources`
+// is a synchronous array, so a host that wants the app passes the HTML in
+// (`app: { html }`, imported from `drizzle-cube/mcp-app-html`). A host that does
+// not want it never bundles the ~2 MB blob. See #1423.
 
 // Re-export types consumers may need
 export type { MCPPrompt, MCPResource, DiscoverRequest, ValidateRequest, LoadRequest }
@@ -123,11 +122,48 @@ export interface GetCubeToolsOptions {
   resources?: MCPResource[]
 
   /**
-   * Enable MCP App visualization for the load tool.
-   * Pass `true` to enable with defaults, or a config object to set locale options.
-   * @example app: { defaultLocale: 'nl-NL', detectBrowserLocale: false }
+   * Enable the MCP App: the `chart` tool and its interactive visualization
+   * resource. Off by default.
+   *
+   * Pass the MCP App HTML yourself, from `drizzle-cube/mcp-app-html`, so that a
+   * host without the app does not bundle it. `app: true` is no longer accepted.
+   *
+   * @example
+   * import { mcpAppHtml } from 'drizzle-cube/mcp-app-html'
+   * getCubeTools({ semanticLayer, getSecurityContext, app: { html: mcpAppHtml } })
+   * @example app: { html: mcpAppHtml, defaultLocale: 'nl-NL', detectBrowserLocale: false }
    */
-  app?: boolean | McpAppConfig
+  app?: false | GetCubeToolsAppOptions
+}
+
+/**
+ * MCP App options for `getCubeTools`: the app's HTML plus its locale options.
+ */
+export interface GetCubeToolsAppOptions extends McpAppConfig {
+  /**
+   * The MCP App HTML document.
+   * Import it: `import { mcpAppHtml } from 'drizzle-cube/mcp-app-html'`.
+   */
+  html: string
+}
+
+const APP_HTML_REQUIRED =
+  "getCubeTools: `app` needs the MCP App HTML. Since drizzle-cube 0.13 pass it in: " +
+  "`import { mcpAppHtml } from 'drizzle-cube/mcp-app-html'`, then " +
+  "`getCubeTools({ ..., app: { html: mcpAppHtml } })`."
+
+/**
+ * Validate the `app` option. The types already reject `app: true`; this also
+ * catches JavaScript callers and stale call sites upgrading from 0.12.
+ */
+function resolveAppOption(
+  app: GetCubeToolsOptions['app'] | boolean | null
+): GetCubeToolsAppOptions | undefined {
+  if (app === undefined || app === null || app === false) return undefined
+  if (app === true || typeof app !== 'object' || typeof app.html !== 'string') {
+    throw new TypeError(APP_HTML_REQUIRED)
+  }
+  return app
 }
 
 /**
@@ -236,12 +272,12 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
     app = false
   } = options
 
-  const appEnabled = !!app
-  const appConfig: McpAppConfig | undefined = typeof app === 'object' ? app : undefined
+  const appOptions = resolveAppOption(app)
+  const appEnabled = appOptions !== undefined
 
   // Build resources: custom or defaults + optional app resource
   const baseResources = customResources ?? getDefaultResources()
-  const resources = appEnabled ? [...baseResources, ...getMcpAppResources(appConfig)] : baseResources
+  const resources = appEnabled ? [...baseResources, ...getMcpAppResources(appOptions)] : baseResources
 
   // Get tool schemas from the single source of truth in mcp-transport
   const allTools = buildToolList({ appEnabled })
@@ -318,8 +354,8 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
   }
 }
 
-function getMcpAppResources(config?: McpAppConfig): MCPResource[] {
-  const html = injectMcpAppConfig(mcpAppHtml, config)
+function getMcpAppResources({ html: appHtml, ...config }: GetCubeToolsAppOptions): MCPResource[] {
+  const html = injectMcpAppConfig(appHtml, config)
   if (!html) return []
   return [{
     uri: MCP_APP_RESOURCE_URI,
