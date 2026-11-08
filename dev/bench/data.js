@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794112327761,
+  "lastUpdate": 1794112828745,
   "repoUrl": "https://github.com/cliftonc/drizzle-cube",
   "entries": {
     "drizzle-cube": [
@@ -144056,6 +144056,324 @@ window.BENCHMARK_DATA = {
             "range": "± 0.1ms p95",
             "unit": "ms",
             "extra": "Cache-enabled executor, warm cache · p95 0.7ms · 700 rows"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "45509582+andrew-hu368@users.noreply.github.com",
+            "name": "Andrew Hu",
+            "username": "andrew-hu368"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc3ed6fbda4ee4f5f591827fbb6939937580ba65",
+          "message": "feat(client): interval refresh, freshness and subscribe via max-age (#271 phase 0b) (#1412)\n\n* feat(client): send x-cache-max-age from CubeClient and batch by max-age (#271)\n\nCubeClient.load and batchLoad accept { maxAgeSeconds } and send\nx-cache-max-age; bustCache is max-age 0 and also keeps sending\nx-cache-control: no-cache for servers that predate max-age.\nBatchCoordinator keys its pending queue by max-age, so different\nmax-ages flush as separate /batch calls and a bust is the max-age 0\nqueue. ResultSet gains lastRefreshTime().\n\n* feat(client): export MaxAgeOptions and document client max-age (#271)\n\n* test(client): assert max-age headers case-insensitively (#271)\n\n* feat(client): refetch query hooks with a max-age (#271)\n\nEvery query hook's refetch takes MaxAgeOptions. A refetch records its\noptions in the hook's own pending load options (createPendingLoadOptions in\nmaxAge.ts) and refetches through the hook's own observer, so the hook's own\nqueryFn runs and sends the max-age even when another observer of the same\nquery rendered last. The options stay pending through retries and clear when\na fetch with them succeeds.\n\nA skipped (off-screen) hook only records the request; a pending request makes\nits cached result stale, so it fetches with the max-age once enabled.\n\nA bust is a max-age 0 refetch and no longer drops the client cache entry, so\nold rows stay visible while it fetches.\n\nThe hooks also report computed-at: the cache time on a hit, otherwise the\nserver response time.\n\n* feat(client): spin the refresh icon while a portlet fetches (#271)\n\nA refresh, bust included, keeps the old rows on screen, so the card header\nshows the fetch instead: AnalyticsPortlet reports { computedAt, isFetching }\nthrough onFreshnessChange, and while it fetches the refresh icon spins and\nthe button is aria-busy. The refresh button titles move to translation keys.\n\n* refactor(client): simplify mergeLoadOptions (#271)\n\nReturn the pending options early when the request asks for nothing\nstricter, and drop stricterMaxAge, which had no other caller.\n\n* refactor(client): rename pending load options to refetch max-age tracker (#271)\n\n* fix(client): keep onFreshnessChange out of the reporting effect's deps (#271)\n\nAn inline callback that sets state re-ran the effect on every render and\nlooped. Hold the latest callback in a ref, as usePortletDebugData does.\n\n* test(client): drop overlapping refresh tests and wait on fake timers (#271)\n\nBust headers, tracker retry and idle-button cases were covered elsewhere.\nThe off-screen checks now advance fake timers and assert the hook is not\nfetching, since MSW reports a request a tick after the hook starts it.\n\n* feat(client): dashboard interval refresh timer behind features.refresh (#271)\n\n- Refresh config for portlets and dashboards behind features.refresh\n- Dashboard interval refresh timer and dashboard-wide pause\n\n* fix(client): route interval refresh to mobile layout charts (#271)\n\nMobileStackedLayout kept its chart refs private, so the dashboard's refresh\naction (and so every interval tick) found no chart in mobile display mode.\nThe layout now registers its charts with the dashboard and leaves the\nrefresh button's refresh to it.\n\n* fix(client): join an in-flight fetch unless the refetch tightens max-age (#271)\n\nrefetch() defaulted to cancelRefetch: true, so an interval shorter than the\nquery cancelled the fetch on every tick and the chart never updated, while\nthe uncancelled server requests piled up. recordMaxAge now reports whether\nthe pending max-age became stricter; only then does the refetch cancel the\nfetch in flight (a bust still does).\n\n* test(client): drop redundant refresh timer and mobile refresh tests (#271)\n\n* feat(client): off-screen portlet refresh and portlet freshness indicator (#271)\n\n- Hold off-screen portlet queries so refreshes apply on first view or scroll back\n- Portlet freshness indicator from computed-at\n\n* feat(client): portlet refresh pause and refresh settings UI (#271)\n\n- Per-portlet refresh pause in the portlet header\n- Refresh settings in the portlet edit modal\n- Dashboard default refresh interval in the edit bar\n\n* fix(client): keep a portlet's hidden-tab override when its interval is inherited (#271)\n\nPortletRefreshConfig.intervalSeconds is now optional, so a portlet can\noverride pauseWhenHidden while following the dashboard interval. The\nsettings form and dashboard import accept a refresh with no interval.\n\n* feat(client): subscribe on useCubeQuery and CubeClient as a 10 s max-age refetch (#271)\n\n* fix(client): refresh ticks ask for rows newer than the ones shown (#271)\n\nThe cache stamps a result when it stores it, after the query ran. With\nmax-age equal to the interval, the next tick found that entry younger than\nthe interval and got the same rows back, so new data arrived only every\nsecond tick for any query that takes measurable time.\n\nTicks now send `newerThanShown` with the interval max-age. Each query hook\nlowers the max-age to whole seconds strictly under the age of the rows it\nshows: the server's lastRefreshTime minus cachedAt, plus the time since the\nrows arrived, so no server and browser clocks are compared. The server\nrejects the entry the shown rows came from and still serves a newer result\nanother viewer stored. CubeClient.subscribe applies the same cap from the\nrows it last delivered.\n\n* fix(client): a stricter max-age cancels a retention execute in flight (#271)\n\nexecute() joined a fetch already in flight through fetchQuery, so a bust\nduring a fetch got the non-busted result and the stricter max-age stayed\npending with nothing left to fetch it. When recordMaxAge reports a stricter\nmax-age, execute now silently cancels the fetch in flight before fetchQuery,\nas refetch({ cancelRefetch }) does. The cancel is not awaited, so callers\nawaiting the cancelled fetch get the new result.\n\n* fix(client): portlets without interval refresh stop observing once seen (#271)\n\n* fix(client): mobile layout passes interval refresh to portlets and keeps their refs stable (#271)\n\n* fix(client): a shown tab catches up skipped refresh ticks, and removed portlets drop their pause (#271)\n\n* refactor(client): hoist pause/play icon lookups to module scope (#271)\n\n---------\n\nCo-authored-by: Clifton Cunningham <clifton.cunningham@gmail.com>",
+          "timestamp": "2026-11-08T04:37:19Z",
+          "tree_id": "93826446b322a45c6ae94e681e0556ee1544d7e6",
+          "url": "https://github.com/cliftonc/drizzle-cube/commit/dc3ed6fbda4ee4f5f591827fbb6939937580ba65"
+        },
+        "date": 1794112824118,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "baseline.count-time-entries",
+            "value": 52.12,
+            "range": "± 1.4ms p95",
+            "unit": "ms",
+            "extra": "Count over ~730k time entries · p95 53.5ms · 1 rows"
+          },
+          {
+            "name": "baseline.sum-avg-productivity",
+            "value": 19.32,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Sum + avg over ~335k productivity rows · p95 19.6ms · 1 rows"
+          },
+          {
+            "name": "baseline.count-distinct",
+            "value": 148.03,
+            "range": "± 6.0ms p95",
+            "unit": "ms",
+            "extra": "Count distinct employees over time entries · p95 154.0ms · 1 rows"
+          },
+          {
+            "name": "baseline.min-max",
+            "value": 28.97,
+            "range": "± 0.8ms p95",
+            "unit": "ms",
+            "extra": "Min + max lines of code · p95 29.7ms · 1 rows"
+          },
+          {
+            "name": "baseline.calculated-measure",
+            "value": 30.36,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "Calculated measure (productivity score) · p95 31.5ms · 1 rows"
+          },
+          {
+            "name": "multi.six-measures",
+            "value": 76.59,
+            "range": "± 1.9ms p95",
+            "unit": "ms",
+            "extra": "Six measures on time entries · p95 78.5ms · 1 rows"
+          },
+          {
+            "name": "multi.mixed-types",
+            "value": 56.19,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Mixed aggregation types on productivity · p95 56.8ms · 1 rows"
+          },
+          {
+            "name": "groupby.low-cardinality",
+            "value": 95.2,
+            "range": "± 3.6ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type (6 groups) · p95 98.8ms · 6 rows"
+          },
+          {
+            "name": "groupby.mid-cardinality",
+            "value": 83.39,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "Group by department (~25 groups) · p95 84.5ms · 25 rows"
+          },
+          {
+            "name": "groupby.high-cardinality",
+            "value": 39.57,
+            "range": "± 0.8ms p95",
+            "unit": "ms",
+            "extra": "Group by employee (~700 groups) · p95 40.3ms · 700 rows"
+          },
+          {
+            "name": "groupby.two-dimensions",
+            "value": 108.44,
+            "range": "± 2.1ms p95",
+            "unit": "ms",
+            "extra": "Group by allocation type + department · p95 110.5ms · 150 rows"
+          },
+          {
+            "name": "filter.equals",
+            "value": 60.62,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Equals filter (development entries) · p95 60.6ms · 1 rows"
+          },
+          {
+            "name": "filter.numeric-range",
+            "value": 28.68,
+            "range": "± 21.3ms p95",
+            "unit": "ms",
+            "extra": "Numeric range filter (linesOfCode > 100) · p95 49.9ms · 1 rows"
+          },
+          {
+            "name": "filter.string-contains",
+            "value": 1.19,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "String contains filter on employee name · p95 1.3ms · 1 rows"
+          },
+          {
+            "name": "filter.nested-and-or",
+            "value": 69.28,
+            "range": "± 0.6ms p95",
+            "unit": "ms",
+            "extra": "Nested AND/OR filter on time entries · p95 69.9ms · 1 rows"
+          },
+          {
+            "name": "filter.in-list-100",
+            "value": 61.59,
+            "range": "± 1.7ms p95",
+            "unit": "ms",
+            "extra": "IN-list filter with 100 employee ids · p95 63.3ms · 1 rows"
+          },
+          {
+            "name": "time.day-granularity-year",
+            "value": 119.34,
+            "range": "± 0.8ms p95",
+            "unit": "ms",
+            "extra": "Daily time series over 2024 (~366 buckets) · p95 120.2ms · 262 rows"
+          },
+          {
+            "name": "time.month-granularity",
+            "value": 119.65,
+            "range": "± 1.4ms p95",
+            "unit": "ms",
+            "extra": "Monthly time series over 2024 · p95 121.1ms · 12 rows"
+          },
+          {
+            "name": "time.week-with-dimension",
+            "value": 43.9,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Weekly series split by allocation type (H1 2024) · p95 44.4ms · 104 rows"
+          },
+          {
+            "name": "time.gap-fill",
+            "value": 59.33,
+            "range": "± 2.1ms p95",
+            "unit": "ms",
+            "extra": "Daily series with fillMissingDates over 16 months · p95 61.4ms · 488 rows"
+          },
+          {
+            "name": "time.compare-date-range",
+            "value": 126.1,
+            "range": "± 0.9ms p95",
+            "unit": "ms",
+            "extra": "Period comparison Q1 vs Q2 2024 by month · p95 127.0ms · 6 rows"
+          },
+          {
+            "name": "join.belongs-to",
+            "value": 2.3,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Employees joined to departments · p95 2.6ms · 25 rows"
+          },
+          {
+            "name": "join.has-many-fanout",
+            "value": 292.62,
+            "range": "± 13.3ms p95",
+            "unit": "ms",
+            "extra": "Employee count with time-entry fan-out (~730k child rows) · p95 306.0ms · 25 rows"
+          },
+          {
+            "name": "join.many-to-many",
+            "value": 3,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Employees by team via junction table · p95 3.1ms · 40 rows"
+          },
+          {
+            "name": "join.three-cubes",
+            "value": 266.54,
+            "range": "± 13.3ms p95",
+            "unit": "ms",
+            "extra": "Departments + employees + time entries · p95 279.8ms · 25 rows"
+          },
+          {
+            "name": "rows.ordered-700",
+            "value": 71.36,
+            "range": "± 12.7ms p95",
+            "unit": "ms",
+            "extra": "~700 ordered group rows · p95 84.0ms · 700 rows"
+          },
+          {
+            "name": "rows.deep-offset",
+            "value": 18.72,
+            "range": "± 1.1ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped page at offset 100k (limit 1000) · p95 19.8ms · 1,000 rows"
+          },
+          {
+            "name": "rows.ungrouped-10k",
+            "value": 40.68,
+            "range": "± 12.3ms p95",
+            "unit": "ms",
+            "extra": "Ungrouped raw rows (limit 10,000) · p95 53.0ms · 10,000 rows"
+          },
+          {
+            "name": "analysis.funnel",
+            "value": 126.08,
+            "range": "± 1.6ms p95",
+            "unit": "ms",
+            "extra": "Three-step funnel over ~335k events · p95 127.6ms · 3 rows"
+          },
+          {
+            "name": "analysis.flow",
+            "value": 43.11,
+            "range": "± 8.2ms p95",
+            "unit": "ms",
+            "extra": "Flow with 2 steps before/after · p95 51.3ms · 1 rows"
+          },
+          {
+            "name": "analysis.retention",
+            "value": 411.9,
+            "range": "± 0.4ms p95",
+            "unit": "ms",
+            "extra": "Monthly retention over 2024 (6 periods) · p95 412.3ms · 7 rows"
+          },
+          {
+            "name": "compile.simple",
+            "value": 0.11,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Compile simple aggregation query · p95 0.1ms · 0 rows"
+          },
+          {
+            "name": "compile.complex",
+            "value": 0.64,
+            "range": "± 0.1ms p95",
+            "unit": "ms",
+            "extra": "Compile multi-cube query with filters + time dimension · p95 0.8ms · 0 rows"
+          },
+          {
+            "name": "eav.project-page",
+            "value": 1.09,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Project 2 EAV attributes over a 25-row page · p95 1.1ms · 25 rows"
+          },
+          {
+            "name": "eav.project-page-total",
+            "value": 18.43,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Same page, plus the total row count · p95 19.0ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-string",
+            "value": 1.09,
+            "range": "± 0.2ms p95",
+            "unit": "ms",
+            "extra": "Filter on a common string value (LIMIT satisfied early) · p95 1.3ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-numeric",
+            "value": 1.17,
+            "range": "± 0.0ms p95",
+            "unit": "ms",
+            "extra": "Filter on a numeric attribute, incl. the tolerant cast · p95 1.2ms · 25 rows"
+          },
+          {
+            "name": "eav.filter-selective",
+            "value": 513.11,
+            "range": "± 10.1ms p95",
+            "unit": "ms",
+            "extra": "Filter matching almost nothing — the full-scan case · p95 523.2ms · 0 rows"
+          },
+          {
+            "name": "eav.sort",
+            "value": 486.03,
+            "range": "± 131.6ms p95",
+            "unit": "ms",
+            "extra": "Order by a numeric EAV attribute (always a full scan) · p95 617.6ms · 25 rows"
+          },
+          {
+            "name": "eav.baseline-sort",
+            "value": 39.27,
+            "range": "± 6.8ms p95",
+            "unit": "ms",
+            "extra": "Same shape ordering by a real column, for comparison · p95 46.0ms · 25 rows"
+          },
+          {
+            "name": "cache.miss",
+            "value": 40.65,
+            "range": "± 0.5ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, cache bypassed · p95 41.2ms · 700 rows"
+          },
+          {
+            "name": "cache.hit",
+            "value": 0.55,
+            "range": "± 0.3ms p95",
+            "unit": "ms",
+            "extra": "Cache-enabled executor, warm cache · p95 0.8ms · 700 rows"
           }
         ]
       }
