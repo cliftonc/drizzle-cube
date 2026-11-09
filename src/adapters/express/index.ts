@@ -10,9 +10,7 @@
  * GET/DELETE `/mcp` lifecycle.
  */
 
-import express, { Router, Request, Response, NextFunction, Express } from 'express'
-import cors from 'cors'
-import type { CorsOptions } from 'cors'
+import express, { Router, Request, Response, NextFunction, Express, RequestHandler } from 'express'
 import type {
   SemanticQuery,
   SecurityContext,
@@ -167,6 +165,55 @@ export interface ExpressAdapterOptions {
   rlsSetup?: RLSSetupFn
 }
 
+type CorsStaticOrigin = boolean | string | RegExp | Array<boolean | string | RegExp>
+type CorsCustomOrigin = (
+  requestOrigin: string | undefined,
+  callback: (err: Error | null, origin?: CorsStaticOrigin) => void
+) => void
+
+/**
+ * Options for the `cors` package, declared here so the adapter's public types
+ * don't import `cors` (an optional peer): without it (or @types/cors) they
+ * failed to resolve. Same shape as `cors`'s `CorsOptions`.
+ */
+export interface CorsOptions {
+  origin?: CorsStaticOrigin | CorsCustomOrigin
+  methods?: string | string[]
+  allowedHeaders?: string | string[]
+  exposedHeaders?: string | string[]
+  credentials?: boolean
+  maxAge?: number
+  preflightContinue?: boolean
+  optionsSuccessStatus?: number
+}
+
+type CorsMiddlewareFactory = (options: CorsOptions) => RequestHandler
+
+const CORS_MISSING =
+  "drizzle-cube: the Express adapter's `cors` option needs the `cors` package. Install it: npm install cors"
+
+/**
+ * `cors` is an optional peer, so it is loaded only when the `cors` option is
+ * set: a static import made the whole Express adapter fail to load without it.
+ * Loading starts when the router is created; requests wait for it. If `cors`
+ * is missing, startup logs the fix and requests fail with it.
+ */
+function lazyCorsMiddleware(options: CorsOptions): RequestHandler {
+  const middleware: Promise<RequestHandler> = (async () => {
+    try {
+      const { default: cors } = await import('cors')
+      const factory: CorsMiddlewareFactory = cors
+      return factory(options)
+    } catch (error) {
+      throw new Error(CORS_MISSING, { cause: error })
+    }
+  })()
+  middleware.catch((error: Error) => console.error(error.message))
+  return (req, res, next) => {
+    middleware.then((handler) => handler(req, res, next), next)
+  }
+}
+
 /**
  * Create Express router for Cube.js-compatible API
  */
@@ -196,11 +243,11 @@ export function createCubeRouter(
 
   // Configure CORS if provided
   if (corsConfig) {
-    const clientAwareCorsConfig: CorsOptions = {
-      ...corsConfig,
-      allowedHeaders: ensureClientRequestHeaders(corsConfig.allowedHeaders)
-    }
-    router.use(cors(clientAwareCorsConfig))
+    // Only set allowedHeaders when one is configured: unset, `cors` allows
+    // the headers the preflight asks for.
+    const allowedHeaders = ensureClientRequestHeaders(corsConfig.allowedHeaders)
+    const clientAwareCorsConfig: CorsOptions = allowedHeaders ? { ...corsConfig, allowedHeaders } : corsConfig
+    router.use(lazyCorsMiddleware(clientAwareCorsConfig))
   }
 
   // JSON body parser with size limit
@@ -488,4 +535,4 @@ export function createCubeApp(
 }
 
 // Re-export types for convenience
-export type { SecurityContext, DatabaseExecutor, SemanticQuery, DrizzleDatabase, CorsOptions }
+export type { SecurityContext, DatabaseExecutor, SemanticQuery, DrizzleDatabase }

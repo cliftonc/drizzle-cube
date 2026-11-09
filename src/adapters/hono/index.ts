@@ -202,10 +202,10 @@ export function createCubeRoutes(
 
   // Configure CORS if provided
   if (corsConfig) {
-    const clientAwareCorsConfig = {
-      ...corsConfig,
-      allowHeaders: ensureClientRequestHeaders(corsConfig.allowHeaders)
-    }
+    // Only set allowHeaders when one is configured: unset, hono/cors allows
+    // the headers the preflight asks for.
+    const allowHeaders = ensureClientRequestHeaders(corsConfig.allowHeaders)
+    const clientAwareCorsConfig = allowHeaders ? { ...corsConfig, allowHeaders } : corsConfig
     app.use('/*', cors(clientAwareCorsConfig as any))
   }
 

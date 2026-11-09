@@ -34,7 +34,22 @@ export function ensureAllowedHeaders(
   return headers
 }
 
-/** Add every client request header to a CORS allow list. */
-export function ensureClientRequestHeaders(allowHeaders?: string[] | string): string[] {
+/**
+ * Add every client request header to a configured CORS allow list.
+ *
+ * Returns `undefined` when no list is configured (unset or empty), so the CORS
+ * library keeps its default of allowing the headers the preflight asks for.
+ * Turning a missing list into just the client headers would block
+ * `Content-Type` and `Authorization`, and with them every cross-origin JSON
+ * POST.
+ */
+export function ensureClientRequestHeaders(allowHeaders?: string[] | string): string[] | undefined {
+  if (isEmptyHeaderList(allowHeaders)) return undefined
   return ensureAllowedHeaders(allowHeaders, CLIENT_REQUEST_HEADERS)
+}
+
+function isEmptyHeaderList(allowHeaders: string[] | string | undefined): boolean {
+  if (allowHeaders === undefined) return true
+  if (Array.isArray(allowHeaders)) return allowHeaders.length === 0
+  return allowHeaders.trim() === ''
 }
