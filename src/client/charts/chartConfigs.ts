@@ -1,4 +1,5 @@
-import type { ChartAxisConfig, ChartDisplayConfig } from '../types.js'
+import type { ChartAxisConfig, ChartDisplayConfig, ChartType } from '../types.js'
+import type { AxisBuilderContext } from '../shared/chartConfigBuilders.js'
 
 /**
  * Configuration for a single axis drop zone in the chart configuration UI
@@ -232,6 +233,30 @@ export interface ChartTypeConfig {
    * so a custom chart can opt in through the same flag.
    */
   recordGrain?: boolean
+
+  /**
+   * Builds this chart's config from the selected fields whenever the analysis
+   * builder needs a default config for it: when the user picks this chart
+   * type, when the builder switches to it, and when it fills an empty config.
+   * Omit it to use the built-in rule for the chart type, or the default rule
+   * (first breakdown on `xAxis`, every measure on `yAxis`) for a custom chart.
+   *
+   * When the user picks this chart type, the context also carries the chart
+   * they leave, so a chart that shares its drop zones with another chart can
+   * keep that chart's config.
+   */
+  buildChartConfig?: (context: ChartConfigBuildContext) => ChartAxisConfig
+}
+
+/**
+ * What a chart's `buildChartConfig` receives: the selected fields and, when
+ * the user picks the chart type, the chart type and config they leave.
+ */
+export interface ChartConfigBuildContext extends AxisBuilderContext {
+  /** The chart type the user leaves. Set only when the user picks the chart type. */
+  previousChartType?: ChartType
+  /** The chart config the user leaves. Set only when the user picks the chart type. */
+  previousChartConfig?: ChartAxisConfig
 }
 
 /**
