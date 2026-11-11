@@ -346,7 +346,11 @@ export function useAnalysisState(options: UseAnalysisStateOptions = {}) {
         const { chartConfig: smartConfig } = getSmartChartDefaults(
           combinedMetrics,
           combinedBreakdowns,
-          type
+          type,
+          [],
+          // The chart the user leaves, so the new chart's builder can keep
+          // a config that the two charts share.
+          { chartType, chartConfig }
         )
         setQueryChartConfig(smartConfig)
       }
@@ -355,6 +359,8 @@ export function useAnalysisState(options: UseAnalysisStateOptions = {}) {
       analysisType,
       combinedMetrics,
       combinedBreakdowns,
+      chartType,
+      chartConfig,
       setFunnelChartType,
       setChartTypeManual,
       setQueryChartConfig,

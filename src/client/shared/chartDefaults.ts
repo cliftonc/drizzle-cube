@@ -208,19 +208,31 @@ function recommendChartType(
 // ============================================================================
 
 /**
+ * The chart the user leaves when they pick another chart type.
+ */
+export interface PreviousChart {
+  chartType: ChartType
+  chartConfig: ChartAxisConfig
+}
+
+/**
  * Get smart default chart configuration based on chart type and selections
+ *
+ * @param previousChart - The chart the user leaves, when they pick another
+ *   chart type. A chart's `buildChartConfig` receives it.
  */
 export function getSmartChartDefaults(
   metrics: MetricItem[],
   breakdowns: BreakdownItem[],
   currentChartType: ChartType,
-  hiddenChartTypes: readonly ChartType[] = []
+  hiddenChartTypes: readonly ChartType[] = [],
+  previousChart?: PreviousChart
 ): SmartChartDefaults {
   // First, determine the best chart type
   const chartType = selectBestChartType(metrics, breakdowns, currentChartType, hiddenChartTypes)
 
   // Then, auto-configure the chart axes based on chart type
-  const chartConfig = buildChartConfig(chartType, metrics, breakdowns)
+  const chartConfig = buildChartConfig(chartType, metrics, breakdowns, previousChart)
 
   return { chartType, chartConfig }
 }
@@ -231,7 +243,8 @@ export function getSmartChartDefaults(
 function buildChartConfig(
   chartType: ChartType,
   metrics: MetricItem[],
-  breakdowns: BreakdownItem[]
+  breakdowns: BreakdownItem[],
+  previousChart?: PreviousChart
 ): ChartAxisConfig {
   const build = getAxisBuilder(chartType)
   return build({
@@ -240,6 +253,8 @@ function buildChartConfig(
     timeDimension: getFirstTimeDimension(breakdowns),
     dimension: getFirstDimension(breakdowns),
     dimensions: getDimensions(breakdowns),
+    previousChartType: previousChart?.chartType,
+    previousChartConfig: previousChart?.chartConfig,
   })
 }
 

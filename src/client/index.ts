@@ -343,6 +343,7 @@ export { isMultiQueryConfig, isServerFunnelQuery, isServerFlowQuery, isSankeyDat
 // Chart configuration types
 export type {
   ChartTypeConfig,
+  ChartConfigBuildContext,
   DisplayOptionConfig,
   AxisDropZoneConfig
 } from './charts/chartConfigs.js'

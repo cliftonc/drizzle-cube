@@ -16,7 +16,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useAnalysisBuilder } from '../../../src/client/hooks/useAnalysisBuilderHook'
 import { AnalysisBuilderStoreProvider } from '../../../src/client/stores/analysisBuilderStore'
 import { useCubeFeatures } from '../../../src/client/providers/CubeProvider'
-import type { CubeMeta, CubeQuery, SimpleFilter } from '../../../src/client/types'
+import { chartPluginRegistry } from '../../../src/client/charts/chartPlugin'
+import type { ChartConfigBuildContext } from '../../../src/client/charts/chartConfigs'
+import type { ChartAxisConfig, CubeMeta, CubeQuery, SimpleFilter } from '../../../src/client/types'
 
 // ============================================================================
 // Mock Setup
@@ -975,6 +977,103 @@ describe('useAnalysisBuilder', () => {
       })
 
       expect(typeof result.current.userManuallySelectedChart).toBe('boolean')
+    })
+  })
+
+  describe('Chart type change with custom charts', () => {
+    const tableCharts = new Set(['customTable', 'customPivotTable'])
+
+    // Two custom table charts read the same drop zones, so each keeps the
+    // other's config; any other chart starts with every field as a column.
+    const buildTableConfig = vi.fn(
+      ({ metrics, breakdowns, previousChartType, previousChartConfig }: ChartConfigBuildContext): ChartAxisConfig =>
+        previousChartType && previousChartConfig && tableCharts.has(previousChartType)
+          ? previousChartConfig
+          : { xAxis: [...breakdowns.map((b) => b.field), ...metrics.map((m) => m.field)] }
+    )
+
+    async function renderWithFields() {
+      for (const type of tableCharts) {
+        chartPluginRegistry.register({
+          type,
+          label: type,
+          config: { dropZones: [], buildChartConfig: buildTableConfig },
+          component: () => null,
+        })
+      }
+
+      const hook = renderHook(() => useAnalysisBuilder(), {
+        wrapper: createWrapper(),
+      })
+
+      act(() => {
+        hook.result.current.actions.addMetric('Employees.count')
+        hook.result.current.actions.addBreakdown('Employees.department', false)
+        hook.result.current.actions.addBreakdown('Employees.name', false)
+      })
+
+      // The auto-switch effect keeps the bar chart and fills its empty config.
+      await waitFor(() => {
+        expect(hook.result.current.chartConfig).toEqual({
+          xAxis: ['Employees.department'],
+          yAxis: ['Employees.count'],
+          series: ['Employees.name'],
+        })
+      })
+      buildTableConfig.mockClear()
+
+      return hook
+    }
+
+    afterEach(() => {
+      for (const type of chartPluginRegistry.getCustomTypes()) {
+        chartPluginRegistry.unregister(type)
+      }
+    })
+
+    it('passes the chart the user leaves to buildChartConfig', async () => {
+      const { result } = await renderWithFields()
+
+      act(() => {
+        result.current.actions.setChartType('customTable')
+      })
+
+      expect(buildTableConfig).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          previousChartType: 'bar',
+          previousChartConfig: {
+            xAxis: ['Employees.department'],
+            yAxis: ['Employees.count'],
+            series: ['Employees.name'],
+          },
+        })
+      )
+      expect(result.current.chartType).toBe('customTable')
+      expect(result.current.chartConfig).toEqual({
+        xAxis: ['Employees.department', 'Employees.name', 'Employees.count'],
+      })
+    })
+
+    it('keeps the config of a custom chart that shares its drop zones with the new chart', async () => {
+      const { result } = await renderWithFields()
+      const pivotConfig = {
+        xAxis: ['Employees.department'],
+        series: ['Employees.name'],
+        yAxis: ['Employees.count'],
+      }
+
+      act(() => {
+        result.current.actions.setChartType('customTable')
+      })
+      act(() => {
+        result.current.actions.setChartConfig(pivotConfig)
+      })
+      act(() => {
+        result.current.actions.setChartType('customPivotTable')
+      })
+
+      expect(result.current.chartType).toBe('customPivotTable')
+      expect(result.current.chartConfig).toEqual(pivotConfig)
     })
   })
 
