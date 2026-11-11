@@ -441,7 +441,7 @@
     "highlight.js": "^11.9.0",
     "hono": "^4.0.0",
     "html2canvas": "^1.4.1",
-    "jsdom": "^30.0.0",
+    "jsdom": "^31.0.0",
     "knap": "^0.6.0",
     "lz-string": "^1.5.0",
     "markdown-to-jsx": "^9.7.6",
