@@ -351,6 +351,9 @@ export type {
 export type { ChartDefinition } from './charts/chartPlugin.js'
 export { chartPluginRegistry } from './charts/chartPlugin.js'
 
+// Color palettes
+export { registerColorPalettes } from './utils/colorPalettes.js'
+
 // Utilities
 export { createDashboardLayout, formatChartData, highlightCodeBlocks } from './utils/index.js'
 export { migrateConfig, migrateLegacyPortlet } from './utils/configMigration.js'

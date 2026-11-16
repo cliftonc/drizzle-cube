@@ -4,9 +4,17 @@
  */
 
 import { render, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import AnalyticsDashboard from '../../src/client/components/AnalyticsDashboard'
 import type { DashboardConfig, DashboardFilter, PortletConfig, CubeMeta } from '../../src/client/types'
+import { registerColorPalettes, type ColorPalette } from '../../src/client/utils/colorPalettes'
+
+const acmePalette: ColorPalette = {
+  name: 'acme',
+  label: 'Acme',
+  colors: ['#1677ff', '#08979c', '#722ed1', '#5b8c00', '#1d39c4', '#d46b08', '#9e1068', '#fa541c'],
+  gradient: ['#69b1ff', '#4096ff', '#1677ff', '#0958d9', '#003eb3', '#002c8c']
+}
 
 // Mock CubeProvider context
 vi.mock('../../src/client/providers/CubeProvider', () => ({
@@ -31,15 +39,6 @@ vi.mock('../../src/client/components/DashboardGrid', () => ({
     capturedDashboardGridProps = props
     return <div data-testid="dashboard-grid" data-config={JSON.stringify(props.config)} />
   }
-}))
-
-// Mock colorPalettes
-vi.mock('../../src/client/utils/colorPalettes', () => ({
-  getColorPalette: vi.fn((name?: string) => ({
-    name: name || 'default',
-    colors: ['#8884d8', '#82ca9d'],
-    gradient: ['#8884d8', '#82ca9d']
-  }))
 }))
 
 // Helper to create test config
@@ -113,6 +112,29 @@ describe('AnalyticsDashboard', () => {
 
       expect(capturedDashboardGridProps.colorPalette).toBeDefined()
       expect(capturedDashboardGridProps.colorPalette.name).toBe('ocean')
+    })
+
+    describe('host palettes', () => {
+      afterEach(() => {
+        registerColorPalettes([])
+      })
+
+      it('should pass the host palette that the config names to the grid', () => {
+        registerColorPalettes([acmePalette])
+
+        render(<AnalyticsDashboard config={createTestConfig({ colorPalette: 'acme' })} />)
+
+        expect(capturedDashboardGridProps.colorPalette).toBe(acmePalette)
+      })
+
+      it('should pass a host palette named default to the grid when the config names no palette', () => {
+        const hostDefault: ColorPalette = { ...acmePalette, name: 'default' }
+        registerColorPalettes([hostDefault])
+
+        render(<AnalyticsDashboard config={createTestConfig()} />)
+
+        expect(capturedDashboardGridProps.colorPalette).toBe(hostDefault)
+      })
     })
 
     it('should pass loading component to DashboardGrid', () => {

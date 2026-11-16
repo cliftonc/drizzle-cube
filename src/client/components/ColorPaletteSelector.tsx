@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { COLOR_PALETTES, getColorPalette } from '../utils/colorPalettes.js'
+import { getColorPalette, getColorPalettes } from '../utils/colorPalettes.js'
 import { getIcon } from '../icons/index.js'
 
 const ChevronDownIcon = getIcon('chevronDown')
@@ -89,7 +89,7 @@ export default function ColorPaletteSelector({
       {isOpen && (
         <div className="dc:absolute dc:top-full dc:left-0 dc:mt-1 dc:w-72 dc:md:w-80 dc:lg:w-96 bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg dc:z-50 dc:max-h-80 dc:overflow-y-auto">
           <div className="dc:py-1">
-            {COLOR_PALETTES.slice().sort((a, b) => a.label.localeCompare(b.label)).map((palette) => (
+            {getColorPalettes().slice().sort((a, b) => a.label.localeCompare(b.label)).map((palette) => (
               <button
                 key={palette.name}
                 type="button"

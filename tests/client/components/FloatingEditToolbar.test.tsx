@@ -1,8 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import FloatingEditToolbar from '../../../src/client/components/FloatingEditToolbar'
 import type { DashboardLayoutMode } from '../../../src/client/types'
+import { COLOR_PALETTES, registerColorPalettes, type ColorPalette } from '../../../src/client/utils/colorPalettes'
+
+const acmePalette: ColorPalette = {
+  name: 'acme',
+  label: 'Acme',
+  colors: ['#1677ff', '#08979c', '#722ed1', '#5b8c00', '#1d39c4', '#d46b08', '#9e1068', '#fa541c'],
+  gradient: ['#69b1ff', '#4096ff', '#1677ff', '#0958d9', '#003eb3', '#002c8c']
+}
 
 describe('FloatingEditToolbar', () => {
   const createDefaultProps = () => ({
@@ -294,6 +302,49 @@ describe('FloatingEditToolbar', () => {
         await user.click(paletteButtons[0])
         expect(props.onPaletteChange).toHaveBeenCalled()
       }
+    })
+
+    describe('host palettes', () => {
+      afterEach(() => {
+        registerColorPalettes([])
+      })
+
+      it('should list the built-in palettes and the host palettes sorted by label', async () => {
+        const user = userEvent.setup()
+        const props = createDefaultProps()
+        props.isEditMode = true
+        registerColorPalettes([acmePalette])
+
+        render(<FloatingEditToolbar {...props} />)
+
+        await user.click(screen.getByTitle('Color Palette'))
+
+        await waitFor(() => {
+          expect(screen.getByText('Acme')).toBeInTheDocument()
+        })
+
+        const listedLabels = Array.from(
+          document.querySelectorAll('[class*="w-52"] button span')
+        ).map(span => span.textContent)
+
+        expect(listedLabels).toEqual(
+          [...COLOR_PALETTES, acmePalette].map(p => p.label).sort((a, b) => a.localeCompare(b))
+        )
+      })
+
+      it('should call onPaletteChange with the name of a host palette', async () => {
+        const user = userEvent.setup()
+        const props = createDefaultProps()
+        props.isEditMode = true
+        registerColorPalettes([acmePalette])
+
+        render(<FloatingEditToolbar {...props} />)
+
+        await user.click(screen.getByTitle('Color Palette'))
+        await user.click(await screen.findByText('Acme'))
+
+        expect(props.onPaletteChange).toHaveBeenCalledExactlyOnceWith('acme')
+      })
     })
 
     it('should close palette dropdown when clicking outside', async () => {

@@ -16,7 +16,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { getIcon } from '../icons/index.js'
 import { useTranslation } from '../hooks/useTranslation.js'
-import { COLOR_PALETTES } from '../utils/colorPalettes.js'
+import { getColorPalettes } from '../utils/colorPalettes.js'
 import type { DashboardLayoutMode } from '../types.js'
 
 const EditIcon = getIcon('edit')
@@ -313,7 +313,7 @@ function CompactPaletteDropdown({ position, currentPalette, onPaletteChange }: C
       }}
     >
       <div className="dc:py-1">
-        {COLOR_PALETTES.slice().sort((a, b) => a.label.localeCompare(b.label)).map((palette) => (
+        {getColorPalettes().slice().sort((a, b) => a.label.localeCompare(b.label)).map((palette) => (
           <button
             key={palette.name}
             type="button"

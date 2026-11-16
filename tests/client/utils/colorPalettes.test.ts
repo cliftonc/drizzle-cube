@@ -1,12 +1,14 @@
 /**
  * Tests for colorPalettes utility
- * Covers palette retrieval, series/gradient colors, and chart type detection
+ * Covers palette retrieval, host palettes, series/gradient colors, and chart type detection
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import {
   COLOR_PALETTES,
   getColorPalette,
+  getColorPalettes,
+  registerColorPalettes,
   getSeriesColors,
   getGradientColors,
   SERIES_CHART_TYPES,
@@ -15,7 +17,86 @@ import {
   type ColorPalette
 } from '../../../src/client/utils/colorPalettes'
 
+const acmePalette: ColorPalette = {
+  name: 'acme',
+  label: 'Acme',
+  colors: ['#1677ff', '#08979c', '#722ed1', '#5b8c00', '#1d39c4', '#d46b08', '#9e1068', '#fa541c'],
+  gradient: ['#69b1ff', '#4096ff', '#1677ff', '#0958d9', '#003eb3', '#002c8c']
+}
+
 describe('colorPalettes', () => {
+  describe('registerColorPalettes', () => {
+    afterEach(() => {
+      registerColorPalettes([])
+    })
+
+    it('should list only the built-in palettes when no host palette is registered', () => {
+      expect(getColorPalettes()).toEqual(COLOR_PALETTES)
+    })
+
+    it('should add a host palette after the built-in palettes', () => {
+      registerColorPalettes([acmePalette])
+
+      expect(getColorPalettes()).toEqual([...COLOR_PALETTES, acmePalette])
+    })
+
+    it('should resolve a host palette by name', () => {
+      registerColorPalettes([acmePalette])
+
+      expect(getColorPalette('acme')).toBe(acmePalette)
+      expect(getSeriesColors('acme')).toEqual(acmePalette.colors)
+      expect(getGradientColors('acme')).toEqual(acmePalette.gradient)
+    })
+
+    it('should replace a built-in palette that has the same name', () => {
+      const hostOcean: ColorPalette = { ...acmePalette, name: 'ocean', label: 'Acme Ocean' }
+
+      registerColorPalettes([hostOcean])
+
+      expect(getColorPalette('ocean')).toBe(hostOcean)
+      expect(getColorPalettes()).toEqual(
+        COLOR_PALETTES.map(palette => (palette.name === 'ocean' ? hostOcean : palette))
+      )
+    })
+
+    it('should use a host palette named default for a missing or unknown name', () => {
+      const hostDefault: ColorPalette = { ...acmePalette, name: 'default' }
+
+      registerColorPalettes([hostDefault])
+
+      expect(getColorPalette()).toBe(hostDefault)
+      expect(getColorPalette('')).toBe(hostDefault)
+      expect(getColorPalette('nonexistent-palette')).toBe(hostDefault)
+    })
+
+    it('should use the last host palette when two host palettes have the same name', () => {
+      const secondAcme: ColorPalette = { ...acmePalette, label: 'Acme 2' }
+
+      registerColorPalettes([acmePalette, secondAcme])
+
+      expect(getColorPalettes()).toEqual([...COLOR_PALETTES, secondAcme])
+    })
+
+    it('should replace the host palettes of an earlier call', () => {
+      const otherPalette: ColorPalette = { ...acmePalette, name: 'other', label: 'Other' }
+
+      registerColorPalettes([acmePalette])
+      registerColorPalettes([otherPalette])
+
+      expect(getColorPalettes()).toEqual([...COLOR_PALETTES, otherPalette])
+      expect(getColorPalette('acme')).toBe(COLOR_PALETTES[0])
+    })
+
+    it('should restore the built-in palettes when called with an empty list', () => {
+      registerColorPalettes([{ ...acmePalette, name: 'default' }])
+      registerColorPalettes([])
+
+      expect(getColorPalettes()).toEqual(COLOR_PALETTES)
+      expect(getColorPalette()).toBe(COLOR_PALETTES[0])
+      expect(COLOR_PALETTES[0].label).toBe('Default')
+    })
+  })
+
   describe('COLOR_PALETTES', () => {
     it('should export an array of palettes', () => {
       expect(Array.isArray(COLOR_PALETTES)).toBe(true)
