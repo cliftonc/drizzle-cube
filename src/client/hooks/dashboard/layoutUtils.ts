@@ -1,4 +1,5 @@
 import type {
+  DashboardConfig,
   DashboardGridSettings,
   PortletConfig,
   PortletGroup,
@@ -116,6 +117,12 @@ export const adjustRowWidths = (
   return adjusted
 }
 
+/**
+ * Derive rows from the portlets' grid positions: one row for each distinct `y`,
+ * ordered by `x`. Each column keeps its portlet's grid width, and
+ * `adjustRowWidths` only stretches or trims the row to fill `cols`, so a 3/9
+ * split in grid mode stays 3/9 in rows mode.
+ */
 export const convertPortletsToRows = (
   portlets: PortletConfig[],
   gridSettings: DashboardGridSettings
@@ -141,8 +148,8 @@ export const convertPortletsToRows = (
       return {
         id: `row-${rowY}`,
         h: rowHeight,
-        columns: equalizeColumns(
-          rowPortlets.map((p) => ({ portletId: p.id, w: 0 })),
+        columns: adjustRowWidths(
+          rowPortlets.map((p) => ({ portletId: p.id, w: p.w })),
           gridSettings
         ),
       }
@@ -154,6 +161,10 @@ export const convertPortletsToRows = (
  * widths. `groups` must be the already-normalized group list - a column
  * referencing a group is kept only when that group survives, so run
  * `normalizeGroups` first.
+ *
+ * A portlet that no column and no kept group places would be invisible in rows
+ * mode, for example a card added in grid mode while the config kept older
+ * `rows`. Such portlets get new last rows, derived from their grid positions.
  */
 export const normalizeRows = (
   rows: RowLayout[],
@@ -162,17 +173,55 @@ export const normalizeRows = (
   groups: PortletGroup[] = []
 ): RowLayout[] => {
   const portletIds = new Set(portlets.map((p) => p.id))
-  const groupIds = new Set(groups.map((group) => group.id))
+  const groupsById = new Map(groups.map((group) => [group.id, group]))
   const keepColumn = (column: RowLayoutColumn) =>
-    column.groupId ? groupIds.has(column.groupId) : !!column.portletId && portletIds.has(column.portletId)
+    column.groupId ? groupsById.has(column.groupId) : !!column.portletId && portletIds.has(column.portletId)
 
-  return rows
+  const normalized = rows
     .map((row) => ({
       ...row,
       h: Math.max(gridSettings.minH, row.h),
       columns: adjustRowWidths(row.columns.filter(keepColumn), gridSettings),
     }))
     .filter((row) => row.columns.length > 0)
+
+  const placedIds = new Set(
+    normalized.flatMap((row) =>
+      row.columns.flatMap((column) => {
+        const group = column.groupId ? groupsById.get(column.groupId) : undefined
+        if (group) return group.cells.flatMap((cell) => cell.portletIds)
+        return column.portletId ? [column.portletId] : []
+      })
+    )
+  )
+  const unplaced = portlets.filter((p) => !placedIds.has(p.id))
+  if (unplaced.length === 0) return normalized
+
+  // Row ids key React elements and drag targets, so an appended row must not
+  // reuse the id of a stored row.
+  const usedRowIds = new Set(normalized.map((row) => row.id))
+  const appended = convertPortletsToRows(unplaced, gridSettings).map((row) => {
+    let id = row.id
+    for (let suffix = 2; usedRowIds.has(id); suffix += 1) id = `${row.id}-${suffix}`
+    usedRowIds.add(id)
+    return { ...row, id }
+  })
+
+  return [...normalized, ...appended]
+}
+
+/**
+ * Remove the row layout (`rows` and `groups`) from a config that a grid edit
+ * changed.
+ *
+ * A grid edit writes only portlet x/y/w/h. Rows mode prefers stored `rows` to
+ * the grid positions, so stored rows would hide each card that the edit added
+ * and undo each move. Without them, rows mode derives the rows from the grid
+ * again. Grid mode cannot host groups, so the groups go too.
+ */
+export const withoutRowLayout = (config: DashboardConfig): DashboardConfig => {
+  const { rows: _rows, groups: _groups, ...gridConfig } = config
+  return gridConfig
 }
 
 /**

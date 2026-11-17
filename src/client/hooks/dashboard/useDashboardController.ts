@@ -19,7 +19,8 @@ import {
   convertRowsToPortlets,
   createRowId,
   equalizeColumns,
-  normalizeRows
+  normalizeRows,
+  withoutRowLayout
 } from './layoutUtils.js'
 import type { LayoutUpdate } from './useRowLayoutEngine.js'
 import {
@@ -320,6 +321,8 @@ export function useDashboardController({
 
       if (layoutModeRef.current === 'rows') {
         const currentRows = resolvedRowsRef.current
+        // Normalize against cfg.portlets, not updatedPortlets: normalizeRows
+        // gives each unplaced portlet a row, and nextRows adds the new one too.
         const baseRows =
           currentRows.length > 0
             ? currentRows.map((row) => ({
@@ -328,7 +331,7 @@ export function useDashboardController({
               }))
             : normalizeRows(
                 cfg.rows ?? convertPortletsToRows(cfg.portlets, gridSettings),
-                updatedPortlets,
+                cfg.portlets,
                 gridSettings
               )
 
@@ -350,7 +353,12 @@ export function useDashboardController({
           ...cfg,
           portlets: updatedPortlets,
         }
-        await saveConfig(updatedConfig, 'Auto-save failed:')
+        // A new card changes the grid layout. A content edit does not, so it
+        // keeps the row layout.
+        await saveConfig(
+          isNewPortlet ? withoutRowLayout(updatedConfig) : updatedConfig,
+          'Auto-save failed:'
+        )
       }
 
       storeActions.closePortletModal()
@@ -385,10 +393,10 @@ export function useDashboardController({
 
         await updateLayout({ rows: nextRows, groups: nextGroups, portlets: updatedPortlets })
       } else {
-        const updatedConfig: DashboardConfig = {
+        const updatedConfig: DashboardConfig = withoutRowLayout({
           ...cfg,
           portlets: updatedPortlets,
-        }
+        })
         await saveConfig(updatedConfig, 'Auto-save failed:')
       }
     },
@@ -562,10 +570,10 @@ export function useDashboardController({
         ]
         await updateRowLayout(nextRows, true, updatedPortlets)
       } else {
-        const updatedConfig: DashboardConfig = {
+        const updatedConfig: DashboardConfig = withoutRowLayout({
           ...cfg,
           portlets: updatedPortlets,
-        }
+        })
         await saveConfig(updatedConfig, 'Auto-save failed:')
       }
 

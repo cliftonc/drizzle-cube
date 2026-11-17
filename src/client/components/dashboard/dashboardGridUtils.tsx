@@ -24,7 +24,8 @@ export {
   equalizeRowColumns,
   equalizeColumns,
   adjustRowWidths,
-  adjustInsertIndexForRemovedRow
+  adjustInsertIndexForRemovedRow,
+  withoutRowLayout
 } from '../../hooks/dashboard/layoutUtils.js'
 
 export const getGridSettings = (config: DashboardConfig): DashboardGridSettings => ({

@@ -157,9 +157,68 @@ describe('normalizeRows', () => {
   it('drops a group column whose group is gone, and the row with it', () => {
     const rows = [row([{ groupId: 'g1', w: 12 }])]
 
-    expect(normalizeRows(rows, makePortlets(['a', 'b']), GRID, [])).toEqual([])
+    expect(normalizeRows(rows, [], GRID, [])).toEqual([])
     // Same result when the caller omits the groups argument entirely.
-    expect(normalizeRows(rows, makePortlets(['a', 'b']), GRID)).toEqual([])
+    expect(normalizeRows(rows, [], GRID)).toEqual([])
+  })
+
+  it('should give the portlets of a dropped group column a row of their own', () => {
+    const rows = [row([{ groupId: 'g1', w: 12 }])]
+
+    expect(normalizeRows(rows, makePortlets(['a', 'b']), GRID)).toEqual([
+      { id: 'row-0', h: 3, columns: [{ portletId: 'a', w: 6 }, { portletId: 'b', w: 6 }] }
+    ])
+  })
+
+  it('should put a portlet that no row or group places into a new last row', () => {
+    const portlets: PortletConfig[] = [
+      { id: 'a', title: 'a', x: 0, y: 0, w: 12, h: 4 },
+      { id: 'added-in-grid', title: 'added-in-grid', x: 0, y: 4, w: 6, h: 3 }
+    ]
+    const rows = [row([{ portletId: 'a', w: 12 }], 'row-1', 4)]
+
+    expect(normalizeRows(rows, portlets, GRID)).toEqual([
+      { id: 'row-1', h: 4, columns: [{ portletId: 'a', w: 12 }] },
+      { id: 'row-4', h: 3, columns: [{ portletId: 'added-in-grid', w: 12 }] }
+    ])
+  })
+
+  it('should lay out several unplaced portlets from their grid positions', () => {
+    const portlets: PortletConfig[] = [
+      { id: 'a', title: 'a', x: 0, y: 0, w: 12, h: 4 },
+      { id: 'd', title: 'd', x: 0, y: 7, w: 12, h: 2 },
+      { id: 'c', title: 'c', x: 4, y: 4, w: 8, h: 3 },
+      { id: 'b', title: 'b', x: 0, y: 4, w: 4, h: 3 }
+    ]
+    const rows = [row([{ portletId: 'a', w: 12 }], 'row-1', 4)]
+
+    expect(normalizeRows(rows, portlets, GRID)).toEqual([
+      { id: 'row-1', h: 4, columns: [{ portletId: 'a', w: 12 }] },
+      { id: 'row-4', h: 3, columns: [{ portletId: 'b', w: 4 }, { portletId: 'c', w: 8 }] },
+      { id: 'row-7', h: 2, columns: [{ portletId: 'd', w: 12 }] }
+    ])
+  })
+
+  it('should give an appended row an id that no other row uses', () => {
+    const portlets: PortletConfig[] = [
+      { id: 'a', title: 'a', x: 0, y: 0, w: 12, h: 4 },
+      { id: 'b', title: 'b', x: 0, y: 4, w: 12, h: 4 }
+    ]
+    const rows = [row([{ portletId: 'a', w: 12 }], 'row-4', 4)]
+
+    expect(normalizeRows(rows, portlets, GRID)).toEqual([
+      { id: 'row-4', h: 4, columns: [{ portletId: 'a', w: 12 }] },
+      { id: 'row-4-2', h: 4, columns: [{ portletId: 'b', w: 12 }] }
+    ])
+  })
+
+  it('should not add a row for a portlet that a group column places', () => {
+    const rows = [row([{ groupId: 'g1', w: 12 }], 'row-1', 4)]
+    const groups = [group('g1', 'row', [['a'], ['b']])]
+
+    expect(normalizeRows(rows, makePortlets(['a', 'b']), GRID, groups)).toEqual([
+      { id: 'row-1', h: 4, columns: [{ groupId: 'g1', w: 12 }] }
+    ])
   })
 
   it('drops a column whose portlet no longer exists', () => {
@@ -278,6 +337,28 @@ describe('convertPortletsToRows', () => {
 
   it('returns no rows for no portlets', () => {
     expect(convertPortletsToRows([], GRID)).toEqual([])
+  })
+
+  it('should keep the grid width of each portlet', () => {
+    const portlets: PortletConfig[] = [
+      { id: 'narrow', title: 'narrow', x: 0, y: 0, w: 3, h: 4 },
+      { id: 'wide', title: 'wide', x: 3, y: 0, w: 9, h: 4 }
+    ]
+
+    expect(convertPortletsToRows(portlets, GRID)).toEqual([
+      { id: 'row-0', h: 4, columns: [{ portletId: 'narrow', w: 3 }, { portletId: 'wide', w: 9 }] }
+    ])
+  })
+
+  it('should stretch a row that the grid widths do not fill to the full width', () => {
+    const portlets: PortletConfig[] = [
+      { id: 'a', title: 'a', x: 0, y: 0, w: 2, h: 4 },
+      { id: 'b', title: 'b', x: 2, y: 0, w: 4, h: 4 }
+    ]
+
+    expect(convertPortletsToRows(portlets, GRID)).toEqual([
+      { id: 'row-0', h: 4, columns: [{ portletId: 'a', w: 5 }, { portletId: 'b', w: 7 }] }
+    ])
   })
 })
 
