@@ -283,12 +283,14 @@ function applyKeysJoinCube(
   }
 
   const joinCubeBase = joinCube.cube.sql(context)
-  query = applyJoinByType(
-    query,
-    joinCube.joinType ?? 'left',
-    joinCubeBase.from,
-    joinCube.joinCondition
-  )
+  const joinType = joinCube.joinType ?? 'left'
+  // Same rule as the standard join path: an outer join carries the joined
+  // cube's security filter in its ON clause, so a row with no match is kept.
+  const securityInJoinOn = joinType !== 'inner' && Boolean(joinCubeBase.where)
+  const joinCondition = securityInJoinOn
+    ? (and(joinCube.joinCondition, joinCubeBase.where) ?? joinCube.joinCondition)
+    : joinCube.joinCondition
+  query = applyJoinByType(query, joinType, joinCubeBase.from, joinCondition)
   // Apply the joined cube's intra-cube table-level joins
   // (BaseQueryDefinition.joins) so columns from joined tables are in
   // scope for both the keys CTE selection and the WHERE clause.
@@ -297,7 +299,7 @@ function applyKeysJoinCube(
       query = applyJoinByType(query, join.type ?? 'left', join.table, join.on)
     }
   }
-  if (joinCubeBase.where) {
+  if (joinCubeBase.where && !securityInJoinOn) {
     keysWhereConditions.push(joinCubeBase.where)
   }
   return query
