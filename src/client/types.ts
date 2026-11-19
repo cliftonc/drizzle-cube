@@ -924,6 +924,12 @@ export interface RefreshFeatureConfig {
   minIntervalSeconds?: number
 }
 
+/**
+ * A view-mode action of a dashboard card, in the card header or in the hover
+ * strip of a grouped card. `features.portletActionOrder` sets their order.
+ */
+export type PortletActionId = 'pauseRefresh' | 'refresh' | 'expand' | 'copy' | 'download'
+
 // Features configuration
 export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
@@ -946,6 +952,7 @@ export interface FeaturesConfig {
   refresh?: RefreshFeatureConfig // Optional interval refresh for dashboards and portlets (default: off)
   portletExpand?: boolean // Show an Expand button on dashboard cards in view mode. It opens the chart in a built-in modal, or calls AnalyticsDashboard's onPortletExpand when set. Not in the mobile stacked layout (default: false)
   hiddenChartTypes?: ChartType[] // Chart types to leave out of the AnalysisBuilder chart type picker and its automatic chart switch. Built-in or custom; they stay registered, so saved portlets of these types still render (default: [])
+  portletActionOrder?: PortletActionId[] // Order of the view-mode actions of a dashboard card, in the header and in the hover strip of a grouped card. Listed actions come first, in the listed order; the others follow in the default order. It changes the DOM order, so keyboard focus follows it. It does not show or hide an action (default: ['pauseRefresh', 'refresh', 'expand', 'copy', 'download'])
 }
 
 // Grid layout types (simplified)

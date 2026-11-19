@@ -892,4 +892,40 @@ describe('DashboardPortletCard', () => {
       expect(screen.queryByRole('button', { name: 'Expand' })).not.toBeInTheDocument()
     })
   })
+
+  describe('action order (features.portletActionOrder)', () => {
+    function OrderedWrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <CubeFeaturesProvider features={{ portletActionOrder: ['expand', 'refresh'] }}>
+          <DashboardStoreProvider>
+            {children}
+          </DashboardStoreProvider>
+        </CubeFeaturesProvider>
+      )
+    }
+
+    it('should show the header actions in the host order', () => {
+      render(
+        <OrderedWrapper>
+          <DashboardPortletCard {...createDefaultProps()} onPortletExpand={vi.fn()} />
+        </OrderedWrapper>
+      )
+
+      expect(screen.getByRole('button', { name: 'Expand' }).nextElementSibling).toBe(
+        screen.getByTitle(/refresh portlet data/i)
+      )
+    })
+
+    it('should show the hover strip actions of a grouped portlet in the host order', () => {
+      render(
+        <OrderedWrapper>
+          <DashboardPortletCard {...createDefaultProps()} variant="groupChild" onPortletExpand={vi.fn()} />
+        </OrderedWrapper>
+      )
+
+      expect(screen.getByRole('button', { name: 'Expand' }).nextElementSibling).toBe(
+        screen.getByTitle('Refresh portlet')
+      )
+    })
+  })
 })
