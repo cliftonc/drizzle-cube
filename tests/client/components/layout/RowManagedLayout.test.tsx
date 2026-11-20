@@ -269,7 +269,7 @@ describe('RowManagedLayout', () => {
 
       const columnWrapper = container.querySelector('.dc-row-layout-column-wrapper') as HTMLElement
       // 6 of 12 cols, one column so no gaps
-      expect(columnWrapper.style.maxWidth).toBe('calc(0.5 * (100% - 0px))')
+      expect(columnWrapper.style.maxWidth).toBe('calc(50% + 0px)')
     })
 
     it('should account for column gaps between columns', () => {
@@ -295,7 +295,7 @@ describe('RowManagedLayout', () => {
       // 2 columns share the row less 1 gap of 16px
       const columnWrappers = container.querySelectorAll<HTMLElement>('.dc-row-layout-column-wrapper')
       expect(columnWrappers).toHaveLength(2)
-      expect(columnWrappers[0].style.maxWidth).toBe('calc(0.5 * (100% - 16px))')
+      expect(columnWrappers[0].style.maxWidth).toBe('calc(50% - 8px)')
     })
 
     it('should use gridSettings cols in calculation', () => {
@@ -319,7 +319,7 @@ describe('RowManagedLayout', () => {
 
       const columnWrapper = container.querySelector('.dc-row-layout-column-wrapper') as HTMLElement
       // 6 of 24 cols
-      expect(columnWrapper.style.maxWidth).toBe('calc(0.25 * (100% - 0px))')
+      expect(columnWrapper.style.maxWidth).toBe('calc(25% + 0px)')
     })
   })
 
@@ -1447,8 +1447,8 @@ describe('RowManagedLayout - groups and snap bands', () => {
       )
 
       const body = container.querySelector('[data-portlet-id="p1"]') as HTMLElement
-      expect(body.style.flexBasis).toMatch(/^calc\(0\.5 ?\* ?\(100% - 16px\)\)$/)
-      expect(body.style.maxWidth).toBe('calc(0.5 * (100% - 16px))')
+      expect(body.style.flexBasis).toBe('calc(50% - 8px)')
+      expect(body.style.maxWidth).toBe('calc(50% - 8px)')
     })
 
     it('renders no section in edit mode, so the drop and resize handles keep their gap', () => {

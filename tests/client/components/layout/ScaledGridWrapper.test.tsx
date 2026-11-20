@@ -190,7 +190,7 @@ describe('ScaledGridWrapper', () => {
       )
 
       const inner = container.querySelector('.scaled-grid-inner') as HTMLElement
-      expect(inner.style.transformOrigin).toBe('top left')
+      expect(inner.style.transformOrigin).toBe('left top')
     })
   })
 
