@@ -4,10 +4,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DataBrowser from '../../../../src/client/components/DataBrowser'
-import type { CubeMeta } from '../../../../src/client/types'
+import type { CubeMeta, CubeQuery } from '../../../../src/client/types'
 
 // Mock metadata
 const mockMeta: CubeMeta = {
@@ -44,6 +44,14 @@ const mockEmployeesData = [
   { 'Employees.id': 2, 'Employees.name': 'Bob', 'Employees.email': 'bob@test.com' },
   { 'Employees.id': 3, 'Employees.name': 'Charlie', 'Employees.email': 'charlie@test.com' },
 ]
+
+const { capturedQueries } = vi.hoisted(() => ({
+  capturedQueries: [] as Array<CubeQuery | null>,
+}))
+
+function latestQuery(): CubeQuery | null {
+  return capturedQueries[capturedQueries.length - 1] ?? null
+}
 
 // Mock CubeProvider hooks
 vi.mock('../../../../src/client/providers/CubeProvider', () => ({
@@ -89,27 +97,31 @@ let mockQueryResponse: {
 }
 
 vi.mock('../../../../src/client/hooks/queries/useCubeLoadQuery', () => ({
-  useCubeLoadQuery: vi.fn((_query: unknown, _options?: unknown) => ({
-    resultSet: null,
-    rawData: mockQueryResponse.rawData,
-    isLoading: mockQueryResponse.isLoading,
-    isFetching: mockQueryResponse.isFetching,
-    isDebouncing: mockQueryResponse.isDebouncing,
-    error: mockQueryResponse.error,
-    debouncedQuery: _query,
-    isValidQuery: !!_query,
-    refetch: mockRefetch,
-    clearCache: vi.fn(),
-    needsRefresh: false,
-    executeQuery: vi.fn(),
-    warnings: undefined,
-  })),
+  useCubeLoadQuery: vi.fn((_query: CubeQuery | null, _options?: unknown) => {
+    capturedQueries.push(_query)
+    return {
+      resultSet: null,
+      rawData: mockQueryResponse.rawData,
+      isLoading: mockQueryResponse.isLoading,
+      isFetching: mockQueryResponse.isFetching,
+      isDebouncing: mockQueryResponse.isDebouncing,
+      error: mockQueryResponse.error,
+      debouncedQuery: _query,
+      isValidQuery: !!_query,
+      refetch: mockRefetch,
+      clearCache: vi.fn(),
+      needsRefresh: false,
+      executeQuery: vi.fn(),
+      warnings: undefined,
+    }
+  }),
 }))
 
 describe('DataBrowser', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    capturedQueries.length = 0
     mockQueryResponse = {
       rawData: null,
       isLoading: false,
@@ -226,6 +238,53 @@ describe('DataBrowser', () => {
       await user.type(screen.getByPlaceholderText('Search...'), 'zzzzz')
 
       expect(screen.getByText('No cubes found')).toBeInTheDocument()
+    })
+  })
+
+  describe('Quick search', () => {
+    it('should render row search input in the filter panel', async () => {
+      const user = userEvent.setup()
+      render(<DataBrowser />)
+
+      await user.click(screen.getByText('Employees'))
+      await user.click(screen.getByText('Filters'))
+
+      expect(screen.getByPlaceholderText('Search rows...')).toBeInTheDocument()
+    })
+
+    it('should search all string dimensions and exclude numeric dimensions', async () => {
+      const user = userEvent.setup()
+      render(<DataBrowser />)
+
+      await user.click(screen.getByText('Employees'))
+      await user.click(screen.getByText('Filters'))
+      await user.type(screen.getByPlaceholderText('Search rows...'), 'alice')
+
+      await waitFor(() => {
+        expect(latestQuery()?.filters).toEqual([
+          {
+            type: 'or',
+            filters: [
+              { member: 'Employees.name', operator: 'contains', values: ['alice'] },
+              { member: 'Employees.email', operator: 'contains', values: ['alice'] },
+            ],
+          },
+        ])
+      })
+    })
+
+    it('should clear quick-search filters with the clear button', async () => {
+      const user = userEvent.setup()
+      render(<DataBrowser />)
+
+      await user.click(screen.getByText('Employees'))
+      await user.click(screen.getByText('Filters'))
+      await user.type(screen.getByPlaceholderText('Search rows...'), 'alice')
+      await user.click(screen.getByRole('button', { name: 'Clear search' }))
+
+      await waitFor(() => {
+        expect(latestQuery()?.filters).toBeUndefined()
+      })
     })
   })
 
