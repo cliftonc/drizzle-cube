@@ -17,7 +17,19 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Mock } from 'vitest'
 import ColorPaletteSelector from '../../../../src/client/components/ColorPaletteSelector'
-import { COLOR_PALETTES, getColorPalette } from '../../../../src/client/utils/colorPalettes'
+import {
+  COLOR_PALETTES,
+  getColorPalette,
+  registerColorPalettes,
+  type ColorPalette
+} from '../../../../src/client/utils/colorPalettes'
+
+const acmePalette: ColorPalette = {
+  name: 'acme',
+  label: 'Acme',
+  colors: ['#1677ff', '#08979c', '#722ed1', '#5b8c00', '#1d39c4', '#d46b08', '#9e1068', '#fa541c'],
+  gradient: ['#69b1ff', '#4096ff', '#1677ff', '#0958d9', '#003eb3', '#002c8c']
+}
 
 // ============================================================================
 // ColorPaletteSelector Tests
@@ -325,6 +337,72 @@ describe('ColorPaletteSelector', () => {
       if (autumnIndex !== -1 && winterIndex !== -1) {
         expect(autumnIndex).toBeLessThan(winterIndex)
       }
+    })
+  })
+
+  describe('host palettes', () => {
+    afterEach(() => {
+      registerColorPalettes([])
+    })
+
+    it('should list the built-in palettes and the host palettes sorted by label', async () => {
+      registerColorPalettes([acmePalette])
+
+      render(
+        <ColorPaletteSelector
+          currentPalette="default"
+          onPaletteChange={onPaletteChange}
+        />
+      )
+
+      fireEvent.click(screen.getByRole('button'))
+
+      await waitFor(() => {
+        expect(screen.getByText('Acme')).toBeDefined()
+      })
+
+      const listedLabels = screen
+        .getAllByRole('button')
+        .slice(1)
+        .map(btn => btn.querySelector('.dc\\:font-medium')?.textContent)
+
+      expect(listedLabels).toEqual(
+        [...COLOR_PALETTES, acmePalette].map(p => p.label).sort((a, b) => a.localeCompare(b))
+      )
+    })
+
+    it('should call onPaletteChange with the name of a host palette', async () => {
+      registerColorPalettes([acmePalette])
+
+      render(
+        <ColorPaletteSelector
+          currentPalette="default"
+          onPaletteChange={onPaletteChange}
+        />
+      )
+
+      fireEvent.click(screen.getByRole('button'))
+
+      await waitFor(() => {
+        expect(screen.getByText('Acme')).toBeDefined()
+      })
+
+      fireEvent.click(screen.getByText('Acme'))
+
+      expect(onPaletteChange).toHaveBeenCalledExactlyOnceWith('acme')
+    })
+
+    it('should show a host palette that replaces the built-in default palette', () => {
+      registerColorPalettes([{ ...acmePalette, name: 'default' }])
+
+      render(
+        <ColorPaletteSelector
+          onPaletteChange={onPaletteChange}
+        />
+      )
+
+      expect(screen.getByText('Acme')).toBeDefined()
+      expect(screen.queryByText('Default')).toBeNull()
     })
   })
 

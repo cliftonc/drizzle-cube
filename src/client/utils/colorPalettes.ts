@@ -695,16 +695,56 @@ export const COLOR_PALETTES: ColorPalette[] = [
   }
 ]
 
+// The built-in palettes plus the host palettes from registerColorPalettes().
+// A host palette with a built-in name takes the place of that built-in
+// palette, so the palette named 'default' stays first.
+let allPalettes: ColorPalette[] = COLOR_PALETTES
+
+/**
+ * Add host color palettes to the built-in palettes.
+ *
+ * Call it one time at startup, before the first render, as `registerIcons()`.
+ * The charts and the palette pickers read the list on each render. A later
+ * call does not update a palette that a component already resolved.
+ *
+ * - A host palette with the `name` of a built-in palette replaces it. So a host
+ *   palette named `default` is the palette for a missing or unknown name.
+ * - When two host palettes have the same name, the last one wins.
+ * - A new call replaces the host palettes of the earlier call.
+ *   `registerColorPalettes([])` restores the built-in list.
+ *
+ * Use six-digit hex colors (`#rrggbb`) in `colors` and `gradient`. The records
+ * table adds a hex alpha suffix to a series color, and the heat map
+ * interpolates the gradient colors. A CSS variable or an `oklch()` color
+ * breaks these charts.
+ *
+ * @param palettes - The host palettes.
+ */
+export function registerColorPalettes(palettes: ColorPalette[]): void {
+  const palettesByName = new Map(COLOR_PALETTES.map(palette => [palette.name, palette]))
+  for (const palette of palettes) {
+    palettesByName.set(palette.name, palette)
+  }
+  allPalettes = [...palettesByName.values()]
+}
+
+/**
+ * Get the built-in palettes and the host palettes from `registerColorPalettes()`.
+ */
+export function getColorPalettes(): ColorPalette[] {
+  return allPalettes
+}
+
 /**
  * Get a color palette by name, with fallback to default
  */
 export function getColorPalette(paletteName?: string): ColorPalette {
   if (!paletteName) {
-    return COLOR_PALETTES[0] // default palette
+    return allPalettes[0] // default palette
   }
-  
-  const palette = COLOR_PALETTES.find(p => p.name === paletteName)
-  return palette || COLOR_PALETTES[0] // fallback to default
+
+  const palette = allPalettes.find(p => p.name === paletteName)
+  return palette || allPalettes[0] // fallback to default
 }
 
 /**
