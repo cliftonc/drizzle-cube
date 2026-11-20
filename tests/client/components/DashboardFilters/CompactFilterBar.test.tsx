@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import CompactFilterBar from '../../../../src/client/components/DashboardFilters/CompactFilterBar'
 import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../../../src/client/types'
 
@@ -99,7 +99,21 @@ vi.mock('../../../../src/client/components/DashboardFilters/FilterChip', () => (
   }
 }))
 
+// Pick the layout CompactFilterBar mounts: matchMedia('(min-width: 768px)').matches
+const originalMatchMedia = window.matchMedia
+function mockViewport(isDesktop: boolean) {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: isDesktop, media: query, onchange: null,
+    addListener: vi.fn(), removeListener: vi.fn(),
+    addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn()
+  }))
+}
+
 describe('CompactFilterBar', () => {
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia
+  })
+
   const createUniversalTimeFilter = (dateRange: string | string[]): DashboardFilter => ({
     id: 'universal-time',
     label: 'Date Range',
@@ -573,12 +587,17 @@ describe('CompactFilterBar', () => {
   })
 
   describe('date creation permission', () => {
-    it('hides date creation controls on both layouts when creation is forbidden', () => {
+    it.each([
+      { layout: 'desktop', matches: true },
+      { layout: 'mobile', matches: false }
+    ])('hides date creation controls on the $layout layout when creation is forbidden', ({ matches }) => {
+      mockViewport(matches)
       const props = createDefaultProps()
       props.dashboardFilters = [createRegularFilter('status', 'Status')]
       render(<CompactFilterBar {...props} allowDateFilterCreation={false} />)
 
-      expect(screen.getAllByText('Status')).toHaveLength(2)
+      // One layout is mounted, not both
+      expect(screen.getAllByText('Status')).toHaveLength(1)
       for (const name of ['7D', '30D', 'Custom', 'XTD']) {
         expect(screen.queryAllByRole('button', { name })).toHaveLength(0)
       }

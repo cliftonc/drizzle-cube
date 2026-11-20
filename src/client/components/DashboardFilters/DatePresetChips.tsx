@@ -75,7 +75,7 @@ const DatePresetChips: React.FC<DatePresetChipsProps> = ({
               }
             }}
           >
-            {preset.label}
+            {t(preset.label)}
           </button>
         )
       })}

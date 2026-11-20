@@ -10,7 +10,7 @@
  * layout shell.
  */
 
-import React, { useId } from 'react'
+import React, { useEffect, useId, useState } from 'react'
 import { useTranslation } from '../../hooks/useTranslation.js'
 import type { DashboardFilter, CubeMeta } from '../../types.js'
 import { useCompactFilterBar } from './useCompactFilterBar.js'
@@ -28,6 +28,36 @@ interface CompactFilterBarProps {
   onRemoveFilter?: (filterId: string) => void
 }
 
+/**
+ * Mount ONE layout, chosen by media query, instead of rendering both and
+ * hiding one with CSS. The layouts share the dropdown open-state, so mounting
+ * both used to mount two CustomDate/XTD dropdowns at once — and each
+ * dropdown's document-level outside-click handler treated clicks inside the
+ * *other* instance as "outside", closing the shared state on any interaction.
+ * (768px matches the dc:md: breakpoint previously used to swap them.)
+ */
+const DESKTOP_QUERY = '(min-width: 768px)'
+
+// Without matchMedia (SSR, some test environments) fall back to the desktop layout.
+const getDesktopQuery = (): MediaQueryList | null =>
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia(DESKTOP_QUERY)
+    : null
+
+function useIsDesktop(): boolean {
+  // Read the query on the first render so a narrow screen never flashes the desktop layout.
+  const [isDesktop, setIsDesktop] = useState(() => getDesktopQuery()?.matches ?? true)
+  useEffect(() => {
+    const query = getDesktopQuery()
+    if (!query) return
+    const update = () => setIsDesktop(query.matches)
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+  return isDesktop
+}
+
 const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   dashboardFilters,
   readOnlyFilterIds = [],
@@ -42,6 +72,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   const { t } = useTranslation()
   const readOnlyDescriptionId = useId()
   const bar = useCompactFilterBar(dashboardFilters, onDashboardFiltersChange, allowDateFilterCreation)
+  const isDesktop = useIsDesktop()
 
   // If no filters and not in edit mode, don't show anything
   if (!isEditMode && dashboardFilters.length === 0) {
@@ -86,8 +117,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
       {readOnlyFilterIds.length > 0 && (
         <span id={readOnlyDescriptionId} className="dc:sr-only">{t('dashboard.filterControlledByHost')}</span>
       )}
-      <DesktopLayout {...viewProps} />
-      <MobileLayout {...viewProps} />
+      {isDesktop ? <DesktopLayout {...viewProps} /> : <MobileLayout {...viewProps} />}
     </div>
   )
 }
