@@ -175,6 +175,21 @@ function createTestConfig(portletCount = 2): DashboardConfig {
   return { portlets, layoutMode: 'grid' }
 }
 
+// A grid config that still stores the row layout of an earlier rows session
+function createGridConfigWithRowLayout(): DashboardConfig {
+  return {
+    ...createTestConfig(2),
+    rows: [{ id: 'row-1', h: 4, columns: [{ groupId: 'group-1', w: 12 }] }],
+    groups: [
+      {
+        id: 'group-1',
+        direction: 'row',
+        cells: [{ portletIds: ['portlet-0'] }, { portletIds: ['portlet-1'] }]
+      }
+    ]
+  }
+}
+
 
 // react-grid-layout loads with import() (it is an optional peer). Settle it once
 // so grid dashboards render on first render, as they do after the first load.
@@ -410,6 +425,72 @@ describe('DashboardGrid', () => {
 
       // onConfigChange should not be called because layout hasn't changed from initial
       // This is expected behavior - it prevents saves during responsive adjustments
+    })
+
+    it('should save a grid drag without the stored rows and groups', async () => {
+      vi.useFakeTimers()
+      const config = createGridConfigWithRowLayout()
+      let saved: DashboardConfig | undefined
+      const onSave = vi.fn((next: DashboardConfig) => {
+        saved = next
+      })
+
+      const { container } = render(
+        <DashboardGrid config={config} editable={true} onConfigChange={vi.fn()} onSave={onSave} />,
+        { wrapper: TestWrapper }
+      )
+      await act(async () => {
+        fireEvent.click(container.querySelector('button')!)
+        await vi.advanceTimersByTimeAsync(250)
+      })
+
+      const movedLayout = [
+        { i: 'portlet-0', x: 0, y: 0, w: 6, h: 4 },
+        { i: 'portlet-1', x: 0, y: 4, w: 6, h: 4 }
+      ]
+      await act(async () => {
+        await capturedGridLayoutProps.onDragStop(movedLayout, null, null, null, null, null)
+      })
+
+      expect(onSave).toHaveBeenCalledTimes(1)
+      expect(saved).toStrictEqual({
+        layoutMode: 'grid',
+        portlets: [config.portlets[0], { ...config.portlets[1], x: 0, y: 4 }],
+        layouts: { lg: movedLayout }
+      })
+    })
+
+    it('should save a grid resize without the stored rows and groups', async () => {
+      vi.useFakeTimers()
+      const config = createGridConfigWithRowLayout()
+      let saved: DashboardConfig | undefined
+      const onSave = vi.fn((next: DashboardConfig) => {
+        saved = next
+      })
+
+      const { container } = render(
+        <DashboardGrid config={config} editable={true} onConfigChange={vi.fn()} onSave={onSave} />,
+        { wrapper: TestWrapper }
+      )
+      await act(async () => {
+        fireEvent.click(container.querySelector('button')!)
+        await vi.advanceTimersByTimeAsync(250)
+      })
+
+      const resizedLayout = [
+        { i: 'portlet-0', x: 0, y: 0, w: 4, h: 4 },
+        { i: 'portlet-1', x: 6, y: 0, w: 6, h: 4 }
+      ]
+      await act(async () => {
+        await capturedGridLayoutProps.onResizeStop(resizedLayout, null, null, null, null, null)
+      })
+
+      expect(onSave).toHaveBeenCalledTimes(1)
+      expect(saved).toStrictEqual({
+        layoutMode: 'grid',
+        portlets: [{ ...config.portlets[0], w: 4 }, config.portlets[1]],
+        layouts: { lg: resizedLayout }
+      })
     })
   })
 

@@ -54,7 +54,8 @@ import {
   adjustRowWidths,
   adjustInsertIndexForRemovedRow,
   createRowId,
-  findScrollableAncestor
+  findScrollableAncestor,
+  withoutRowLayout
 } from './dashboardGridUtils.js'
 import DashboardContext, {
   type DashboardContextValue,
@@ -327,15 +328,16 @@ export default function DashboardCoordinator({
       return portlet
     })
 
-    // Preserve existing responsive layouts, only update with new lg layout
-    const updatedConfig = {
+    // Preserve existing responsive layouts, only update with new lg layout.
+    // Drop the row layout: it no longer matches the grid.
+    const updatedConfig = withoutRowLayout({
       ...config,
       portlets: updatedPortlets,
       layouts: {
         ...config.layouts,
         lg: mutableLayout // Only save the large layout, let RGL handle responsive adjustments
       }
-    }
+    })
 
     // Update our tracking of the last known layout
     actions.setLastKnownLayout(mutableLayout)
@@ -376,15 +378,16 @@ export default function DashboardCoordinator({
       return portlet
     })
 
-    // Preserve existing responsive layouts, only update with new lg layout
-    const updatedConfig = {
+    // Preserve existing responsive layouts, only update with new lg layout.
+    // Drop the row layout: it no longer matches the grid.
+    const updatedConfig = withoutRowLayout({
       ...config,
       portlets: updatedPortlets,
       layouts: {
         ...config.layouts,
         lg: mutableLayout // Only save the large layout, let RGL handle responsive adjustments
       }
-    }
+    })
 
     // Update our tracking of the last known layout
     actions.setLastKnownLayout(mutableLayout)
