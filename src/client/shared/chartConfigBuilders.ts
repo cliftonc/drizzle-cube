@@ -9,6 +9,8 @@
 
 import type { ChartType, ChartAxisConfig } from '../types.js'
 import type { MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types.js'
+import type { ChartConfigBuildContext } from '../charts/chartConfigs.js'
+import { chartConfigRegistry } from '../charts/chartConfigRegistry.js'
 
 /**
  * Resolved breakdown selections passed to every axis builder.
@@ -21,7 +23,7 @@ export interface AxisBuilderContext {
   dimensions: BreakdownItem[]
 }
 
-type AxisBuilder = (ctx: AxisBuilderContext) => ChartAxisConfig
+type AxisBuilder = (ctx: ChartConfigBuildContext) => ChartAxisConfig
 
 const measureFields = (metrics: MetricItem[]): string[] => metrics.map((m) => m.field)
 
@@ -217,8 +219,10 @@ const axisBuilders: Partial<Record<ChartType, AxisBuilder>> = {
 }
 
 /**
- * Resolve the axis builder for a chart type, falling back to the default.
+ * Resolve the axis builder for a chart type: the chart's own
+ * `buildChartConfig` from the registry (so a custom chart can define its
+ * defaults), then the built-in rule, then the default.
  */
 export function getAxisBuilder(chartType: ChartType): AxisBuilder {
-  return axisBuilders[chartType] || buildDefaultConfig
+  return chartConfigRegistry[chartType]?.buildChartConfig || axisBuilders[chartType] || buildDefaultConfig
 }

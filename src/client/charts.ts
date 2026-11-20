@@ -68,6 +68,7 @@ export type {
 // Chart configuration types
 export type {
   ChartTypeConfig,
+  ChartConfigBuildContext,
   DisplayOptionConfig,
   AxisDropZoneConfig
 } from './charts/chartConfigs.js'
