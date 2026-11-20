@@ -376,3 +376,48 @@ jobs:
 
       - name: Run client tests (React 18)
         run: npm run test:client
+
+  # Every other job runs on Node 24, the version CI and publishing target.
+  # Re-run the build and the DB-free suites on Node 26 so a break on the newer
+  # LTS shows up before consumers hit it. A separate job (not a matrix on the
+  # jobs above) keeps their required-check names unchanged.
+  test-node-26:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-test == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [server, client]
+    name: test-node-26 (${{ matrix.suite }})
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        if: matrix.suite == 'server'
+        run: npm run build
+
+      - name: Run CLI tests
+        if: matrix.suite == 'server'
+        run: npm run test:cli
+
+      - name: Run server tests (SQLite)
+        if: matrix.suite == 'server'
+        run: npm run test:server
+        env:
+          TEST_DB_TYPE: sqlite
+
+      - name: Run client tests
+        if: matrix.suite == 'client'
+        run: npm run test:client
