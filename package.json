@@ -386,7 +386,7 @@
     "@iconify-icons/heroicons-solid": "^2.0.0",
     "@iconify-icons/tabler": "^2.0.0",
     "@iconify/react": "^6.0.0",
-    "@leonardovida-md/drizzle-neo-duckdb": "^1.5.2",
+    "@leonardovida-md/drizzle-neo-duckdb": "^2.0.0",
     "@modelcontextprotocol/client": "^2.2.0",
     "@modelcontextprotocol/core": "^2.2.0",
     "@modelcontextprotocol/ext-apps": "^2.0.3",
