@@ -327,6 +327,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           onEdit={() => callbacks.onEdit(portlet)}
           onDelete={() => callbacks.onDelete(portlet.id)}
           onExpand={handleExpand}
+          actionOrder={features.portletActionOrder}
         />
       )}
       {variant !== 'groupChild' && (!shouldHideHeader || isEditMode) && (
@@ -359,6 +360,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           onEdit={() => callbacks.onEdit(portlet)}
           onDelete={() => callbacks.onDelete(portlet.id)}
           onExpand={handleExpand}
+          actionOrder={features.portletActionOrder}
         />
       )}
 

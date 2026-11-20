@@ -10,11 +10,12 @@
  */
 
 import React, { type CSSProperties } from 'react'
-import type { PortletConfig } from '../../types.js'
+import type { PortletActionId, PortletConfig } from '../../types.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
 import EditActionButtons, { ICON_STYLE, type CardIcons } from './EditActionButtons.js'
 import { getIcon } from '../../icons/registry.js'
 import type { MaxAgeOptions } from '../../client/maxAge.js'
+import { orderPortletActions, type PortletActionElement } from './portletActionOrder.js'
 
 interface PortletFloatingActionsProps {
   portlet: PortletConfig
@@ -32,8 +33,10 @@ interface PortletFloatingActionsProps {
   onDuplicate: () => void
   onEdit: () => void
   onDelete: () => void
-  /** Shows the Expand button next to Refresh when set */
+  /** Shows the Expand button when set */
   onExpand?: () => void
+  /** Host order of the view-mode actions (features.portletActionOrder) */
+  actionOrder?: readonly PortletActionId[]
 }
 
 const GRIP_STYLE: CSSProperties = { width: '14px', height: '14px', color: 'currentColor' }
@@ -66,7 +69,8 @@ export default function PortletFloatingActions({
   onDuplicate,
   onEdit,
   onDelete,
-  onExpand
+  onExpand,
+  actionOrder
 }: PortletFloatingActionsProps) {
   const { t } = useTranslation()
   const CameraIcon = getIcon('camera')
@@ -78,6 +82,75 @@ export default function PortletFloatingActions({
     event.stopPropagation()
     onRefresh({ bustCache: event.shiftKey })
   }
+
+  // Grouped children have no header, so the view-mode actions a standalone
+  // portlet shows there live here too, in the same order
+  // (features.portletActionOrder).
+  const actions: PortletActionElement[] = [
+    {
+      id: 'refresh',
+      element: (
+        <button
+          draggable={false}
+          onClick={stopRefresh}
+          className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
+          title={t('dashboard.portlet.action.refresh')}
+        >
+          <icons.RefreshIcon style={ICON_STYLE} />
+        </button>
+      )
+    },
+    {
+      // Same Expand action as the card header; never disabled
+      id: 'expand',
+      element: onExpand && (
+        <button
+          type="button"
+          draggable={false}
+          onClick={(event) => {
+            event.stopPropagation()
+            onExpand()
+          }}
+          className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
+          title={t('dashboard.portlet.action.expand')}
+          aria-label={t('dashboard.portlet.action.expand')}
+        >
+          <MaximizeIcon style={ICON_STYLE} />
+        </button>
+      )
+    },
+    {
+      id: 'copy',
+      element: copyAvailable && (
+        <button
+          draggable={false}
+          onClick={onCopyToClipboard}
+          className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
+          title={copySuccess ? t('portlet.copied') : t('portlet.copyToClipboard')}
+        >
+          {copySuccess ? <CheckIcon style={ICON_STYLE} /> : <CameraIcon style={ICON_STYLE} />}
+        </button>
+      )
+    },
+    {
+      id: 'download',
+      element: xlsExportAvailable && (
+        <button
+          draggable={false}
+          onClick={onExportXlsx}
+          disabled={exportInProgress}
+          className={`dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:transition-colors ${
+            exportInProgress
+              ? 'dc:opacity-50 dc:cursor-wait text-dc-text-secondary'
+              : 'text-dc-text-secondary dc:cursor-pointer dc:hover:bg-dc-surface-hover'
+          }`}
+          title={exportInProgress ? t('portlet.exporting') : t('portlet.downloadXlsx')}
+        >
+          <DownloadIcon style={ICON_STYLE} />
+        </button>
+      )
+    }
+  ]
 
   return (
     <div
@@ -105,57 +178,9 @@ export default function PortletFloatingActions({
         }}
         onTouchStart={(event) => event.stopPropagation()}
       >
-        <button
-          draggable={false}
-          onClick={stopRefresh}
-          className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
-          title={t('dashboard.portlet.action.refresh')}
-        >
-          <icons.RefreshIcon style={ICON_STYLE} />
-        </button>
-        {/* Same Expand action as the card header; never disabled */}
-        {onExpand && (
-          <button
-            type="button"
-            draggable={false}
-            onClick={(event) => {
-              event.stopPropagation()
-              onExpand()
-            }}
-            className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
-            title={t('dashboard.portlet.action.expand')}
-            aria-label={t('dashboard.portlet.action.expand')}
-          >
-            <MaximizeIcon style={ICON_STYLE} />
-          </button>
-        )}
-        {/* Grouped children have no header, so the view-mode actions a
-            standalone portlet shows there live here too. */}
-        {copyAvailable && (
-          <button
-            draggable={false}
-            onClick={onCopyToClipboard}
-            className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
-            title={copySuccess ? t('portlet.copied') : t('portlet.copyToClipboard')}
-          >
-            {copySuccess ? <CheckIcon style={ICON_STYLE} /> : <CameraIcon style={ICON_STYLE} />}
-          </button>
-        )}
-        {xlsExportAvailable && (
-          <button
-            draggable={false}
-            onClick={onExportXlsx}
-            disabled={exportInProgress}
-            className={`dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:transition-colors ${
-              exportInProgress
-                ? 'dc:opacity-50 dc:cursor-wait text-dc-text-secondary'
-                : 'text-dc-text-secondary dc:cursor-pointer dc:hover:bg-dc-surface-hover'
-            }`}
-            title={exportInProgress ? t('portlet.exporting') : t('portlet.downloadXlsx')}
-          >
-            <DownloadIcon style={ICON_STYLE} />
-          </button>
-        )}
+        {orderPortletActions(actions, actionOrder).map(({ id, element }) => (
+          <React.Fragment key={id}>{element}</React.Fragment>
+        ))}
         {showEditActions && (
           <EditActionButtons
             portlet={portlet}

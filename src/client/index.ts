@@ -273,6 +273,7 @@ export type {
   PortletGroupCell,
   // Feature config types
   FeaturesConfig,
+  PortletActionId,
   XlsExportFeatureConfig,
   ThumbnailFeatureConfig,
   DashboardImportExportFeatureConfig,

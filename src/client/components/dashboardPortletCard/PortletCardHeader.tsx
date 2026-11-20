@@ -5,13 +5,14 @@
 
 import React, { type CSSProperties } from 'react'
 import { useTranslation } from '../../hooks/useTranslation.js'
-import type { PortletConfig } from '../../types.js'
+import type { PortletActionId, PortletConfig } from '../../types.js'
 import DebugModal from '../DebugModal.js'
 import { getIcon } from '../../icons/registry.js'
 import type { PortletDebugDataEntry } from '../../stores/dashboardStore.js'
 import EditActionButtons, { ICON_STYLE, type CardIcons } from './EditActionButtons.js'
 import DataFreshnessIndicator, { type DataFreshnessIndicatorProps } from './DataFreshnessIndicator.js'
 import type { MaxAgeOptions } from '../../client/maxAge.js'
+import { orderPortletActions, type PortletActionElement } from './portletActionOrder.js'
 
 const PauseIcon = getIcon('pause')
 const PlayIcon = getIcon('play')
@@ -49,8 +50,10 @@ interface PortletCardHeaderProps {
   onDuplicate: () => void
   onEdit: () => void
   onDelete: () => void
-  /** Shows the Expand button next to Refresh when set */
+  /** Shows the Expand button when set */
   onExpand?: () => void
+  /** Host order of the view-mode actions (features.portletActionOrder) */
+  actionOrder?: readonly PortletActionId[]
 }
 
 /** Suppresses drag/touch propagation on header action containers. */
@@ -105,7 +108,7 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
     editable, isEditMode, isInSelectionMode, debugData,
     copyAvailable, copySuccess, xlsExportAvailable, exportInProgress, showCacheBustIndicator,
     unreachableDateFilterLabels, icons, isFetching = false, freshness, refreshPause, onRefresh, onHoverRefreshChange, onCopyToClipboard, onExportXlsx,
-    onOpenFilterConfig, onDuplicate, onEdit, onDelete, onExpand
+    onOpenFilterConfig, onDuplicate, onEdit, onDelete, onExpand, actionOrder
   } = props
   const { t } = useTranslation()
 
@@ -121,6 +124,132 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
     : refreshPause.isDashboardPaused
       ? t('dashboard.portlet.freshness.pausedTitle')
       : refreshPause.isPaused ? t('dashboard.portlet.action.resumeRefresh') : t('dashboard.portlet.action.pauseRefresh')
+
+  // The view-mode actions, in the default order. features.portletActionOrder
+  // reorders them; the freshness indicator and the edit actions keep their place.
+  const actions: PortletActionElement[] = [
+    {
+      id: 'pauseRefresh',
+      element: refreshPause && !isInSelectionMode && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            refreshPause.onToggle()
+          }}
+          onTouchEnd={(event) => {
+            event.stopPropagation()
+            event.preventDefault()
+            if (!refreshPause.isDashboardPaused) refreshPause.onToggle()
+          }}
+          disabled={refreshPause.isDashboardPaused}
+          className={`dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:transition-colors ${
+            refreshPause.isDashboardPaused ? 'dc:opacity-50 dc:cursor-default' : 'dc:cursor-pointer hover:bg-dc-surface-hover'
+          }`}
+          title={refreshPauseLabel}
+          aria-label={refreshPauseLabel}
+          aria-pressed={refreshPause.isPaused}
+          data-testid="portlet-refresh-pause"
+        >
+          {refreshPause.isPaused ? <PlayIcon style={ICON_STYLE} /> : <PauseIcon style={ICON_STYLE} />}
+        </button>
+      )
+    },
+    {
+      id: 'refresh',
+      element: (
+        <button
+          onClick={(event) => {
+            event.stopPropagation()
+            onRefresh({ bustCache: event.shiftKey })
+          }}
+          onTouchEnd={(event) => {
+            event.stopPropagation()
+            event.preventDefault()
+            onRefresh()
+          }}
+          onMouseEnter={() => onHoverRefreshChange(true)}
+          onMouseLeave={() => onHoverRefreshChange(false)}
+          disabled={isInSelectionMode}
+          className={`dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:transition-colors ${
+            isInSelectionMode
+              ? 'dc:cursor-not-allowed dc:opacity-50 text-dc-text-secondary'
+              : showCacheBustIndicator
+                ? 'dc:cursor-pointer text-dc-warning bg-dc-warning-bg'
+                : 'dc:cursor-pointer text-dc-text-secondary hover:bg-dc-surface-hover'
+          }`}
+          title={refreshTitle}
+          aria-busy={isFetching}
+          data-testid="portlet-refresh"
+        >
+          <icons.RefreshIcon style={ICON_STYLE} className={isFetching ? 'dc:animate-spin' : undefined} />
+        </button>
+      )
+    },
+    {
+      // Expand button - the host decides what it opens; never disabled, so
+      // a loading, failed, or empty card can still be expanded
+      id: 'expand',
+      element: onExpand && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            onExpand()
+          }}
+          onTouchEnd={(event) => {
+            event.stopPropagation()
+            event.preventDefault()
+            onExpand()
+          }}
+          className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:cursor-pointer text-dc-text-secondary hover:bg-dc-surface-hover dc:transition-colors"
+          title={t('dashboard.portlet.action.expand')}
+          aria-label={t('dashboard.portlet.action.expand')}
+        >
+          <MaximizeIcon style={ICON_STYLE} />
+        </button>
+      )
+    },
+    {
+      // Copy to clipboard button - visible when thumbnail feature is enabled and capability is available
+      id: 'copy',
+      element: copyAvailable && !isInSelectionMode && (
+        <button
+          onClick={onCopyToClipboard}
+          onTouchEnd={(event) => {
+            event.preventDefault()
+            onCopyToClipboard(event)
+          }}
+          className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
+          title={copySuccess ? 'Copied!' : 'Copy chart to clipboard'}
+        >
+          {copySuccess ? <CheckIcon style={ICON_STYLE} /> : <CameraIcon style={ICON_STYLE} />}
+        </button>
+      )
+    },
+    {
+      // XLSX export button - visible when xlsExport feature is enabled, exceljs is installed, and portlet has data
+      id: 'download',
+      element: xlsExportAvailable && !isInSelectionMode && debugData && (
+        <button
+          onClick={onExportXlsx}
+          onTouchEnd={(event) => {
+            event.preventDefault()
+            onExportXlsx(event)
+          }}
+          disabled={exportInProgress}
+          className={`dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:transition-colors ${
+            exportInProgress
+              ? 'dc:opacity-50 dc:cursor-wait text-dc-text-secondary'
+              : 'text-dc-text-secondary dc:cursor-pointer dc:hover:bg-dc-surface-hover'
+          }`}
+          title={exportInProgress ? 'Exporting...' : 'Download data as XLSX'}
+        >
+          <DownloadIcon style={ICON_STYLE} />
+        </button>
+      )
+    }
+  ]
 
   return (
     <div
@@ -152,113 +281,9 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
         {freshness
           ? <DataFreshnessIndicator {...freshness} />
           : debugData?.cacheInfo && <CacheIndicator cachedAt={debugData.cacheInfo.cachedAt} />}
-        {refreshPause && !isInSelectionMode && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              refreshPause.onToggle()
-            }}
-            onTouchEnd={(event) => {
-              event.stopPropagation()
-              event.preventDefault()
-              if (!refreshPause.isDashboardPaused) refreshPause.onToggle()
-            }}
-            disabled={refreshPause.isDashboardPaused}
-            className={`dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:transition-colors ${
-              refreshPause.isDashboardPaused ? 'dc:opacity-50 dc:cursor-default' : 'dc:cursor-pointer hover:bg-dc-surface-hover'
-            }`}
-            title={refreshPauseLabel}
-            aria-label={refreshPauseLabel}
-            aria-pressed={refreshPause.isPaused}
-            data-testid="portlet-refresh-pause"
-          >
-            {refreshPause.isPaused ? <PlayIcon style={ICON_STYLE} /> : <PauseIcon style={ICON_STYLE} />}
-          </button>
-        )}
-        <button
-          onClick={(event) => {
-            event.stopPropagation()
-            onRefresh({ bustCache: event.shiftKey })
-          }}
-          onTouchEnd={(event) => {
-            event.stopPropagation()
-            event.preventDefault()
-            onRefresh()
-          }}
-          onMouseEnter={() => onHoverRefreshChange(true)}
-          onMouseLeave={() => onHoverRefreshChange(false)}
-          disabled={isInSelectionMode}
-          className={`dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:transition-colors ${
-            isInSelectionMode
-              ? 'dc:cursor-not-allowed dc:opacity-50 text-dc-text-secondary'
-              : showCacheBustIndicator
-                ? 'dc:cursor-pointer text-dc-warning bg-dc-warning-bg'
-                : 'dc:cursor-pointer text-dc-text-secondary hover:bg-dc-surface-hover'
-          }`}
-          title={refreshTitle}
-          aria-busy={isFetching}
-          data-testid="portlet-refresh"
-        >
-          <icons.RefreshIcon style={ICON_STYLE} className={isFetching ? 'dc:animate-spin' : undefined} />
-        </button>
-
-        {/* Expand button - the host decides what it opens; never disabled, so
-            a loading, failed, or empty card can still be expanded */}
-        {onExpand && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              onExpand()
-            }}
-            onTouchEnd={(event) => {
-              event.stopPropagation()
-              event.preventDefault()
-              onExpand()
-            }}
-            className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:cursor-pointer text-dc-text-secondary hover:bg-dc-surface-hover dc:transition-colors"
-            title={t('dashboard.portlet.action.expand')}
-            aria-label={t('dashboard.portlet.action.expand')}
-          >
-            <MaximizeIcon style={ICON_STYLE} />
-          </button>
-        )}
-
-        {/* Copy to clipboard button - visible when thumbnail feature is enabled and capability is available */}
-        {copyAvailable && !isInSelectionMode && (
-          <button
-            onClick={onCopyToClipboard}
-            onTouchEnd={(event) => {
-              event.preventDefault()
-              onCopyToClipboard(event)
-            }}
-            className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
-            title={copySuccess ? 'Copied!' : 'Copy chart to clipboard'}
-          >
-            {copySuccess ? <CheckIcon style={ICON_STYLE} /> : <CameraIcon style={ICON_STYLE} />}
-          </button>
-        )}
-
-        {/* XLSX export button - visible when xlsExport feature is enabled, exceljs is installed, and portlet has data */}
-        {xlsExportAvailable && !isInSelectionMode && debugData && (
-          <button
-            onClick={onExportXlsx}
-            onTouchEnd={(event) => {
-              event.preventDefault()
-              onExportXlsx(event)
-            }}
-            disabled={exportInProgress}
-            className={`dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:transition-colors ${
-              exportInProgress
-                ? 'dc:opacity-50 dc:cursor-wait text-dc-text-secondary'
-                : 'text-dc-text-secondary dc:cursor-pointer dc:hover:bg-dc-surface-hover'
-            }`}
-            title={exportInProgress ? 'Exporting...' : 'Download data as XLSX'}
-          >
-            <DownloadIcon style={ICON_STYLE} />
-          </button>
-        )}
+        {orderPortletActions(actions, actionOrder).map(({ id, element }) => (
+          <React.Fragment key={id}>{element}</React.Fragment>
+        ))}
 
         {editable && isEditMode && !isInSelectionMode && (
           <EditActionButtons
