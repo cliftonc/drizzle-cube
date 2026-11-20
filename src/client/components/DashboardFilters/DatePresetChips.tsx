@@ -8,7 +8,6 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from '../../hooks/useTranslation.js'
 import { DATE_PRESETS, calculateDateRange, formatDateRangeDisplay } from '../shared/utils.js'
-import { useTranslation } from '../../hooks/useTranslation.js'
 
 interface DatePresetChipsProps {
   activePreset: string | null

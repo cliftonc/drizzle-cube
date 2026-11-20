@@ -97,8 +97,8 @@ describe('read-only dashboard filters', () => {
     server.use(...createLoadHandler([{ 'Employees.isActive': false }]))
     const { onDashboardFiltersChange, onSave } = renderFilterBar(false, [filters[1]])
 
-    // Both responsive layouts remain mounted in jsdom.
-    expect(screen.getAllByText('Active')).toHaveLength(2)
+    // The filter bar mounts one responsive layout (mobile under jsdom's matchMedia mock).
+    expect(screen.getAllByText('Active')).toHaveLength(1)
     await changeBoolean()
 
     const updated: DashboardFilter[] = onDashboardFiltersChange.mock.calls.at(-1)?.[0]
@@ -114,7 +114,7 @@ describe('read-only dashboard filters', () => {
   it('offers no date creation on an editable dashboard in view mode', () => {
     renderFilterBar(true, [filters[1]])
 
-    expect(screen.getAllByText('Active')).toHaveLength(2)
+    expect(screen.getAllByText('Active')).toHaveLength(1)
     expect(screen.queryAllByRole('button', { name: '30D' })).toHaveLength(0)
     expect(screen.queryAllByRole('button', { name: 'Custom' })).toHaveLength(0)
     expect(screen.queryAllByRole('button', { name: 'XTD' })).toHaveLength(0)
@@ -482,7 +482,7 @@ describe('public dashboard filter ownership', () => {
       filters: [{ member: 'Employees.isEnabled', operator: 'equals', values: [true, false] }]
     }))
     expect(screen.getAllByRole('button', { name: '30D' })[0]).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getAllByRole('button', { name: /Active.*in \(true, false\)/ })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: /Active.*in \(true, false\)/ })).toHaveLength(1)
   })
 
   it('makes a host-owned field chip read-only while keeping config-owned dates interactive', async () => {

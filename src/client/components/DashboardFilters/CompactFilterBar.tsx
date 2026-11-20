@@ -36,10 +36,20 @@ interface CompactFilterBarProps {
  * *other* instance as "outside", closing the shared state on any interaction.
  * (768px matches the dc:md: breakpoint previously used to swap them.)
  */
+const DESKTOP_QUERY = '(min-width: 768px)'
+
+// Without matchMedia (SSR, some test environments) fall back to the desktop layout.
+const getDesktopQuery = (): MediaQueryList | null =>
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia(DESKTOP_QUERY)
+    : null
+
 function useIsDesktop(): boolean {
-  const [isDesktop, setIsDesktop] = useState(true)
+  // Read the query on the first render so a narrow screen never flashes the desktop layout.
+  const [isDesktop, setIsDesktop] = useState(() => getDesktopQuery()?.matches ?? true)
   useEffect(() => {
-    const query = window.matchMedia('(min-width: 768px)')
+    const query = getDesktopQuery()
+    if (!query) return
     const update = () => setIsDesktop(query.matches)
     update()
     query.addEventListener('change', update)
