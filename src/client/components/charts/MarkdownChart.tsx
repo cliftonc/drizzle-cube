@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useRef, type ReactNode } from 'react'
 import { useTranslation } from '../../hooks/useTranslation.js'
-import Markdown from 'markdown-to-jsx'
+import { compiler, type MarkdownToJSX } from 'markdown-to-jsx'
 import type { ChartProps } from '../../types.js'
 import type { MarkdownTemplateDiagnostic } from './markdownTemplate.js'
+import { parseMarkdownDisclosures, type MarkdownSegment } from './markdownDisclosure.js'
 import {
   alignmentClass,
   bodySizeClass,
@@ -39,14 +40,50 @@ function Diagnostics({ heading, items, tone }: {
   )
 }
 
+type DisclosureState = Record<string, boolean>
+
+function isDisclosureState(value: unknown): value is DisclosureState {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    && Object.values(value).every(open => typeof open === 'boolean')
+}
+
+function renderSegments(
+  segments: MarkdownSegment[],
+  options: MarkdownToJSX.Options,
+  openState: DisclosureState,
+  onToggle: (key: string, open: boolean) => void
+): ReactNode[] {
+  return segments.map((segment, index) => {
+    if (segment.kind === 'markdown') {
+      return segment.text.trim() ? <React.Fragment key={index}>{compiler(segment.text, options)}</React.Fragment> : null
+    }
+    return (
+      <details
+        key={segment.key}
+        className="text-dc-text dc:my-2"
+        open={openState[segment.key] === true}
+        onToggle={event => onToggle(segment.key, event.currentTarget.open)}
+      >
+        <summary className="text-dc-text dc:cursor-pointer dc:rounded-sm dc:font-semibold dc:focus-visible:outline-2 dc:focus-visible:outline-offset-2">
+          {compiler(segment.summary, { ...options, forceInline: true })}
+        </summary>
+        {renderSegments(segment.body, options, openState, onToggle)}
+      </details>
+    )
+  })
+}
+
 const MarkdownChart = React.memo(function MarkdownChart({
   data,
   displayConfig = {},
   queryObject,
   height = "100%",
-  colorPalette
+  colorPalette,
+  initialViewState,
+  onViewStateChange
 }: ChartProps) {
   const { t } = useTranslation()
+  const disclosureState = useRef<DisclosureState>(isDisclosureState(initialViewState) ? { ...initialViewState } : {})
   const content = displayConfig.content || ''
   const fontSize = displayConfig.fontSize || 'medium'
   const transparentBackground = !!displayConfig.transparentBackground
@@ -57,10 +94,21 @@ const MarkdownChart = React.memo(function MarkdownChart({
   // rather than literal markdown. Without one this is inert.
   const template = useMarkdownTemplate(content, data, queryObject)
 
-  const markdownOptions = useMemo(
-    () => buildMarkdownOptions(accentColor, fontSize),
-    [accentColor, fontSize]
-  )
+  // In template mode the rendered output replaces the raw content. Before the
+  // first async render lands there is nothing to show, so the body is empty for
+  // one paint rather than flashing the un-rendered template source.
+  const body = template.errors.length > 0 ? '' : template.isTemplate ? (template.output ?? '') : content
+  const markdown = useMemo(() => {
+    if (!body) return null
+    const options = buildMarkdownOptions(accentColor, fontSize)
+    const segments = parseMarkdownDisclosures(body)
+    if (segments.every(segment => segment.kind === 'markdown')) return compiler(body, options)
+    return renderSegments(segments, options, disclosureState.current, (key, open) => {
+      if (disclosureState.current[key] === open) return
+      disclosureState.current = { ...disclosureState.current, [key]: open }
+      onViewStateChange?.(disclosureState.current)
+    })
+  }, [body, accentColor, fontSize, onViewStateChange])
 
   if (!content.trim()) {
     if (transparentBackground) return null
@@ -99,10 +147,6 @@ const MarkdownChart = React.memo(function MarkdownChart({
     )
   }
 
-  // In template mode the rendered output replaces the raw content. Before the
-  // first async render lands there is nothing to show, so the body is empty for
-  // one paint rather than flashing the un-rendered template source.
-  const body = template.isTemplate ? (template.output ?? '') : content
   const alignment = alignmentClass(displayConfig.alignment || 'left')
 
   return (
@@ -122,7 +166,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
           />
         </div>
       ) : null}
-      {body ? <Markdown options={markdownOptions}>{body}</Markdown> : null}
+      {markdown}
     </div>
   )
 })

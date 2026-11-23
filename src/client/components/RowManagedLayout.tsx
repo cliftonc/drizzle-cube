@@ -36,7 +36,9 @@ interface RowManagedLayoutProps {
     portlet: PortletConfig,
     containerProps?: HTMLAttributes<HTMLDivElement>,
     headerProps?: HTMLAttributes<HTMLDivElement>,
-    variant?: PortletCardVariant
+    variant?: PortletCardVariant,
+    /** True when the row keeps a fixed height, so a markdown card must fill it instead of growing. */
+    inFixedHeightRow?: boolean
   ) => ReactNode
   /** Renders a group column. Omitted in contexts that have no groups. */
   renderGroup?: (
@@ -201,7 +203,7 @@ export default function RowManagedLayout({
                   ? renderGroup?.(group, renderSnapBands, inSection)
                   : (
                     <>
-                      {renderPortlet(portlet!, undefined, undefined, inSection ? 'sectionChild' : 'standalone')}
+                      {renderPortlet(portlet!, undefined, undefined, inSection ? 'sectionChild' : 'standalone', !autoHeight)}
                       {renderSnapBands(portlet!.id)}
                     </>
                   )}

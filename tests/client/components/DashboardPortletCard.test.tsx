@@ -700,6 +700,25 @@ describe('DashboardPortletCard', () => {
       expect(container?.className).not.toContain('dc:h-full')
       expect(screen.getByTestId('analytics-portlet')).toHaveAttribute('data-height', 'auto')
     })
+
+    it('should fill a fixed-height row in rows layout even when markdown autoHeight is enabled', () => {
+      const analysisConfig = createMockAnalysisConfig()
+      analysisConfig.charts.query!.chartType = 'markdown'
+      analysisConfig.charts.query!.displayConfig = { autoHeight: true }
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ analysisConfig })
+      props.layoutMode = 'rows'
+
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...props} inFixedHeightRow />
+        </TestWrapper>
+      )
+
+      const container = document.querySelector('[data-portlet-id="portlet-1"]')
+      expect(container?.className).toContain('dc:h-full')
+      expect(screen.getByTestId('analytics-portlet')).toHaveAttribute('data-height', '100%')
+    })
   })
 
   describe('unreachable dashboard date filter indicator', () => {
