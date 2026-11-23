@@ -30,7 +30,8 @@ import {
   collectDimensionCubeNames,
   deriveCTEJoinKeys,
   deriveDownstreamJoinKeys,
-  findJoinInfoForCube
+  findJoinInfoForCube,
+  orientJoinKeys
 } from './cte-planner-helpers.js'
 
 export class CTEPlanner {
@@ -252,12 +253,7 @@ export class CTEPlanner {
     path: { fromCube: string; toCube: string; joinDef: CubeJoin; reversed?: boolean }[]
     hasIntermediateHasMany: boolean
     intermediateJoins: IntermediateJoinInfo[]
-    correctJoinKeys: Array<{
-      sourceColumn: string
-      targetColumn: string
-      sourceColumnObj: any
-      targetColumnObj: any
-    }>
+    correctJoinKeys: CTEJoinKey[]
   } | null {
     const resolver = this.resolverCache.get(cubes)
     const preferredPathCubes = analyzeCubeUsage(query)
@@ -333,18 +329,8 @@ export class CTEPlanner {
       })
     }
 
-    // Calculate the correct join keys
-    // When there are intermediate hasMany, the CTE should:
-    // 1. JOIN to intermediate tables
-    // 2. GROUP BY the primary cube's join column (not the intermediate's)
-    // 3. Join directly to primary cube
     const firstStep = pathWithRelationships[0]
-    const correctJoinKeys = firstStep.joinDef.on.map(joinOn => ({
-      sourceColumn: joinOn.source.name,  // Column on primary cube
-      targetColumn: joinOn.target.name,  // Column on first intermediate (which CTE will include via JOIN)
-      sourceColumnObj: joinOn.source,
-      targetColumnObj: joinOn.target
-    }))
+    const correctJoinKeys = orientJoinKeys(firstStep.joinDef.on)
 
     return {
       path: pathWithRelationships,

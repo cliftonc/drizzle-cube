@@ -27,6 +27,23 @@ export interface FoundJoinInfo {
 }
 
 /**
+ * Map a join's `on` pairs to CTE join keys, swapping source and target for a
+ * reversed join (one declared on the far cube and walked back towards it).
+ */
+export function orientJoinKeys(on: CubeJoin['on'], reversed?: boolean): CTEJoinKey[] {
+  return on.map(joinOn => {
+    const source = reversed ? joinOn.target : joinOn.source
+    const target = reversed ? joinOn.source : joinOn.target
+    return {
+      sourceColumn: source.name,
+      targetColumn: target.name,
+      sourceColumnObj: source,
+      targetColumnObj: target
+    }
+  })
+}
+
+/**
  * Derive join keys for a belongsToMany relationship via its junction table.
  *
  * Direction matters: when the belongsToMany is defined on the primary cube
@@ -71,23 +88,7 @@ export function deriveCTEJoinKeys(joinInfo: FoundJoinInfo, primaryCube: Cube): C
     return deriveBelongsToManyJoinKeys(joinInfo, primaryCube)
   }
 
-  // For reversed joins (CTE cube has belongsTo back to primary), swap
-  // source/target so sourceColumnObj references the primary cube's column.
-  if (joinInfo.reversed) {
-    return joinInfo.joinDef.on.map(joinOn => ({
-      sourceColumn: joinOn.target.name,
-      targetColumn: joinOn.source.name,
-      sourceColumnObj: joinOn.target,
-      targetColumnObj: joinOn.source
-    }))
-  }
-
-  return joinInfo.joinDef.on.map(joinOn => ({
-    sourceColumn: joinOn.source.name,
-    targetColumn: joinOn.target.name,
-    sourceColumnObj: joinOn.source,
-    targetColumnObj: joinOn.target
-  }))
+  return orientJoinKeys(joinInfo.joinDef.on, joinInfo.reversed)
 }
 
 /**
@@ -106,12 +107,7 @@ export function deriveDownstreamJoinKeys(joinDef: CubeJoin): CTEJoinKey[] {
     }))
   }
 
-  return joinDef.on.map(joinOn => ({
-    sourceColumn: joinOn.source.name,
-    targetColumn: joinOn.target.name,
-    sourceColumnObj: joinOn.source,
-    targetColumnObj: joinOn.target
-  }))
+  return orientJoinKeys(joinDef.on)
 }
 
 /**
