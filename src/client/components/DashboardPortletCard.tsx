@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type {
   AnalyticsPortletProps,
   AnalyticsPortletRef,
@@ -10,6 +10,7 @@ import type {
   PortletFreshness
 } from '../types.js'
 import AnalyticsPortlet from './AnalyticsPortlet.js'
+import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
 import type { ColorPalette } from '../utils/colorPalettes.js'
 import { useDashboardStore, type PortletDebugDataEntry } from '../stores/dashboardStore.js'
 import { ensureAnalysisConfig } from '../utils/configMigration.js'
@@ -123,6 +124,15 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   const isEditMode = useDashboardStore(state => state.isEditMode)
   const selectedFilterId = useDashboardStore(state => state.selectedFilterId)
   const debugData = useDashboardStore(state => state.debugData[portlet.id])
+
+  // A chart that loads its own data has no portlet result, so its portlet
+  // reports no debug data. Clear the entry of an earlier chart type, so the
+  // card shows no debug data and no XLSX download of a stale result.
+  const fetchesOwnData = useChartConfig(renderChartType).config.fetchesOwnData === true
+  const clearDebugData = useDashboardStore(state => state.clearDebugData)
+  useEffect(() => {
+    if (fetchesOwnData) clearDebugData(portlet.id)
+  }, [fetchesOwnData, portlet.id, clearDebugData])
 
   // Markdown-specific display modes (transparency, auto-height, header visibility)
   const { isMarkdownAutoHeight, isTransparentContent, isTransparent, shouldHideHeader } = resolveDisplayModes({

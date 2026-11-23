@@ -124,6 +124,7 @@ vi.mock('../../src/client/charts/ChartLoader', () => ({
       data-config={JSON.stringify(props.chartConfig)}
       data-query={JSON.stringify(props.queryObject ?? null)}
       data-initial-view-state={JSON.stringify(props.initialViewState ?? null)}
+      data-refresh-id={JSON.stringify(props.refreshId ?? null)}
     >
       <button type="button" onClick={() => props.onViewStateChange?.({ page: 3 })}>
         Report page 3
@@ -132,7 +133,7 @@ vi.mock('../../src/client/charts/ChartLoader', () => ({
   ),
   isValidChartType: (chartType: string) => [
     'bar', 'line', 'area', 'pie', 'scatter', 'radar', 'radialBar', 'treemap',
-    'bubble', 'table', 'activityGrid', 'kpiNumber', 'kpiDelta', 'kpiText', 'markdown'
+    'bubble', 'table', 'activityGrid', 'kpiNumber', 'kpiDelta', 'kpiText', 'markdown', 'ownData'
   ].includes(chartType),
   preloadChart: vi.fn(),
   preloadCharts: vi.fn(),
@@ -147,6 +148,7 @@ vi.mock('../../src/client/charts/lazyChartConfigRegistry', () => ({
   useChartConfig: vi.fn((chartType: string) => ({
     config: {
       skipQuery: chartType === 'markdown',
+      fetchesOwnData: chartType === 'ownData',
       dropZones: [
         { key: 'yAxis', mandatory: true, label: 'Measures' }
       ]
@@ -773,6 +775,122 @@ describe('AnalyticsPortlet', () => {
           chartType: 'bar'
         })
       })
+    })
+  })
+
+  describe('debug data callback that arrives after the data', () => {
+    it('should call onDebugDataReady when the host passes it after the result arrived', async () => {
+      const onDebugDataReady = vi.fn()
+      const chartConfig = { yAxis: ['Test.count'] }
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      const props = {
+        query: JSON.stringify({ measures: ['Test.count'] }),
+        chartType: 'bar' as const,
+        chartConfig
+      }
+      const { rerender } = render(<AnalyticsPortlet {...props} />)
+
+      rerender(<AnalyticsPortlet {...props} onDebugDataReady={onDebugDataReady} />)
+
+      await waitFor(() => {
+        expect(onDebugDataReady).toHaveBeenCalledTimes(1)
+      })
+    })
+  })
+
+  describe('charts that load their own data', () => {
+    const ownDataQuery = { measures: ['Test.count'], dimensions: ['Test.name'] }
+    const renderOwnData = (props: Partial<AnalyticsPortletProps> = {}) => {
+      const ref = createRef<AnalyticsPortletRef>()
+      const result = render(
+        <AnalyticsPortlet
+          ref={ref}
+          query={JSON.stringify(ownDataQuery)}
+          chartType="ownData"
+          chartConfig={{ yAxis: ['Test.count'] }}
+          eagerLoad
+          {...props}
+        />
+      )
+      return { ref, ...result }
+    }
+
+    it('should skip the Cube query and pass the chart the query that a portlet chart gets', async () => {
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
+      const dashboardFilters = [{
+        id: 'status',
+        label: 'Status',
+        filter: { member: 'Test.status', operator: 'equals' as const, values: ['active'] }
+      }]
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      const barChart = render(
+        <AnalyticsPortlet
+          query={JSON.stringify(ownDataQuery)}
+          chartType="bar"
+          chartConfig={{ yAxis: ['Test.count'] }}
+          dashboardFilters={dashboardFilters}
+          eagerLoad
+        />
+      )
+      const portletQuery = barChart.getByTestId('bar-chart').getAttribute('data-query')
+      barChart.unmount()
+      expect(portletQuery).toContain('Test.status')
+
+      const { getByTestId } = renderOwnData({ dashboardFilters })
+
+      expect((useCubeLoadQuery as any).mock.calls.at(-1)[1]).toMatchObject({ skip: true })
+      expect(getByTestId('ownData-chart').getAttribute('data-query')).toBe(portletQuery)
+    })
+
+    it('should render the chart and not the loading view while the Cube hook loads', () => {
+      mockUseCubeLoadQueryResult.isLoading = true
+
+      const { getByTestId, queryByTestId } = renderOwnData()
+
+      expect(getByTestId('ownData-chart')).toBeInTheDocument()
+      expect(queryByTestId('loading-indicator')).not.toBeInTheDocument()
+    })
+
+    it('should send a new refreshId on each refresh and not refetch the Cube query', () => {
+      const { ref, getByTestId } = renderOwnData()
+      const refreshId = () => JSON.parse(getByTestId('ownData-chart').getAttribute('data-refresh-id') ?? 'null')
+      expect(refreshId()).toBeNull()
+
+      act(() => {
+        ref.current?.refresh()
+      })
+      const first = refreshId()
+      act(() => {
+        ref.current?.refresh({ bustCache: true })
+      })
+      const second = refreshId()
+
+      expect(typeof first).toBe('string')
+      expect(typeof second).toBe('string')
+      expect(second).not.toBe(first)
+      expect(mockUseCubeLoadQueryResult.refetch).not.toHaveBeenCalled()
+    })
+
+    it('should not report debug data', async () => {
+      const onDebugDataReady = vi.fn()
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+
+      renderOwnData({ onDebugDataReady })
+
+      await act(async () => {})
+      expect(onDebugDataReady).not.toHaveBeenCalled()
+    })
+
+    it('should show the one-query message in place of the chart for a multi-query portlet', () => {
+      const { queryByTestId, getByText } = renderOwnData({
+        query: JSON.stringify({
+          queries: [ownDataQuery, { measures: ['Other.total'] }],
+          mergeStrategy: 'concat'
+        })
+      })
+
+      expect(queryByTestId('ownData-chart')).not.toBeInTheDocument()
+      expect(getByText('This chart type shows one query only')).toBeInTheDocument()
     })
   })
 

@@ -6,6 +6,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
 import type { AnalyticsPortletProps, AnalyticsPortletRef, PortletViewState } from '../types.js'
+import type { MaxAgeOptions } from '../client/maxAge.js'
 import { hasRunnableQuery, parsePortletQuery } from './analyticsPortlet/parsePortletQuery.js'
 import { getRegularDashboardFilters } from '../utils/filterUtils.js'
 import { combineQueriesForChart } from '../utils/multiQueryUtils.js'
@@ -54,6 +55,11 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   // which keeps every existing text portlet on exactly its old path.
   const { config: chartTypeConfig } = useChartConfig(chartType)
   const shouldSkipQuery = chartTypeConfig.skipQuery === true && !hasRunnableQuery(query)
+
+  // A chart that loads its own data gets the effective query but no Cube fetch.
+  // Each Refresh gives it a new id, so it can tell a Refresh from a remount.
+  const fetchesOwnData = chartTypeConfig.fetchesOwnData === true
+  const [refreshId, setRefreshId] = useState<string | null>(null)
 
   // Memoize regular filters to prevent array recreation on every render.
   // Universal time filters pinned to a field by the mapping count as regular.
@@ -145,7 +151,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     isFunnelMode,
     isFlowMode,
     isRetentionMode,
-    shouldSkipQuery,
+    shouldSkipQuery: shouldSkipQuery || fetchesOwnData,
     eagerLoad,
     isVisible,
     isScrolledAway,
@@ -167,9 +173,16 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     onFreshnessChangeRef.current?.({ computedAt, isFetching })
   }, [computedAt, isFetching])
 
+  // A Refresh always gives the chart a new id. It reloads the Cube query
+  // only for a chart that does not load its own data.
+  const refreshPortlet = useCallback((options?: MaxAgeOptions) => {
+    setRefreshId(crypto.randomUUID())
+    if (!fetchesOwnData) refresh(options)
+  }, [fetchesOwnData, refresh])
+
   // Expose refresh and the view state through ref
   useImperativeHandle(ref, () => ({
-    refresh,
+    refresh: refreshPortlet,
     getViewState: () => {
       const viewState: PortletViewState = {}
       if (drillViewState) viewState.drill = drillViewState
@@ -177,7 +190,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       if (chartViewStateRef.current !== undefined) viewState.chart = chartViewStateRef.current
       return viewState
     }
-  }), [refresh, drillViewState, paginationViewState])
+  }), [refreshPortlet, drillViewState, paginationViewState])
 
   // The total only exists once a response carrying it has arrived, so it is
   // merged in here rather than fed back into the pagination hook.
@@ -196,9 +209,10 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     [multiQueryConfig, paginatedQuery]
   )
 
-  // Send debug data to parent when ready
+  // Send debug data to parent when ready. A chart that loads its own data has
+  // no portlet result to debug or export.
   usePortletDebugData({
-    onDebugDataReady,
+    onDebugDataReady: fetchesOwnData ? undefined : onDebugDataReady,
     error,
     chartType,
     chartConfig,
@@ -232,6 +246,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     hasMandatoryFields,
     shouldSkipQuery,
     rendersWithoutData: chartTypeConfig.skipQuery === true,
+    fetchesOwnData,
     eagerLoad,
     isVisible,
     isLoading,
@@ -311,6 +326,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         onNavigateToLevel={handleNavigateToLevel}
         initialViewState={startViewState?.chart}
         onViewStateChange={handleChartViewStateChange}
+        refreshId={refreshId}
       />
     </div>
   )

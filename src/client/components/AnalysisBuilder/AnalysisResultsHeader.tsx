@@ -39,6 +39,8 @@ export interface ResultsSummary {
   resultsStale: boolean
   executionError: unknown
   debugDataPerQuery: Array<{ error?: unknown }>
+  /** The chart loads its own data, so the builder has no row count or status to show */
+  fetchesOwnData?: boolean
 }
 
 /** Action handlers and their transient state for the toolbar buttons. */
@@ -89,6 +91,7 @@ function ResultsHeaderStatus({
 }) {
   const { t } = useTranslation()
   const { executionResults, executionStatus, totalRowCount, resultsStale } = summary
+  if (summary.fetchesOwnData) return null
   return (
     <div className="dc:flex dc:items-center">
       {executionStatus === 'refreshing' ? (

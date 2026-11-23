@@ -1609,6 +1609,8 @@
   "portlet.invalidQuery": "Ongeldig query of no results",
   "portlet.unsupportedChartType": "Unsupported grafiek type",
   "portlet.unableToRender": "Kan niet renderen grafiek",
+  "portlet.oneQueryOnly.title": "Dit grafiektype toont maar één query",
+  "portlet.oneQueryOnly.hint": "Verwijder de andere query's, of kies een ander grafiektype.",
   "portlet.droppedMembers": "Verborgen — niet meer in het model: {members}",
   "portlet.enterTitle": "Enter portlet title...",
   "portlet.enterPortletTitle": "Voer een titel in voor de portlet.",
