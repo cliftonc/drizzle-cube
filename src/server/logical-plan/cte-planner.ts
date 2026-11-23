@@ -312,25 +312,14 @@ export class CTEPlanner {
       // The intermediate cube's security WHERE is materialized symbolically:
       // the physical builder calls intermediateCube.sql(context) when it
       // absorbs this join into the CTE, so no SQL is baked into the plan here.
-
-      // Find the join column from this intermediate to the NEXT step
-      // This is the column that connects to the CTE cube (or next intermediate)
-      const cteJoinColumn = nextStep.joinDef.on[0]?.source
-
-      // Find the join column from primary to this intermediate
-      // This is the column that we'll GROUP BY in the CTE
-      const primaryJoinColumn = step.joinDef.on[0]?.target
-
       intermediateJoins.push({
         cube: intermediateCube,
-        joinDef: nextStep.joinDef as CubeJoin,
-        primaryJoinColumn,
-        cteJoinColumn
+        joinDef: nextStep.joinDef as CubeJoin
       })
     }
 
     const firstStep = pathWithRelationships[0]
-    const correctJoinKeys = orientJoinKeys(firstStep.joinDef.on)
+    const correctJoinKeys = orientJoinKeys(firstStep.joinDef.on, firstStep.reversed)
 
     return {
       path: pathWithRelationships,

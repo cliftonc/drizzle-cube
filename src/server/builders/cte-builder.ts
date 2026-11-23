@@ -57,11 +57,8 @@ export class CTEBuilder {
     const cube = cteInfo.cube
     const cubeBase = resolveCubeBase(cube, context) // Gets security filtering!
 
-    // Check if this CTE needs to absorb intermediate tables (multi-hop fan-out prevention)
-    const hasIntermediateJoins = !!(cteInfo.intermediateJoins && cteInfo.intermediateJoins.length > 0)
-
     // Build selections for CTE - include join keys, measures, and requested dimensions
-    const cteSelections = this.buildCTESelections(cteInfo, cube, query, context, hasIntermediateJoins)
+    const cteSelections = this.buildCTESelections(cteInfo, cube, query, context)
 
     // Ensure we have at least one selection
     if (Object.keys(cteSelections).length === 0) {
@@ -81,7 +78,7 @@ export class CTEBuilder {
 
     // If there are intermediate joins (multi-hop fan-out prevention),
     // add JOINs to the intermediate tables inside the CTE
-    cteQuery = this.applyIntermediateJoins(cteQuery, cteInfo, context, hasIntermediateJoins)
+    cteQuery = this.applyIntermediateJoins(cteQuery, cteInfo, context)
 
     // Combine security context, regular WHERE conditions, and time dimension filters
     const allCteConditions = this.buildCTEWhereConditions(
@@ -96,7 +93,7 @@ export class CTEBuilder {
     }
 
     // All CTEs now use GROUP BY for pre-aggregation
-    const groupByFields = this.buildCTEGroupByFields(cteInfo, cube, query, context, hasIntermediateJoins)
+    const groupByFields = this.buildCTEGroupByFields(cteInfo, cube, query, context)
 
     if (groupByFields.length > 0) {
       cteQuery = cteQuery.groupBy(...groupByFields)
@@ -106,20 +103,19 @@ export class CTEBuilder {
   }
 
   /**
-   * Build the SELECT map for a pre-aggregation CTE: join keys (or the
-   * intermediate primary-connected column), downstream join keys, aggregated
-   * measures, and requested dimensions / time dimensions from this cube.
+   * Build the SELECT map for a pre-aggregation CTE: join keys, downstream join
+   * keys, aggregated measures, and requested dimensions / time dimensions from
+   * this cube.
    */
   private buildCTESelections(
     cteInfo: CTEInfo,
     cube: CTEInfo['cube'],
     query: SemanticQuery,
-    context: QueryContext,
-    hasIntermediateJoins: boolean
+    context: QueryContext
   ): Record<string, any> {
     const cteSelections: Record<string, any> = {}
 
-    this.addJoinKeySelections(cteSelections, cteInfo, cube, hasIntermediateJoins)
+    this.addJoinKeySelections(cteSelections, cteInfo, cube)
     this.addDownstreamKeySelections(cteSelections, cteInfo)
     this.addMeasureSelections(cteSelections, cteInfo, cube, context)
     this.addDimensionSelections(cteSelections, cube, query, context)
@@ -127,24 +123,12 @@ export class CTEBuilder {
     return cteSelections
   }
 
-  /** Add join-key columns (or the intermediate primary-connected column) to the CTE SELECT. */
+  /** Add join-key columns to the CTE SELECT. */
   private addJoinKeySelections(
     cteSelections: Record<string, any>,
     cteInfo: CTEInfo,
-    cube: CTEInfo['cube'],
-    hasIntermediateJoins: boolean
+    cube: CTEInfo['cube']
   ): void {
-    // For multi-hop paths with intermediate joins the join key needs to come from
-    // the INTERMEDIATE table, not the CTE table (e.g. employees.department_id).
-    if (hasIntermediateJoins && cteInfo.intermediateJoins) {
-      const primaryConnectCol = cteInfo.intermediateJoins[0].primaryJoinColumn
-      if (primaryConnectCol) {
-        cteSelections[primaryConnectCol.name] = primaryConnectCol
-      }
-      return
-    }
-
-    // Standard path: Add join key columns - use the stored column objects
     for (const joinKey of cteInfo.joinKeys) {
       if (!joinKey.targetColumnObj) continue
       cteSelections[joinKey.targetColumn] = joinKey.targetColumnObj
@@ -231,17 +215,16 @@ export class CTEBuilder {
   private applyIntermediateJoins(
     cteQuery: any,
     cteInfo: CTEInfo,
-    context: QueryContext,
-    hasIntermediateJoins: boolean
+    context: QueryContext
   ): any {
-    if (!hasIntermediateJoins || !cteInfo.intermediateJoins) {
+    if (!cteInfo.intermediateJoins) {
       return cteQuery
     }
 
     const joinChain = [...cteInfo.intermediateJoins].reverse()
     for (const intermediate of joinChain) {
       const intermediateCubeBase = resolveCubeBase(intermediate.cube, context)
-      const joinCondition = eq(intermediate.cteJoinColumn, intermediate.joinDef.on[0]?.target)
+      const joinCondition = and(...intermediate.joinDef.on.map(joinOn => eq(joinOn.source, joinOn.target)))!
 
       // Add JOIN with security context for the intermediate table. The
       // security WHERE is materialized here (not baked into the plan) from
@@ -356,16 +339,14 @@ export class CTEBuilder {
   }
 
   /**
-   * Build the GROUP BY fields for a pre-aggregation CTE: join keys (or the
-   * intermediate primary-connected column), downstream join keys, and requested
-   * dimensions / time dimensions. De-dupes named columns.
+   * Build the GROUP BY fields for a pre-aggregation CTE: join keys, downstream
+   * join keys, and requested dimensions / time dimensions. De-dupes named columns.
    */
   private buildCTEGroupByFields(
     cteInfo: CTEInfo,
     cube: CTEInfo['cube'],
     query: SemanticQuery,
-    context: QueryContext,
-    hasIntermediateJoins: boolean
+    context: QueryContext
   ): any[] {
     const cubeName = cube.name
     const groupByFields: any[] = []
@@ -382,7 +363,7 @@ export class CTEBuilder {
       }
     }
 
-    this.addJoinKeyGroupBy(addGroupByField, cteInfo, hasIntermediateJoins)
+    this.addJoinKeyGroupBy(addGroupByField, cteInfo)
 
     // Add requested dimensions from this cube to GROUP BY
     for (const dimensionName of query.dimensions || []) {
@@ -407,24 +388,15 @@ export class CTEBuilder {
 
   /**
    * Add join keys (and downstream join keys) to the CTE GROUP BY via the de-dupe
-   * callback. For multi-hop paths uses the intermediate table's
-   * primary-connected column (e.g. employees.department_id).
+   * callback.
    */
   private addJoinKeyGroupBy(
     addGroupByField: (col: any) => void,
-    cteInfo: CTEInfo,
-    hasIntermediateJoins: boolean
+    cteInfo: CTEInfo
   ): void {
-    if (hasIntermediateJoins && cteInfo.intermediateJoins) {
-      const firstIntermediate = cteInfo.intermediateJoins[0]
-      if (firstIntermediate.primaryJoinColumn) {
-        addGroupByField(firstIntermediate.primaryJoinColumn)
-      }
-    } else {
-      for (const joinKey of cteInfo.joinKeys) {
-        if (joinKey.targetColumnObj) {
-          addGroupByField(joinKey.targetColumnObj)
-        }
+    for (const joinKey of cteInfo.joinKeys) {
+      if (joinKey.targetColumnObj) {
+        addGroupByField(joinKey.targetColumnObj)
       }
     }
 
@@ -445,11 +417,6 @@ export class CTEBuilder {
    *
    * Creates the ON clause for joining a CTE to the main query.
    * Uses stored column objects for type-safe joins.
-   *
-   * For multi-hop paths with intermediate joins:
-   * - The CTE includes columns from intermediate tables
-   * - The join condition uses the intermediate's primary-connected column
-   * - Example: departments.id = employeeteams_agg.department_id (not employee_id!)
    */
   buildCTEJoinCondition(
     joinCube: PhysicalQueryPlan['joinCubes'][0],
@@ -464,25 +431,10 @@ export class CTEBuilder {
 
     const conditions: SQL[] = []
 
-    // Check if this is a multi-hop path with intermediate joins
-    if (cteInfo.intermediateJoins && cteInfo.intermediateJoins.length > 0) {
-      // Use the intermediate table's primary-connected column
-      // Example: departments.id = employeeteams_agg.department_id
-      const firstIntermediate = cteInfo.intermediateJoins[0]
-      const primaryCol = this.resolveCTEJoinSourceColumn(
-        cteInfo.joinKeys[0],
-        cteInfo,
-        queryPlan
-      )
-      const cteCol = sql`${sql.identifier(cteAlias)}.${sql.identifier(firstIntermediate.primaryJoinColumn.name)}`
-      conditions.push(eq(primaryCol as any, cteCol))
-    } else {
-      // Standard path: build join conditions using join keys
-      for (const joinKey of cteInfo.joinKeys) {
-        const sourceCol = this.resolveCTEJoinSourceColumn(joinKey, cteInfo, queryPlan)
-        const cteCol = sql`${sql.identifier(cteAlias)}.${sql.identifier(joinKey.targetColumn)}` // CTE column
-        conditions.push(eq(sourceCol as any, cteCol))
-      }
+    for (const joinKey of cteInfo.joinKeys) {
+      const sourceCol = this.resolveCTEJoinSourceColumn(joinKey, cteInfo, queryPlan)
+      const cteCol = sql`${sql.identifier(cteAlias)}.${sql.identifier(joinKey.targetColumn)}`
+      conditions.push(eq(sourceCol, cteCol))
     }
 
     return conditions.length === 1 ? conditions[0] : and(...conditions)!
