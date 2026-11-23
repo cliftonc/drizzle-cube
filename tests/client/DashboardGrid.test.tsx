@@ -141,9 +141,18 @@ vi.mock('../../src/client/components/ScaledGridWrapper', () => ({
   default: ({ children }: any) => <div data-testid="scaled-wrapper">{children}</div>
 }))
 
-vi.mock('../../src/client/components/MobileStackedLayout', () => ({
-  default: () => <div data-testid="mobile-layout" />
-}))
+// Render the real mobile stack, so tests can read the card order on a phone
+vi.mock('../../src/client/components/MobileStackedLayout', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/client/components/MobileStackedLayout')>()
+  const RealMobileStackedLayout = actual.default
+  return {
+    default: (props: React.ComponentProps<typeof RealMobileStackedLayout>) => (
+      <div data-testid="mobile-layout">
+        <RealMobileStackedLayout {...props} />
+      </div>
+    )
+  }
+})
 
 // Mock heroicons
 vi.mock('@heroicons/react/24/outline', () => ({
@@ -190,6 +199,40 @@ function createGridConfigWithRowLayout(): DashboardConfig {
   }
 }
 
+
+// A rows config whose stored grid positions are stale: the rows put C first,
+// then the group of A and B, but the stored y values put A and B first
+function createRowsConfigWithStalePositions(): DashboardConfig {
+  const portlets = createTestConfig(3).portlets.map((portlet, index) => ({
+    ...portlet,
+    id: ['portlet-a', 'portlet-b', 'portlet-c'][index],
+    title: ['Portlet A', 'Portlet B', 'Portlet C'][index],
+    x: [0, 6, 0][index],
+    y: [0, 0, 8][index]
+  }))
+  return {
+    portlets,
+    layoutMode: 'rows',
+    rows: [
+      { id: 'row-c', h: 4, columns: [{ portletId: 'portlet-c', w: 12 }] },
+      { id: 'row-group', h: 4, columns: [{ groupId: 'group-ab', w: 12 }] }
+    ],
+    groups: [
+      {
+        id: 'group-ab',
+        direction: 'row',
+        cells: [{ portletIds: ['portlet-a'] }, { portletIds: ['portlet-b'] }]
+      }
+    ]
+  }
+}
+
+// The ids of the cards in the mobile stack, in the order that the stack shows them
+function mobileCardOrder(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('.mobile-stacked-layout [data-portlet-id]')).map(
+    (element) => element.getAttribute('data-portlet-id') ?? ''
+  )
+}
 
 // react-grid-layout loads with import() (it is an optional peer). Settle it once
 // so grid dashboards render on first render, as they do after the first load.
@@ -362,6 +405,41 @@ describe('DashboardGrid', () => {
       )
 
       expect(getByTestId('mobile-layout')).toBeInTheDocument()
+    })
+
+    it('should stack the cards in the order of the rows, not of the stored grid positions, in rows mode', () => {
+      mockResponsiveState.displayMode = 'mobile'
+
+      const { container } = render(
+        <DashboardGrid config={createRowsConfigWithStalePositions()} />,
+        { wrapper: TestWrapper }
+      )
+
+      expect(mobileCardOrder(container)).toEqual(['portlet-c', 'portlet-a', 'portlet-b'])
+    })
+
+    it('should stack the cards in the order of the rows when only the dashboard modes select rows mode', () => {
+      mockResponsiveState.displayMode = 'mobile'
+      const config = { ...createRowsConfigWithStalePositions(), layoutMode: undefined }
+
+      const { container } = render(
+        <DashboardGrid config={config} dashboardModes={['rows']} />,
+        { wrapper: TestWrapper }
+      )
+
+      expect(mobileCardOrder(container)).toEqual(['portlet-c', 'portlet-a', 'portlet-b'])
+    })
+
+    it('should stack the cards in the order of their stored grid positions in grid mode', () => {
+      mockResponsiveState.displayMode = 'mobile'
+      const config = { ...createRowsConfigWithStalePositions(), layoutMode: 'grid' as const }
+
+      const { container } = render(
+        <DashboardGrid config={config} />,
+        { wrapper: TestWrapper }
+      )
+
+      expect(mobileCardOrder(container)).toEqual(['portlet-a', 'portlet-b', 'portlet-c'])
     })
 
     it('should render scaled wrapper when displayMode is scaled', () => {
