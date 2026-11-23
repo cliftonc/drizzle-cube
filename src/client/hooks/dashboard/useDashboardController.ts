@@ -380,16 +380,16 @@ export function useDashboardController({
         // would never match it - strip it from its group first.
         const nextGroups = removeFromGroup(resolvedGroupsRef.current, portletId).groups
 
+        // Equalize only the row that lost a column. The other rows keep their
+        // saved widths, so a delete does not change an unrelated row.
         const nextRows = resolvedRowsRef.current
-          .map((row) => ({
-            ...row,
-            columns: row.columns.filter((col) => col.portletId !== portletId),
-          }))
+          .map((row) => {
+            const columns = row.columns.filter((col) => col.portletId !== portletId)
+            return columns.length === row.columns.length
+              ? row
+              : { ...row, columns: equalizeColumns(columns, gridSettings) }
+          })
           .filter((row) => row.columns.length > 0)
-          .map((row) => ({
-            ...row,
-            columns: equalizeColumns(row.columns, gridSettings),
-          }))
 
         await updateLayout({ rows: nextRows, groups: nextGroups, portlets: updatedPortlets })
       } else {
