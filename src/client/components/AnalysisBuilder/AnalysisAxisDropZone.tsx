@@ -211,19 +211,28 @@ export default function AnalysisAxisDropZone({
     setIsReorderDraggedOver(false)
   }, [draggedItem, key, onReorder])
 
-  // Handle drag end - check if dropped outside container to remove
+  // Handle drag end - check if dropped outside every drop zone to remove
   const handleFieldDragEnd = useCallback((e: DragEvent<HTMLDivElement>, field: string) => {
     const container = containerRef.current
     if (container && draggingFieldRef.current === field) {
-      const rect = container.getBoundingClientRect()
-      const isInside =
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom
+      const isUnderPointer = (element: Element) => {
+        const rect = element.getBoundingClientRect()
+        return (
+          e.clientX >= rect.left &&
+          e.clientX <= rect.right &&
+          e.clientY >= rect.top &&
+          e.clientY <= rect.bottom
+        )
+      }
+      // Check all drop zones, not only this one. A drop zone that accepts the
+      // field moves it with its own drop handler. A drop zone that refuses the
+      // field (for example, a full zone) must not cause its removal from here.
+      const isOverDropZone = Array.from(
+        container.ownerDocument.querySelectorAll('[data-axis-container]')
+      ).some(isUnderPointer)
 
-      // If dropped outside the container
-      if (!isInside) {
+      // If dropped outside every drop zone
+      if (!isOverDropZone) {
         // Use a small delay to let other drop handlers fire first
         // Then check if the field is still in this axis (wasn't moved elsewhere)
         setTimeout(() => {
