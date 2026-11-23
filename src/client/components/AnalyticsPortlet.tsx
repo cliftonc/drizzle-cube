@@ -36,7 +36,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   initialViewState,
   hasIntervalRefresh = false,
   onDebugDataReady,
-  onFreshnessChange
+  onFreshnessChange,
+  onExportReady
 }, ref) => {
   // The start view state is read one time, on mount, like the chart components do
   const [startViewState] = useState(() => initialViewState)
@@ -311,6 +312,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         onNavigateToLevel={handleNavigateToLevel}
         initialViewState={startViewState?.chart}
         onViewStateChange={handleChartViewStateChange}
+        onExportReady={onExportReady}
       />
     </div>
   )

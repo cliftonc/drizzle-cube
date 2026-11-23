@@ -119,3 +119,17 @@ describe('PortletCardHeader action order', () => {
     ])
   })
 })
+
+describe('PortletCardHeader Download', () => {
+  it('should show Download without debug data when the card has an export', () => {
+    renderHeader({ debugData: undefined, xlsExportAvailable: true })
+
+    expect(screen.getByTitle(DOWNLOAD)).toBeInTheDocument()
+  })
+
+  it('should not show Download when the card has no export', () => {
+    renderHeader({ xlsExportAvailable: false })
+
+    expect(screen.queryByTitle(DOWNLOAD)).not.toBeInTheDocument()
+  })
+})

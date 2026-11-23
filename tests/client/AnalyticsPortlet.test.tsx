@@ -116,6 +116,9 @@ vi.mock('../../src/client/providers/ScrollContainerContext', () => ({
   useScrollContainer: vi.fn(() => null)
 }))
 
+// The export that the mocked chart registers with onExportReady
+const mockChartExport = vi.fn(async () => {})
+
 // Mock ChartLoader (LazyChart renders the chart based on chartType)
 vi.mock('../../src/client/charts/ChartLoader', () => ({
   LazyChart: ({ chartType, ...props }: any) => (
@@ -127,6 +130,9 @@ vi.mock('../../src/client/charts/ChartLoader', () => ({
     >
       <button type="button" onClick={() => props.onViewStateChange?.({ page: 3 })}>
         Report page 3
+      </button>
+      <button type="button" onClick={() => props.onExportReady?.(mockChartExport)}>
+        Register export
       </button>
     </div>
   ),
@@ -800,6 +806,27 @@ describe('AnalyticsPortlet', () => {
 
       await waitFor(() => expect(report).toHaveBeenCalledWith({ computedAt: undefined, isFetching: false }))
       expect(report).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('chart export', () => {
+    it('should pass onExportReady to the chart', async () => {
+      const user = userEvent.setup()
+      const onExportReady = vi.fn()
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+
+      render(
+        <AnalyticsPortlet
+          query={JSON.stringify({ measures: ['Test.count'] })}
+          chartType="bar"
+          chartConfig={{ yAxis: ['Test.count'] }}
+          onExportReady={onExportReady}
+        />
+      )
+      await user.click(screen.getByRole('button', { name: 'Register export' }))
+
+      expect(onExportReady).toHaveBeenCalledTimes(1)
+      expect(onExportReady).toHaveBeenCalledWith(mockChartExport)
     })
   })
 

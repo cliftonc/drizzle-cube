@@ -259,6 +259,7 @@ export type {
   ChartAxisConfig,
   ChartDisplayConfig,
   ChartProps,
+  ChartExportHandler,
   ColorPalette,
   CubeQuery,
   CubeQueryOptions,
@@ -360,7 +361,7 @@ export { registerColorPalettes } from './utils/colorPalettes.js'
 export { createDashboardLayout, formatChartData, highlightCodeBlocks } from './utils/index.js'
 export { migrateConfig, migrateLegacyPortlet } from './utils/configMigration.js'
 export { captureThumbnail, isThumbnailCaptureAvailable, warnIfScreenshotLibMissing } from './utils/thumbnail.js'
-export { exportPortletToXlsx, isExportAvailable, warnIfExcelJsMissing } from './utils/exportXlsx.js'
+export { exportPortletToXlsx, isExportAvailable, portletXlsxFilename, warnIfExcelJsMissing } from './utils/exportXlsx.js'
 export {
   createDashboardExport,
   serializeDashboardExport,

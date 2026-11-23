@@ -6,14 +6,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useCubeFeatures } from '../../providers/CubeFeaturesProvider.js'
 import { isPortletCopyAvailable, copyPortletToClipboard } from '../../utils/thumbnail.js'
-import { isExportAvailable, exportPortletToXlsx } from '../../utils/exportXlsx.js'
+import { isExportAvailable, exportPortletToXlsx, portletXlsxFilename } from '../../utils/exportXlsx.js'
 import type { PortletDebugDataEntry } from '../../stores/dashboardStore.js'
+import type { ChartExportHandler } from '../../types.js'
 
 export function usePortletCardActions(params: {
   portletTitle: string
   debugData?: PortletDebugDataEntry
+  /** The export that the chart registered. It runs in place of the built-in export. */
+  chartExport?: ChartExportHandler | null
 }) {
-  const { portletTitle, debugData } = params
+  const { portletTitle, debugData, chartExport } = params
   const { features } = useCubeFeatures()
 
   // State and ref for copy-to-clipboard functionality
@@ -63,17 +66,34 @@ export function usePortletCardActions(params: {
     }
   }, [features.xlsExport?.enabled])
 
+  // The card shows Download for a chart export, also without debug data and
+  // without exceljs: the chart writes the file. The built-in export needs both.
+  const downloadAvailable = !!chartExport || (xlsExportAvailable && !!debugData)
+
   // Handler for XLSX export
   const handleExportXlsx = useCallback(async (event: React.MouseEvent | React.TouchEvent) => {
     event.stopPropagation()
-    if (!debugData || exportInProgress) return
+    if (exportInProgress) return
+    if (chartExport) {
+      // The chart export wins over the built-in export of the debug data
+      setExportInProgress(true)
+      try {
+        await chartExport({ fileName: portletXlsxFilename(portletTitle) })
+      } catch (error) {
+        console.error('[drizzle-cube] Failed to export XLSX:', error)
+      } finally {
+        setExportInProgress(false)
+      }
+      return
+    }
+    if (!debugData) return
     setExportInProgress(true)
     try {
       await exportPortletToXlsx(portletTitle || 'export', debugData)
     } finally {
       setExportInProgress(false)
     }
-  }, [debugData, exportInProgress, portletTitle])
+  }, [chartExport, debugData, exportInProgress, portletTitle])
 
   // Handler for copy-to-clipboard
   const handleCopyToClipboard = useCallback(async (event: React.MouseEvent | React.TouchEvent) => {
@@ -94,7 +114,7 @@ export function usePortletCardActions(params: {
     chartContainerRef,
     copySuccess,
     copyAvailable,
-    xlsExportAvailable,
+    downloadAvailable,
     exportInProgress,
     showCacheBustIndicator,
     setIsHoveringRefresh,

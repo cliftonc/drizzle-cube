@@ -30,6 +30,7 @@ interface PortletCardHeaderProps {
   debugData?: PortletDebugDataEntry
   copyAvailable: boolean
   copySuccess: boolean
+  /** Shows Download: a chart export is registered, or the XLSX export is available and the portlet has debug data */
   xlsExportAvailable: boolean
   exportInProgress: boolean
   showCacheBustIndicator: boolean
@@ -228,9 +229,9 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
       )
     },
     {
-      // XLSX export button - visible when xlsExport feature is enabled, exceljs is installed, and portlet has data
+      // XLSX export button - visible when the card has an export (xlsExportAvailable)
       id: 'download',
-      element: xlsExportAvailable && !isInSelectionMode && debugData && (
+      element: xlsExportAvailable && !isInSelectionMode && (
         <button
           onClick={onExportXlsx}
           onTouchEnd={(event) => {

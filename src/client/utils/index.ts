@@ -18,7 +18,7 @@ export * from './gapFilling.js'
 export { captureThumbnail, isThumbnailCaptureAvailable } from './thumbnail.js'
 
 // XLSX export utilities (requires exceljs peer dependency)
-export { exportPortletToXlsx, isExportAvailable } from './exportXlsx.js'
+export { exportPortletToXlsx, isExportAvailable, portletXlsxFilename } from './exportXlsx.js'
 
 // Dashboard JSON export / import (no extra dependency)
 export {
