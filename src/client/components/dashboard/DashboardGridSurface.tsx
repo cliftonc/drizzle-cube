@@ -6,9 +6,10 @@
  * portlets. Reads everything from DashboardContext.
  */
 
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { getIcon } from '../../icons/index.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
+import { convertRowsToPortlets } from '../../hooks/dashboard/layoutUtils.js'
 import MobileStackedLayout from '../MobileStackedLayout.js'
 import ScaledGridWrapper from '../ScaledGridWrapper.js'
 import { TextIcon } from './dashboardGridUtils.js'
@@ -36,8 +37,25 @@ export default function DashboardGridSurface() {
     handleAddText,
     handleAddPortlet,
     importExport,
+    layoutMode,
+    resolvedRows,
+    resolvedGroups,
   } = useDashboardContext()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // The mobile stack sorts the cards by their grid positions. In rows mode the
+  // stored x/y can be stale, for example from an earlier grid layout. Give the
+  // stack the positions of the resolved rows, so it follows the desktop order.
+  // Without resolved rows, the stored positions stay, so no card is dropped.
+  const mobileConfig = useMemo(() => {
+    if (displayMode !== 'mobile' || layoutMode !== 'rows' || resolvedRows.length === 0) return config
+    return {
+      ...config,
+      layoutMode,
+      groups: resolvedGroups,
+      portlets: convertRowsToPortlets(resolvedRows, config.portlets, resolvedGroups),
+    }
+  }, [displayMode, layoutMode, config, resolvedRows, resolvedGroups])
 
   const isEmpty = !config.portlets || config.portlets.length === 0
 
@@ -108,7 +126,7 @@ export default function DashboardGridSurface() {
     <div ref={gridContentRef}>
       {displayMode === 'mobile' ? (
         <MobileStackedLayout
-          config={config}
+          config={mobileConfig}
           colorPalette={colorPalette}
           dashboardFilters={dashboardFilters}
           onPortletRefresh={handlePortletRefresh}
