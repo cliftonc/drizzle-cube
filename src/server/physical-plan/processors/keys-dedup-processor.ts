@@ -13,6 +13,7 @@ import type {
 } from '../../types/index.js'
 import { resolveSqlExpression } from '../../cube-utils.js'
 import { applyJoinByType, getCubesFromPlan } from './shared.js'
+import { buildJoinedCubeSecurityWhere } from './joins-processor.js'
 import type { PhysicalBuildDependencies } from './shared.js'
 
 /** Selections + GROUP BY collected for the keys CTE. */
@@ -282,12 +283,21 @@ function applyKeysJoinCube(
     collectJunctionSecurity(joinCube.junctionTable.securitySql, context, keysWhereConditions)
   }
 
+  // Security placement matches the main query (see applyInterCubeJoin): an
+  // INNER join filters in WHERE; any other join filters in ON — so a visible
+  // row whose only match is hidden keeps its row instead of vanishing — plus
+  // the WHERE guard RIGHT/FULL joins and internal RIGHT/FULL joins need.
   const joinCubeBase = joinCube.cube.sql(context)
+  const joinType = joinCube.joinType ?? 'left'
+  const securityInOn = joinType !== 'inner' && joinCubeBase.where
+  const securityWhere = securityInOn
+    ? buildJoinedCubeSecurityWhere(joinCube, joinType, joinCubeBase, context)
+    : joinCubeBase.where
   query = applyJoinByType(
     query,
-    joinCube.joinType ?? 'left',
+    joinType,
     joinCubeBase.from,
-    joinCube.joinCondition
+    securityInOn ? and(joinCube.joinCondition, joinCubeBase.where)! : joinCube.joinCondition
   )
   // Apply the joined cube's intra-cube table-level joins
   // (BaseQueryDefinition.joins) so columns from joined tables are in
@@ -297,8 +307,8 @@ function applyKeysJoinCube(
       query = applyJoinByType(query, join.type ?? 'left', join.table, join.on)
     }
   }
-  if (joinCubeBase.where) {
-    keysWhereConditions.push(joinCubeBase.where)
+  if (securityWhere) {
+    keysWhereConditions.push(securityWhere)
   }
   return query
 }

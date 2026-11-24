@@ -421,9 +421,10 @@ function applyInterCubeJoin(
 /**
  * The WHERE condition (if any) that must accompany a non-INNER join whose
  * security filter sits in the ON clause, or undefined when ON is enough
- * (a LEFT join of a cube without internal RIGHT/FULL joins).
+ * (a LEFT join of a cube without internal RIGHT/FULL joins). Shared with the
+ * keys-deduplication CTE, which joins cubes the same way.
  */
-function buildJoinedCubeSecurityWhere(
+export function buildJoinedCubeSecurityWhere(
   joinCube: JoinCubePlanEntry,
   cubeJoinType: 'left' | 'right' | 'full',
   joinCubeBase: ReturnType<Cube['sql']> | undefined,
