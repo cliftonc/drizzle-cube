@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import userEvent from '@testing-library/user-event'
@@ -374,6 +374,93 @@ describe('AnalysisAxisDropZone', () => {
 
       // With maxItems=1, replacement is allowed
       expect(onDrop).toHaveBeenCalled()
+    })
+  })
+
+  describe('drag and drop - drag out to remove', () => {
+    const seriesConfig: AxisDropZoneConfig = {
+      ...mockConfig,
+      key: 'series',
+      label: 'Series',
+      maxItems: 2,
+    }
+
+    // jsdom has no layout, so give each drop zone a fixed rect: xAxis above series
+    const placeZone = (key: string, top: number) => {
+      const zone = document.querySelector(`[data-axis-container="${key}"]`)!
+      vi.spyOn(zone, 'getBoundingClientRect').mockReturnValue({
+        x: 0,
+        y: top,
+        top,
+        left: 0,
+        right: 200,
+        bottom: top + 100,
+        width: 200,
+        height: 100,
+        toJSON: () => ({}),
+      })
+      return zone
+    }
+
+    const renderTwoZones = (onRemove: () => void, onDrop: () => void) => {
+      render(
+        <>
+          <AnalysisAxisDropZone {...defaultProps} fields={['Users.name']} onRemove={onRemove} />
+          <AnalysisAxisDropZone
+            {...defaultProps}
+            config={seriesConfig}
+            fields={['Users.status', 'Users.city']}
+            onDrop={onDrop}
+          />
+        </>
+      )
+      placeZone('xAxis', 0)
+      const seriesZone = placeZone('series', 200)
+      const field = screen.getByText('name').closest('[draggable="true"]')!
+      fireEvent.dragStart(field, {
+        dataTransfer: { setData: vi.fn(), getData: vi.fn() },
+      })
+      return { field, seriesZone }
+    }
+
+    // jsdom has no DragEvent, so fireEvent.dragEnd drops clientX and clientY
+    const endDragAt = (field: Element, clientX: number, clientY: number) => {
+      fireEvent(field, new MouseEvent('dragend', { bubbles: true, clientX, clientY }))
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('should remove a field when the drag ends outside every drop zone', () => {
+      const onRemove = vi.fn()
+      const { field } = renderTwoZones(onRemove, vi.fn())
+
+      endDragAt(field, 100, 500)
+      vi.runAllTimers()
+
+      expect(onRemove).toHaveBeenCalledExactlyOnceWith('Users.name', 'xAxis')
+    })
+
+    it('should keep a field in its drop zone when a full drop zone refuses it', () => {
+      const onRemove = vi.fn()
+      const onDrop = vi.fn()
+      const { field, seriesZone } = renderTwoZones(onRemove, onDrop)
+
+      fireEvent.drop(seriesZone, {
+        dataTransfer: {
+          getData: () => JSON.stringify({ field: 'Users.name', fromAxis: 'xAxis', fromIndex: 0 }),
+        },
+      })
+      endDragAt(field, 100, 250)
+      vi.runAllTimers()
+
+      expect(onDrop).not.toHaveBeenCalled()
+      expect(onRemove).not.toHaveBeenCalled()
     })
   })
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { useState } from 'react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AnalysisChartConfigPanel from '../../../../src/client/components/AnalysisBuilder/AnalysisChartConfigPanel'
 import { useChartConfig } from '../../../../src/client/charts/lazyChartConfigRegistry'
@@ -426,6 +427,45 @@ describe('AnalysisChartConfigPanel', () => {
         // onChartConfigChange should be called
         // (Note: actual behavior depends on drop zone implementation)
       }
+    })
+
+    it('should move a field to another drop zone that accepts it', () => {
+      const onChartConfigChange = vi.fn()
+      function StatefulPanel() {
+        const [chartConfig, setChartConfig] = useState<ChartAxisConfig>({
+          xAxis: ['Users.name'],
+          yAxis: ['Users.count'],
+        })
+        return (
+          <AnalysisChartConfigPanel
+            {...defaultProps}
+            chartConfig={chartConfig}
+            onChartConfigChange={(config) => {
+              onChartConfigChange(config)
+              setChartConfig(config)
+            }}
+          />
+        )
+      }
+      render(<StatefulPanel />)
+
+      const xAxisZone = document.querySelector('[data-axis-container="xAxis"]')!
+      const seriesZone = document.querySelector('[data-axis-container="series"]')!
+      const field = within(xAxisZone as HTMLElement).getByText('Name').closest('[draggable="true"]')!
+      const payload = JSON.stringify({ field: 'Users.name', fromAxis: 'xAxis', fromIndex: 0 })
+      const dataTransfer = { setData: vi.fn(), getData: () => payload }
+
+      fireEvent.dragStart(field, { dataTransfer })
+      fireEvent.dragOver(seriesZone, { dataTransfer })
+      fireEvent.drop(seriesZone, { dataTransfer })
+      fireEvent.dragEnd(field, { dataTransfer })
+
+      expect(onChartConfigChange).toHaveBeenCalledExactlyOnceWith({
+        series: 'Users.name',
+        yAxis: ['Users.count'],
+      })
+      expect(within(seriesZone as HTMLElement).getByText('Name')).toBeInTheDocument()
+      expect(within(xAxisZone as HTMLElement).queryByText('Name')).not.toBeInTheDocument()
     })
   })
 

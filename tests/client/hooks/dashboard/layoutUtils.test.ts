@@ -135,6 +135,18 @@ describe('adjustRowWidths', () => {
   it('returns an empty list for no columns', () => {
     expect(adjustRowWidths([], GRID)).toEqual([])
   })
+
+  it('should keep saved widths below minW, so a row of narrow columns fills the row', () => {
+    const columns = [1, 1, 1, 1, 1, 1, 6].map((w, index) => ({ portletId: `p${index}`, w }))
+
+    expect(adjustRowWidths(columns, GRID)).toEqual(columns)
+  })
+
+  it('should raise a width below one unit to minW', () => {
+    const result = adjustRowWidths([{ portletId: 'a', w: 0.5 }, { portletId: 'b', w: 10 }], GRID)
+
+    expect(result).toEqual([{ portletId: 'a', w: 2 }, { portletId: 'b', w: 10 }])
+  })
 })
 
 describe('normalizeRows', () => {
@@ -350,6 +362,17 @@ describe('convertPortletsToRows', () => {
     ])
   })
 
+  it('should keep a grid width below minW', () => {
+    const portlets: PortletConfig[] = [
+      { id: 'narrow', title: 'narrow', x: 0, y: 0, w: 1, h: 4 },
+      { id: 'wide', title: 'wide', x: 1, y: 0, w: 11, h: 4 }
+    ]
+
+    expect(convertPortletsToRows(portlets, GRID)).toEqual([
+      { id: 'row-0', h: 4, columns: [{ portletId: 'narrow', w: 1 }, { portletId: 'wide', w: 11 }] }
+    ])
+  })
+
   it('should stretch a row that the grid widths do not fill to the full width', () => {
     const portlets: PortletConfig[] = [
       { id: 'a', title: 'a', x: 0, y: 0, w: 2, h: 4 },
@@ -374,6 +397,26 @@ describe('fractional sizing (freeform / half-unit resize)', () => {
     const adjusted = adjustRowWidths(columns, GRID)
 
     expect(adjusted.map(c => c.w)).toEqual([5.5, 6.5])
+  })
+
+  it('adjustRowWidths fills the row exactly when fractional widths leave it short', () => {
+    const adjusted = adjustRowWidths([{ portletId: 'a', w: 2.5 }, { portletId: 'b', w: 9 }], GRID)
+
+    expect(adjusted).toEqual([{ portletId: 'a', w: 3 }, { portletId: 'b', w: 9 }])
+  })
+
+  it('adjustRowWidths fills the row exactly when fractional widths overflow it', () => {
+    const adjusted = adjustRowWidths([{ portletId: 'a', w: 3.5 }, { portletId: 'b', w: 9 }], GRID)
+
+    expect(adjusted).toEqual([{ portletId: 'a', w: 3.5 }, { portletId: 'b', w: 8.5 }])
+  })
+
+  it('adjustRowWidths keeps fractional widths on a second pass', () => {
+    const short = adjustRowWidths([{ portletId: 'a', w: 2.5 }, { portletId: 'b', w: 9 }], GRID)
+    const overflowing = adjustRowWidths([{ portletId: 'a', w: 3.5 }, { portletId: 'b', w: 9 }], GRID)
+
+    expect(adjustRowWidths(short, GRID)).toEqual(short)
+    expect(adjustRowWidths(overflowing, GRID)).toEqual(overflowing)
   })
 
   it('adjustRowWidths absorbs float drift so the row stays exactly cols wide', () => {

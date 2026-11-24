@@ -34,9 +34,14 @@ interface CompactFilterBarProps {
  * both used to mount two CustomDate/XTD dropdowns at once — and each
  * dropdown's document-level outside-click handler treated clicks inside the
  * *other* instance as "outside", closing the shared state on any interaction.
- * (768px matches the dc:md: breakpoint previously used to swap them.)
+ *
+ * The query must use the breakpoint of the dc:md: classes that show and hide
+ * the layouts, which is 48rem. A media query resolves rem from the browser
+ * default font size, so 768px equals 48rem only at 16px. With a larger or
+ * smaller default font size, a px query mounts a layout that those classes
+ * hide, and no filter bar shows.
  */
-const DESKTOP_QUERY = '(min-width: 768px)'
+const DESKTOP_QUERY = '(min-width: 48rem)'
 
 // Without matchMedia (SSR, some test environments) fall back to the desktop layout.
 const getDesktopQuery = (): MediaQueryList | null =>
