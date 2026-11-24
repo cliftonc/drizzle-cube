@@ -889,6 +889,14 @@ export interface ChartProps {
    * callback, the chart shows its own export control if it has one.
    */
   onExportReady?: (handler: ChartExportHandler | null) => void
+  /**
+   * The id of the latest Refresh: `null` until the first Refresh, then a new
+   * id on each Refresh. A chart that loads its own data (`fetchesOwnData`)
+   * reads it to tell a Refresh from a remount. The dashboard portlet sends it
+   * to every chart. The AnalysisBuilder preview sends a new id only to a chart
+   * whose config sets `fetchesOwnData`.
+   */
+  refreshId?: string | null
 }
 
 /**

@@ -99,7 +99,7 @@ vi.mock('../../../../src/client/components/DashboardFilters/FilterChip', () => (
   }
 }))
 
-// Pick the layout CompactFilterBar mounts: matchMedia('(min-width: 768px)').matches
+// Pick the layout CompactFilterBar mounts: matchMedia('(min-width: 48rem)').matches
 const originalMatchMedia = window.matchMedia
 function mockViewport(isDesktop: boolean) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -107,6 +107,28 @@ function mockViewport(isDesktop: boolean) {
     addListener: vi.fn(), removeListener: vi.fn(),
     addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn()
   }))
+}
+
+// Evaluate `(min-width: <n>px|rem)` like a browser: a media query resolves rem
+// from the browser default font size, not from the root element's font size.
+function mockBrowser(width: number, defaultFontSize: number) {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => {
+    const minWidth = /\(min-width:\s*([\d.]+)(px|rem)\)/.exec(query)
+    const pixels = minWidth ? Number(minWidth[1]) * (minWidth[2] === 'rem' ? defaultFontSize : 1) : 0
+    return {
+      matches: width >= pixels, media: query, onchange: null,
+      addListener: vi.fn(), removeListener: vi.fn(),
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn()
+    }
+  })
+}
+
+// The dc:md: classes use 48rem: the desktop layout has `dc:hidden dc:md:flex`,
+// the mobile layout has `dc:md:hidden`.
+function mountedLayout(container: HTMLElement): 'desktop' | 'mobile' | 'none' {
+  if (container.querySelector('[class~="dc:md:flex"][class~="dc:hidden"]')) return 'desktop'
+  if (container.querySelector('[class~="dc:md:hidden"]')) return 'mobile'
+  return 'none'
 }
 
 describe('CompactFilterBar', () => {
@@ -583,6 +605,25 @@ describe('CompactFilterBar', () => {
           operator: 'inDateRange'
         })
       })
+    })
+  })
+
+  describe('layout breakpoint', () => {
+    it.each([
+      { width: 800, defaultFontSize: 16, layout: 'desktop' },
+      { width: 700, defaultFontSize: 16, layout: 'mobile' },
+      { width: 800, defaultFontSize: 20, layout: 'mobile' },
+      { width: 1000, defaultFontSize: 20, layout: 'desktop' },
+      { width: 700, defaultFontSize: 12, layout: 'desktop' },
+      { width: 500, defaultFontSize: 12, layout: 'mobile' }
+    ])('mounts the $layout layout at $width px with a $defaultFontSize px default font size, as the dc:md: classes show', ({ width, defaultFontSize, layout }) => {
+      mockBrowser(width, defaultFontSize)
+      const props = createDefaultProps()
+      props.dashboardFilters = [createRegularFilter('status', 'Status')]
+
+      const { container } = render(<CompactFilterBar {...props} />)
+
+      expect(mountedLayout(container)).toBe(layout)
     })
   })
 

@@ -74,6 +74,17 @@ export const equalizeRowColumns = (
     gridSettings
   )
 
+/**
+ * Stretch or trim a row so that its column widths add up to `cols`.
+ *
+ * A saved width of one unit or more stays, also below `minW`. Grid mode renders
+ * such widths, and `minW` is the minimum for a resize in rows mode. Raising
+ * them made a row of narrow columns wider than `cols`. A width below one unit
+ * gets `minW`.
+ *
+ * The row gets or loses the exact difference, also a fraction of a unit, so a
+ * second pass returns the same widths.
+ */
 export const adjustRowWidths = (
   columns: RowLayoutColumn[],
   gridSettings: DashboardGridSettings
@@ -83,7 +94,7 @@ export const adjustRowWidths = (
   const { cols, minW } = gridSettings
   const adjusted = columns.map((column) => ({
     ...column,
-    w: Math.max(minW, column.w),
+    w: column.w >= 1 ? column.w : Math.max(minW, column.w),
   }))
 
   const total = adjusted.reduce((sum, column) => sum + column.w, 0)
@@ -94,18 +105,19 @@ export const adjustRowWidths = (
   }
 
   if (total < cols) {
-    let remaining = Math.round(cols - total)
+    let remaining = cols - total
     let index = 0
-    while (remaining > 0) {
+    while (remaining >= 1) {
       adjusted[index % adjusted.length].w += 1
       remaining -= 1
       index += 1
     }
+    if (remaining > 1e-6) adjusted[index % adjusted.length].w += remaining
     return adjusted
   }
 
-  let overflow = Math.round(total - cols)
-  for (let index = adjusted.length - 1; index >= 0 && overflow > 0; index -= 1) {
+  let overflow = total - cols
+  for (let index = adjusted.length - 1; index >= 0 && overflow > 1e-6; index -= 1) {
     const column = adjusted[index]
     const reducible = Math.max(0, column.w - minW)
     if (reducible === 0) continue

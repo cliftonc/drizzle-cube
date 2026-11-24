@@ -18,6 +18,7 @@ function params(overrides: Partial<PortletRenderStateParams> = {}): PortletRende
     hasMandatoryFields: false,
     shouldSkipQuery: false,
     rendersWithoutData: false,
+    fetchesOwnData: false,
     eagerLoad: true,
     isVisible: true,
     isLoading: false,
@@ -101,5 +102,32 @@ describe('resolvePortletRenderKind', () => {
     )
 
     expect(kind).toBe('chart')
+  })
+
+  describe('a chart that loads its own data', () => {
+    it('renders the chart while the portlet runs no query', () => {
+      expect(resolvePortletRenderKind(params({ fetchesOwnData: true, resultSet: null }))).toBe('chart')
+    })
+
+    it('renders the chart and not the loading view', () => {
+      expect(resolvePortletRenderKind(params({ fetchesOwnData: true, isLoading: true, resultSet: null }))).toBe('chart')
+    })
+
+    it('keeps the lazy placeholder until the portlet is visible', () => {
+      expect(resolvePortletRenderKind(params({ fetchesOwnData: true, eagerLoad: false, isVisible: false }))).toBe('lazy-placeholder')
+    })
+
+    it('keeps the config-required view when a mandatory field is missing', () => {
+      expect(resolvePortletRenderKind(params({ fetchesOwnData: true, hasChartConfig: false, hasMandatoryFields: true }))).toBe('config-required')
+    })
+
+    it.each([
+      { mode: 'multi-query', overrides: { isMultiQuery: true } },
+      { mode: 'funnel', overrides: { isFunnelMode: true } },
+      { mode: 'flow', overrides: { isFlowMode: true } },
+      { mode: 'retention', overrides: { isRetentionMode: true } }
+    ])('shows the one-query view for a $mode portlet', ({ overrides }) => {
+      expect(resolvePortletRenderKind(params({ fetchesOwnData: true, ...overrides }))).toBe('one-query-only')
+    })
   })
 })

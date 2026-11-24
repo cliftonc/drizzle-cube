@@ -8,6 +8,7 @@
 import React, { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react'
 import type { AnalysisResultsPanelProps } from './types.js'
 import { LazyChart, isValidChartType } from '../../charts/ChartLoader.js'
+import { useChartConfig } from '../../charts/lazyChartConfigRegistry.js'
 import { getIcon } from '../../icons/index.js'
 import { QueryAnalysisPanel, CodeBlock } from '../../shared/index.js'
 import ConfirmModal from '../ConfirmModal.js'
@@ -120,6 +121,15 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const [isHoveringRefresh, setIsHoveringRefresh] = useState(false)
   // Copy as markdown state
   const [copyMarkdownState, setCopyMarkdownState] = useState<'idle' | 'copied'>('idle')
+
+  // A chart that loads its own data gets no builder results: the preview shows
+  // it without them, and each Refresh gives it a new id.
+  const fetchesOwnData = useChartConfig(chartType).config.fetchesOwnData === true
+  const [previewRefreshId, setPreviewRefreshId] = useState<string | null>(null)
+  const handleRefreshClick = useMemo(() => onRefreshClick && ((options?: { bustCache?: boolean }) => {
+    if (fetchesOwnData) setPreviewRefreshId(crypto.randomUUID())
+    onRefreshClick(options)
+  }), [onRefreshClick, fetchesOwnData])
 
   // Listen for shift key up/down to show visual feedback on refresh button (only when hovering)
   useEffect(() => {
@@ -400,9 +410,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         <div className="dc:text-xs text-dc-text-muted dc:mb-4">
           {t('results.needsRefresh.subtitle')}
         </div>
-        {onRefreshClick && (
+        {handleRefreshClick && (
           <button
-            onClick={() => onRefreshClick()}
+            onClick={() => handleRefreshClick()}
             className="dc:inline-flex dc:items-center dc:gap-2 dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-white bg-dc-accent dc:hover:opacity-90 dc:rounded-lg dc:transition-colors dc:shadow-sm"
           >
             <svg className="dc:w-4 dc:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -470,7 +480,18 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Render chart
   const renderChart = () => {
-    if (!executionResults || executionResults.length === 0) {
+    if (fetchesOwnData && queryCount > 1) {
+      return (
+        <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
+          <div className="dc:text-center">
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('portlet.oneQueryOnly.title')}</div>
+            <div className="dc:text-xs">{t('portlet.oneQueryOnly.hint')}</div>
+          </div>
+        </div>
+      )
+    }
+
+    if (!fetchesOwnData && (!executionResults || executionResults.length === 0)) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
           <div className="dc:text-center">
@@ -505,7 +526,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     // Cast to any[] since LazyChart expects array type but RetentionHeatmap handles the object format
     const chartData = isRetentionMode && retentionChartData
       ? (retentionChartData as unknown as any[])
-      : executionResults
+      : executionResults ?? []
 
     return (
       <LazyChart
@@ -515,6 +536,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         displayConfig={displayConfig}
         colorPalette={colorPalette}
         queryObject={combinedQueryForChart}
+        refreshId={previewRefreshId}
         height="100%"
         fallback={
           <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
@@ -1267,6 +1289,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     resultsStale,
     executionError,
     debugDataPerQuery,
+    fetchesOwnData,
   }
 
   const headerToolbar: ResultsToolbarActions = {
@@ -1279,7 +1302,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     onShareClick,
     shareButtonState,
     canShare,
-    onRefreshClick,
+    onRefreshClick: handleRefreshClick,
     canRefresh,
     isRefreshing,
     showCacheBustIndicator,
@@ -1307,7 +1330,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // "Needs refresh" banner for manual refresh mode
   const renderNeedsRefreshBanner = () => {
-    if (!needsRefresh || !onRefreshClick) return null
+    if (!needsRefresh || !handleRefreshClick) return null
 
     return (
       <div className="dc:px-4 dc:py-2 bg-dc-warning-bg dc:border-b border-dc-warning dc:flex dc:items-center dc:justify-between dc:gap-3 dc:flex-shrink-0">
@@ -1318,7 +1341,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <span className="dc:text-sm dc:font-medium">{t('results.warning.configChanged')}</span>
         </div>
         <button
-          onClick={() => onRefreshClick()}
+          onClick={() => handleRefreshClick()}
           className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium bg-dc-warning text-white dc:rounded-sm hover:bg-dc-warning/90 dc:transition-colors"
         >
           {t('results.warning.refreshNow')}
@@ -1372,7 +1395,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       )
     }
     if (showDebug) return renderDebug()
-    if (activeView === 'chart') return <div className="dc:p-4 dc:h-full">{renderChart()}</div>
+    // A chart that loads its own data has no builder rows for a table view
+    if (activeView === 'chart' || fetchesOwnData) return <div className="dc:p-4 dc:h-full">{renderChart()}</div>
     if (isFlowMode) return <div className="dc:h-full" key="table-flow">{renderFlowTable()}</div>
     if (isMultiQuery) return <div className="dc:h-full" key={`table-${activeTableIndex}`}>{renderTable(activeTableIndex)}</div>
     return <div className="dc:h-full" key="table-single">{renderTable()}</div>
@@ -1460,7 +1484,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   )
 
   const renderSuccess = () => {
-    const hasResults = executionResults && executionResults.length > 0
+    const hasResults = fetchesOwnData || (executionResults && executionResults.length > 0)
 
     if (!hasResults) {
       return (
@@ -1487,7 +1511,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         </div>
 
         {/* View Toggle - Below content, centered */}
-        {!showDebug && !showSchema && renderViewToggle()}
+        {!showDebug && !showSchema && !fetchesOwnData && renderViewToggle()}
       </div>
     )
   }
@@ -1506,16 +1530,16 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const renderMainContent = () => (
     <>
       {executionStatus === 'idle' && !hasModeSpecificContent && renderEmpty()}
-      {executionStatus === 'idle' && hasModeSpecificContent && !hasResults && renderWaiting()}
-      {executionStatus === 'loading' && !hasResults && renderLoading()}
+      {executionStatus === 'idle' && hasModeSpecificContent && !hasResults && !fetchesOwnData && renderWaiting()}
+      {executionStatus === 'loading' && !hasResults && !fetchesOwnData && renderLoading()}
       {executionStatus === 'error' && !hasResults && renderError()}
-      {(executionStatus === 'success' || shouldShowResults) && renderSuccess()}
+      {(executionStatus === 'success' || shouldShowResults || (fetchesOwnData && hasModeSpecificContent)) && renderSuccess()}
     </>
   )
 
   // Priority 1: Manual refresh mode with no results - show centered refresh prompt
   // This takes precedence over all other states for consistent UX across all modes
-  if (needsRefresh && !hasResults) {
+  if (needsRefresh && !hasResults && !fetchesOwnData) {
     return (
       <div className="dc:h-full dc:min-h-[400px] dc:flex dc:flex-col bg-dc-surface dc:relative">
         {renderNeedsRefreshEmpty()}

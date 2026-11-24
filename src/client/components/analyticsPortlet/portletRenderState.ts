@@ -17,6 +17,7 @@ export type PortletRenderKind =
   | 'loading'
   | 'error'
   | 'no-data'
+  | 'one-query-only'
   | 'chart'
 
 export interface PortletRenderStateParams {
@@ -30,6 +31,12 @@ export interface PortletRenderStateParams {
    * survive an empty result rather than being replaced by the no-data view.
    */
   rendersWithoutData: boolean
+  /**
+   * The chart config sets `fetchesOwnData`: the chart loads its own data, so
+   * the portlet's loading, error and no-data views do not apply. The chart
+   * reads one query only.
+   */
+  fetchesOwnData: boolean
   eagerLoad: boolean
   isVisible: boolean
   isLoading: boolean
@@ -76,6 +83,11 @@ export function resolvePortletRenderKind(p: PortletRenderStateParams): PortletRe
 
   // Charts that don't need queries skip loading/error/no-data handling
   if (p.shouldSkipQuery) return 'chart'
+
+  // A chart that loads its own data owns those states too, but it reads one query only
+  if (p.fetchesOwnData) {
+    return p.isMultiQuery || p.isFunnelMode || p.isFlowMode || p.isRetentionMode ? 'one-query-only' : 'chart'
+  }
 
   // Keep the chart mounted while its cached data refreshes.
   if (p.isLoading || (p.isFetching && !hasValidDataForMode(p)) || (p.queryObject && !p.resultSet && !p.error)) return 'loading'

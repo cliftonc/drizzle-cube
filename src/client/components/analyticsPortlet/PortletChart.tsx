@@ -42,6 +42,8 @@ export interface PortletChartProps {
   onViewStateChange?: (state: unknown) => void
   /** Registers the export of the chart (`ChartProps.onExportReady`) */
   onExportReady?: (handler: ChartExportHandler | null) => void
+  /** The id of the latest portlet Refresh (`ChartProps.refreshId`) */
+  refreshId?: string | null
 }
 
 /**
@@ -96,7 +98,8 @@ export function PortletChart(props: PortletChartProps) {
     onDataPointClick,
     initialViewState,
     onViewStateChange,
-    onExportReady
+    onExportReady,
+    refreshId
   } = props
 
   try {
@@ -143,6 +146,7 @@ export function PortletChart(props: PortletChartProps) {
         initialViewState={initialViewState}
         onViewStateChange={onViewStateChange}
         onExportReady={onExportReady}
+        refreshId={refreshId}
         fallback={
           <div
             className="dc:flex dc:items-center dc:justify-center dc:w-full"

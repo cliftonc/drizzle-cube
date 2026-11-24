@@ -100,6 +100,9 @@ export function buildContainerClassName(params: {
     // A section child is frameless for the same reason a group child is: the
     // card around it owns the border, background and shadow.
     variant === 'sectionChild' ? 'dc-portlet-section-child' : '',
+    // A stable hook for host stylesheets, like `dc-portlet-card-body`. A group
+    // child has its own `dc-portlet-group-child` hook instead.
+    'dc-portlet-card',
     isTransparent
       ? 'dc:flex dc:flex-col dc:transition-all'
       : 'bg-dc-surface dc:border dc:rounded-lg dc:flex dc:flex-col dc:transition-all',
@@ -122,7 +125,7 @@ export function buildHeaderClassName(
   const inSection = variant === 'sectionChild'
 
   return [
-    'dc:flex dc:items-center dc:justify-between dc:px-3 dc:md:px-4 dc:shrink-0 portlet-drag-handle',
+    'dc-portlet-header dc:flex dc:items-center dc:justify-between dc:px-3 dc:md:px-4 dc:shrink-0 portlet-drag-handle',
     // A standalone card's header is a tight bar against its own top edge. In a
     // section the title sits just under a divider with nothing else marking the
     // boundary, so it needs room to breathe.

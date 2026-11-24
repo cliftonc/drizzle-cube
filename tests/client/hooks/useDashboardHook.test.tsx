@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CubeProvider } from '../../../src/client/providers/CubeProvider'
 import { DashboardStoreProvider, useDashboardStore } from '../../../src/client/stores/dashboardStore'
 import { useDashboard } from '../../../src/client/hooks/useDashboardHook'
-import type { DashboardConfig, PortletConfig, DashboardGridSettings, DashboardFilter } from '../../../src/client/types'
+import type { DashboardConfig, PortletConfig, DashboardGridSettings, DashboardFilter, RowLayout } from '../../../src/client/types'
 
 // ============================================================================
 // Test Utilities
@@ -1638,6 +1638,109 @@ describe('useDashboardHook', () => {
       })
 
       expect(onConfigChange).toHaveBeenCalled()
+    })
+
+    describe('portlet delete', () => {
+      const rowPortlet = (id: string, x: number, y: number, w: number): PortletConfig => ({
+        ...mockPortlet,
+        id,
+        title: `Chart ${id}`,
+        x,
+        y,
+        w,
+      })
+
+      /** A row with an unequal 3/9 split. */
+      const splitRow: RowLayout = {
+        id: 'row-1',
+        h: 4,
+        columns: [
+          { portletId: 'a', w: 3 },
+          { portletId: 'b', w: 9 },
+        ],
+      }
+
+      /** The split row, and a second row with three unequal columns. */
+      const rowsConfig: DashboardConfig = {
+        layoutMode: 'rows',
+        portlets: [
+          rowPortlet('a', 0, 0, 3),
+          rowPortlet('b', 3, 0, 9),
+          rowPortlet('c', 0, 4, 2),
+          rowPortlet('d', 2, 4, 4),
+          rowPortlet('e', 6, 4, 6),
+        ],
+        rows: [
+          splitRow,
+          {
+            id: 'row-2',
+            h: 4,
+            columns: [
+              { portletId: 'c', w: 2 },
+              { portletId: 'd', w: 4 },
+              { portletId: 'e', w: 6 },
+            ],
+          },
+        ],
+      }
+
+      const deleteInRows = async (config: DashboardConfig, portletId: string) => {
+        const onConfigChange = vi.fn<(next: DashboardConfig) => void>()
+        const { wrapper } = createDashboardWrapper()
+        const { result } = renderHook(
+          () => useDashboard({
+            config,
+            gridSettings: mockGridSettings,
+            onConfigChange,
+            onSave: vi.fn().mockResolvedValue(undefined),
+          }),
+          { wrapper }
+        )
+
+        await act(async () => {
+          await result.current.actions.deletePortlet(portletId)
+        })
+        await act(async () => {
+          await result.current.actions.confirmDelete()
+        })
+
+        expect(onConfigChange).toHaveBeenCalledTimes(1)
+        return onConfigChange.mock.calls[0][0]
+      }
+
+      it('should keep the column widths of the rows that do not hold the deleted portlet', async () => {
+        const saved = await deleteInRows(rowsConfig, 'e')
+
+        expect(saved.rows?.[0]).toEqual(splitRow)
+      })
+
+      it('should equalize the columns of the row that held the deleted portlet', async () => {
+        const saved = await deleteInRows(rowsConfig, 'e')
+
+        expect(saved.portlets.map((portlet) => portlet.id)).toEqual(['a', 'b', 'c', 'd'])
+        expect(saved.rows?.[1]).toEqual({
+          id: 'row-2',
+          h: 4,
+          columns: [
+            { portletId: 'c', w: 6 },
+            { portletId: 'd', w: 6 },
+          ],
+        })
+      })
+
+      it('should remove the row that the deleted portlet leaves empty and keep the other rows', async () => {
+        const saved = await deleteInRows(
+          {
+            layoutMode: 'rows',
+            portlets: [rowPortlet('a', 0, 0, 3), rowPortlet('b', 3, 0, 9), rowPortlet('c', 0, 4, 12)],
+            rows: [splitRow, { id: 'row-2', h: 4, columns: [{ portletId: 'c', w: 12 }] }],
+          },
+          'c'
+        )
+
+        expect(saved.portlets.map((portlet) => portlet.id)).toEqual(['a', 'b'])
+        expect(saved.rows).toEqual([splitRow])
+      })
     })
   })
 })

@@ -53,6 +53,8 @@ export interface PortletChartViewProps {
   onViewStateChange?: (state: unknown) => void
   /** Registers the export of the chart (`ChartProps.onExportReady`) */
   onExportReady?: (handler: ChartExportHandler | null) => void
+  /** The id of the latest portlet Refresh (`ChartProps.refreshId`) */
+  refreshId?: string | null
 }
 
 export function PortletChartView(props: PortletChartViewProps) {
@@ -83,7 +85,8 @@ export function PortletChartView(props: PortletChartViewProps) {
     onNavigateToLevel,
     initialViewState,
     onViewStateChange,
-    onExportReady
+    onExportReady,
+    refreshId
   } = props
 
   const hasIntrinsicHeight = hasIntrinsicChartHeight(chartType, displayConfig)
@@ -141,6 +144,7 @@ export function PortletChartView(props: PortletChartViewProps) {
               initialViewState={initialViewState}
               onViewStateChange={onViewStateChange}
               onExportReady={onExportReady}
+              refreshId={refreshId}
             />
           </div>
         </div>

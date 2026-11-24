@@ -132,7 +132,23 @@ export function PortletNoData({ inViewRef, height, drillPath, onNavigateBack, on
   )
 }
 
-export type PortletStateKind = 'config-required' | 'lazy-placeholder' | 'loading' | 'error'
+/**
+ * A chart that loads its own data (`fetchesOwnData`) reads one query only, so a
+ * multi-query, funnel, flow or retention portlet shows this in place of it.
+ */
+export function PortletOneQueryOnly({ inViewRef, height }: { inViewRef: Ref<HTMLDivElement>; height: Height }) {
+  const { t } = useTranslation()
+  return (
+    <div ref={inViewRef} className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
+      <div className="dc:text-center">
+        <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('portlet.oneQueryOnly.title')}</div>
+        <div className="dc:text-xs text-dc-text-secondary">{t('portlet.oneQueryOnly.hint')}</div>
+      </div>
+    </div>
+  )
+}
+
+export type PortletStateKind = 'config-required' | 'lazy-placeholder' | 'loading' | 'error' | 'one-query-only'
 
 interface PortletStateViewProps {
   kind: PortletStateKind | 'no-data'
@@ -164,6 +180,9 @@ export function PortletStateView(props: PortletStateViewProps) {
   }
   if (kind === 'lazy-placeholder') {
     return <PortletLazyPlaceholder inViewRef={inViewRef} height={height} />
+  }
+  if (kind === 'one-query-only') {
+    return <PortletOneQueryOnly inViewRef={inViewRef} height={height} />
   }
   if (kind === 'loading') {
     return <PortletLoading inViewRef={inViewRef} height={height} loadingComponent={props.loadingComponent} />
