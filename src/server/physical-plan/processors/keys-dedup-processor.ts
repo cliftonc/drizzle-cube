@@ -13,7 +13,7 @@ import type {
 } from '../../types/index.js'
 import { resolveSqlExpression } from '../../cube-utils.js'
 import { applyJoinByType, getCubesFromPlan } from './shared.js'
-import { buildJoinedCubeSecurityWhere } from './joins-processor.js'
+import { buildJoinedCubeSecurityWhere, cubeJoinRelation } from './joins-processor.js'
 import type { PhysicalBuildDependencies } from './shared.js'
 
 /** Selections + GROUP BY collected for the keys CTE. */
@@ -263,8 +263,9 @@ function buildKeysCte(
 }
 
 /**
- * Apply a single joined cube (and its junction table + intra-cube joins) to the
- * keys query, collecting the cube's security WHERE conditions.
+ * Apply a single joined cube to the keys query: its junction table, then the
+ * cube with its intra-cube joins as one join group (see cubeJoinRelation).
+ * Collects the cube's security WHERE conditions.
  */
 function applyKeysJoinCube(
   keysQuery: any,
@@ -296,17 +297,9 @@ function applyKeysJoinCube(
   query = applyJoinByType(
     query,
     joinType,
-    joinCubeBase.from,
+    cubeJoinRelation(joinCubeBase),
     securityInOn ? and(joinCube.joinCondition, joinCubeBase.where)! : joinCube.joinCondition
   )
-  // Apply the joined cube's intra-cube table-level joins
-  // (BaseQueryDefinition.joins) so columns from joined tables are in
-  // scope for both the keys CTE selection and the WHERE clause.
-  if (joinCubeBase.joins) {
-    for (const join of joinCubeBase.joins) {
-      query = applyJoinByType(query, join.type ?? 'left', join.table, join.on)
-    }
-  }
   if (securityWhere) {
     keysWhereConditions.push(securityWhere)
   }

@@ -102,7 +102,7 @@ function countsByName(result: QueryResult, nameField: string, countField: string
   return counts
 }
 
-describe('Joined cube with internal joins on the plain join path', () => {
+describe('Joined cube with internal joins', () => {
   let testExecutor: TestExecutor
   let departmentCounts: Record<string, number>
   let totalCount: number
@@ -153,6 +153,28 @@ describe('Joined cube with internal joins on the plain join path', () => {
   it('applies a joined cube where clause that references its aliased internal join table', async () => {
     const result = await testExecutor.executeQuery({
       measures: ['Productivity.recordCount'],
+      dimensions: ['EngineeringEmployees.departmentName']
+    })
+
+    expect(
+      countsByName(result, 'EngineeringEmployees.departmentName', 'Productivity.recordCount')
+    ).toEqual(withNoneGroup({ Engineering: departmentCounts.Engineering }))
+  })
+
+  it('keeps primary rows removed by an internal inner join when the keys deduplication path runs', async () => {
+    const result = await testExecutor.executeQuery({
+      measures: ['Productivity.recordCount', 'EmployeesInnerDepartment.count'],
+      dimensions: ['EmployeesInnerDepartment.departmentName']
+    })
+
+    expect(
+      countsByName(result, 'EmployeesInnerDepartment.departmentName', 'Productivity.recordCount')
+    ).toEqual(withNoneGroup(departmentCounts))
+  })
+
+  it('applies a joined cube where clause that references its internal join table when the keys deduplication path runs', async () => {
+    const result = await testExecutor.executeQuery({
+      measures: ['Productivity.recordCount', 'EngineeringEmployees.count'],
       dimensions: ['EngineeringEmployees.departmentName']
     })
 

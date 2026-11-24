@@ -356,10 +356,10 @@ function resolveCubeJoinTarget(
  * cube's sql has intra-cube joins (BaseQueryDefinition.joins), the FROM table
  * and those joins as one parenthesized join group. The outer join then keeps or
  * drops each row of the cube as a whole: an intra-cube INNER JOIN cannot drop
- * the outer query's unmatched rows, and the cube's WHERE in the outer ON clause
- * can reference every table of the group.
+ * the outer query's unmatched rows, and the cube's WHERE can reference every
+ * table of the group.
  */
-function cubeJoinRelation(cubeBase: ReturnType<Cube['sql']>): QueryableRelation {
+export function cubeJoinRelation(cubeBase: ReturnType<Cube['sql']>): QueryableRelation {
   if (!cubeBase.joins?.length) {
     return cubeBase.from
   }
