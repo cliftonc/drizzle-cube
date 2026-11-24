@@ -1,6 +1,8 @@
 import {
   and,
   eq,
+  isNull,
+  or,
   sql,
   SQL
 } from 'drizzle-orm'
@@ -12,6 +14,7 @@ import type {
   QueryContext
 } from '../../types/index.js'
 import { applyJoinByType } from './shared.js'
+import { resolveSqlExpression } from '../../cube-utils.js'
 import type {
   CTEBuildState,
   JoinBuildState,
@@ -74,7 +77,8 @@ export function applyJoins(
         cteState,
         context,
         deps,
-        cubesWithSecurityInJoin
+        cubesWithSecurityInJoin,
+        allWhereConditions
       )
     }
   }
@@ -343,10 +347,22 @@ function resolveCubeJoinTarget(
 }
 
 /**
- * Apply a single inter-cube join. Security goes into the JOIN ON clause for
- * LEFT/RIGHT/FULL joins (preserving NULL rows + avoiding duplicate WHERE
- * conditions); for INNER joins it can stay in WHERE. Intra-cube joins of the
- * joined cube are applied afterwards so its base table is in scope.
+ * Apply a single inter-cube join. Intra-cube joins of the joined cube are
+ * applied afterwards so its base table is in scope.
+ *
+ * Security placement:
+ * - INNER: the joined cube's filter stays in WHERE (added by the predicates
+ *   processor).
+ * - LEFT: the filter goes in the JOIN ON clause. The joined cube is the
+ *   NULL-extended side, so its rows failing ON disappear while the primary's
+ *   unmatched rows are kept.
+ * - RIGHT/FULL: the joined cube is a PRESERVED side, so its rows failing ON
+ *   come back anyway — ON alone filters nothing (GHSA-xv8c-hc26-6cq8). The
+ *   filter stays in ON (so a hidden row never matches a visible one) and is
+ *   enforced again in WHERE; see {@link buildPreservedSideGuard}.
+ * - A joined cube whose own `sql` has an internal RIGHT/FULL join: that join
+ *   runs after the cube join and keeps every row of its table, so the cube's
+ *   filter is also applied in WHERE, exactly as when the cube is queried alone.
  */
 function applyInterCubeJoin(
   drizzleQuery: any,
@@ -355,19 +371,25 @@ function applyInterCubeJoin(
   cteState: CTEBuildState,
   context: QueryContext,
   deps: Pick<PhysicalBuildDependencies, 'cteBuilder'>,
-  cubesWithSecurityInJoin: Set<string>
+  cubesWithSecurityInJoin: Set<string>,
+  allWhereConditions: SQL[]
 ): any {
   const cteAlias = cteState.cteAliasMap.get(joinCube.cube.name)
   const { joinTarget, joinCondition, securityCondition, joinCubeBase } =
     resolveCubeJoinTarget(joinCube, cteAlias, cteState, queryPlan, context, deps)
 
   const cubeJoinType = joinCube.joinType || 'left'
-  // For LEFT/RIGHT/FULL JOINs, include security in ON clause.
-  // For INNER JOINs, security can go in WHERE (no difference in behavior).
   const effectiveJoinCondition =
     cubeJoinType !== 'inner' && securityCondition
       ? and(joinCondition, securityCondition)
       : joinCondition
+
+  // Built before the join is applied so a FULL join that cannot be secured
+  // throws instead of being swallowed by the catch below.
+  const securityWhere =
+    cubeJoinType !== 'inner' && securityCondition
+      ? buildJoinedCubeSecurityWhere(joinCube, cubeJoinType, joinCubeBase, context)
+      : undefined
 
   try {
     let query: any
@@ -378,6 +400,9 @@ function applyInterCubeJoin(
       query = applyJoinByType(drizzleQuery, cubeJoinType, joinTarget, effectiveJoinCondition)
       if (securityCondition) {
         cubesWithSecurityInJoin.add(joinCube.cube.name)
+      }
+      if (securityWhere) {
+        allWhereConditions.push(securityWhere)
       }
     }
 
@@ -391,4 +416,70 @@ function applyInterCubeJoin(
     // If join fails (e.g., duplicate alias), continue
     return drizzleQuery
   }
+}
+
+/**
+ * The WHERE condition (if any) that must accompany a non-INNER join whose
+ * security filter sits in the ON clause, or undefined when ON is enough
+ * (a LEFT join of a cube without internal RIGHT/FULL joins).
+ */
+function buildJoinedCubeSecurityWhere(
+  joinCube: JoinCubePlanEntry,
+  cubeJoinType: 'left' | 'right' | 'full',
+  joinCubeBase: ReturnType<Cube['sql']> | undefined,
+  context: QueryContext
+): SQL | undefined {
+  const hasInternalOuterJoin = (joinCubeBase?.joins ?? []).some(
+    join => join.type === 'right' || join.type === 'full'
+  )
+  if (!hasInternalOuterJoin && cubeJoinType === 'left') {
+    return undefined
+  }
+
+  // A fresh copy of the filter: the one in ON must not be reused (Drizzle SQL
+  // objects are mutable).
+  const where = joinCube.cube.sql(context).where
+  if (!where) {
+    return undefined
+  }
+  if (hasInternalOuterJoin || cubeJoinType === 'left') {
+    // Same semantics as querying the cube alone: its filter applies to every row.
+    return where
+  }
+  return buildPreservedSideGuard(joinCube.cube, cubeJoinType, where, context)
+}
+
+/**
+ * WHERE guard for a cube on the preserved side of a RIGHT/FULL join:
+ * `(filter OR cube is NULL-extended)`.
+ *
+ * Together with the filter in ON this is equivalent to joining the cube's
+ * pre-filtered rows: a hidden row never matches in ON, so it comes back alone
+ * with its primary key set and the guard drops it; rows where the cube was
+ * NULL-extended by the join carry none of its data and are kept.
+ *
+ * NULL-extension is detected through the primary key. Without one, a RIGHT
+ * join falls back to the plain filter (every row of the joined cube is a real
+ * row there), and a FULL join is refused rather than leaking rows.
+ */
+function buildPreservedSideGuard(
+  cube: Cube,
+  cubeJoinType: 'right' | 'full',
+  where: SQL,
+  context: QueryContext
+): SQL {
+  const primaryKeys = Object.values(cube.dimensions ?? {}).filter(d => d.primaryKey)
+  if (primaryKeys.length === 0) {
+    if (cubeJoinType === 'right') {
+      return where
+    }
+    throw new Error(
+      `Cube '${cube.name}' is joined with a FULL join but has no primaryKey dimension, ` +
+      `so its security filter cannot be enforced. Add a primaryKey dimension to '${cube.name}'.`
+    )
+  }
+  const nullExtended = and(
+    ...primaryKeys.map(dimension => isNull(resolveSqlExpression(dimension.sql, context)))
+  )
+  return or(where, nullExtended)!
 }
