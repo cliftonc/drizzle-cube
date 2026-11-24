@@ -173,6 +173,7 @@ export function usePortletDebugData(params: UsePortletDebugDataParams): void {
 
   // Use ref for callback to prevent infinite loops
   const onDebugDataReadyRef = useRef(onDebugDataReady)
+  const hasCallback = onDebugDataReady !== undefined
   useEffect(() => {
     onDebugDataReadyRef.current = onDebugDataReady
   }, [onDebugDataReady])
@@ -185,6 +186,8 @@ export function usePortletDebugData(params: UsePortletDebugDataParams): void {
     if (entry) report(entry)
     // We intentionally depend on the individual values (not `params`) to keep
     // the effect from re-running on every render due to object identity.
+    // `hasCallback` emits again when the callback arrives after the data, for
+    // example when a portlet switches back from a chart that loads its own data.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chartConfig, displayConfig, queryObject, activeQuery, resultSet, chartType, error, isFunnelMode, isFlowMode, isRetentionMode, multiQueryData, serverFunnelQuery, serverFlowQuery, serverRetentionQuery, flowChartData, retentionChartData, flowCacheInfo, funnelCacheInfo, retentionCacheInfo, drillPath, currentChartConfig])
+  }, [hasCallback, chartConfig, displayConfig, queryObject, activeQuery, resultSet, chartType, error, isFunnelMode, isFlowMode, isRetentionMode, multiQueryData, serverFunnelQuery, serverFlowQuery, serverRetentionQuery, flowChartData, retentionChartData, flowCacheInfo, funnelCacheInfo, retentionCacheInfo, drillPath, currentChartConfig])
 }

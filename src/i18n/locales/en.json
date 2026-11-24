@@ -1609,6 +1609,8 @@
   "portlet.invalidQuery": "Invalid query or no results",
   "portlet.unsupportedChartType": "Unsupported chart type",
   "portlet.unableToRender": "Unable to render chart",
+  "portlet.oneQueryOnly.title": "This chart type shows one query only",
+  "portlet.oneQueryOnly.hint": "Remove the other queries, or select a different chart type.",
   "portlet.droppedMembers": "Hidden — no longer in the model: {members}",
   "portlet.enterTitle": "Enter portlet title...",
   "portlet.enterPortletTitle": "Please enter a title for the portlet.",

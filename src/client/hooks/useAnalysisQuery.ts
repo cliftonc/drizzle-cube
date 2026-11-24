@@ -87,6 +87,12 @@ export interface UseAnalysisQueryOptions {
    * are gap-filled client-side per this setting, the query and the cube.
    */
   fillMissingDates?: ChartDisplayConfig['fillMissingDates']
+  /**
+   * The selected chart loads its own data (`ChartTypeConfig.fetchesOwnData`).
+   * The single and multi-query fetches are skipped, so a refetch does not
+   * reload them either. The other analysis modes are not affected.
+   */
+  fetchesOwnData?: boolean
 }
 
 export interface UseAnalysisQueryResult {
@@ -187,6 +193,7 @@ export function useAnalysisQuery(
     serverRetentionQuery,
     retentionValidation,
     fillMissingDates,
+    fetchesOwnData = false,
   } = options
   const gapFill = { fillMissingDates }
 
@@ -243,14 +250,14 @@ export function useAnalysisQuery(
 
   // Single query execution (only when analysisType is 'query' or legacy single mode)
   const singleQueryResult = useCubeLoadQuery(currentQuery, {
-    skip: skipFlags.single,
+    skip: skipFlags.single || fetchesOwnData,
     debounceMs: 300,
     gapFill,
   })
 
   // Multi-query execution (only when analysisType is 'multi' or legacy multi mode)
   const multiQueryResult = useMultiCubeLoadQuery(multiQueryConfig, {
-    skip: skipFlags.multi,
+    skip: skipFlags.multi || fetchesOwnData,
     debounceMs: 300,
     gapFill,
   })

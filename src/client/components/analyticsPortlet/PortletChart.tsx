@@ -40,6 +40,8 @@ export interface PortletChartProps {
   onDataPointClick?: (...args: any[]) => void
   initialViewState?: unknown
   onViewStateChange?: (state: unknown) => void
+  /** The id of the latest portlet Refresh (`ChartProps.refreshId`) */
+  refreshId?: string | null
 }
 
 /**
@@ -93,7 +95,8 @@ export function PortletChart(props: PortletChartProps) {
     currentChartConfig,
     onDataPointClick,
     initialViewState,
-    onViewStateChange
+    onViewStateChange,
+    refreshId
   } = props
 
   try {
@@ -139,6 +142,7 @@ export function PortletChart(props: PortletChartProps) {
         drillEnabled={drillEnabled}
         initialViewState={initialViewState}
         onViewStateChange={onViewStateChange}
+        refreshId={refreshId}
         fallback={
           <div
             className="dc:flex dc:items-center dc:justify-center dc:w-full"

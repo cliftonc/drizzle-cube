@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import React from 'react'
@@ -79,6 +79,8 @@ import type { HTMLAttributes } from 'react'
 import type { AnalysisConfig } from '../../../src/client/types/analysisConfig'
 import { DashboardStoreProvider, useDashboardStore } from '../../../src/client/stores/dashboardStore'
 import { CubeFeaturesProvider } from '../../../src/client/providers/CubeFeaturesProvider'
+import { chartPluginRegistry } from '../../../src/client/charts/chartPlugin'
+import type { PortletDebugDataEntry } from '../../../src/client/stores/dashboardStore'
 
 // Mock icon components
 const MockIcon = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
@@ -926,6 +928,69 @@ describe('DashboardPortletCard', () => {
       expect(screen.getByRole('button', { name: 'Expand' }).nextElementSibling).toBe(
         screen.getByTitle('Refresh portlet')
       )
+    })
+  })
+
+  describe('a chart that loads its own data', () => {
+    const staleDebugData: PortletDebugDataEntry = {
+      chartConfig: {},
+      displayConfig: {},
+      queryObject: { measures: ['Sales.total'] },
+      data: [{ 'Sales.total': 10 }],
+      chartType: 'bar'
+    }
+
+    afterEach(() => {
+      chartPluginRegistry.unregister('ownDataTest')
+    })
+
+    function renderWithDebugData(chartType: string) {
+      let storedDebugData: PortletDebugDataEntry | undefined
+      function SeedDebugData() {
+        const setDebugData = useDashboardStore((state) => state.setDebugData)
+        storedDebugData = useDashboardStore((state) => state.debugData['portlet-1'])
+        React.useLayoutEffect(() => {
+          setDebugData('portlet-1', staleDebugData)
+        }, [setDebugData])
+        return null
+      }
+      const props = createDefaultProps()
+      const portlet = createMockPortlet({
+        analysisConfig: {
+          ...createMockAnalysisConfig(),
+          charts: { query: { chartType, chartConfig: {}, displayConfig: {} } }
+        }
+      })
+      render(
+        <TestWrapperEditMode>
+          <SeedDebugData />
+          <DashboardPortletCard {...props} portlet={portlet} />
+        </TestWrapperEditMode>
+      )
+      return { readDebugData: () => storedDebugData }
+    }
+
+    it('should show the debug data of a chart that uses the portlet query', async () => {
+      const { readDebugData } = renderWithDebugData('bar')
+
+      expect(await screen.findByTestId('debug-modal')).toBeInTheDocument()
+      expect(readDebugData()).toEqual(staleDebugData)
+    })
+
+    it('should not show stale debug data, and should clear it', async () => {
+      chartPluginRegistry.register({
+        type: 'ownDataTest',
+        label: 'Own data test',
+        config: { label: 'Own data test', dropZones: [], fetchesOwnData: true },
+        component: () => null
+      })
+
+      const { readDebugData } = renderWithDebugData('ownDataTest')
+
+      await waitFor(() => {
+        expect(readDebugData()).toBeUndefined()
+      })
+      expect(screen.queryByTestId('debug-modal')).not.toBeInTheDocument()
     })
   })
 })

@@ -215,6 +215,19 @@ export interface ChartTypeConfig {
   /** Whether this chart type skips query requirements (for content-based charts like markdown) */
   skipQuery?: boolean
 
+  /**
+   * The chart loads its own data. The dashboard portlet and the
+   * AnalysisBuilder preview do not fetch. They still build the effective
+   * query (dashboard filters, universal time filter, drill) and pass it to
+   * the chart as `queryObject`. The chart owns its loading, error and empty
+   * states, and the portlet shows no XLSX download and no debug data for it.
+   * A Refresh sends a new `refreshId` to the chart and does not reload the
+   * Cube query. A portlet or a preview with more than one query (a
+   * multi-query, funnel, flow or retention analysis) shows a message in place
+   * of the chart, because the chart reads one query only.
+   */
+  fetchesOwnData?: boolean
+
   /** Configuration for which elements support clicking (for drill-down) */
   clickableElements?: ClickableElementsConfig
 
