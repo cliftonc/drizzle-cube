@@ -69,8 +69,8 @@ function collectWhereConditions(
 ): SQL[] {
   const allWhereConditions = [...joinState.allWhereConditions]
 
-  // Add base WHERE conditions from primary cube
-  if (primaryCubeBase.where) {
+  // Add base WHERE conditions from primary cube, unless its relation already applied them
+  if (primaryCubeBase.where && !joinState.cubesWithSecurityInJoin.has(queryPlan.primaryCube.name)) {
     allWhereConditions.push(primaryCubeBase.where)
   }
 
@@ -80,9 +80,9 @@ function collectWhereConditions(
       const cubeName = joinCube.cube.name
 
       // Skip cubes handled by a CTE (WHERE applied within the CTE), cubes
-      // absorbed as intermediates into CTEs, and cubes whose security is
-      // already in the JOIN ON clause (LEFT/RIGHT/FULL joins — avoids
-      // duplicate conditions and preserves NULL rows).
+      // absorbed as intermediates into CTEs, and cubes whose security their
+      // join already applied (a LEFT JOIN's ON clause or a filtered relation —
+      // avoids duplicate conditions and preserves NULL rows).
       if (
         cteState.cteAliasMap.get(cubeName) ||
         joinState.absorbedIntermediateCubes.has(cubeName) ||

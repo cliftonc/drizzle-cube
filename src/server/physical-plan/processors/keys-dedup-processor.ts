@@ -13,7 +13,7 @@ import type {
 } from '../../types/index.js'
 import { resolveSqlExpression } from '../../cube-utils.js'
 import { applyJoinByType, getCubesFromPlan } from './shared.js'
-import { buildJoinedCubeSecurityWhere, cubeJoinRelation } from './joins-processor.js'
+import { buildJoinedCubeSecurityWhere, cubeJoinRelation, filteredRelation } from './joins-processor.js'
 import type { PhysicalBuildDependencies } from './shared.js'
 
 /** Selections + GROUP BY collected for the keys CTE. */
@@ -217,7 +217,9 @@ function buildKeysCteSelections(
 /**
  * Build the keys CTE: select grain + PK + pre-aggregated regular measures from
  * the primary cube plus all joined cubes (junction tables included), applying
- * each cube's security WHERE and the query's WHERE conditions.
+ * each cube's security WHERE and the query's WHERE conditions. In a plan with a
+ * RIGHT or FULL join, a cube's or junction's security is applied inside its
+ * relation instead (see filteredRelation).
  */
 function buildKeysCte(
   queryPlan: PhysicalQueryPlan,
@@ -230,14 +232,15 @@ function buildKeysCte(
   keyGroupBy: SQL[]
 ): any {
   const primaryCubeBase = queryPlan.primaryCube.sql(context)
+  const primaryRelation = filteredRelation(queryPlan, primaryCubeBase)
   const keysWhereConditions: SQL[] = []
-  if (primaryCubeBase.where) {
+  if (primaryCubeBase.where && !primaryRelation) {
     keysWhereConditions.push(primaryCubeBase.where)
   }
 
   let keysQuery = context.db
     .select(keysSelections)
-    .from(primaryCubeBase.from)
+    .from(primaryRelation ?? primaryCubeBase.from)
 
   if (primaryCubeBase.joins) {
     for (const join of primaryCubeBase.joins) {
@@ -246,7 +249,7 @@ function buildKeysCte(
   }
 
   for (const joinCube of queryPlan.joinCubes) {
-    keysQuery = applyKeysJoinCube(keysQuery, joinCube, context, keysWhereConditions)
+    keysQuery = applyKeysJoinCube(keysQuery, joinCube, queryPlan, context, keysWhereConditions)
   }
 
   keysWhereConditions.push(
@@ -265,31 +268,44 @@ function buildKeysCte(
 /**
  * Apply a single joined cube to the keys query: its junction table, then the
  * cube with its intra-cube joins as one join group (see cubeJoinRelation).
- * Collects the cube's security WHERE conditions.
+ * Collects the security WHERE conditions of each one that isn't joined as a
+ * filtered relation.
  */
 function applyKeysJoinCube(
   keysQuery: any,
   joinCube: PhysicalQueryPlan['joinCubes'][number],
+  queryPlan: PhysicalQueryPlan,
   context: QueryContext,
   keysWhereConditions: SQL[]
 ): any {
   let query = keysQuery
   if (joinCube.junctionTable) {
+    const junctionSecurity: SQL[] = []
+    collectJunctionSecurity(joinCube.junctionTable.securitySql, context, junctionSecurity)
+    const junctionRelation = filteredRelation(
+      queryPlan,
+      { from: joinCube.junctionTable.table, where: and(...junctionSecurity) }
+    )
     query = applyJoinByType(
       query,
       joinCube.junctionTable.joinType ?? 'left',
-      joinCube.junctionTable.table,
+      junctionRelation ?? joinCube.junctionTable.table,
       joinCube.junctionTable.joinCondition
     )
-    collectJunctionSecurity(joinCube.junctionTable.securitySql, context, keysWhereConditions)
+    if (!junctionRelation) {
+      keysWhereConditions.push(...junctionSecurity)
+    }
   }
 
-  // Security placement matches the main query (see applyInterCubeJoin): an
-  // INNER join filters in WHERE; any other join filters in ON — so a visible
-  // row whose only match is hidden keeps its row instead of vanishing — plus
-  // the WHERE guard RIGHT/FULL joins and internal RIGHT/FULL joins need.
+  // Security placement matches the main query (see applyInterCubeJoin): in a
+  // plan with a RIGHT or FULL join, inside the cube's filtered relation when it
+  // has one. Otherwise an INNER join filters in WHERE; any other join filters
+  // in ON — so a visible row whose only match is hidden keeps its row instead
+  // of vanishing — plus the WHERE guard RIGHT/FULL joins need (see
+  // buildJoinedCubeSecurityWhere).
   const joinCubeBase = joinCube.cube.sql(context)
   const joinType = joinCube.joinType ?? 'left'
+  const cubeRelation = filteredRelation(queryPlan, joinCubeBase)
   const securityInOn = joinType !== 'inner' && joinCubeBase.where
   const securityWhere = securityInOn
     ? buildJoinedCubeSecurityWhere(joinCube, joinType, joinCubeBase, context)
@@ -297,10 +313,10 @@ function applyKeysJoinCube(
   query = applyJoinByType(
     query,
     joinType,
-    cubeJoinRelation(joinCubeBase),
-    securityInOn ? and(joinCube.joinCondition, joinCubeBase.where)! : joinCube.joinCondition
+    cubeJoinRelation(cubeRelation ? { from: cubeRelation, joins: joinCubeBase.joins } : joinCubeBase),
+    securityInOn && !cubeRelation ? and(joinCube.joinCondition, joinCubeBase.where)! : joinCube.joinCondition
   )
-  if (securityWhere) {
+  if (securityWhere && !cubeRelation) {
     keysWhereConditions.push(securityWhere)
   }
   return query
