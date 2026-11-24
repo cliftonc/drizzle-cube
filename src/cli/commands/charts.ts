@@ -420,6 +420,10 @@ function ensureDir(dir: string): void {
   fs.mkdirSync(dir, { recursive: true })
 }
 
+function hasErrorCode(error: unknown, code: string): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === code
+}
+
 /**
  * Write a new file, never an existing one. The `wx` flag makes the existence
  * check and the create one atomic step, so a file that appears in between is
@@ -429,7 +433,7 @@ export function writeIfNotExists(filePath: string, content: string): void {
   try {
     fs.writeFileSync(filePath, content, { encoding: 'utf-8', flag: 'wx' })
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+    if (hasErrorCode(error, 'EEXIST')) {
       console.warn(`  Skipping ${filePath} (already exists)`)
       return
     }
