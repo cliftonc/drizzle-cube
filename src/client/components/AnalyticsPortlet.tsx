@@ -268,11 +268,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     retentionChartData
   })
 
-  // A refetch, an error, or an empty result unmounts the chart component. It
-  // mounts again with the start state, so the reported state goes back to it.
+  // Markdown disclosure state survives query loading. Other chart views reset
+  // when replaced, so a changed query does not restore a stale page or selection.
   useEffect(() => {
+    if (chartType === 'markdown' && renderKind === 'loading') return
     if (renderKind !== 'chart') chartViewStateRef.current = startViewState?.chart
-  }, [renderKind, startViewState])
+  }, [chartType, renderKind, startViewState])
 
   // Non-chart states (config-required, placeholder, loading, error, no-data)
   if (renderKind !== 'chart') {
@@ -325,7 +326,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         isDrillEnabled={isDrillEnabled}
         onNavigateBack={handleNavigateBack}
         onNavigateToLevel={handleNavigateToLevel}
-        initialViewState={startViewState?.chart}
+        initialViewState={chartType === 'markdown' ? chartViewStateRef.current : startViewState?.chart}
         onViewStateChange={handleChartViewStateChange}
         onExportReady={onExportReady}
         refreshId={refreshId}

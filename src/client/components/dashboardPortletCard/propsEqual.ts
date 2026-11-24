@@ -15,6 +15,8 @@ export interface DashboardPortletCardProps {
   editable: boolean
   layoutMode?: DashboardLayoutMode
   variant?: PortletCardVariant
+  /** Set by the rows layout when the card's row keeps a fixed height. */
+  inFixedHeightRow?: boolean
   dashboardFilters?: DashboardFilter[]
   configEagerLoad?: boolean
   /** Dashboard default refresh, overridden by `portlet.refresh` */
@@ -68,7 +70,7 @@ export function shallowEqualObjects<T extends object>(
   return true
 }
 
-const SCALAR_KEYS = ['editable', 'layoutMode', 'configEagerLoad', 'variant'] as const
+const SCALAR_KEYS = ['editable', 'layoutMode', 'configEagerLoad', 'variant', 'inFixedHeightRow'] as const
 const REF_KEYS = [
   'portlet', 'dashboardFilters', 'dashboardRefresh', 'colorPalette', 'loadingComponent', 'callbacks', 'icons',
   'setPortletRef', 'setPortletComponentRef', 'onPortletExpand'

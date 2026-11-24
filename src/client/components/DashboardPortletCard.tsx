@@ -107,6 +107,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   containerProps,
   headerProps,
   variant = 'standalone',
+  inFixedHeightRow = false,
   setPortletRef,
   setPortletComponentRef,
   callbacks,
@@ -145,7 +146,8 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
     layoutMode,
     isEditMode,
     portletTitle: portlet.title,
-    variant
+    variant,
+    inFixedHeightRow
   })
 
   // Get setDebugData action from store

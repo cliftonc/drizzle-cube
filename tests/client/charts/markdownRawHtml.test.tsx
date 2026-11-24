@@ -1,10 +1,10 @@
 /**
- * Raw HTML in markdown never becomes live DOM.
+ * Only disclosure tags in chart Markdown become live DOM.
  *
  * Markdown content reaches the browser from shared dashboards, imported files,
  * warehouse values (template mode) and model output. markdown-to-jsx's own
- * attribute stripping misses some forms (e.g. a newline before `=`), so every
- * render site disables raw HTML parsing outright.
+ * attribute stripping misses some forms (e.g. a newline before `=`).
+ * Chart disclosures discard all source attributes; other render sites disable HTML.
  */
 
 import { render, waitFor } from '@testing-library/react'
@@ -26,8 +26,9 @@ const PAYLOADS = [
   '<iframe srcdoc="<script>alert(1)</script>"></iframe>'
 ]
 
-function assertInert(container: HTMLElement) {
-  expect(container.querySelector('script, iframe, img, svg, input, details')).toBeNull()
+function assertInert(container: HTMLElement, allowDetails = false) {
+  expect(container.querySelector('script, iframe, img, svg, input')).toBeNull()
+  if (!allowDetails) expect(container.querySelector('details')).toBeNull()
   for (const el of Array.from(container.querySelectorAll('*'))) {
     for (const attr of Array.from(el.attributes)) {
       expect(attr.name.toLowerCase().startsWith('on')).toBe(false)
@@ -44,6 +45,30 @@ const OPTION_SETS = {
 }
 
 describe('markdown raw HTML', () => {
+  it.each(PAYLOADS)('keeps %j inert in Markdown with disclosure tags', (content) => {
+    const { container } = render(<MarkdownChart data={[]} displayConfig={{ content: `<details><summary>About</summary>\n\n${content}\n\n</details>` }} />)
+    const sections = container.querySelectorAll('details')
+    expect(sections).toHaveLength(1)
+    expect(sections[0].querySelector('summary')?.textContent).toBe('About')
+    expect(sections[0]).toHaveTextContent('alert(1)')
+    assertInert(container, true)
+    for (const details of container.querySelectorAll('details')) expect(details).not.toHaveAttribute('open')
+  })
+
+  it('discards attributes on allowed tags and keeps fenced tags literal', () => {
+    const content = '<details open ontoggle="alert(1)" style="display:none" name="group"><summary onclick="alert(1)" tabindex="-1">About</summary>\n\nBody\n\n</details>\n\n```html\n<details><summary>Example</summary></details>\n```'
+    const { container } = render(<MarkdownChart data={[]} displayConfig={{ content }} />)
+    const details = container.querySelector('details')
+    expect(details).not.toHaveAttribute('open')
+    expect(details).not.toHaveAttribute('name')
+    expect(details).not.toHaveAttribute('style')
+    expect(details).not.toHaveAttribute('ontoggle')
+    expect(container.querySelector('summary')).not.toHaveAttribute('onclick')
+    expect(container.querySelector('summary')).not.toHaveAttribute('tabindex')
+    expect(container.querySelector('pre code')?.textContent).toBe('<details><summary>Example</summary></details>')
+    expect(container.querySelectorAll('details')).toHaveLength(1)
+  })
+
   for (const [name, options] of Object.entries(OPTION_SETS)) {
     describe(name, () => {
       it.each(PAYLOADS)('renders %j inert', (payload) => {

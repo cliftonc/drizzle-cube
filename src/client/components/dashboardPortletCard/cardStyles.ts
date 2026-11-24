@@ -32,8 +32,10 @@ export function resolveDisplayModes(params: {
   isEditMode: boolean
   portletTitle?: string
   variant?: PortletCardVariant
+  /** The card sits in a rows-layout row that keeps a fixed height, so it cannot grow. */
+  inFixedHeightRow?: boolean
 }): PortletDisplayModes {
-  const { renderChartType, renderDisplayConfig, layoutMode, isEditMode, portletTitle, variant } = params
+  const { renderChartType, renderDisplayConfig, layoutMode, isEditMode, portletTitle, variant, inFixedHeightRow } = params
 
   // A group child fills a flex cell with no intrinsic height, so markdown
   // auto-height (which drops `h-full`) would collapse it to nothing.
@@ -50,7 +52,7 @@ export function resolveDisplayModes(params: {
   const isMarkdown = renderChartType === 'markdown'
   // isTransparent gated on !isEditMode so chrome is visible for editing
   const markdownAutoHeightRequested = isMarkdown && (renderDisplayConfig?.autoHeight ?? true)
-  const isMarkdownAutoHeight = layoutMode !== 'grid' && markdownAutoHeightRequested
+  const isMarkdownAutoHeight = layoutMode !== 'grid' && markdownAutoHeightRequested && !inFixedHeightRow
   // Hide header when: explicitly set to hide, OR markdown with no title
   const shouldHideHeader = isMarkdown
     ? (renderDisplayConfig?.hideHeader ?? true) || !!renderDisplayConfig?.transparentBackground || !portletTitle

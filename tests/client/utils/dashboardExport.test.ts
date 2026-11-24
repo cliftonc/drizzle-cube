@@ -115,6 +115,25 @@ describe('dashboardExport', () => {
   })
 
   describe('round trip', () => {
+    it('preserves disclosure tags and complete Markdown content', () => {
+      const displayConfig = {
+        content: '<details><summary>About this data</summary>\n\nThe full explanation.\n\n[Reference](https://example.com)\n\n</details>',
+        hideHeader: true,
+        autoHeight: true,
+      }
+      const config = analysisConfig()
+      config.query = {}
+      config.charts.query = { chartType: 'markdown', chartConfig: {}, displayConfig }
+      const result = parseDashboardExport(serializeDashboardExport(createDashboardExport({
+        portlets: [portlet('note', { analysisConfig: config })],
+      })))
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.config.portlets[0].analysisConfig?.charts.query?.displayConfig).toEqual(displayConfig)
+      expect(result.warnings).toEqual([])
+    })
+
     it('serializes to pretty JSON and parses back to the same config', () => {
       const file = createDashboardExport(sampleConfig(), { name: 'Sales', description: 'Weekly' })
       const json = serializeDashboardExport(file)

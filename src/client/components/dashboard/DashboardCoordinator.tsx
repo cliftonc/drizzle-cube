@@ -947,11 +947,13 @@ export default function DashboardCoordinator({
     portlet: PortletConfig,
     containerProps?: HTMLAttributes<HTMLDivElement>,
     headerProps?: HTMLAttributes<HTMLDivElement>,
-    variant: PortletCardVariant = 'standalone'
+    variant: PortletCardVariant = 'standalone',
+    inFixedHeightRow = false
   ): ReactNode => (
     <DashboardPortletCard
       portlet={portlet}
       variant={variant}
+      inFixedHeightRow={inFixedHeightRow}
       editable={editable}
       layoutMode={layoutMode}
       dashboardFilters={dashboardFilters}

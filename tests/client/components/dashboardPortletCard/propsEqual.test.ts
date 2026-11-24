@@ -108,6 +108,15 @@ describe('arePropsEqual', () => {
     ).toBe(false)
   })
 
+  it('should return false in both directions when inFixedHeightRow changes', () => {
+    expect(
+      arePropsEqual({ ...base, inFixedHeightRow: false }, { ...base, inFixedHeightRow: true })
+    ).toBe(false)
+    expect(
+      arePropsEqual({ ...base, inFixedHeightRow: true }, { ...base, inFixedHeightRow: false })
+    ).toBe(false)
+  })
+
   it('should return false when other scalar props differ', () => {
     expect(arePropsEqual({ ...base }, { ...base, editable: false })).toBe(false)
     expect(arePropsEqual({ ...base }, { ...base, layoutMode: 'grid' })).toBe(false)

@@ -160,6 +160,39 @@ describe('RowManagedLayout', () => {
       expect(row.style.height).toBe('320px')
     })
 
+    it('should tell renderPortlet when a markdown card sits in a fixed-height row', () => {
+      const markdown = createMarkdownPortlet({ id: 'p1' })
+      const chart = createTestPortlet({ id: 'p2' })
+      const note = createMarkdownPortlet({ id: 'p3' })
+      const rows: RowLayout[] = [
+        createTestRow({
+          id: 'row-1',
+          columns: [
+            { portletId: 'p1', w: 6 },
+            { portletId: 'p2', w: 6 }
+          ]
+        }),
+        createTestRow({
+          id: 'row-2',
+          columns: [{ portletId: 'p3', w: 12 }]
+        })
+      ]
+      const renderPortlet = vi.fn((portlet: PortletConfig) => <div>{portlet.id}</div>)
+
+      render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          portlets={[markdown, chart, note]}
+          renderPortlet={renderPortlet}
+        />
+      )
+
+      expect(renderPortlet).toHaveBeenCalledWith(markdown, undefined, undefined, 'standalone', true)
+      expect(renderPortlet).toHaveBeenCalledWith(chart, undefined, undefined, 'standalone', true)
+      expect(renderPortlet).toHaveBeenCalledWith(note, undefined, undefined, 'standalone', false)
+    })
+
     it('should set CSS custom properties', () => {
       const { container } = render(<RowManagedLayout {...defaultProps} />)
 
@@ -1481,7 +1514,7 @@ describe('RowManagedLayout - groups and snap bands', () => {
       )
 
       expect(renderPortlet).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'p1' }), undefined, undefined, 'sectionChild'
+        expect.objectContaining({ id: 'p1' }), undefined, undefined, 'sectionChild', true
       )
     })
 
