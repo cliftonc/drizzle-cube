@@ -71,18 +71,21 @@ jobs:
       - name: Build MCP app
         run: npm run build:mcp-app
 
-      - name: Verify checked-in MCP app bundle is up to date
-        run: |
-          git diff --exit-code src/mcp-app/generated-html.ts || {
-            echo "::error file=src/mcp-app/generated-html.ts::Stale MCP app bundle. Run 'npm run build:mcp-app' and commit the result."
-            exit 1
-          }
-
       - name: Build client
         run: npm run build:client
 
       - name: Build adapters
         run: npm run build:adapters
+
+      # The adapters build inlines dist/mcp-app/mcp-app.html into the
+      # drizzle-cube/mcp-app-html module. The published module must carry the
+      # app and must not read it from disk (edge runtimes have no fs).
+      - name: Verify the MCP app is inlined into the published adapters
+        run: |
+          for f in dist/adapters/mcp-app-html.js dist/adapters/mcp-app-html.cjs; do
+            grep -q '<!DOCTYPE html>' "$f" || { echo "::error file=$f::MCP app HTML is not inlined"; exit 1; }
+            if grep -qE 'readFileSync|node:fs' "$f"; then echo "::error file=$f::reads the MCP app from disk"; exit 1; fi
+          done
 
       - name: Build CLI
         run: npm run build:cli

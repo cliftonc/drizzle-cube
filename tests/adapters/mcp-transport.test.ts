@@ -4,6 +4,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+// The built MCP App is a build artifact (not committed), so these tests do not
+// depend on `npm run build:mcp-app` having run: getMcpAppHtml loads this stub.
+vi.mock('../../src/adapters/mcp-app-html', () => ({
+  mcpAppHtml: '<!DOCTYPE html><html><head><title>stub</title></head><body></body></html>'
+}))
+
 import {
   negotiateProtocol,
   wantsEventStream,
@@ -1200,7 +1206,7 @@ describe('MCP Transport Layer', () => {
 
   describe('getMcpAppHtml locale config injection', () => {
     it('returns base html unchanged when no config is provided', async () => {
-      // No config → no injection; the built HTML is returned as-is.
+      // No config → no injection; the app HTML is returned as-is.
       // Assert on the injection *assignment* (`window.X = ...`), not the bare
       // identifier: the app bundle itself reads `window.__DRIZZLE_CUBE_MCP_APP_CONFIG__`,
       // so the built HTML always contains the name — only the injected

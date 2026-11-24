@@ -54,9 +54,9 @@ Each engine has a dedicated executor in `src/server/executors/`. Auto-detection 
 | Quality | `npm run lint` | ESLint |
 | Quality | `npm run lint:fix` | ESLint with auto-fix |
 
-### Checked-in MCP app bundle
+### MCP app bundle is a build artifact
 
-`src/mcp-app/generated-html.ts` is generated from client code **and committed**. Any client, i18n or shared change can make it stale, and CI's `build` job fails when it is. Run `npm run build:mcp-app` (≈1s; `npm run build` includes it) and commit the result before pushing. A `pre-push` hook in `.githooks/` enforces this — `npm install` enables it via the `prepare` script (`git config core.hooksPath .githooks`).
+The ~2 MB MCP App HTML is **not committed**. `npm run build:mcp-app` writes it to `dist/mcp-app/mcp-app.html`, and `npm run build:adapters` inlines it into the published `drizzle-cube/mcp-app-html` module (`inlineMcpAppHtml` in `vite.config.adapters.ts`), so it fails if the app is not built first. From source, `src/adapters/mcp-app-html.ts` reads the built file if it exists and is `''` otherwise, so typecheck, tests and the dev server need no build. Run `npm run build:mcp-app` to try the MCP App against the dev server.
 
 ### Packaging changes: run the consumer smoke tests
 
