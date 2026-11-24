@@ -277,6 +277,16 @@ function generateDownloadFilename(baseFilename: string, extension: string): stri
   return `${slugifiedBase}-${dateStamp}-${uniqueSuffix}.${extension}`
 }
 
+/**
+ * The file name that `exportPortletToXlsx` gives to the file of a portlet:
+ * the title as a slug (default: `export`), the date and a random suffix.
+ * The dashboard card sends it to a `ChartExportHandler`, so a chart that
+ * writes its own file names it in the same way.
+ */
+export function portletXlsxFilename(portletTitle?: string): string {
+  return generateDownloadFilename(portletTitle || 'export', 'xlsx')
+}
+
 // ============================================================================
 // Module Availability
 // ============================================================================
@@ -422,8 +432,7 @@ export async function exportPortletToXlsx(
     }
 
     const buffer = await workbook.xlsx.writeBuffer()
-    const filename = generateDownloadFilename(portletTitle || 'export', 'xlsx')
-    triggerDownload(buffer as ArrayBuffer, filename)
+    triggerDownload(buffer as ArrayBuffer, portletXlsxFilename(portletTitle))
 
     return true
   } catch (error) {

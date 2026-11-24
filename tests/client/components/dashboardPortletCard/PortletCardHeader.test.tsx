@@ -120,6 +120,20 @@ describe('PortletCardHeader action order', () => {
   })
 })
 
+describe('PortletCardHeader Download', () => {
+  it('should show Download without debug data when the card has an export', () => {
+    renderHeader({ debugData: undefined, xlsExportAvailable: true })
+
+    expect(screen.getByTitle(DOWNLOAD)).toBeInTheDocument()
+  })
+
+  it('should not show Download when the card has no export', () => {
+    renderHeader({ xlsExportAvailable: false })
+
+    expect(screen.queryByTitle(DOWNLOAD)).not.toBeInTheDocument()
+  })
+})
+
 describe('PortletCardHeader class names', () => {
   it('should mark the title and the action group, so a host stylesheet can target them', () => {
     const { container } = renderHeader({ refreshPause: undefined })
