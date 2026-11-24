@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { FastifyInstance } from 'fastify'
 import { cubePlugin, createCubeApp } from '../../src/adapters/fastify'
 import Fastify from 'fastify'
@@ -497,6 +497,35 @@ describe('Fastify Adapter', () => {
     expect(response.statusCode).toBe(400)
     const data = JSON.parse(response.payload)
     expect(data.error).toContain('empty')
+  })
+
+  // GET /mcp (SSE stream) and DELETE /mcp resolve the security context before
+  // they proceed: a Bearer token passes the presence check, but the host's
+  // extractSecurityContext decides whether it is valid (CodeQL js/user-controlled-bypass).
+  describe('MCP GET/DELETE authorization', () => {
+    it.each(['GET', 'DELETE'] as const)('rejects %s /mcp with 401 when extractSecurityContext refuses the token', async (method) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const rejecting = require('fastify')({ logger: false })
+      await rejecting.register(cubePlugin as any, createPluginOptions({
+        extractSecurityContext: async () => { throw new Error('invalid token') },
+        mcp: { enabled: true, resourceMetadataUrl: 'https://auth.example.com/.well-known/oauth-protected-resource' }
+      }))
+      await rejecting.ready()
+      try {
+        const response = await rejecting.inject({ method, url: '/mcp', headers: { Authorization: 'Bearer x' } })
+        expect(response.statusCode).toBe(401)
+        expect(JSON.parse(response.payload)).toEqual({ error: 'Unauthorized' })
+        expect(response.headers['www-authenticate']).toContain('resource_metadata=')
+      } finally {
+        await rejecting.close()
+        errorSpy.mockRestore()
+      }
+    })
+
+    it('still answers DELETE /mcp with 405 when the security context resolves', async () => {
+      const response = await app.inject({ method: 'DELETE', url: '/mcp' })
+      expect(response.statusCode).toBe(405)
+    })
   })
 
   // MCP Origin validation (GHSA-ch89-j64x-45pq). Default config (no allowedOrigins)

@@ -32,11 +32,7 @@ import {
 } from '../utils.js'
 import {
   primeEventId,
-  serializeSseEvent,
-  extractBearerToken,
-  buildWwwAuthenticateChallenge,
-  validateOriginHeader,
-  originOptionsFromMcp
+  serializeSseEvent
 } from '../mcp-transport.js'
 import { ensureClientRequestHeaders } from '../cors-headers.js'
 import { createCubeHttpHandler, withLocaleFromHeaders, type McpHttpPort } from '../core/index.js'
@@ -434,15 +430,8 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     )
 
     fastify.get(`${mcpBasePath}`, async (request: FastifyRequest, reply: FastifyReply) => {
-      const originValidation = validateOriginHeader(request.headers.origin, originOptionsFromMcp(mcp))
-      if (!originValidation.valid) {
-        return reply.status(403).send({ error: originValidation.reason })
-      }
-
-      if (mcp.resourceMetadataUrl && !extractBearerToken(request.headers.authorization)) {
-        reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
-        return reply.status(401).send({ error: 'Bearer token required' })
-      }
+      const rejection = await httpHandler.authorizeMcpStream(createFastifyPort(request, reply), baseContext(request))
+      if (rejection !== undefined) return rejection
 
       const eventId = primeEventId()
       reply.raw.writeHead(200, {
@@ -470,16 +459,9 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
      * DELETE handler for session termination (MCP 2025-11-25)
      * Clients SHOULD send DELETE to terminate sessions
      */
-    fastify.delete(`${mcpBasePath}`, async (_request: FastifyRequest, reply: FastifyReply) => {
-      const originValidation = validateOriginHeader(_request.headers.origin, originOptionsFromMcp(mcp))
-      if (!originValidation.valid) {
-        return reply.status(403).send({ error: originValidation.reason })
-      }
-
-      if (mcp.resourceMetadataUrl && !extractBearerToken(_request.headers.authorization)) {
-        reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
-        return reply.status(401).send({ error: 'Bearer token required' })
-      }
+    fastify.delete(`${mcpBasePath}`, async (request: FastifyRequest, reply: FastifyReply) => {
+      const rejection = await httpHandler.authorizeMcpStream(createFastifyPort(request, reply), baseContext(request))
+      if (rejection !== undefined) return rejection
 
       // For now, return 405 Method Not Allowed as we don't track sessions server-side
       // A full implementation would track sessions and clean up resources here

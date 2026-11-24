@@ -52,6 +52,12 @@ export interface CubeHttpHandler extends RestHandlers {
   handleLoadGet<TRes>(port: HttpPort<TRes>, getBaseSecurityContext: BaseSecurityContextThunk): Promise<TRes>
   handleLoadPost<TRes>(port: HttpPort<TRes>, getBaseSecurityContext: BaseSecurityContextThunk): Promise<TRes>
   handleMcpPost<TRes>(port: McpHttpPort<TRes>, getBaseSecurityContext: BaseSecurityContextThunk): Promise<TRes>
+  /**
+   * Admission check for the adapters' inline `GET /mcp` stream and `DELETE /mcp`:
+   * origin, bearer token, then the security context. Returns the rejection
+   * response, or `undefined` when the request may proceed.
+   */
+  authorizeMcpStream<TRes>(port: HttpPort<TRes>, getBaseSecurityContext: BaseSecurityContextThunk): Promise<TRes | undefined>
 }
 
 /**
@@ -62,7 +68,7 @@ export function createCubeHttpHandler(options: CubeHttpHandlerOptions): CubeHttp
   const { semanticLayer, onError, mcp = {} } = options
 
   const restHandlers = createRestHandlers(semanticLayer)
-  const { handleMcpPost } = createMcpPostHandler(semanticLayer, mcp)
+  const { handleMcpPost, authorizeMcpStream } = createMcpPostHandler(semanticLayer, mcp)
 
   /** Map an unexpected (thrown) error to a 500, logging it via the injected onError. */
   function handleCatchAll<TRes>(error: unknown, port: HttpPort<TRes>): TRes {
@@ -152,6 +158,7 @@ export function createCubeHttpHandler(options: CubeHttpHandlerOptions): CubeHttp
     handleDryRunPost: (port, ctx) => restHandlers.handleDryRunPost(withRestCacheHeaders(port), ctx),
     handleBatchPost: (port, ctx) => restHandlers.handleBatchPost(withRestCacheHeaders(port), ctx),
     handleExplainPost: (port, ctx) => restHandlers.handleExplainPost(withRestCacheHeaders(port), ctx),
-    handleMcpPost
+    handleMcpPost,
+    authorizeMcpStream
   }
 }

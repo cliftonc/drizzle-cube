@@ -416,17 +416,29 @@ function camelCase(name: string): string {
 }
 
 function ensureDir(dir: string): void {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
-  }
+  // recursive: true does not fail when the directory exists
+  fs.mkdirSync(dir, { recursive: true })
 }
 
-function writeIfNotExists(filePath: string, content: string): void {
-  if (fs.existsSync(filePath)) {
-    console.warn(`  Skipping ${filePath} (already exists)`)
-    return
+function hasErrorCode(error: unknown, code: string): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === code
+}
+
+/**
+ * Write a new file, never an existing one. The `wx` flag makes the existence
+ * check and the create one atomic step, so a file that appears in between is
+ * not overwritten (a separate existsSync() check would race).
+ */
+export function writeIfNotExists(filePath: string, content: string): void {
+  try {
+    fs.writeFileSync(filePath, content, { encoding: 'utf-8', flag: 'wx' })
+  } catch (error) {
+    if (hasErrorCode(error, 'EEXIST')) {
+      console.warn(`  Skipping ${filePath} (already exists)`)
+      return
+    }
+    throw error
   }
-  fs.writeFileSync(filePath, content, 'utf-8')
 }
 
 /**

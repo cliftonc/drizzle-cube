@@ -350,6 +350,9 @@ const limiter = rateLimit({
   max: 100 // limit each IP to 100 requests per windowMs
 })
 app.use('/api', limiter)
+// The MCP endpoint (default `/mcp`) is mounted outside the API base path, and
+// GET /mcp holds a long-lived SSE stream, so limit it too
+app.use('/mcp', limiter)
 
 // Trust proxy (important for rate limiting behind reverse proxy)
 app.set('trust proxy', 1)

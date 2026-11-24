@@ -530,6 +530,13 @@ app.use('/api/*', rateLimiter({
   limit: 100, // limit each IP to 100 requests per windowMs
   keyGenerator: (c) => c.req.header('x-forwarded-for') || 'unknown'
 }))
+// The MCP endpoint (default `/mcp`) sits outside `/api/*`, and GET /mcp holds a
+// long-lived SSE stream, so give it a limiter too
+app.use('/mcp', rateLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  keyGenerator: (c) => c.req.header('x-forwarded-for') || 'unknown'
+}))
 
 const cubeApp = createCubeApp({
   semanticLayer,

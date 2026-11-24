@@ -31,11 +31,7 @@ import {
 } from '../utils.js'
 import {
   primeEventId,
-  serializeSseEvent,
-  extractBearerToken,
-  buildWwwAuthenticateChallenge,
-  validateOriginHeader,
-  originOptionsFromMcp
+  serializeSseEvent
 } from '../mcp-transport.js'
 import { ensureClientRequestHeaders } from '../cors-headers.js'
 import { createCubeHttpHandler, withLocaleFromHeaders, type McpHttpPort } from '../core/index.js'
@@ -438,15 +434,8 @@ export function createCubeRouter(
     })
 
     router.get(`${mcpBasePath}`, async (req: Request, res: Response) => {
-      const originValidation = validateOriginHeader(req.headers.origin, originOptionsFromMcp(mcp))
-      if (!originValidation.valid) {
-        return res.status(403).json({ error: originValidation.reason })
-      }
-
-      if (mcp.resourceMetadataUrl && !extractBearerToken(req.headers.authorization)) {
-        res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
-        return res.status(401).json({ error: 'Bearer token required' })
-      }
+      const rejection = await httpHandler.authorizeMcpStream(createExpressPort(req, res), baseContext(req, res))
+      if (rejection !== undefined) return rejection
 
       const eventId = primeEventId()
       res.status(200)
@@ -472,16 +461,9 @@ export function createCubeRouter(
      * DELETE handler for session termination (MCP 2025-11-25)
      * Clients SHOULD send DELETE to terminate sessions
      */
-    router.delete(`${mcpBasePath}`, (_req: Request, res: Response) => {
-      const originValidation = validateOriginHeader(_req.headers.origin, originOptionsFromMcp(mcp))
-      if (!originValidation.valid) {
-        return res.status(403).json({ error: originValidation.reason })
-      }
-
-      if (mcp.resourceMetadataUrl && !extractBearerToken(_req.headers.authorization)) {
-        res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
-        return res.status(401).json({ error: 'Bearer token required' })
-      }
+    router.delete(`${mcpBasePath}`, async (req: Request, res: Response) => {
+      const rejection = await httpHandler.authorizeMcpStream(createExpressPort(req, res), baseContext(req, res))
+      if (rejection !== undefined) return rejection
 
       // For now, return 405 Method Not Allowed as we don't track sessions server-side
       // A full implementation would track sessions and clean up resources here

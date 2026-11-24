@@ -247,3 +247,86 @@ describe('createCubeHttpHandler — MCP POST core', () => {
     expect(out.body).toContain('"jsonrpc":"2.0"')
   })
 })
+
+describe('createCubeHttpHandler — MCP GET stream / DELETE admission (authorizeMcpStream)', () => {
+  const getBaseSC = async () => ({ organisationId: 'org1' })
+  const rejectToken = async (): Promise<{ organisationId: string }> => {
+    throw new Error('invalid token: secret-token-value')
+  }
+  let errorSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+  afterEach(() => {
+    errorSpy.mockRestore()
+  })
+
+  it('admits a request whose security context resolves', async () => {
+    const handler = createCubeHttpHandler({ semanticLayer: createStubSemanticLayer(), onError: vi.fn() })
+    const port = createFakeMcpPort()
+
+    await expect(handler.authorizeMcpStream(port, getBaseSC)).resolves.toBeUndefined()
+    expect(port.sent).toEqual([])
+  })
+
+  it('rejects a foreign Origin with a 403 before resolving the security context', async () => {
+    const handler = createCubeHttpHandler({ semanticLayer: createStubSemanticLayer(), onError: vi.fn() })
+    const port = createFakeMcpPort({ headers: { origin: 'https://evil.example.com' } })
+    const getContext = vi.fn(getBaseSC)
+
+    await handler.authorizeMcpStream(port, getContext)
+
+    expect(port.sent).toEqual([{ kind: 'json', status: 403, body: expect.objectContaining({ error: expect.any(String) }) }])
+    expect(getContext).not.toHaveBeenCalled()
+  })
+
+  it('requires a Bearer token (401 + WWW-Authenticate) when resourceMetadataUrl is set', async () => {
+    const handler = createCubeHttpHandler({
+      semanticLayer: createStubSemanticLayer(),
+      onError: vi.fn(),
+      mcp: { resourceMetadataUrl: 'https://auth.example.com/.well-known/oauth-protected-resource' }
+    })
+    const port = createFakeMcpPort()
+    const getContext = vi.fn(getBaseSC)
+
+    await handler.authorizeMcpStream(port, getContext)
+
+    expect(port.sent).toEqual([{ kind: 'json', status: 401, body: { error: 'Bearer token required' } }])
+    expect(port.headers['www-authenticate']).toContain('resource_metadata=')
+    expect(getContext).not.toHaveBeenCalled()
+  })
+
+  it('rejects a Bearer token that the security context refuses (401 + WWW-Authenticate)', async () => {
+    const handler = createCubeHttpHandler({
+      semanticLayer: createStubSemanticLayer(),
+      onError: vi.fn(),
+      mcp: { resourceMetadataUrl: 'https://auth.example.com/.well-known/oauth-protected-resource' }
+    })
+    const port = createFakeMcpPort({ headers: { authorization: 'Bearer x' } })
+
+    await handler.authorizeMcpStream(port, rejectToken)
+
+    expect(port.sent).toEqual([{ kind: 'json', status: 401, body: { error: 'Unauthorized' } }])
+    expect(port.headers['www-authenticate']).toContain('resource_metadata=')
+  })
+
+  it('rejects with a 401 when the security context throws, also without resourceMetadataUrl', async () => {
+    const handler = createCubeHttpHandler({ semanticLayer: createStubSemanticLayer(), onError: vi.fn() })
+    const port = createFakeMcpPort()
+
+    await handler.authorizeMcpStream(port, rejectToken)
+
+    expect(port.sent).toEqual([{ kind: 'json', status: 401, body: { error: 'Unauthorized' } }])
+    expect(port.headers['www-authenticate']).toBeUndefined()
+  })
+
+  it('does not return the error of the security context to the client', async () => {
+    const handler = createCubeHttpHandler({ semanticLayer: createStubSemanticLayer(), onError: vi.fn() })
+    const port = createFakeMcpPort()
+
+    await handler.authorizeMcpStream(port, rejectToken)
+
+    expect(JSON.stringify(port.sent)).not.toContain('secret-token-value')
+  })
+})
