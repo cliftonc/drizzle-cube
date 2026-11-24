@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { Hono } from 'hono'
 import { createCubeRoutes, mountCubeRoutes, createCubeApp } from '../../src/adapters/hono'
 import {
@@ -516,6 +516,32 @@ describe('Hono Adapter', () => {
     const data = await res.json() as any
     expect(data.cubes).toBeDefined()
     expect(Array.isArray(data.cubes)).toBe(true)
+  })
+
+  // GET /mcp (SSE stream) and DELETE /mcp resolve the security context before
+  // they proceed: a Bearer token passes the presence check, but the host's
+  // extractSecurityContext decides whether it is valid (CodeQL js/user-controlled-bypass).
+  describe('MCP GET/DELETE authorization', () => {
+    it.each(['GET', 'DELETE'])('rejects %s /mcp with 401 when extractSecurityContext refuses the token', async (method) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const rejecting = createCubeRoutes(createRoutesOptions({
+        extractSecurityContext: async () => { throw new Error('invalid token') },
+        mcp: { enabled: true, resourceMetadataUrl: 'https://auth.example.com/.well-known/oauth-protected-resource' }
+      }))
+      const res = await rejecting.request(new Request('http://localhost/mcp', {
+        method,
+        headers: { Authorization: 'Bearer x' }
+      }))
+      expect(res.status).toBe(401)
+      expect(await res.json()).toEqual({ error: 'Unauthorized' })
+      expect(res.headers.get('www-authenticate')).toContain('resource_metadata=')
+      errorSpy.mockRestore()
+    })
+
+    it('still answers DELETE /mcp with 405 when the security context resolves', async () => {
+      const res = await app.request(new Request('http://localhost/mcp', { method: 'DELETE' }))
+      expect(res.status).toBe(405)
+    })
   })
 
   // MCP Origin validation (GHSA-ch89-j64x-45pq). Default config (no allowedOrigins)

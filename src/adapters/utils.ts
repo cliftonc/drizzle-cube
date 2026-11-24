@@ -799,7 +799,12 @@ export interface MCPOptions {
    * OAuth 2.1 Protected Resource Metadata URL (RFC 9728).
    * When set, MCP endpoints require a Bearer token in the Authorization header.
    * Unauthenticated requests receive 401 with WWW-Authenticate pointing to this URL.
-   * Token validation is the responsibility of extractSecurityContext.
+   * Token validation is the responsibility of extractSecurityContext: POST resolves it
+   * for every method that needs it, and GET (SSE stream) and DELETE resolve it before
+   * they proceed, so a throwing extractSecurityContext gets a 401 there too.
+   *
+   * drizzle-cube does not rate-limit `/mcp`. Mount your framework's rate limiter in
+   * front of it, as for the REST endpoints.
    *
    * Strongly recommended for any public deployment: auth is the primary access control
    * for `/mcp`, while {@link allowedOrigins} validation is defense-in-depth against

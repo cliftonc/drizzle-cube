@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import express, { Express } from 'express'
 import request from 'supertest'
 import { createCubeRouter, mountCubeRoutes, createCubeApp } from '../../src/adapters/express'
@@ -426,6 +426,34 @@ describe('Express Adapter', () => {
         extractSecurityContext: mockGetSecurityContext
       })
     }).toThrow('At least one cube must be provided')
+  })
+
+  // GET /mcp (SSE stream) and DELETE /mcp resolve the security context before
+  // they proceed: a Bearer token passes the presence check, but the host's
+  // extractSecurityContext decides whether it is valid (CodeQL js/user-controlled-bypass).
+  describe('MCP GET/DELETE authorization', () => {
+    const rejectingApp = () => {
+      const rejecting = express()
+      rejecting.use('/', createCubeRouter(createRouterOptions({
+        extractSecurityContext: async () => { throw new Error('invalid token') },
+        mcp: { enabled: true, resourceMetadataUrl: 'https://auth.example.com/.well-known/oauth-protected-resource' }
+      })))
+      return rejecting
+    }
+
+    it.each(['get', 'delete'] as const)('rejects %s /mcp with 401 when extractSecurityContext refuses the token', async (method) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const response = await request(rejectingApp())[method]('/mcp')
+        .set('Authorization', 'Bearer x')
+        .expect(401)
+      expect(response.body).toEqual({ error: 'Unauthorized' })
+      expect(response.headers['www-authenticate']).toContain('resource_metadata=')
+      errorSpy.mockRestore()
+    })
+
+    it('still answers DELETE /mcp with 405 when the security context resolves', async () => {
+      await request(app).delete('/mcp').expect(405)
+    })
   })
 
   // MCP Origin validation (GHSA-ch89-j64x-45pq). Default config (no allowedOrigins)

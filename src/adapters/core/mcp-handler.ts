@@ -1,5 +1,6 @@
 /**
- * Framework-agnostic MCP POST handler.
+ * Framework-agnostic MCP POST handler, and the admission check for the
+ * adapters' inline GET stream and DELETE routes.
  *
  * Runs the full MCP Streamable-HTTP request flow (bearer/origin/Accept/protocol
  * validation → JSON-RPC parse → method dispatch → JSON or single-event SSE
@@ -31,7 +32,7 @@ import {
   MCP_SESSION_ID_HEADER,
   type JsonRpcRequest
 } from '../mcp-transport.js'
-import type { McpHttpPort } from './http-port.js'
+import type { HttpPort, McpHttpPort } from './http-port.js'
 import {
   resolveSecurityContext,
   sanitizeForLog,
@@ -43,6 +44,15 @@ export interface McpPostHandler {
     port: McpHttpPort<TRes>,
     getBaseSecurityContext: BaseSecurityContextThunk
   ): Promise<TRes>
+  /**
+   * Admission check for the transport-bound MCP routes that the adapters keep
+   * inline: the `GET /mcp` SSE stream and `DELETE /mcp`. Returns the rejection
+   * response, or `undefined` when the request may proceed.
+   */
+  authorizeMcpStream<TRes>(
+    port: HttpPort<TRes>,
+    getBaseSecurityContext: BaseSecurityContextThunk
+  ): Promise<TRes | undefined>
 }
 
 /** Build a JSON-RPC error payload from a thrown error, preserving code/data. */
@@ -179,5 +189,43 @@ export function createMcpPostHandler(
     }
   }
 
-  return { handleMcpPost }
+  /**
+   * Origin (403), then the bearer token's presence (401 with a
+   * `WWW-Authenticate` challenge when `resourceMetadataUrl` is set), then the
+   * security context (401).
+   *
+   * The presence check alone is not authentication: any `Bearer x` passes it.
+   * The host validates the token in `extractSecurityContext`, so the context is
+   * resolved before a stream is opened. POST resolves it per method, through
+   * `dispatchMcpMethod`; GET and DELETE have no method, so they resolve it here.
+   * The thrown error is logged, not returned, so it cannot leak token details.
+   */
+  async function authorizeMcpStream<TRes>(
+    port: HttpPort<TRes>,
+    getBaseSecurityContext: BaseSecurityContextThunk
+  ): Promise<TRes | undefined> {
+    const originValidation = validateOriginHeader(port.getHeader('origin'), originOptionsFromMcp(mcp))
+    if (!originValidation.valid) {
+      return port.send(403, { error: originValidation.reason })
+    }
+
+    if (mcp.resourceMetadataUrl && !extractBearerToken(port.getHeader('authorization'))) {
+      port.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+      return port.send(401, { error: 'Bearer token required' })
+    }
+
+    try {
+      await resolveSecurityContext(getBaseSecurityContext, (n) => port.getHeader(n))
+    } catch (error) {
+      console.error('MCP stream authorization failed:', sanitizeForLog(error))
+      if (mcp.resourceMetadataUrl) {
+        port.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+      }
+      return port.send(401, { error: 'Unauthorized' })
+    }
+
+    return undefined
+  }
+
+  return { handleMcpPost, authorizeMcpStream }
 }

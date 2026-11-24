@@ -32,11 +32,7 @@ import {
 } from '../utils.js'
 import {
   primeEventId,
-  serializeSseEvent,
-  extractBearerToken,
-  buildWwwAuthenticateChallenge,
-  validateOriginHeader,
-  originOptionsFromMcp
+  serializeSseEvent
 } from '../mcp-transport.js'
 import { handleAgentChatRequest } from './agent-handler.js'
 import { ensureClientRequestHeaders } from '../cors-headers.js'
@@ -289,32 +285,18 @@ export function createCubeRoutes(
      * DELETE handler for session termination (MCP 2025-11-25)
      * Clients SHOULD send DELETE to terminate sessions
      */
-    app.delete(`${mcpBasePath}`, (c) => {
-      const originValidation = validateOriginHeader(c.req.header('origin'), originOptionsFromMcp(mcp))
-      if (!originValidation.valid) {
-        return c.json({ error: originValidation.reason }, 403)
-      }
-
-      if (mcp.resourceMetadataUrl && !extractBearerToken(c.req.header('authorization'))) {
-        c.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
-        return c.json({ error: 'Bearer token required' }, 401)
-      }
+    app.delete(`${mcpBasePath}`, async (c) => {
+      const rejection = await httpHandler.authorizeMcpStream(createHonoPort(c), baseContext(c))
+      if (rejection !== undefined) return rejection
 
       // For now, return 405 Method Not Allowed as we don't track sessions server-side
       // A full implementation would track sessions and clean up resources here
       return c.json({ error: 'Session termination not supported' }, 405)
     })
 
-    app.get(`${mcpBasePath}`, (c) => {
-      const originValidation = validateOriginHeader(c.req.header('origin'), originOptionsFromMcp(mcp))
-      if (!originValidation.valid) {
-        return c.json({ error: originValidation.reason }, 403)
-      }
-
-      if (mcp.resourceMetadataUrl && !extractBearerToken(c.req.header('authorization'))) {
-        c.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
-        return c.json({ error: 'Bearer token required' }, 401)
-      }
+    app.get(`${mcpBasePath}`, async (c) => {
+      const rejection = await httpHandler.authorizeMcpStream(createHonoPort(c), baseContext(c))
+      if (rejection !== undefined) return rejection
 
       const encoder = new TextEncoder()
       const eventId = primeEventId()

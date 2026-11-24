@@ -695,6 +695,22 @@ describe('Next.js Adapter', () => {
       expect((await handler(request)).status).toBe(403)
     })
 
+    // GET and DELETE resolve the security context before they proceed: a Bearer
+    // token passes the presence check, but extractSecurityContext decides whether
+    // it is valid (CodeQL js/user-controlled-bypass).
+    it.each(['GET', 'DELETE'])('rejects %s /mcp with 401 when extractSecurityContext refuses the token', async (method) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const handler = createMcpRpcHandler({
+        ...adapterOptions,
+        extractSecurityContext: async () => { throw new Error('invalid token') },
+        mcp: { enabled: true, resourceMetadataUrl: 'https://auth.example.com/.well-known/oauth-protected-resource' }
+      })
+      const request = createMockNextRequest(method, undefined, undefined, { Authorization: 'Bearer x' })
+      const response = await handler(request)
+      expect(response.status).toBe(401)
+      errorSpy.mockRestore()
+    })
+
     // Note: the GET allow path builds an SSE stream via `new NextResponse(stream)`, which
     // the next/server mock in this suite does not stub — so the loopback allow path is
     // asserted via DELETE below (405 = passed origin validation). Foreign GET is checked
