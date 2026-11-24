@@ -1,16 +1,21 @@
 import {
   and,
   eq,
+  is,
   isNull,
   or,
   sql,
-  SQL
+  SQL,
+  Table,
+  View,
+  ViewBaseConfig
 } from 'drizzle-orm'
 
 import type {
   Cube,
   JoinCubePlanEntry,
   PhysicalQueryPlan,
+  QueryableRelation,
   QueryContext
 } from '../../types/index.js'
 import { applyJoinByType } from './shared.js'
@@ -277,7 +282,7 @@ function joinsThroughDownstreamCTE(
 }
 
 interface CubeJoinTarget {
-  joinTarget: any
+  joinTarget: QueryableRelation
   joinCondition: any
   securityCondition: SQL | undefined
   joinCubeBase: ReturnType<Cube['sql']> | undefined
@@ -338,7 +343,7 @@ function resolveCubeJoinTarget(
   }
 
   return {
-    joinTarget: joinCubeBase.from,
+    joinTarget: cubeJoinRelation(joinCubeBase),
     joinCondition,
     // Security condition for this cube (for LEFT JOINs, added to ON clause)
     securityCondition: joinCubeBase.where,
@@ -347,8 +352,64 @@ function resolveCubeJoinTarget(
 }
 
 /**
- * Apply a single inter-cube join. Intra-cube joins of the joined cube are
- * applied afterwards so its base table is in scope.
+ * The relation an inter-cube join targets: the cube's FROM table, or, when the
+ * cube's sql has intra-cube joins (BaseQueryDefinition.joins), the FROM table
+ * and those joins as one parenthesized join group. The outer join then keeps or
+ * drops each row of the cube as a whole: an intra-cube INNER JOIN cannot drop
+ * the outer query's unmatched rows, and the cube's WHERE in the outer ON clause
+ * can reference every table of the group.
+ */
+function cubeJoinRelation(cubeBase: ReturnType<Cube['sql']>): QueryableRelation {
+  if (!cubeBase.joins?.length) {
+    return cubeBase.from
+  }
+  const joins = cubeBase.joins.map(join =>
+    sql`${sql.raw(join.type ?? 'left')} join ${fromItem(join.table)} on ${join.on}`
+  )
+  return sql`(${fromItem(cubeBase.from)} ${sql.join(joins, sql` `)})`
+}
+
+/**
+ * Render a relation as a FROM item. Drizzle interpolates an aliased table or
+ * view as its alias alone, so this renders its original name and alias the way
+ * Drizzle's own JOIN clauses do.
+ */
+function fromItem(relation: QueryableRelation): SQL {
+  const aliased = aliasedRelationNames(relation)
+  if (!aliased) {
+    return sql`${relation}`
+  }
+  const originalName = sql.identifier(aliased.originalName)
+  const qualifiedName = aliased.schema ? sql`${sql.identifier(aliased.schema)}.${originalName}` : originalName
+  if (aliased.alias === aliased.originalName) {
+    return sql`${qualifiedName}`
+  }
+  return sql`${qualifiedName} ${sql.identifier(aliased.alias)}`
+}
+
+/** Read from Drizzle's runtime alias metadata, which its public typings omit. */
+function aliasedRelationNames(
+  relation: QueryableRelation
+): { originalName: string; schema: string | undefined; alias: string } | undefined {
+  if (is(relation, Table)) {
+    const symbols = (Table as any).Symbol
+    const table = relation as any
+    return table[symbols.IsAlias]
+      ? { originalName: table[symbols.OriginalName], schema: table[symbols.Schema], alias: table[symbols.Name] }
+      : undefined
+  }
+  if (is(relation, View)) {
+    const config = (relation as any)[ViewBaseConfig]
+    return config.isAlias
+      ? { originalName: config.originalName, schema: config.schema, alias: config.name }
+      : undefined
+  }
+  return undefined
+}
+
+/**
+ * Apply a single inter-cube join. Intra-cube joins of the joined cube are part
+ * of the join target (see cubeJoinRelation).
  *
  * Security placement:
  * - INNER: the joined cube's filter stays in WHERE (added by the predicates
@@ -360,8 +421,7 @@ function resolveCubeJoinTarget(
  *   come back anyway — ON alone filters nothing (GHSA-xv8c-hc26-6cq8). The
  *   filter stays in ON (so a hidden row never matches a visible one) and is
  *   enforced again in WHERE; see {@link buildPreservedSideGuard}.
- * - A joined cube whose own `sql` has an internal RIGHT/FULL join: that join
- *   runs after the cube join and keeps every row of its table, so the cube's
+ * - A joined cube whose own `sql` has an internal RIGHT/FULL join: the cube's
  *   filter is also applied in WHERE, exactly as when the cube is queried alone.
  */
 function applyInterCubeJoin(
@@ -392,26 +452,18 @@ function applyInterCubeJoin(
       : undefined
 
   try {
-    let query: any
     if (cubeJoinType === 'inner') {
       // Security can go in WHERE for INNER JOINs (no difference)
-      query = drizzleQuery.innerJoin(joinTarget, joinCondition)
-    } else {
-      query = applyJoinByType(drizzleQuery, cubeJoinType, joinTarget, effectiveJoinCondition)
-      if (securityCondition) {
-        cubesWithSecurityInJoin.add(joinCube.cube.name)
-      }
-      if (securityWhere) {
-        allWhereConditions.push(securityWhere)
-      }
+      return drizzleQuery.innerJoin(joinTarget, joinCondition)
     }
-
-    // Apply the joined cube's intra-cube table-level joins
-    // (BaseQueryDefinition.joins). These must be added AFTER the inter-cube
-    // join above so the cube's base table is in scope for the join ON
-    // conditions. Skipped in the CTE branch (joinCubeBase undefined) because
-    // the CTE definition already contains these joins.
-    return applyBaseJoins(query, joinCubeBase?.joins)
+    const query = applyJoinByType(drizzleQuery, cubeJoinType, joinTarget, effectiveJoinCondition)
+    if (securityCondition) {
+      cubesWithSecurityInJoin.add(joinCube.cube.name)
+    }
+    if (securityWhere) {
+      allWhereConditions.push(securityWhere)
+    }
+    return query
   } catch {
     // If join fails (e.g., duplicate alias), continue
     return drizzleQuery
