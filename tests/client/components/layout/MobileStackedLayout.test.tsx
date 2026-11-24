@@ -569,6 +569,19 @@ describe('MobileStackedLayout', () => {
     })
   })
 
+  describe('card class names', () => {
+    it('should mark the card, header, title and actions with the class names of the desktop card', () => {
+      const config = createTestConfig([createTestPortlet({ id: 'p1', title: 'Portlet 1' })])
+
+      const { container } = render(<MobileStackedLayout config={config} />)
+
+      const card = container.querySelector('[data-portlet-id="p1"]')
+      expect(card?.classList.contains('dc-portlet-card')).toBe(true)
+      expect(card?.querySelector('.dc-portlet-header .dc-portlet-title')?.textContent).toBe('Portlet 1')
+      expect(card?.querySelectorAll('.dc-portlet-header .dc-portlet-actions button')).toHaveLength(1)
+    })
+  })
+
   describe('multiple portlets', () => {
     it('should render many portlets', () => {
       const portlets = Array.from({ length: 10 }, (_, i) =>

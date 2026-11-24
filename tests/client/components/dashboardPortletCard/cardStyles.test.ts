@@ -365,3 +365,34 @@ describe('sectionChild variant', () => {
     expect(standalone).toContain('dc:border-b')
   })
 })
+
+describe('card class names', () => {
+  it('should mark a standalone card and a section card with dc-portlet-card', () => {
+    for (const variant of ['standalone', 'sectionChild'] as const) {
+      const className = buildContainerClassName({
+        isTransparent: false,
+        isMarkdownAutoHeight: false,
+        isInSelectionMode: false,
+        variant
+      })
+
+      expect(className.split(' ')).toContain('dc-portlet-card')
+    }
+  })
+
+  it('should not mark a group child with dc-portlet-card', () => {
+    const className = buildContainerClassName({
+      isTransparent: false,
+      isMarkdownAutoHeight: false,
+      isInSelectionMode: false,
+      variant: 'groupChild'
+    })
+
+    expect(className.split(' ')).not.toContain('dc-portlet-card')
+  })
+
+  it('should mark the header of a standalone card and a section card with dc-portlet-header', () => {
+    expect(buildHeaderClassName(false, undefined, 'standalone').split(' ')).toContain('dc-portlet-header')
+    expect(buildHeaderClassName(true, undefined, 'sectionChild').split(' ')).toContain('dc-portlet-header')
+  })
+})

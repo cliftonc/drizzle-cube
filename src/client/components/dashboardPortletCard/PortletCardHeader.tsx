@@ -259,7 +259,7 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
       {...restHeaderProps}
     >
       <div className="dc:flex dc:items-center dc:gap-2 dc:flex-1 dc:min-w-0">
-        <h3 className="dc:font-semibold dc:text-sm text-dc-text dc:truncate">{portlet.title}</h3>
+        <h3 className="dc-portlet-title dc:font-semibold dc:text-sm text-dc-text dc:truncate">{portlet.title}</h3>
         {unreachableDateFilterLabels && unreachableDateFilterLabels.length > 0 && (
           <UnreachableDateFilterIndicator labels={unreachableDateFilterLabels} />
         )}
@@ -276,7 +276,7 @@ export default function PortletCardHeader(props: PortletCardHeaderProps) {
           </div>
         )}
       </div>
-      <div className="dc:flex dc:items-center dc:gap-1 dc:shrink-0 dc:ml-4 dc:-mr-2" {...STOP_HANDLERS}>
+      <div className="dc-portlet-actions dc:flex dc:items-center dc:gap-1 dc:shrink-0 dc:ml-4 dc:-mr-2" {...STOP_HANDLERS}>
         {/* Freshness indicator when refresh is on; otherwise the cache icon on a cache hit */}
         {freshness
           ? <DataFreshnessIndicator {...freshness} />
