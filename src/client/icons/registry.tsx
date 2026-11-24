@@ -34,7 +34,9 @@ export function getIconRegistry(): IconRegistry {
 /**
  * Get a specific icon as a React component
  * @param name The icon name from the registry
- * @returns A React component that renders the icon (cached for stable references)
+ * @returns A React component that renders the icon (cached for stable references).
+ *   It reads the registry when it renders, so it follows later registerIcons()
+ *   and setIcon() calls.
  */
 export function getIcon(name: IconName): ComponentType<IconProps> {
   // Check cache first for stable component references
@@ -53,9 +55,11 @@ export function getIcon(name: IconName): ComponentType<IconProps> {
     return FallbackIcon
   }
 
-  // Create and cache the icon component
+  // Create and cache the icon component. It reads the registry when it
+  // renders, so a component that a module takes at load time, before the host
+  // calls registerIcons() or setIcon(), still shows the host icon.
   const IconComponent = ({ className, ...props }: IconProps) => (
-    <Icon icon={iconDef.icon} className={className} {...props} />
+    <Icon icon={(_registry[name] ?? iconDef).icon} className={className} {...props} />
   )
   _iconComponentCache.set(name, IconComponent)
   return IconComponent
