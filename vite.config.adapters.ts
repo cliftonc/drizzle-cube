@@ -1,4 +1,5 @@
 import { defineConfig, type Plugin } from 'vite'
+import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
 import dts from 'vite-plugin-dts'
 import { cjsTypesMarker } from './vite.cjs-marker'
@@ -33,9 +34,42 @@ function mcpAppHtmlSelfReference(): Plugin {
   }
 }
 
+/** The MCP App that `npm run build:mcp-app` writes (vite-plugin-singlefile). */
+const MCP_APP_HTML_FILE = resolve(__dirname, 'dist/mcp-app/mcp-app.html')
+const MCP_APP_HTML_MODULE = resolve(__dirname, 'src/adapters/mcp-app-html.ts')
+
+/**
+ * Replace `src/adapters/mcp-app-html.ts` with the built MCP App as a string
+ * literal in the published build.
+ *
+ * The HTML is a build artifact and is not committed. In source the module reads
+ * `dist/mcp-app/mcp-app.html` with `fs` so the tsx dev server, vitest and
+ * typecheck work with or without a build. The published module must not touch
+ * `fs` (edge runtimes such as Cloudflare Workers have none), so this plugin
+ * swaps in the HTML itself. It fails the build when the MCP App has not been
+ * built, rather than shipping an empty app.
+ */
+function inlineMcpAppHtml(): Plugin {
+  return {
+    name: 'drizzle-cube:inline-mcp-app-html',
+    load(id) {
+      if (id !== MCP_APP_HTML_MODULE) return null
+      if (!existsSync(MCP_APP_HTML_FILE)) {
+        this.error(`${MCP_APP_HTML_FILE} is missing. Run \`npm run build:mcp-app\` before \`npm run build:adapters\`.`)
+      }
+      const html = readFileSync(MCP_APP_HTML_FILE, 'utf-8')
+      if (!html.includes('</head>')) {
+        this.error(`${MCP_APP_HTML_FILE} does not look like the built MCP App.`)
+      }
+      return `/** The bundled MCP App as a single HTML document. */\nexport const mcpAppHtml = ${JSON.stringify(html)}\n`
+    }
+  }
+}
+
 export default defineConfig({
   plugins: [
     mcpAppHtmlSelfReference(),
+    inlineMcpAppHtml(),
     dts({
       // Per-file declarations rooted at src/adapters so they land flat at
       // dist/adapters/* (e.g. dist/adapters/fastify/index.d.ts) matching

@@ -3,7 +3,7 @@
  * NOT derived from `chartRegistry`.
  *
  * Why a separate list: the MCP App is bundled by `vite-plugin-singlefile` into
- * one inlined HTML document (`vite.config.mcp-app.ts` → `generated-html.ts`), so
+ * one inlined HTML document (`vite.config.mcp-app.ts` → `dist/mcp-app/mcp-app.html`), so
  * it cannot use `ChartLoader`'s dynamic-import map — code splitting has nowhere
  * to put the chunks. Every chart it can render must be statically imported by
  * `mcp-app.tsx`, which makes the renderable set a strictly smaller, hand-chosen

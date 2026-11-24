@@ -13,7 +13,7 @@ import { getCubeTools } from '../../src/adapters/mcp-tools'
 
 /**
  * Guards the bundle-size invariant: the ~2 MB MCP App HTML
- * (`src/adapters/mcp-app-html.ts` → `src/mcp-app/generated-html.ts`) must only
+ * (`src/adapters/mcp-app-html.ts`) must only
  * be loaded through the dynamic `import()` in `getMcpAppHtml`, on the first
  * request that actually needs it — never at adapter import time, and never when
  * `mcp.app` is off. A static import anywhere on the adapter graph would put the
