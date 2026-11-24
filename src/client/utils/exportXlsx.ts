@@ -193,13 +193,42 @@ function autoFitColumns(worksheet: ExcelJSWorksheet, minWidths: number[] = []): 
   })
 }
 
+/** Longest worksheet name that Excel accepts */
+const MAX_WORKSHEET_NAME_LENGTH = 31
+
+/**
+ * Make a worksheet name that Excel accepts from any text, such as a portlet title.
+ *
+ * Excel rejects a worksheet name that:
+ * - contains one of the characters * ? : / \ [ ]
+ * - has more than 31 characters
+ * - starts or ends with an apostrophe
+ * - is empty
+ * - is "History" (Excel reserves this name)
+ *
+ * exceljs throws an error for most of these names, and the export fails.
+ * This function replaces each rejected character with a hyphen and cuts the name to 31 characters.
+ * Then it removes the apostrophes and spaces at the start and the end.
+ * An empty result becomes "Sheet1", and "History" becomes "History data".
+ */
+function toWorksheetName(text: string): string {
+  const name = text
+    .replace(/[*?:/\\[\]]/g, '-')
+    .slice(0, MAX_WORKSHEET_NAME_LENGTH)
+    .replace(/^[\s']+|[\s']+$/g, '')
+
+  if (!name) return 'Sheet1'
+  if (name.toLowerCase() === 'history') return 'History data'
+  return name
+}
+
 function addTableSheet(
   workbook: ExcelJSWorkbook,
   name: string,
   rows: Array<Record<string, unknown>>,
   colors: ThemeColors
 ): void {
-  const worksheet = workbook.addWorksheet(name)
+  const worksheet = workbook.addWorksheet(toWorksheetName(name))
 
   if (rows.length === 0) {
     worksheet.addRow(['No data available'])
@@ -246,6 +275,16 @@ function generateDownloadFilename(baseFilename: string, extension: string): stri
   const dateStamp = `${year}${month}${day}`
   const uniqueSuffix = crypto.randomUUID().slice(0, 4).toUpperCase()
   return `${slugifiedBase}-${dateStamp}-${uniqueSuffix}.${extension}`
+}
+
+/**
+ * The file name that `exportPortletToXlsx` gives to the file of a portlet:
+ * the title as a slug (default: `export`), the date and a random suffix.
+ * The dashboard card sends it to a `ChartExportHandler`, so a chart that
+ * writes its own file names it in the same way.
+ */
+export function portletXlsxFilename(portletTitle?: string): string {
+  return generateDownloadFilename(portletTitle || 'export', 'xlsx')
 }
 
 // ============================================================================
@@ -393,8 +432,7 @@ export async function exportPortletToXlsx(
     }
 
     const buffer = await workbook.xlsx.writeBuffer()
-    const filename = generateDownloadFilename(portletTitle || 'export', 'xlsx')
-    triggerDownload(buffer as ArrayBuffer, filename)
+    triggerDownload(buffer as ArrayBuffer, portletXlsxFilename(portletTitle))
 
     return true
   } catch (error) {

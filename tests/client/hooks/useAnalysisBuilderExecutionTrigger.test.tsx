@@ -11,7 +11,7 @@
  * and should survive the internal regroup unchanged.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { type ReactNode } from 'react'
@@ -19,6 +19,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { CubeProvider } from '../../../src/client/providers/CubeProvider'
 import { AnalysisBuilderStoreProvider } from '../../../src/client/stores/analysisBuilderStore'
 import { useAnalysisBuilder } from '../../../src/client/hooks/useAnalysisBuilderHook'
+import { chartPluginRegistry } from '../../../src/client/charts/chartPlugin'
 import { createTestQueryClient, server, mockQueryData } from '../../client-setup/test-utils'
 import type { CubeQuery } from '../../../src/client/types'
 
@@ -104,5 +105,38 @@ describe('AnalysisBuilder execution trigger', () => {
     expect(lastQuery.filters).toEqual([
       { member: 'Employees.name', operator: 'contains', values: ['John'] }
     ])
+  })
+
+  describe('with a chart that loads its own data', () => {
+    beforeEach(() => {
+      chartPluginRegistry.register({
+        type: 'ownDataTest',
+        label: 'Own data test',
+        config: { label: 'Own data test', dropZones: [], fetchesOwnData: true },
+        component: () => null
+      })
+    })
+
+    afterEach(() => {
+      chartPluginRegistry.unregister('ownDataTest')
+    })
+
+    it('does not hit the load endpoint for a valid query or on refetch', async () => {
+      const loaded = captureLoadRequests()
+      const { result } = renderBuilder()
+
+      act(() => {
+        result.current.actions.setChartType('ownDataTest')
+        result.current.actions.addMetric('Employees.count')
+      })
+      await waitFor(() => expect(result.current.isValidQuery).toBe(true))
+      act(() => {
+        result.current.actions.refetch()
+      })
+      await new Promise((r) => setTimeout(r, 400))
+
+      expect(result.current.chartType).toBe('ownDataTest')
+      expect(loaded).toHaveLength(0)
+    })
   })
 })

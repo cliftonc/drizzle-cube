@@ -24,6 +24,7 @@ interface PortletFloatingActionsProps {
   showEditActions: boolean
   copyAvailable: boolean
   copySuccess: boolean
+  /** Shows Download: a chart export is registered, or the XLSX export is available and the portlet has debug data */
   xlsExportAvailable: boolean
   exportInProgress: boolean
   onRefresh: (options?: MaxAgeOptions) => void

@@ -1,15 +1,17 @@
-import React, { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type {
   AnalyticsPortletProps,
   AnalyticsPortletRef,
   ChartAxisConfig,
   ChartDisplayConfig,
+  ChartExportHandler,
   ChartType,
   DashboardFilter,
   DashboardFilterMapping,
   PortletFreshness
 } from '../types.js'
 import AnalyticsPortlet from './AnalyticsPortlet.js'
+import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
 import type { ColorPalette } from '../utils/colorPalettes.js'
 import { useDashboardStore, type PortletDebugDataEntry } from '../stores/dashboardStore.js'
 import { ensureAnalysisConfig } from '../utils/configMigration.js'
@@ -42,6 +44,7 @@ interface PortletChartBodyProps {
   loadingComponent?: ReactNode
   onDebugDataReady: (data: PortletDebugDataEntry) => void
   onFreshnessChange?: (freshness: PortletFreshness) => void
+  onExportReady?: (handler: ChartExportHandler | null) => void
 }
 
 const PortletChartBody = React.memo(function PortletChartBody({
@@ -62,6 +65,7 @@ const PortletChartBody = React.memo(function PortletChartBody({
   loadingComponent,
   onDebugDataReady,
   onFreshnessChange,
+  onExportReady,
 }: PortletChartBodyProps) {
   return (
     <div
@@ -84,6 +88,7 @@ const PortletChartBody = React.memo(function PortletChartBody({
         loadingComponent={loadingComponent}
         onDebugDataReady={onDebugDataReady}
         onFreshnessChange={onFreshnessChange}
+        onExportReady={onExportReady}
       />
     </div>
   )
@@ -125,6 +130,15 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   const selectedFilterId = useDashboardStore(state => state.selectedFilterId)
   const debugData = useDashboardStore(state => state.debugData[portlet.id])
 
+  // A chart that loads its own data has no portlet result, so its portlet
+  // reports no debug data. Clear the entry of an earlier chart type, so the
+  // card shows no debug data and no XLSX download of a stale result.
+  const fetchesOwnData = useChartConfig(renderChartType).config.fetchesOwnData === true
+  const clearDebugData = useDashboardStore(state => state.clearDebugData)
+  useEffect(() => {
+    if (fetchesOwnData) clearDebugData(portlet.id)
+  }, [fetchesOwnData, portlet.id, clearDebugData])
+
   // Markdown-specific display modes (transparency, auto-height, header visibility)
   const { isMarkdownAutoHeight, isTransparentContent, isTransparent, shouldHideHeader } = resolveDisplayModes({
     renderChartType,
@@ -139,18 +153,30 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   // Get setDebugData action from store
   const setDebugData = useDashboardStore(state => state.setDebugData)
 
+  // The chart registers its export only when the card shows Download
+  // (features.xlsExport). The card ignores a handler that it keeps after
+  // the feature is disabled.
+  const { features } = useCubeFeatures()
+  const xlsExportEnabled = !!features.xlsExport?.enabled
+  const [registeredChartExport, setRegisteredChartExport] = useState<ChartExportHandler | null>(null)
+  // The updater form stores the handler. setState(handler) would call it.
+  const handleExportReady = useCallback((handler: ChartExportHandler | null) => {
+    setRegisteredChartExport(() => handler)
+  }, [])
+  const chartExport = xlsExportEnabled ? registeredChartExport : null
+
   // Copy/export/refresh action state and handlers
   const {
     chartContainerRef,
     copySuccess,
     copyAvailable,
-    xlsExportAvailable,
+    downloadAvailable,
     exportInProgress,
     showCacheBustIndicator,
     setIsHoveringRefresh,
     handleExportXlsx,
     handleCopyToClipboard
-  } = usePortletCardActions({ portletTitle: portlet.title, debugData })
+  } = usePortletCardActions({ portletTitle: portlet.title, debugData, chartExport })
 
   const hasSelectedFilter = selectedFilterId
     ? mappingIncludesFilter(portlet.dashboardFilterMapping, selectedFilterId)
@@ -222,7 +248,6 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   // Interval refresh (features.refresh): the header shows freshness and a
   // pause toggle, the dashboard timer does the refreshing, and the chart
   // holds its queries while scrolled away
-  const { features } = useCubeFeatures()
   const refreshFeatureEnabled = isRefreshFeatureEnabled(features)
   const effectiveRefresh = useMemo(
     () => resolveEffectiveRefresh(portlet.refresh, dashboardRefresh, features),
@@ -319,7 +344,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           showEditActions={editable && isEditMode}
           copyAvailable={copyAvailable}
           copySuccess={copySuccess}
-          xlsExportAvailable={xlsExportAvailable && !!debugData}
+          xlsExportAvailable={downloadAvailable}
           exportInProgress={exportInProgress}
           onRefresh={(options) => callbacks.onRefresh(portlet.id, options)}
           onCopyToClipboard={handleCopyToClipboard}
@@ -345,7 +370,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           debugData={debugData}
           copyAvailable={copyAvailable}
           copySuccess={copySuccess}
-          xlsExportAvailable={xlsExportAvailable}
+          xlsExportAvailable={downloadAvailable}
           exportInProgress={exportInProgress}
           showCacheBustIndicator={showCacheBustIndicator}
           unreachableDateFilterLabels={unreachableDateFilterLabels}
@@ -384,6 +409,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
         loadingComponent={loadingComponent}
         onDebugDataReady={handleDebugDataReady}
         onFreshnessChange={setFreshness}
+        onExportReady={xlsExportEnabled ? handleExportReady : undefined}
       />
     </div>
   )

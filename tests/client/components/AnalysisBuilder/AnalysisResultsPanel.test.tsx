@@ -1,18 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { chartPluginRegistry } from '../../../../src/client/charts/chartPlugin'
 import AnalysisResultsPanel from '../../../../src/client/components/AnalysisBuilder/AnalysisResultsPanel'
 import type { AnalysisResultsPanelProps, ExecutionStatus } from '../../../../src/client/components/AnalysisBuilder/types'
 import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../../../src/client/types'
 
 // Mock LazyChart
 vi.mock('../../../../src/client/charts/ChartLoader', () => ({
-  LazyChart: ({ chartType, data }: { chartType: string; data: unknown[] }) => (
-    <div data-testid="lazy-chart" data-chart-type={chartType} data-row-count={data.length}>
+  LazyChart: ({ chartType, data, refreshId }: { chartType: string; data: unknown[]; refreshId?: string | null }) => (
+    <div data-testid="lazy-chart" data-chart-type={chartType} data-row-count={data.length} data-refresh-id={JSON.stringify(refreshId ?? null)}>
       Mock Chart
     </div>
   ),
-  isValidChartType: (type: string) => ['bar', 'line', 'pie', 'area', 'table', 'funnel', 'sankey', 'sunburst', 'retentionHeatmap'].includes(type),
+  isValidChartType: (type: string) => ['bar', 'line', 'pie', 'area', 'table', 'funnel', 'sankey', 'sunburst', 'retentionHeatmap', 'ownDataTest'].includes(type),
 }))
 
 // Mock useExplainQuery
@@ -1229,6 +1230,83 @@ describe('AnalysisResultsPanel', () => {
       await user.click(runButton)
 
       expect(onRefreshClick).toHaveBeenCalled()
+    })
+  })
+
+  describe('a chart that loads its own data', () => {
+    const ownDataProps: AnalysisResultsPanelProps = {
+      ...defaultProps,
+      chartType: 'ownDataTest' as ChartType,
+      allQueries: [{ measures: ['Users.count'] }],
+      canRefresh: true,
+      onRefreshClick: vi.fn(),
+    }
+    const refreshIdOf = () => JSON.parse(screen.getByTestId('lazy-chart').getAttribute('data-refresh-id') ?? 'null')
+
+    beforeEach(() => {
+      chartPluginRegistry.register({
+        type: 'ownDataTest',
+        label: 'Own data test',
+        config: { label: 'Own data test', dropZones: [], fetchesOwnData: true },
+        component: () => null,
+      })
+    })
+
+    afterEach(() => {
+      chartPluginRegistry.unregister('ownDataTest')
+    })
+
+    it.each<ExecutionStatus>(['idle', 'loading'])('should render the chart without builder results while the status is %s', (executionStatus) => {
+      render(<AnalysisResultsPanel {...ownDataProps} executionStatus={executionStatus} executionResults={null} />)
+
+      expect(screen.getByTestId('lazy-chart')).toHaveAttribute('data-row-count', '0')
+    })
+
+    it('should render the chart in place of the refresh prompt when results need a refresh', () => {
+      render(<AnalysisResultsPanel {...ownDataProps} executionStatus="idle" executionResults={null} needsRefresh />)
+
+      expect(screen.getByTestId('lazy-chart')).toBeInTheDocument()
+      expect(screen.queryByText('Run Query')).not.toBeInTheDocument()
+    })
+
+    it('should render the chart and no view toggle when the table view is active', () => {
+      render(<AnalysisResultsPanel {...ownDataProps} activeView="table" />)
+
+      expect(screen.getByTestId('lazy-chart')).toHaveAttribute('data-chart-type', 'ownDataTest')
+      expect(screen.queryByRole('button', { name: /Table/ })).not.toBeInTheDocument()
+    })
+
+    it('should send a new refreshId on each refresh and still call onRefreshClick', async () => {
+      const user = userEvent.setup()
+      const onRefreshClick = vi.fn()
+      render(<AnalysisResultsPanel {...ownDataProps} onRefreshClick={onRefreshClick} />)
+      expect(refreshIdOf()).toBeNull()
+
+      await user.click(screen.getByTitle('Refresh data (Shift+click to bypass cache)'))
+      const first = refreshIdOf()
+      await user.click(screen.getByTitle('Refresh data (Shift+click to bypass cache)'))
+      const second = refreshIdOf()
+
+      expect(typeof first).toBe('string')
+      expect(typeof second).toBe('string')
+      expect(second).not.toBe(first)
+      expect(onRefreshClick).toHaveBeenCalledTimes(2)
+    })
+
+    it('should not send a refreshId to a chart that uses the builder results', async () => {
+      const user = userEvent.setup()
+      render(<AnalysisResultsPanel {...defaultProps} canRefresh onRefreshClick={vi.fn()} />)
+
+      await user.click(screen.getByTitle('Refresh data (Shift+click to bypass cache)'))
+
+      expect(refreshIdOf()).toBeNull()
+    })
+
+    it('should show the one-query message in place of the chart when the analysis has two queries', () => {
+      render(<AnalysisResultsPanel {...ownDataProps} queryCount={2} />)
+
+      expect(screen.queryByTestId('lazy-chart')).not.toBeInTheDocument()
+      expect(screen.getByText('This chart type shows one query only')).toBeInTheDocument()
     })
   })
 })

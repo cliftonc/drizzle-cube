@@ -10,7 +10,7 @@ import { DrillBreadcrumb } from '../DrillBreadcrumb.js'
 import { PortletChart } from './PortletChart.js'
 import { hasIntrinsicChartHeight } from './intrinsicChartHeight.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
-import type { ChartAxisConfig, ChartDisplayConfig, ChartPagination, ChartType, CubeQuery } from '../../types.js'
+import type { ChartAxisConfig, ChartDisplayConfig, ChartExportHandler, ChartPagination, ChartType, CubeQuery } from '../../types.js'
 import type { FlowChartData } from '../../types/flow.js'
 import type { RetentionChartData } from '../../types/retention.js'
 import type { ColorPalette } from '../../utils/colorPalettes.js'
@@ -51,6 +51,10 @@ export interface PortletChartViewProps {
   /** Start state of the chart component (`PortletViewState.chart`) */
   initialViewState?: unknown
   onViewStateChange?: (state: unknown) => void
+  /** Registers the export of the chart (`ChartProps.onExportReady`) */
+  onExportReady?: (handler: ChartExportHandler | null) => void
+  /** The id of the latest portlet Refresh (`ChartProps.refreshId`) */
+  refreshId?: string | null
 }
 
 export function PortletChartView(props: PortletChartViewProps) {
@@ -80,7 +84,9 @@ export function PortletChartView(props: PortletChartViewProps) {
     onNavigateBack,
     onNavigateToLevel,
     initialViewState,
-    onViewStateChange
+    onViewStateChange,
+    onExportReady,
+    refreshId
   } = props
 
   const hasIntrinsicHeight = hasIntrinsicChartHeight(chartType, displayConfig)
@@ -137,6 +143,8 @@ export function PortletChartView(props: PortletChartViewProps) {
               onDataPointClick={drill.handleDataPointClick}
               initialViewState={initialViewState}
               onViewStateChange={onViewStateChange}
+              onExportReady={onExportReady}
+              refreshId={refreshId}
             />
           </div>
         </div>

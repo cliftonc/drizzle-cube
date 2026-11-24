@@ -23,6 +23,7 @@ import { useCubeFeatures } from '../providers/CubeProvider.js'
 // Responsibility-grouped hooks
 import { useAnalysisState } from './useAnalysisState.js'
 import { useAnalysisQuery } from './useAnalysisQuery.js'
+import { useChartConfig } from '../charts/lazyChartConfigRegistry.js'
 import { useAnalysisEffects } from './useAnalysisEffects.js'
 
 import type { ColorPalette } from '../utils/colorPalettes.js'
@@ -341,6 +342,9 @@ export function useAnalysisBuilder(
   const state = useAnalysisState({ externalColorPalette })
 
   // 2. Query — execution only (reads State's query specs + validity).
+  // A chart that loads its own data gets no single or multi-query fetch
+  const chartFetchesOwnData = useChartConfig(state.chartType).config.fetchesOwnData === true
+
   const query = useAnalysisQuery({
     currentQuery: state.currentQuery,
     allQueries: state.allQueries,
@@ -357,6 +361,7 @@ export function useAnalysisBuilder(
     serverRetentionQuery: state.serverRetentionQuery,
     retentionValidation: state.retentionValidation,
     fillMissingDates: state.displayConfig.fillMissingDates,
+    fetchesOwnData: chartFetchesOwnData,
   })
 
   // 3. Effects — init/URL, AI, share, chart auto-switch (reads State + Query).

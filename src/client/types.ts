@@ -751,6 +751,8 @@ export interface AnalyticsPortletProps {
   }) => void
   /** Reports when the portlet's rows were computed and whether it is fetching, on every change. */
   onFreshnessChange?: (freshness: PortletFreshness) => void
+  /** Passed to the chart as `ChartProps.onExportReady`. */
+  onExportReady?: (handler: ChartExportHandler | null) => void
 }
 
 /** Freshness of a portlet's data, as reported by `AnalyticsPortlet`. */
@@ -840,6 +842,14 @@ export interface AnalyticsDashboardProps {
   onPortletExpand?: (payload: PortletExpandPayload) => void
 }
 
+/**
+ * An export that a chart runs for the Download button of the dashboard card.
+ * `fileName` is the name that the built-in XLSX export gives to the file of
+ * the card, with its extension. The card shows the export in progress until
+ * the promise settles.
+ */
+export type ChartExportHandler = (context: { fileName: string }) => Promise<void>
+
 export interface ChartProps {
   data: any[]
   chartConfig?: ChartAxisConfig
@@ -869,6 +879,24 @@ export interface ChartProps {
   initialViewState?: unknown
   /** Report the state that the chart keeps in its own instance, for example its page */
   onViewStateChange?: (state: unknown) => void
+
+  /**
+   * Set only by a host that shows a Download action for the chart: the
+   * dashboard card, when `features.xlsExport` is enabled. The chart registers
+   * its export handler. The card then shows Download also without debug data,
+   * and the button calls the handler in place of the built-in export. Send
+   * `null` to remove the handler, also when the chart unmounts. Without this
+   * callback, the chart shows its own export control if it has one.
+   */
+  onExportReady?: (handler: ChartExportHandler | null) => void
+  /**
+   * The id of the latest Refresh: `null` until the first Refresh, then a new
+   * id on each Refresh. A chart that loads its own data (`fetchesOwnData`)
+   * reads it to tell a Refresh from a remount. The dashboard portlet sends it
+   * to every chart. The AnalysisBuilder preview sends a new id only to a chart
+   * whose config sets `fetchesOwnData`.
+   */
+  refreshId?: string | null
 }
 
 /**

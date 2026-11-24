@@ -6,7 +6,7 @@
 
 import { LazyChart, isValidChartType } from '../../charts/ChartLoader.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
-import type { ChartAxisConfig, ChartDisplayConfig, ChartPagination, ChartType, CubeQuery } from '../../types.js'
+import type { ChartAxisConfig, ChartDisplayConfig, ChartExportHandler, ChartPagination, ChartType, CubeQuery } from '../../types.js'
 import type { FlowChartData } from '../../types/flow.js'
 import type { RetentionChartData } from '../../types/retention.js'
 import type { ColorPalette } from '../../utils/colorPalettes.js'
@@ -40,6 +40,10 @@ export interface PortletChartProps {
   onDataPointClick?: (...args: any[]) => void
   initialViewState?: unknown
   onViewStateChange?: (state: unknown) => void
+  /** Registers the export of the chart (`ChartProps.onExportReady`) */
+  onExportReady?: (handler: ChartExportHandler | null) => void
+  /** The id of the latest portlet Refresh (`ChartProps.refreshId`) */
+  refreshId?: string | null
 }
 
 /**
@@ -93,7 +97,9 @@ export function PortletChart(props: PortletChartProps) {
     currentChartConfig,
     onDataPointClick,
     initialViewState,
-    onViewStateChange
+    onViewStateChange,
+    onExportReady,
+    refreshId
   } = props
 
   try {
@@ -139,6 +145,8 @@ export function PortletChart(props: PortletChartProps) {
         drillEnabled={drillEnabled}
         initialViewState={initialViewState}
         onViewStateChange={onViewStateChange}
+        onExportReady={onExportReady}
+        refreshId={refreshId}
         fallback={
           <div
             className="dc:flex dc:items-center dc:justify-center dc:w-full"

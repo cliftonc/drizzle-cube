@@ -184,10 +184,12 @@ export default function MobileStackedLayout({
       <div
         key={portlet.id}
         data-portlet-id={portlet.id}
+        // The card, header, title and actions carry the class names of the
+        // desktop card, so a host stylesheet styles both layouts.
         className={
           bare
-            ? 'dc:flex dc:flex-col'
-            : 'bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:flex dc:flex-col'
+            ? 'dc-portlet-card dc:flex dc:flex-col'
+            : 'dc-portlet-card bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:flex dc:flex-col'
         }
         style={{
           height: isAutoHeight ? 'auto' : display.height,
@@ -199,15 +201,15 @@ export default function MobileStackedLayout({
       >
         {/* Portlet Header - Simplified for mobile (no edit controls) */}
         {!shouldHideHeader && (
-          <div className={`dc:flex dc:items-center dc:justify-between dc:px-3 dc:shrink-0${
+          <div className={`dc-portlet-header dc:flex dc:items-center dc:justify-between dc:px-3 dc:shrink-0${
             inSection
               ? ' dc:py-3'
               : ' dc:py-2 dc:border-b border-dc-border bg-dc-surface-secondary dc:rounded-t-lg'
           }`}>
-            <h3 className="dc:font-semibold dc:text-sm text-dc-text dc:truncate dc:flex-1">
+            <h3 className="dc-portlet-title dc:font-semibold dc:text-sm text-dc-text dc:truncate dc:flex-1">
               {portlet.title}
             </h3>
-            <div className="dc:flex dc:items-center dc:gap-1 dc:shrink-0 dc:ml-2">
+            <div className="dc-portlet-actions dc:flex dc:items-center dc:gap-1 dc:shrink-0 dc:ml-2">
               <button
                 onClick={() => handlePortletRefresh(portlet.id)}
                 className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
