@@ -101,6 +101,21 @@ describe('FieldSearchModal', () => {
       expect(onClose).toHaveBeenCalled()
     })
 
+    it('should not call onClose when a drag starts in the search input and ends on the backdrop', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+
+      render(<FieldSearchModal {...defaultProps} onClose={onClose} />)
+
+      await user.pointer([
+        { keys: '[MouseLeft>]', target: screen.getByPlaceholderText('Search metrics...') },
+        { target: screen.getByRole('presentation') },
+        { keys: '[/MouseLeft]' },
+      ])
+
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
     it('should not call onClose when clicking inside the modal', async () => {
       const user = userEvent.setup()
       const onClose = vi.fn()

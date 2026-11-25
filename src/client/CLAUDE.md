@@ -156,7 +156,7 @@ src/client/
 │   ├── useAgentChat.ts            Agent chat hook
 │   ├── useDashboardHook.ts        Dashboard master coordinator
 │   ├── useDataBrowser.ts          Data browser coordination
-│   └── (utility hooks)            useDebounce, useDirtyStateTracking, useDragAutoScroll,
+│   └── (utility hooks)            useBackdropClose, useDebounce, useDirtyStateTracking, useDragAutoScroll,
 │                                  useDrillInteraction, useFilterValues, useNotebookLayout,
 │                                  useResponsiveDashboard, useScrollDetection, useTheme, etc.
 │

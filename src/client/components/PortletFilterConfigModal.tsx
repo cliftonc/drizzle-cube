@@ -15,6 +15,7 @@ import type {
 import { normalizeFilterMapping, serializeFilterMapping } from '../utils/filterUtils.js'
 import { getReachableDimensionOptions } from '../utils/joinReachability.js'
 import { useTranslation } from '../hooks/useTranslation.js'
+import { useBackdropClose } from '../hooks/useBackdropClose.js'
 
 interface PortletFilterConfigModalProps {
   isOpen: boolean
@@ -129,10 +130,12 @@ export default function PortletFilterConfigModal({
     return t('portlet.filterConfig.complexFilter')
   }
 
+  const backdropProps = useBackdropClose(handleCancel)
+
   if (!isOpen) return null
 
   return (
-    <div className="dc:fixed dc:inset-0 dc:z-50 dc:flex dc:items-center dc:justify-center bg-black bg-opacity-50" onClick={handleCancel}>
+    <div className="dc:fixed dc:inset-0 dc:z-50 dc:flex dc:items-center dc:justify-center bg-black bg-opacity-50" {...backdropProps}>
       <div
         className="bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:max-w-2xl dc:w-full dc:mx-4 dc:max-h-[80vh] dc:flex dc:flex-col"
         style={{ boxShadow: 'var(--dc-shadow-lg)' }}

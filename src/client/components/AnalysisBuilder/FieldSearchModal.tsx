@@ -28,6 +28,7 @@ import FieldDetailPanel from './FieldDetailPanel.js'
 import FieldSearchResults from './FieldSearchResults.js'
 import { useFieldSearchKeyboard } from './hooks/useFieldSearchKeyboard.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
+import { useBackdropClose } from '../../hooks/useBackdropClose.js'
 
 const SearchIcon = getIcon('search')
 const CloseIcon = getIcon('close')
@@ -180,6 +181,8 @@ export default function FieldSearchModal({
     }
   }, [isOpen, setFocusedField, setFocusedIndex])
 
+  const backdropProps = useBackdropClose(onClose)
+
   if (!isOpen) return null
 
   const searchPlaceholder =
@@ -194,7 +197,7 @@ export default function FieldSearchModal({
     <div
       className="dc:fixed dc:inset-0 dc:z-50 dc:flex dc:items-center dc:justify-center"
       style={{ backgroundColor: 'var(--dc-overlay)' }}
-      onClick={onClose}
+      {...backdropProps}
       role="presentation"
     >
       <div

@@ -20,6 +20,7 @@
  */
 
 import { useTranslation } from '../../hooks/useTranslation.js'
+import { useBackdropClose } from '../../hooks/useBackdropClose.js'
 import { getIcon } from '../../icons/index.js'
 import type { DashboardFilter } from '../../types.js'
 import type { MetaResponse } from '../../shared/types.js'
@@ -64,6 +65,7 @@ export default function DashboardFilterConfigModal({
     isOpen,
     onSave
   })
+  const backdropProps = useBackdropClose(onClose)
 
   if (!isOpen) return null
 
@@ -103,7 +105,7 @@ export default function DashboardFilterConfigModal({
       <div
         className="dc:fixed dc:inset-0 dc:z-50 dc:flex dc:items-center dc:justify-center dc:p-4"
         style={{ backgroundColor: 'var(--dc-overlay)' }}
-        onClick={onClose}
+        {...backdropProps}
       >
         <div
           ref={containerRef}

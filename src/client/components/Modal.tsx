@@ -1,4 +1,5 @@
 import React, { useEffect, useCallback } from 'react'
+import { useBackdropClose } from '../hooks/useBackdropClose.js'
 
 export interface ModalProps {
   isOpen: boolean
@@ -56,6 +57,7 @@ const Modal: React.FC<ModalProps> = ({
     }
   }, [isOpen, closeOnEscape, handleEscapeKey])
 
+  const backdropProps = useBackdropClose(onClose, closeOnBackdropClick)
 
   if (!isOpen) return null
 
@@ -86,7 +88,7 @@ const Modal: React.FC<ModalProps> = ({
     <div
       className={`dc:fixed dc:inset-0 dc:z-50 dc:backdrop-blur-md ${size === 'fullscreen-mobile' ? 'dc:flex dc:md:flex dc:md:items-center dc:md:justify-center' : 'dc:flex dc:items-center dc:justify-center'}`}
       style={{ backgroundColor: 'var(--dc-overlay)' }}
-      onClick={closeOnBackdropClick ? onClose : undefined}
+      {...backdropProps}
     >
       <div
         className={`dc:relative bg-dc-surface dc:border border-dc-border ${size === 'fullscreen-mobile' ? 'dc:rounded-none dc:md:rounded-lg' : 'dc:rounded-lg'} ${size === 'fullscreen' || size === 'fullscreen-mobile' ? '' : 'dc:mx-4'} ${getSizeClasses()} ${size === 'fullscreen' || size === 'fullscreen-mobile' ? '' : 'dc:max-h-[90vh]'} dc:flex dc:flex-col`}
