@@ -4,5 +4,5 @@
   "type": "module",
   "scripts": { "check": "node check.mjs" },
   "dependencies": { "drizzle-orm": "^0.45.0" },
-  "devDependencies": { "esbuild": "^0.25.0" }
+  "devDependencies": { "esbuild": "^0.28.0" }
 }
