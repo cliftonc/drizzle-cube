@@ -26,7 +26,7 @@ import type {
   PhysicalQueryPlan
 } from '../types/index.js'
 
-import { resolveSqlExpression, resolveCubeReference } from '../cube-utils.js'
+import { resolveSqlExpression, resolveCubeReference, resolveCubeBase } from '../cube-utils.js'
 import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import { getFilterKey, getTimeDimensionFilterKey, flattenFilters } from '../filter-cache.js'
 import { buildSemiJoinCondition, type SemiJoinKeyPair } from './semi-join.js'
@@ -530,7 +530,7 @@ export class DrizzleSqlBuilder {
     let condition: SQL | null = null
     for (let i = hops.length - 1; i >= 0; i--) {
       const { cube, keyPairs } = hops[i]
-      const cubeBase = cube.sql(context)
+      const cubeBase = resolveCubeBase(cube, context)
       const inner = condition ? [condition] : leafConditions
       condition = buildSemiJoinCondition(
         context,

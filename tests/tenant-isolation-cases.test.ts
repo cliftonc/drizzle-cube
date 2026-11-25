@@ -206,7 +206,6 @@ interface Case {
   hidden?: string[]
   /** Organisation 1's result on its own rows, for a case without organisation 2's rows. */
   expected?: string[]
-  pendingFix?: string
 }
 
 const cases: Case[] = [
@@ -248,36 +247,31 @@ const cases: Case[] = [
       return [employeesCube(Departments), Departments]
     },
     query,
-    hidden: [`INSERT INTO departments VALUES (2, 2, 'org2: D2');`, `INSERT INTO employees VALUES (3, 2, 2, 'org2: E3'), (4, 2, 3, 'org2: E4');`],
-    pendingFix: 'point 3: and() leaves a raw sql filter unparenthesized; the fix follows'
+    hidden: [`INSERT INTO departments VALUES (2, 2, 'org2: D2');`, `INSERT INTO employees VALUES (3, 2, 2, 'org2: E3'), (4, 2, 3, 'org2: E4');`]
   })),
   {
     name: 'a raw sql filter with a top-level OR on a single cube: a query filter that matches nothing returns no rows',
     cubes: () => [departmentsCube()],
     query: { dimensions: ['Departments.name'], filters: [{ member: 'Departments.name', operator: 'equals', values: ['nobody'] }] },
-    expected: [],
-    pendingFix: 'point 3: and() leaves a raw sql filter unparenthesized; the fix follows'
+    expected: []
   },
   {
     name: 'a filter on a member whose sql is a compound OR: equals false',
     cubes: () => [staffCube()],
     query: { dimensions: ['Staff.name'], filters: [{ member: 'Staff.bigOrActive', operator: 'equals', values: [false] }] },
-    hidden: [`INSERT INTO staff VALUES (4, 2, 'org2: low inactive', 50000, 0);`],
-    pendingFix: 'point 4: a filter leaves compound member SQL unparenthesized; the fix follows'
+    hidden: [`INSERT INTO staff VALUES (4, 2, 'org2: low inactive', 50000, 0);`]
   },
   {
     name: 'a filter on a member whose sql is a compound OR: notSet returns no rows',
     cubes: () => [staffCube()],
     query: { dimensions: ['Staff.name'], filters: [{ member: 'Staff.bigOrActive', operator: 'notSet', values: [] }] },
-    expected: [],
-    pendingFix: 'point 4: a filter leaves compound member SQL unparenthesized; the fix follows'
+    expected: []
   }
 ]
 
 describe.skipIf(getTestDatabaseType() !== 'sqlite')('Tenant isolation cases', () => {
   for (const c of cases) {
-    const test = c.pendingFix ? it.fails : it
-    test(c.pendingFix ? `${c.name} [expected failure, ${c.pendingFix}]` : c.name, async () => {
+    it(c.name, async () => {
       const visibleOnly = await run(c.cubes(), c.query, [])
       if (c.expected) {
         expect(visibleOnly).toEqual(c.expected)

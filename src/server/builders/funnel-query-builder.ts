@@ -24,7 +24,7 @@ import type {
   LogicalFilter,
   AnalysisConfigValidationResult
 } from '../types/index.js'
-import { resolveFilterFieldExpr } from '../cube-utils.js'
+import { resolveFilterFieldExpr, resolveCubeBase } from '../cube-utils.js'
 import { hasFunnelMode } from '../query-modes.js'
 import { combineWhere, resolveBindingKeyExpr, bindingKeyErrorsForPrefix, resolveTimeDimensionExpr, asGroupFilter, type GroupFilterParts, type WithSubquery } from './analysis-utils.js'
 import { FilterBuilder } from './filter-builder.js'
@@ -659,7 +659,7 @@ export class FunnelQueryBuilder {
     const alias = `step_${step.index}`
 
     // Get cube base with security context
-    const cubeBase = step.cube.sql(context)
+    const cubeBase = resolveCubeBase(step.cube, context)
 
     // Combine security context with step filters
     const whereConditions: SQL[] = []
@@ -709,7 +709,7 @@ export class FunnelQueryBuilder {
     const prevStepAlias = `step_${step.index - 1}`
 
     // Get cube base with security context
-    const cubeBase = step.cube.sql(context)
+    const cubeBase = resolveCubeBase(step.cube, context)
 
     // Combine security context with step filters
     const whereConditions: SQL[] = []
@@ -794,7 +794,7 @@ export class FunnelQueryBuilder {
 
         // Get the target cube's table
         const targetCube = joinedCubeInfo.cube
-        const targetCubeBase = targetCube.sql(context)
+        const targetCubeBase = resolveCubeBase(targetCube, context)
 
         // Add LEFT JOIN
         stepQuery = stepQuery.leftJoin(targetCubeBase.from, joinCondition)

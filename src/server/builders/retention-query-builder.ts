@@ -31,7 +31,7 @@ import type {
   LogicalFilter,
   AnalysisConfigValidationResult
 } from '../types/index.js'
-import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils.js'
+import { resolveSqlExpression, resolveFilterFieldExpr, resolveCubeBase } from '../cube-utils.js'
 import { hasRetentionMode } from '../query-modes.js'
 import {
   combineWhere,
@@ -486,7 +486,7 @@ export class RetentionQueryBuilder {
     context: QueryContext
   ): WithSubquery {
     // Get cube base with security context
-    const cubeBase = resolvedConfig.cube.sql(context)
+    const cubeBase = resolveCubeBase(resolvedConfig.cube, context)
 
     // Build WHERE conditions
     const whereConditions: SQL[] = []
@@ -598,7 +598,7 @@ export class RetentionQueryBuilder {
     context: QueryContext
   ): WithSubquery {
     // Get cube base with security context
-    const cubeBase = resolvedConfig.cube.sql(context)
+    const cubeBase = resolveCubeBase(resolvedConfig.cube, context)
 
     // Build WHERE conditions
     const whereConditions: SQL[] = []

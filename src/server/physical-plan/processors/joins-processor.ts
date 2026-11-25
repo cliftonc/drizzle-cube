@@ -27,7 +27,7 @@ import type {
   QueryContext
 } from '../../types/index.js'
 import { applyJoinByType } from './shared.js'
-import { resolveSqlExpression } from '../../cube-utils.js'
+import { resolveSqlExpression, resolveCubeBase, resolveJunctionSecurity } from '../../cube-utils.js'
 import type {
   CTEBuildState,
   JoinBuildState,
@@ -183,15 +183,9 @@ function applyJunctionTable(
   )
 
   // Collect junction WHERE conditions including security context
-  const junctionWhereConditions: SQL[] = []
-  if (junctionTable.securitySql) {
-    const junctionSecurity = junctionTable.securitySql(context.securityContext)
-    if (Array.isArray(junctionSecurity)) {
-      junctionWhereConditions.push(...junctionSecurity)
-    } else {
-      junctionWhereConditions.push(junctionSecurity)
-    }
-  }
+  const junctionWhereConditions: SQL[] = junctionTable.securitySql
+    ? resolveJunctionSecurity(junctionTable.securitySql, context)
+    : []
 
   // Add junction table join (source -> junction).
   // NOTE: For junction tables (belongsToMany), security filters go in WHERE,
@@ -337,7 +331,7 @@ function resolveCubeJoinTarget(
 
   // Regular join to base table. Get the cube's SQL definition ONCE to avoid
   // SQL object mutation issues.
-  const joinCubeBase = joinCube.cube.sql(context)
+  const joinCubeBase = resolveCubeBase(joinCube.cube, context)
 
   let joinCondition: any
   if (downstreamInfo && (!joinCube.junctionTable || joinsThroughDownstreamCTE(joinCube, cteState))) {
@@ -650,7 +644,7 @@ export function buildJoinedCubeSecurityWhere(
 
   // A fresh copy of the filter: the one in ON must not be reused (Drizzle SQL
   // objects are mutable).
-  const where = joinCube.cube.sql(context).where
+  const where = resolveCubeBase(joinCube.cube, context).where
   if (!where) {
     return undefined
   }

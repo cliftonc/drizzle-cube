@@ -18,7 +18,7 @@ import type {
   PropagatingFilter
 } from '../types/index.js'
 
-import { resolveSqlExpression } from '../cube-utils.js'
+import { resolveSqlExpression, resolveCubeBase } from '../cube-utils.js'
 import type { DrizzleSqlBuilder } from '../physical-plan/drizzle-sql-builder.js'
 import { applyBaseJoins, buildSemiJoinCondition } from '../physical-plan/semi-join.js'
 
@@ -55,7 +55,7 @@ export class CTEBuilder {
     preBuiltFilterMap?: Map<string, SQL[]>
   ): any {
     const cube = cteInfo.cube
-    const cubeBase = cube.sql(context) // Gets security filtering!
+    const cubeBase = resolveCubeBase(cube, context) // Gets security filtering!
 
     // Check if this CTE needs to absorb intermediate tables (multi-hop fan-out prevention)
     const hasIntermediateJoins = !!(cteInfo.intermediateJoins && cteInfo.intermediateJoins.length > 0)
@@ -240,7 +240,7 @@ export class CTEBuilder {
 
     const joinChain = [...cteInfo.intermediateJoins].reverse()
     for (const intermediate of joinChain) {
-      const intermediateCubeBase = intermediate.cube.sql(context)
+      const intermediateCubeBase = resolveCubeBase(intermediate.cube, context)
       const joinCondition = eq(intermediate.cteJoinColumn, intermediate.joinDef.on[0]?.target)
 
       // Add JOIN with security context for the intermediate table. The
@@ -546,7 +546,7 @@ export class CTEBuilder {
     context: QueryContext
   ): SQL | null {
     const sourceCube = propFilter.sourceCube
-    const cubeBase = sourceCube.sql(context) // Gets security context filtering
+    const cubeBase = resolveCubeBase(sourceCube, context) // Gets security context filtering
 
     // Build filter conditions for the source cube
     const filterConditions: SQL[] = []

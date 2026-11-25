@@ -14,6 +14,7 @@ import type {
   JoinBuildState,
   PhysicalBuildDependencies
 } from './shared.js'
+import { resolveCubeBase } from '../../cube-utils.js'
 
 /**
  * Applies WHERE/GROUP/HAVING/ORDER/LIMIT phases.
@@ -92,7 +93,7 @@ function collectWhereConditions(
       }
 
       // Get the base query definition for this joined cube to access its WHERE
-      const joinCubeBase = joinCube.cube.sql(context)
+      const joinCubeBase = resolveCubeBase(joinCube.cube, context)
       if (joinCubeBase.where) {
         allWhereConditions.push(joinCubeBase.where)
       }

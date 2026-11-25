@@ -17,10 +17,7 @@ import type {
   MultiFactMerge,
   JoinRef
 } from '../logical-plan/index.js'
-import {
-  buildRegularJoinCondition,
-  expandBelongsToManyJoin
-} from '../cube-utils.js'
+import { buildRegularJoinCondition, expandBelongsToManyJoin, resolveCubeBase } from '../cube-utils.js'
 import {
   buildCTEState,
   buildModifiedSelections,
@@ -332,7 +329,7 @@ export class DrizzlePlanBuilder {
     }
 
     const cteState = buildCTEState(queryPlan, query, context, deps)
-    const primaryCubeBase = queryPlan.primaryCube.sql(context)
+    const primaryCubeBase = resolveCubeBase(queryPlan.primaryCube, context)
 
     const allCubes = queryPlan.joinCubes.length > 0
       ? getCubesFromPlan(queryPlan)

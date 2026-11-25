@@ -11,7 +11,7 @@ import type {
   QueryContext,
   SemanticQuery
 } from '../../types/index.js'
-import { resolveSqlExpression } from '../../cube-utils.js'
+import { resolveSqlExpression, resolveCubeBase, resolveJunctionSecurity } from '../../cube-utils.js'
 import { applyJoinByType, getCubesFromPlan } from './shared.js'
 import { buildJoinedCubeSecurityWhere, cubeJoinRelation, filteredRelation } from './joins-processor.js'
 import type { PhysicalBuildDependencies } from './shared.js'
@@ -231,7 +231,7 @@ function buildKeysCte(
   keysSelections: Record<string, any>,
   keyGroupBy: SQL[]
 ): any {
-  const primaryCubeBase = queryPlan.primaryCube.sql(context)
+  const primaryCubeBase = resolveCubeBase(queryPlan.primaryCube, context)
   const primaryRelation = filteredRelation(queryPlan, primaryCubeBase)
   const keysWhereConditions: SQL[] = []
   if (primaryCubeBase.where && !primaryRelation) {
@@ -303,7 +303,7 @@ function applyKeysJoinCube(
   // in ON — so a visible row whose only match is hidden keeps its row instead
   // of vanishing — plus the WHERE guard RIGHT/FULL joins need (see
   // buildJoinedCubeSecurityWhere).
-  const joinCubeBase = joinCube.cube.sql(context)
+  const joinCubeBase = resolveCubeBase(joinCube.cube, context)
   const joinType = joinCube.joinType ?? 'left'
   const cubeRelation = filteredRelation(queryPlan, joinCubeBase)
   const securityInOn = joinType !== 'inner' && joinCubeBase.where
@@ -331,12 +331,7 @@ function collectJunctionSecurity(
   if (!securitySql) {
     return
   }
-  const security = securitySql(context.securityContext)
-  if (Array.isArray(security)) {
-    target.push(...security)
-  } else {
-    target.push(security)
-  }
+  target.push(...resolveJunctionSecurity(securitySql, context))
 }
 
 /**
@@ -353,7 +348,7 @@ function buildAggCte(
   multipliedMeasures: string[],
   aggAlias: string
 ): any | null {
-  const multipliedBase = multipliedCube.sql(context)
+  const multipliedBase = resolveCubeBase(multipliedCube, context)
 
   const aggState = buildAggSelections(
     context,

@@ -26,7 +26,7 @@ import type {
   RLSSetupFn
 } from './types/index.js'
 
-import { safeKey } from './cube-utils.js'
+import { safeKey, resolveCubeBase } from './cube-utils.js'
 import { FilterCacheManager } from './filter-cache.js'
 import { DrizzleSqlBuilder } from './physical-plan/drizzle-sql-builder.js'
 import { LogicalPlanner } from './logical-plan/logical-planner.js'
@@ -726,7 +726,7 @@ export class QueryExecutor {
         // commands before each query; not all databases support this pattern.
         if (this.rlsSetup) continue
 
-        const securityResult = cube.sql(context)
+        const securityResult = resolveCubeBase(cube, context)
 
         // A properly secured cube should have a 'where' clause that filters by security context
         // If no 'where' clause is present, the cube might be returning all data

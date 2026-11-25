@@ -21,7 +21,7 @@ import type {
   QueryContext
 } from '../types/index.js'
 
-import { resolveFilterFieldExpr } from '../cube-utils.js'
+import { parenthesizeExpression, resolveFilterFieldExpr } from '../cube-utils.js'
 import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import { DateTimeBuilder } from './date-time-builder.js'
 import { applyFilterOperator, NO_VALUE_FILTER_OPERATORS } from './filter-operators.js'
@@ -38,12 +38,16 @@ export class FilterBuilder {
    * Build filter condition using Drizzle operators
    */
   buildFilterCondition(
-    fieldExpr: AnyColumn | SQL,
+    memberExpr: AnyColumn | SQL,
     operator: FilterOperator,
     values: any[],
     field?: any,
     dateRangeInput?: string | string[] | null
   ): SQL | null {
+    // Every filter (regular, funnel, flow, retention; WHERE and HAVING) comes
+    // through here, so a compound member expression is parenthesized once,
+    // before any operator is applied to it.
+    const fieldExpr = parenthesizeExpression(memberExpr)
     // `null` has always meant "not provided"; never let it reach the builders as a range.
     const dateRange = dateRangeInput ?? undefined
     if (operator === 'inDateRange') {

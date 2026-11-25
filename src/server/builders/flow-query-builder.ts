@@ -31,7 +31,7 @@ import type {
   FilterCondition,
   LogicalFilter,
 } from '../types/index.js'
-import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils.js'
+import { resolveSqlExpression, resolveFilterFieldExpr, resolveCubeBase } from '../cube-utils.js'
 import { hasFlowMode } from '../query-modes.js'
 import { combineWhere, resolveBindingKeyExpr, bindingKeyErrorsForPrefix, resolveTimeDimensionExpr, asGroupFilter, type WithSubquery } from './analysis-utils.js'
 import { FilterBuilder } from './filter-builder.js'
@@ -350,7 +350,7 @@ export class FlowQueryBuilder {
     context: QueryContext
   ): ResolvedFlowConfig {
     const cube = this.resolveCube(config, cubes)
-    const cubeBase = cube.sql(context)
+    const cubeBase = resolveCubeBase(cube, context)
 
     return {
       cube,

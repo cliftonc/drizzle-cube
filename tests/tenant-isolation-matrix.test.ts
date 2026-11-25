@@ -419,6 +419,12 @@ describe.skipIf(getTestDatabaseType() !== 'sqlite')('Tenant-isolation matrix', (
     if (process.env.MATRIX_VERBOSE) {
       for (const r of leaks) console.log(`LEAK ${caseName(r.c)}\n${r.detail}`)
     }
+    // MATRIX_VERBOSE=all also prints the cases classified cube-definition.
+    if (process.env.MATRIX_VERBOSE === 'all') {
+      for (const r of results.filter(r => r.category === 'cube-definition')) {
+        console.log(`CUBE-DEFINITION ${caseName(r.c)}\n${r.detail}`)
+      }
+    }
   }, 600_000)
 
   afterAll(() => {
