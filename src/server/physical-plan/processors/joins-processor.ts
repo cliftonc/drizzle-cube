@@ -380,9 +380,27 @@ export function cubeJoinRelation(cubeBase: ReturnType<Cube['sql']>): QueryableRe
     return cubeBase.from
   }
   const joins = cubeBase.joins.map(join =>
-    sql`${sql.raw(join.type ?? 'left')} join ${fromItem(join.table)} on ${join.on}`
+    sql`${joinKeyword(join.type ?? 'left')} ${fromItem(join.table)} on ${join.on}`
   )
   return sql`(${fromItem(cubeBase.from)} ${sql.join(joins, sql` `)})`
+}
+
+/**
+ * Fixed SQL for an intra-cube join type, so nothing from the cube definition is
+ * rendered as raw text. Built fresh on each call: Drizzle SQL objects are
+ * mutable and must not be shared between queries.
+ */
+function joinKeyword(type: 'inner' | 'left' | 'right' | 'full'): SQL {
+  switch (type) {
+    case 'inner':
+      return sql`inner join`
+    case 'right':
+      return sql`right join`
+    case 'full':
+      return sql`full join`
+    case 'left':
+      return sql`left join`
+  }
 }
 
 /**
@@ -403,24 +421,48 @@ function fromItem(relation: QueryableRelation): SQL {
   return sql`${qualifiedName} ${sql.identifier(aliased.alias)}`
 }
 
-/** Read from Drizzle's runtime alias metadata, which its public typings omit. */
-function aliasedRelationNames(
-  relation: QueryableRelation
-): { originalName: string; schema: string | undefined; alias: string } | undefined {
+interface AliasedRelationNames {
+  originalName: string
+  schema: string | undefined
+  alias: string
+}
+
+/**
+ * Read Drizzle's runtime alias metadata, which its public typings omit. Table
+ * metadata lives on symbols Drizzle registers globally (`Symbol.for`); a view's
+ * lives on the exported ViewBaseConfig symbol. Every value is checked at
+ * runtime, so an unexpected shape reads as "not aliased" instead of a cast.
+ */
+function aliasedRelationNames(relation: QueryableRelation): AliasedRelationNames | undefined {
   if (is(relation, Table)) {
-    const symbols = (Table as any).Symbol
-    const table = relation as any
-    return table[symbols.IsAlias]
-      ? { originalName: table[symbols.OriginalName], schema: table[symbols.Schema], alias: table[symbols.Name] }
-      : undefined
+    if (Reflect.get(relation, Symbol.for('drizzle:IsAlias')) !== true) {
+      return undefined
+    }
+    return toAliasedNames(
+      Reflect.get(relation, Symbol.for('drizzle:OriginalName')),
+      Reflect.get(relation, Symbol.for('drizzle:Schema')),
+      Reflect.get(relation, Symbol.for('drizzle:Name'))
+    )
   }
   if (is(relation, View)) {
-    const config = (relation as any)[ViewBaseConfig]
-    return config.isAlias
-      ? { originalName: config.originalName, schema: config.schema, alias: config.name }
-      : undefined
+    const config: unknown = Reflect.get(relation, ViewBaseConfig)
+    if (typeof config !== 'object' || config === null || Reflect.get(config, 'isAlias') !== true) {
+      return undefined
+    }
+    return toAliasedNames(
+      Reflect.get(config, 'originalName'),
+      Reflect.get(config, 'schema'),
+      Reflect.get(config, 'name')
+    )
   }
   return undefined
+}
+
+function toAliasedNames(originalName: unknown, schema: unknown, alias: unknown): AliasedRelationNames | undefined {
+  if (typeof originalName !== 'string' || typeof alias !== 'string') {
+    return undefined
+  }
+  return { originalName, schema: typeof schema === 'string' ? schema : undefined, alias }
 }
 
 /**

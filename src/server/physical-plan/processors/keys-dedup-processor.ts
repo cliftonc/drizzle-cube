@@ -366,18 +366,14 @@ function buildAggCte(
     return null
   }
 
+  // The multiplied cube's FROM with its intra-cube table-level joins
+  // (BaseQueryDefinition.joins) as one join group, so columns from joined
+  // tables are in scope for the agg CTE's measure expressions and WHERE
+  // clause. cubeJoinRelation renders an aliased table with its original name,
+  // which some drivers' builder joins (drizzle-databend) drop.
   let aggQuery = context.db
     .select(aggState.aggSelections)
-    .from(multipliedBase.from)
-
-  // Apply the multiplied cube's intra-cube table-level joins
-  // (BaseQueryDefinition.joins) so columns from joined tables are in
-  // scope for the agg CTE's measure expressions and WHERE clause.
-  if (multipliedBase.joins) {
-    for (const join of multipliedBase.joins) {
-      aggQuery = applyJoinByType(aggQuery, join.type ?? 'left', join.table, join.on)
-    }
-  }
+    .from(cubeJoinRelation(multipliedBase))
 
   const aggWhereConditions: SQL[] = []
   if (multipliedBase.where) {
