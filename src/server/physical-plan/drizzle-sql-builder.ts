@@ -181,6 +181,18 @@ export class DrizzleSqlBuilder {
   }
 
   /**
+   * Build one measure's aggregate expression by name, including calculated measures
+   * Delegates to MeasureBuilder
+   */
+  buildMeasureByName(
+    measureName: string,
+    cubeMap: Map<string, Cube>,
+    context: QueryContext
+  ): SQL {
+    return this.measureBuilder.buildMeasureByName(measureName, cubeMap, context)
+  }
+
+  /**
    * Build measure expression with aggregation and filters
    * Delegates to MeasureBuilder
    */

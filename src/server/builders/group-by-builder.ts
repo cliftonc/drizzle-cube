@@ -157,7 +157,7 @@ export class GroupByBuilder {
       const measure = cubeMap.get(cubeName)?.measures?.[fieldName]
       if (!measure) continue
 
-      if (this.isAggregateFunctionType(measure.type) || measure.type === 'calculated') {
+      if (this.isAggregateMeasureType(measure.type)) {
         return true
       }
 
@@ -181,7 +181,12 @@ export class GroupByBuilder {
     if (!baseMeasureName) return false
     const [baseCubeName, baseFieldName] = baseMeasureName.split('.')
     const baseMeasure = cubeMap.get(baseCubeName)?.measures?.[baseFieldName]
-    return !!baseMeasure && this.isAggregateFunctionType(baseMeasure.type)
+    return !!baseMeasure && this.isAggregateMeasureType(baseMeasure.type)
+  }
+
+  /** True when a measure of this type aggregates rows: an aggregate function or a calculated measure built from them. */
+  private isAggregateMeasureType(measureType: string): boolean {
+    return this.isAggregateFunctionType(measureType) || measureType === 'calculated'
   }
 
   /** Resolve a single dimension into its GROUP BY expression (CTE-aware). */

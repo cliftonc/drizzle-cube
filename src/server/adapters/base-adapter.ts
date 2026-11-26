@@ -315,6 +315,20 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   }
 
   /**
+   * Rewrite each `{member}` written directly before a division `/` with `rewriteNumerator`.
+   */
+  protected rewriteDivisionNumerators(
+    calculatedSql: string,
+    rewriteNumerator: (numerator: string) => string
+  ): string {
+    if (calculatedSql.length > 1000) return calculatedSql
+    return calculatedSql.replace(
+      /(\{[^}]+\})\s*\/(?!\*)\s*/g,
+      (_match, numerator) => `${rewriteNumerator(numerator)} / `
+    )
+  }
+
+  /**
    * Wrap an aggregate so NULL (empty set) becomes 0.
    * Default uses COALESCE; engines without COALESCE (MySQL/SQLite) override with IFNULL.
    */
