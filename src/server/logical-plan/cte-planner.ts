@@ -472,7 +472,10 @@ export class CTEPlanner {
     if (is(primaryKeyColumn, SQLiteColumn)) {
       // SQLite can match more than one unique parent key after affinity
       // coercion, or when a reversed comparison uses the child's collation.
-      if (key.source.getSQLType() !== key.target.getSQLType()) return false
+      const [sourceType, targetType] = [key.source, key.target].map(column =>
+        column.getSQLType().toLowerCase().replace(/^text\(\d+\)$/, 'text')
+      )
+      if (sourceType !== targetType) return false
       if (join.joinDef.relationship === 'belongsTo' &&
           (key.source.dataType !== 'number' || key.target.dataType !== 'number')) return false
     }

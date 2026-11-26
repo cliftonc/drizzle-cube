@@ -10,6 +10,47 @@ import { onRowLevelJoin } from './helpers/row-level-filter'
 
 type KeyCount = 'one key' | 'two keys'
 
+it('should aggregate over a forward SQLite join with equivalent text affinities', async () => {
+  const parents = sqliteTable('parents', { code: text('code', { length: 20 }).primaryKey(), name: text('name').notNull() })
+  const children = sqliteTable('children', { id: integer('id').primaryKey(), parentCode: text('parent_code').notNull(), org: integer('org').notNull() })
+  const client = new Database(':memory:')
+  try {
+    client.exec(`
+      CREATE TABLE parents (code TEXT(20) PRIMARY KEY, name TEXT NOT NULL);
+      CREATE TABLE children (id INTEGER PRIMARY KEY, parent_code TEXT NOT NULL, org INTEGER NOT NULL);
+      INSERT INTO parents VALUES ('A', 'group'), ('B', 'group');
+      INSERT INTO children VALUES (1, 'A', 1), (2, 'B', 1);
+    `)
+    const parent = defineCube('Parents', {
+      sql: () => ({ from: parents }),
+      joins: {
+        Children: { targetCube: () => child, relationship: 'hasMany', on: [{ source: parents.code, target: children.parentCode }] }
+      },
+      dimensions: {
+        code: { name: 'code', type: 'string', sql: parents.code, primaryKey: true },
+        name: { name: 'name', type: 'string', sql: parents.name }
+      },
+      measures: {}
+    })
+    const child = defineCube('Children', {
+      sql: () => ({ from: children }),
+      dimensions: {},
+      measures: { organisations: { name: 'organisations', type: 'countDistinct', sql: children.org } }
+    })
+    const layer = new SemanticLayerCompiler({ drizzle: drizzle(client), engineType: 'sqlite' })
+    layer.registerCube(parent)
+    layer.registerCube(child)
+
+    const { data } = await layer.execute({
+      dimensions: ['Parents.name'],
+      measures: ['Children.organisations']
+    }, { organisationId: 1 })
+    expect(data).toEqual([{ 'Parents.name': 'group', 'Children.organisations': 1 }])
+  } finally {
+    client.close()
+  }
+})
+
 it('should keep pre-aggregation when SQLite join key affinities differ', async () => {
   const parents = sqliteTable('parents', { code: text('code').primaryKey(), name: text('name').notNull() })
   const children = sqliteTable('children', { id: integer('id').primaryKey(), parentCode: integer('parent_code').notNull() })

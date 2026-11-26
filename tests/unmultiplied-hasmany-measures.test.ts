@@ -82,6 +82,8 @@ async function createCubes(): Promise<Map<string, Cube>> {
       totalSalary: { name: 'totalSalary', type: 'sum', sql: employees.salary },
       distinctCount: { name: 'distinctCount', type: 'number', sql: sql`COUNT(DISTINCT ${employees.id})` },
       organisations: { name: 'organisations', type: 'countDistinct', sql: employees.organisationId },
+      adjustedOrganisations: { name: 'adjustedOrganisations', type: 'calculated', calculatedSql: '{organisations} + .5' },
+      coalescedOrganisations: { name: 'coalescedOrganisations', type: 'calculated', calculatedSql: 'COALESCE({organisations}, 0)' },
       doubled: { name: 'doubled', type: 'calculated', calculatedSql: '{distinctCount} * 2' },
       quadrupled: { name: 'quadrupled', type: 'calculated', calculatedSql: '{doubled} * 2' },
       withOrganisations: { name: 'withOrganisations', type: 'calculated', calculatedSql: '{count} + {organisations}' },
@@ -179,6 +181,20 @@ describe('Measures of a lone hasMany cube joined without a pre-aggregation CTE',
     expect(await rows({ measures: ['Employees.organisations'], dimensions: ['Departments.size'] }, 'Departments.size'))
       .toEqual(expected(department => department.size, employees => employees > 0 ? 1 : 0))
   })
+
+  it.each([['adjustedOrganisations', 0.5], ['coalescedOrganisations', 0]] as const)(
+    'should count each organisation once in %s', async (field, adjustment) => {
+      const counts = expected(department => department.size, count => count)
+      const result = await rows({
+        dimensions: ['Departments.size'],
+        measures: [`Employees.${field}`]
+      }, 'Departments.size')
+
+      expect(result).toEqual(Object.fromEntries(Object.entries(counts).map(
+        ([size, count]) => [size, Number(count > 0) + adjustment]
+      )))
+    }
+  )
 
   it('should count a department with no employees as zero, where main returns null', async () => {
     const counts = expected(department => String(department.id), employees => employees)

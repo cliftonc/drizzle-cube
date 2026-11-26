@@ -16,7 +16,9 @@ describe('CalculatedMeasureResolver.dividesOnlyBySafeDivisors', () => {
     '{a} / NULLIF({Sales.count}, 0)',
     '{calc1} / 2',
     '({a} + {b} + {c}) / 3',
-    '{a} / 0.5'
+    '{a} / 0.5',
+    '{a} / .5',
+    'COALESCE({a}, 0)'
   ])('should accept %s', calculatedSql => {
     expect(dividesSafely(calculatedSql)).toBe(true)
   })
