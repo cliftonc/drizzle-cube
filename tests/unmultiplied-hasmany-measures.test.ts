@@ -339,7 +339,6 @@ describe('Queries off the plain-join list keep the pre-aggregation CTE', () => {
     ['a time dimension at two granularities (S20)', { ...s1, timeDimensions: [{ dimension: 'Employees.createdAt', granularity: 'day' }, { dimension: 'Employees.createdAt', granularity: 'month' }] }],
     ['its own join-key dimension (S17)', { ...s1, dimensions: ['Departments.size', 'Employees.departmentId'] }],
     ['its own expression dimension', { ...s1, dimensions: ['Departments.size', 'Employees.label'] }],
-    ['a filter pushed in from another cube', { ...s1, filters: [{ member: 'Productivity.happinessIndex', operator: 'gt', values: [5] }] }],
     ['a cube joined through it (downstream keys, S21)', { ...s1, dimensions: ['Departments.size', 'Productivity.happinessIndex'] }],
     ['a join compared with its own operator', s1, withPlannedJoin(join => ({ ...join, on: join.on.map(pair => ({ ...pair, as: (source, target) => gte(source, target) })) }))],
     ['an inner planned join', s1, withPlannedJoin(join => ({ ...join, sqlJoinType: 'inner' }))],
@@ -355,6 +354,12 @@ describe('Queries off the plain-join list keep the pre-aggregation CTE', () => {
     ['a hasMany cube reached through another cube', { measures: ['Productivity.distinctCount'], dimensions: ['Departments.size'] }]
   ])('should keep the CTE for %s', async (_shape, query, adjust) => {
     expect(await plannedSql(query, adjust)).toMatch(/_agg/)
+  })
+
+  it('should plan the allowed shape as a plain join when another cube only filters it, because that cube is tested for existence and not joined', async () => {
+    const query: SemanticQuery = { ...s1, filters: [{ member: 'Productivity.happinessIndex', operator: 'gt', values: [5] }] }
+
+    expect(await plannedSql(query)).not.toMatch(/_agg/)
   })
 })
 
@@ -478,6 +483,31 @@ describe('A lone hasMany cube whose join to the primary cube it declares itself'
     for (const measure of ['Employees.count', 'Employees.distinctCount']) {
       expect(new Map(result.data.map(row => [String(row['Departments.name']), Number(row[measure])]))).toEqual(employeesByDepartment)
     }
+  })
+
+  it('should count each employee once in a department whose key a matching time entry carries', async () => {
+    const entries = (await testExecutor.executeQuery({
+      measures: ['TimeEntries.count'],
+      dimensions: ['TimeEntries.departmentId', 'TimeEntries.allocationType']
+    })).data
+    const allocationType = String(entries[0]['TimeEntries.allocationType'])
+    const matching = new Set(entries
+      .filter(row => row['TimeEntries.allocationType'] === allocationType)
+      .map(row => Number(row['TimeEntries.departmentId'])))
+    const names = new Map((await testExecutor.executeQuery({ dimensions: ['Departments.id', 'Departments.name'] })).data
+      .map(row => [String(row['Departments.name']), Number(row['Departments.id'])]))
+    const expected = new Map([...employeesByDepartment].filter(([name, count]) => count > 0 && matching.has(names.get(name)!)))
+    expect([...entries].filter(row => row['TimeEntries.allocationType'] === allocationType).some(row => Number(row['TimeEntries.count']) > 1)).toBe(true)
+
+    const result = await testExecutor.executeQuery({
+      measures: ['Employees.count'],
+      dimensions: ['Departments.name'],
+      filters: [{ member: 'TimeEntries.allocationType', operator: 'equals', values: [allocationType] }]
+    })
+
+    expect(new Map(result.data
+      .filter(row => Number(row['Employees.count'] ?? 0) > 0)
+      .map(row => [String(row['Departments.name']), Number(row['Employees.count'])]))).toEqual(expected)
   })
 })
 

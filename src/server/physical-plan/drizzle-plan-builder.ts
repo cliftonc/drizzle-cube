@@ -73,6 +73,7 @@ export class DrizzlePlanBuilder {
         cteReason: cte.cteReason
       })),
       keysDeduplication: keysDeduplicationMeta,
+      existenceJoins: plan.existenceJoins,
       warnings: plan.warnings.length > 0 ? plan.warnings : undefined
     }
   }

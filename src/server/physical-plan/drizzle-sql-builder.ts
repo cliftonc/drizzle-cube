@@ -23,13 +23,14 @@ import type {
   Cube,
   CubeJoin,
   QueryContext,
-  PhysicalQueryPlan
+  PhysicalQueryPlan,
+  ExistenceJoin
 } from '../types/index.js'
 
-import { resolveSqlExpression, resolveCubeReference } from '../cube-utils.js'
+import { resolveSqlExpression, resolveCubeReference, resolveJunctionSecurity } from '../cube-utils.js'
 import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import { getFilterKey, getTimeDimensionFilterKey, flattenFilters } from '../filter-cache.js'
-import { buildCubeSemiJoin, toKeyPairs, type SemiJoinKeyPair } from './semi-join.js'
+import { buildSemiJoinCondition, buildCubeSemiJoin, toKeyPairs, type SemiJoinKeyPair } from './semi-join.js'
 import { JoinPathResolver, type InternalJoinPathStep } from '../resolvers/join-path-resolver.js'
 import { t } from '../../i18n/runtime.js'
 import { DateTimeBuilder } from '../builders/date-time-builder.js'
@@ -545,6 +546,42 @@ export class DrizzleSqlBuilder {
       condition = buildCubeSemiJoin(context, cube, keyPairs, condition ? [condition] : leafConditions)
     }
     return condition
+  }
+
+  /**
+   * Build the condition that tests an existence join: a semi-join on the rows
+   * that the join reaches, nested once per onward join, so one joined row
+   * meets every filter.
+   *
+   * @param join - Join to a cube used only for filtering
+   * @param context - Query context
+   * @returns The condition for the WHERE, or null when its filters build no SQL and no join on its path is an inner join
+   */
+  buildExistenceCondition(join: ExistenceJoin, context: QueryContext): SQL | null {
+    const cubes = new Map([[join.cube.name, join.cube]])
+    const filters = join.filters.flatMap(filter => this.buildWhereConditions(cubes, { filters: [filter] }, context))
+    const onward = join.joins.flatMap(next => this.buildExistenceCondition(next, context) ?? [])
+    if (filters.length === 0 && onward.length === 0 && join.joinType !== 'inner') {
+      return null
+    }
+    return this.buildRelatedRowCondition(join, context, [...filters, ...onward])
+  }
+
+  private buildRelatedRowCondition(
+    join: ExistenceJoin,
+    context: QueryContext,
+    conditions: SQL[]
+  ): SQL {
+    const { joinDef } = join
+    if (joinDef.relationship !== 'belongsToMany' || !joinDef.through) {
+      return buildCubeSemiJoin(context, join.cube, toKeyPairs(joinDef.on, join.reversed), conditions, { inDeclaredOrder: true })
+    }
+
+    const { table, sourceKey, targetKey, securitySql } = joinDef.through
+    return buildSemiJoinCondition(context, { from: table }, toKeyPairs(sourceKey), [
+      ...(securitySql ? resolveJunctionSecurity(securitySql, context) : []),
+      buildCubeSemiJoin(context, join.cube, toKeyPairs(targetKey), conditions)
+    ])
   }
 
   /** Every cube visible from here: the in-scope map plus the rest of the plan. */

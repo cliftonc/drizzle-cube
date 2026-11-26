@@ -115,6 +115,11 @@ function collectWhereConditions(
     allWhereConditions.push(...queryWhereConditions)
   }
 
+  for (const join of queryPlan.existenceJoins ?? []) {
+    const condition = deps.queryBuilder.buildExistenceCondition(join, context)
+    if (condition) allWhereConditions.push(condition)
+  }
+
   return allWhereConditions
 }
 

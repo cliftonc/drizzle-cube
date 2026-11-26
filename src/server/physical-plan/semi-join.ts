@@ -23,6 +23,12 @@ export interface SemiJoinKeyPair {
   reversed: boolean
 }
 
+/** How a semi-join compares its keys. */
+export interface SemiJoinOptions {
+  /** Compare a single key in the order the join declares it, as composite keys always are */
+  inDeclaredOrder?: boolean
+}
+
 export function toKeyPairs(
   keys: Array<{ source: AnyColumn; target: AnyColumn }>,
   reversed = false
@@ -68,15 +74,18 @@ export function applyBaseJoins(
  * The outer keys stay outside the subquery's own tables, so they refer to the
  * outer row even when both sides read the same table. Composite keys compare
  * in the order the join declares them, as the row-level join does, because
- * SQLite takes a comparison's collation from its left column.
+ * SQLite takes a comparison's collation from its left column. `IN` compares
+ * with the outer column on the left, so with `inDeclaredOrder` a single key
+ * that the join declares inner column first takes the `EXISTS` form too.
  */
 export function buildSemiJoinCondition(
   context: QueryContext,
   cubeBase: BaseQueryDefinition,
   keyPairs: SemiJoinKeyPair[],
-  conditions: SQL[]
+  conditions: SQL[],
+  { inDeclaredOrder = false }: SemiJoinOptions = {}
 ): SQL {
-  if (keyPairs.length === 1) {
+  if (keyPairs.length === 1 && !(inDeclaredOrder && keyPairs[0].reversed)) {
     const [{ outer, inner }] = keyPairs
     let subquery: any = context.db.select({ pk: inner }).from(cubeBase.from)
     subquery = applyBaseJoins(subquery, cubeBase)
@@ -114,14 +123,16 @@ export function buildSemiJoinCondition(
  * @param cube - Cube whose rows the subquery reads
  * @param keyPairs - Columns that link the subquery to the outer row
  * @param conditions - Conditions on the cube's rows
+ * @param options - How to compare the keys
  * @returns The condition
  */
 export function buildCubeSemiJoin(
   context: QueryContext,
   cube: Cube,
   keyPairs: SemiJoinKeyPair[],
-  conditions: SQL[]
+  conditions: SQL[],
+  options?: SemiJoinOptions
 ): SQL {
   const cubeBase = resolveCubeBase(cube, context)
-  return buildSemiJoinCondition(context, cubeBase, keyPairs, cubeBase.where ? [cubeBase.where, ...conditions] : conditions)
+  return buildSemiJoinCondition(context, cubeBase, keyPairs, cubeBase.where ? [cubeBase.where, ...conditions] : conditions, options)
 }

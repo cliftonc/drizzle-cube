@@ -18,7 +18,7 @@ import {
 } from '../cube-utils.js'
 import { t } from '../../i18n/runtime.js'
 import { ResolverCache, analyzeCubeUsage } from './planner-utils.js'
-import type { JoinRef } from './types.js'
+import type { PlannedJoin } from './types.js'
 
 export class JoinPlanner {
   constructor(private readonly resolverCache: ResolverCache) {}
@@ -37,9 +37,9 @@ export class JoinPlanner {
     cubeNames: string[],
     _ctx: unknown,
     query: SemanticQuery
-  ): JoinRef[] {
+  ): PlannedJoin[] {
     const resolver = this.resolverCache.get(cubes)
-    const joinCubes: JoinRef[] = []
+    const joinCubes: PlannedJoin[] = []
     const processedCubes = new Set([primaryCube.name])
 
     // Cubes with measures are still needed for CTE pre-detection.
@@ -130,7 +130,7 @@ export class JoinPlanner {
     pathFromCube: string,
     joinDef: CubeJoin,
     reversed: boolean | undefined
-  ): JoinRef {
+  ): PlannedJoin {
     // Compute effective relationship: reversed belongsTo↔hasMany
     const effectiveRelationship = reversed
       ? reverseRelationship(joinDef.relationship)
@@ -144,6 +144,7 @@ export class JoinPlanner {
         target: { name: cube.name, cube },
         alias: `${toCube.toLowerCase()}_cube`,
         joinType: junctionJoinType,
+        reversed: false,
         joinDef,
         sourceCubeName: pathFromCube,
         relationship: 'belongsToMany',
@@ -163,6 +164,7 @@ export class JoinPlanner {
       target: { name: cube.name, cube },
       alias: `${toCube.toLowerCase()}_cube`,
       joinType,
+      reversed: reversed ?? false,
       joinDef,
       sourceCubeName: pathFromCube,
       relationship: effectiveRelationship as 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'

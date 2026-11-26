@@ -139,8 +139,8 @@ describe('CTE Filter-Only Downstream Join', () => {
         .filters([
           {
             member: 'Productivity.happinessIndex',
-            operator: 'gte',
-            values: [1]
+            operator: 'notSet',
+            values: []
           }
         ])
         .build()
