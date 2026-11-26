@@ -108,6 +108,7 @@ export interface JoinRef {
    * baked security context.
    */
   joinDef: CubeJoin
+  sourceCubeName?: string
   /** Relationship type from the join definition */
   relationship?: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
   /**

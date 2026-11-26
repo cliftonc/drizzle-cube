@@ -8,6 +8,7 @@
  * expansion. Extracted from LogicalPlanner.
  */
 
+import { Table, getTableName, is } from 'drizzle-orm'
 import type {
   Cube,
   QueryContext,
@@ -21,6 +22,8 @@ import {
   reverseRelationship
 } from '../cube-utils.js'
 import { categorizeForPostAggregation } from '../measure-classification.js'
+import { flattenFilters } from '../filter-cache.js'
+import { CalculatedMeasureResolver } from '../resolvers/calculated-measure-resolver.js'
 import { ResolverCache, analyzeCubeUsage } from './planner-utils.js'
 import { FilterPropagation } from './filter-propagation.js'
 import type { JoinRef } from './types.js'
@@ -60,7 +63,7 @@ export class CTEPlanner {
     primaryCube: Cube,
     joinCubes: JoinRef[],
     query: SemanticQuery,
-    _ctx: QueryContext
+    ctx: QueryContext
   ): PhysicalQueryPlan['preAggregationCTEs'] {
     const preAggCTEs: PhysicalQueryPlan['preAggregationCTEs'] = []
 
@@ -69,7 +72,7 @@ export class CTEPlanner {
     }
 
     // Step 1: Compute CTE reasons from the actual join plan (not all registered cubes)
-    const cteReasons = this.computeCTEReasons(primaryCube, joinCubes, query)
+    const cteReasons = this.computeCTEReasons(primaryCube, joinCubes, query, ctx)
 
     // Step 2: If no CTE reasons, no CTEs needed
     if (cteReasons.size === 0) {
@@ -338,14 +341,15 @@ export class CTEPlanner {
    *
    * Algorithm:
    * 1. Scan join plan entries for hasMany/belongsToMany relationships
-   * 2. If none found → return empty map (no CTEs needed)
+   * 2. If none found, or the query is a plain-join shape → return empty map (no CTEs needed)
    * 3. hasMany/belongsToMany targets with measures → 'hasMany'
    * 4. Other join cubes with measures (not hasMany source) → 'fanOutPrevention'
    */
   private computeCTEReasons(
-    _primaryCube: Cube,
+    primaryCube: Cube,
     joinCubes: JoinRef[],
-    query: SemanticQuery
+    query: SemanticQuery,
+    context: QueryContext
   ): Map<string, 'hasMany' | 'fanOutPrevention'> {
     const reasons = new Map<string, 'hasMany' | 'fanOutPrevention'>()
 
@@ -388,6 +392,10 @@ export class CTEPlanner {
       return reasons
     }
 
+    if (this.isPlainJoinShape(primaryCube, joinCubes, query, context)) {
+      return reasons
+    }
+
     // Step 3: Assign CTE reasons
     for (const jc of joinCubes) {
       if (!cubesWithMeasures.has(jc.target.name)) continue
@@ -406,6 +414,85 @@ export class CTEPlanner {
     }
 
     return reasons
+  }
+
+  /**
+   * Whether the query has a shape whose measures a plain join computes
+   * correctly, so it needs no pre-aggregation CTE. Every other query keeps the
+   * CTE.
+   *
+   * The one allowed shape is a lone hasMany cube joined straight from the
+   * primary cube, which a plain join reads once per row, as Cube does:
+   * - the plan's only join is a left hasMany join from the primary cube on one
+   *   plain equality with the primary cube's primary key column, whichever cube
+   *   declares the join, so each row of the hasMany cube meets at most one
+   *   primary row;
+   * - the primary cube reads one table with no joins of its own. The hasMany
+   *   cube may join tables of its own: the plain join applies them inside the
+   *   cube's join, as the CTE applies them inside the CTE. Every relation of
+   *   both cubes is a Drizzle table, and their names, aliases included, differ;
+   *   a view, subquery or raw SQL relation keeps the CTE;
+   * - every measure is a `count`, `countDistinct` or `number` measure of the
+   *   hasMany cube. The CTE path re-aggregates `countDistinct` and `number` per
+   *   join key with SUM and MAX, which is wrong for a group that spans several
+   *   keys, and returns null rather than 0 for a primary row with no match.
+   *   A `calculated` measure counts when every measure it depends on, directly
+   *   or through other calculated measures, is one of these, and every
+   *   calculated template divides only by `NULLIF({member}, 0)` or a non-zero
+   *   number. The plain join gives a primary row with no match a count of 0,
+   *   which an unguarded division turns into an error on PostgreSQL;
+   * - every dimension is a dimension of the primary cube, whose rows the left
+   *   join never empties, every filter is on the primary key, and the query has
+   *   no time dimensions;
+   * - the query is not ungrouped and has no funnel, flow or retention.
+   *
+   * `order`, `limit`, `offset` and `total` act on the grouped rows, which the
+   * plain join and the CTE path name alike, and `fillMissingDatesValue` only
+   * fills time-dimension gaps.
+   *
+   * The decision reads only the members the query names and the planned joins,
+   * never the joins the hasMany cube declares to cubes the query doesn't name.
+   */
+  private isPlainJoinShape(
+    primaryCube: Cube,
+    joinCubes: JoinRef[],
+    query: SemanticQuery,
+    context: QueryContext
+  ): boolean {
+    if (joinCubes.length !== 1) return false
+    const [join] = joinCubes
+    if (join.relationship !== 'hasMany' || join.joinType !== 'left' || join.sourceCubeName !== primaryCube.name) return false
+    if (join.joinDef.on.length !== 1) return false
+    const [key] = join.joinDef.on
+    const primaryKeys = Object.entries(primaryCube.dimensions ?? {}).filter(([, dimension]) => dimension.primaryKey)
+    if (key.as || primaryKeys.length !== 1) return false
+    const primaryKeyColumn = primaryKeys[0][1].sql
+    if (key.source !== primaryKeyColumn && key.target !== primaryKeyColumn) return false
+    const primaryKeyMember = `${primaryCube.name}.${primaryKeys[0][0]}`
+
+    const cube = join.target.cube
+    const primaryDefinition = primaryCube.sql(context)
+    const cubeDefinition = cube.sql(context)
+    if (primaryDefinition.joins?.length) return false
+    const relations = [primaryDefinition.from, cubeDefinition.from, ...(cubeDefinition.joins ?? []).map(each => each.table)]
+    const tables = relations.filter(relation => is(relation, Table))
+    const tableNames = new Set(tables.map(table => getTableName(table)))
+    if (tables.length !== relations.length || tableNames.size !== tables.length) return false
+
+    const measures = query.measures ?? []
+    if (measures.length === 0 || !this.expandCalculatedMeasureDependencies(cube, measures).every(member => {
+      const [cubeName, field] = member.split('.')
+      const measure = cubeName === cube.name ? cube.measures?.[field] : undefined
+      if (measure?.type === 'calculated') return !!measure.calculatedSql && CalculatedMeasureResolver.dividesOnlyBySafeDivisors(measure.calculatedSql)
+      return measure?.type === 'count' || measure?.type === 'countDistinct' || measure?.type === 'number'
+    })) return false
+
+    if (query.timeDimensions?.length || query.ungrouped || query.funnel || query.flow || query.retention) return false
+    if (!flattenFilters(query.filters ?? []).every(filter => filter.member === primaryKeyMember)) return false
+    return (query.dimensions ?? []).every(member => {
+      const [cubeName, field] = member.split('.')
+      return cubeName === primaryCube.name && primaryCube.dimensions?.[field] !== undefined
+    })
   }
 
   // NOTE: The former detectHasManyInQuery() and getCTEReason() methods were removed

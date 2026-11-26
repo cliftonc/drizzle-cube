@@ -145,6 +145,7 @@ export class JoinPlanner {
         alias: `${toCube.toLowerCase()}_cube`,
         joinType: junctionJoinType,
         joinDef,
+        sourceCubeName: pathFromCube,
         relationship: 'belongsToMany',
         junctionTable: {
           table: joinDef.through.table,
@@ -163,6 +164,7 @@ export class JoinPlanner {
       alias: `${toCube.toLowerCase()}_cube`,
       joinType,
       joinDef,
+      sourceCubeName: pathFromCube,
       relationship: effectiveRelationship as 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
     }
   }
