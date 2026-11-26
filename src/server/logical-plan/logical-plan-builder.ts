@@ -267,6 +267,8 @@ export class LogicalPlanBuilder {
 
     const classification = this.classifyMeasuresForStrategy(
       simpleSource.schema.measures,
+      primaryCube,
+      joinCubes,
       preAggregationCTEs
     )
     const strategy = this.selectMeasureStrategy(classification, query, cubes)
@@ -538,6 +540,8 @@ export class LogicalPlanBuilder {
 
   private classifyMeasuresForStrategy(
     measures: MeasureRef[],
+    primaryCube: Cube,
+    joinCubes: JoinRef[],
     preAggregationCTEs: NonNullable<PhysicalQueryPlan['preAggregationCTEs']>
   ): MeasureClassification {
     const classification: MeasureClassification = {
@@ -551,6 +555,20 @@ export class LogicalPlanBuilder {
         .filter(cte => cte.cteReason === 'fanOutPrevention')
         .map(cte => cte.cube.name)
     )
+
+    // A hasMany or belongsToMany join that is not pre-aggregated into a CTE
+    // repeats each primary row once per matching target row. This happens when
+    // the target cube only contributes filters or dimensions, so the primary
+    // cube's own measures are multiplied as well.
+    const preAggregatedCubes = new Set(preAggregationCTEs.map(cte => cte.cube.name))
+    const primaryRowsFanOut = joinCubes.some(
+      join =>
+        (join.relationship === 'hasMany' || join.relationship === 'belongsToMany') &&
+        !preAggregatedCubes.has(join.target.name)
+    )
+    if (primaryRowsFanOut) {
+      multipliedCubes.add(primaryCube.name)
+    }
 
     for (const measureRef of measures) {
       const cube = measureRef.cube.cube
