@@ -573,15 +573,16 @@ export class DrizzleSqlBuilder {
     conditions: SQL[]
   ): SQL {
     const { joinDef } = join
+    const keyOptions = { inDeclaredOrder: true }
     if (joinDef.relationship !== 'belongsToMany' || !joinDef.through) {
-      return buildCubeSemiJoin(context, join.cube, toKeyPairs(joinDef.on, join.reversed), conditions, { inDeclaredOrder: true })
+      return buildCubeSemiJoin(context, join.cube, toKeyPairs(joinDef.on, join.reversed), conditions, keyOptions)
     }
 
     const { table, sourceKey, targetKey, securitySql } = joinDef.through
     return buildSemiJoinCondition(context, { from: table }, toKeyPairs(sourceKey), [
       ...(securitySql ? resolveJunctionSecurity(securitySql, context) : []),
-      buildCubeSemiJoin(context, join.cube, toKeyPairs(targetKey), conditions)
-    ])
+      buildCubeSemiJoin(context, join.cube, toKeyPairs(targetKey), conditions, keyOptions)
+    ], keyOptions)
   }
 
   /** Every cube visible from here: the in-scope map plus the rest of the plan. */

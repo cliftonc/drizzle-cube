@@ -74,6 +74,11 @@ async function createCubes(): Promise<Map<string, Cube>> {
       countWithDefault: { name: 'countWithDefault', type: 'count', sql: sql`COALESCE(${employees.id}, 0)` },
       distinctWithDefault: { name: 'distinctWithDefault', type: 'countDistinct', sql: sql`COALESCE(${employees.id}, 0)` },
       countRows: { name: 'countRows', type: 'number', sql: sql`COUNT(*)` },
+      firstDepartmentCount: {
+        name: 'firstDepartmentCount', type: 'number', sql: sql`COUNT(${employees.id})`,
+        filters: [() => eq(employees.departmentId, 1)]
+      },
+      countRemainder: { name: 'countRemainder', type: 'calculated', calculatedSql: '{count} % {count}' },
       totalSalary: { name: 'totalSalary', type: 'sum', sql: employees.salary },
       distinctCount: { name: 'distinctCount', type: 'number', sql: sql`COUNT(DISTINCT ${employees.id})` },
       organisations: { name: 'organisations', type: 'countDistinct', sql: employees.organisationId },
@@ -226,6 +231,30 @@ describe('Measures of a lone hasMany cube joined without a pre-aggregation CTE',
     expect(result).toEqual(Object.fromEntries(
       Object.entries(expectedCounts).map(([id, count]) => [id, count || null])
     ))
+  })
+
+  it('should group a filtered raw count by its child key before the parent join', async () => {
+    const counts = expected(department => String(department.id), employees => employees)
+    const result = await rows({
+      dimensions: ['Departments.id'],
+      measures: ['Employees.firstDepartmentCount']
+    }, 'Departments.id')
+
+    expect(result).toEqual(Object.fromEntries(Object.entries(counts).map(
+      ([id, count]) => [id, id === '1' ? count : null]
+    )))
+  })
+
+  it('should evaluate a remainder formula before joining to empty parents', async () => {
+    const counts = expected(department => String(department.id), employees => employees)
+    const result = await rows({
+      dimensions: ['Departments.id'],
+      measures: ['Employees.countRemainder']
+    }, 'Departments.id')
+
+    expect(result).toEqual(Object.fromEntries(Object.entries(counts).map(
+      ([id, count]) => [id, count > 0 ? 0 : null]
+    )))
   })
 
   it('should count only the employees of departments that a primary-key filter keeps', async () => {

@@ -398,15 +398,17 @@ export class CalculatedMeasureResolver {
   }
 
   /**
-   * True when every `/` in the template divides by `NULLIF({member}, 0)` or by
-   * a non-zero number, so no row can raise a division-by-zero error. Any other
-   * `/`, including one in a comment, returns false. Dependencies' templates are
-   * not followed.
+   * Recognize arithmetic that can evaluate with zero counts on an empty group.
+   * Operands are member references, decimal literals and `NULLIF({member}, 0)`.
+   * Division must use a guarded member or a non-zero literal. Callers check
+   * each calculated dependency separately.
    *
    * @param calculatedSql - Template string with {member} references
    */
   static dividesOnlyBySafeDivisors(calculatedSql: string): boolean {
     if (calculatedSql.length > 1000) return false
+    const operands = /NULLIF\s*\(\s*\{[^{}]+\}\s*,\s*0(?:\.0+)?\s*\)|\{[^{}]+\}|\d+(?:\.\d+)?/gi
+    if (/--|\/\*/.test(calculatedSql) || /[^+\-*/()\s]/.test(calculatedSql.replace(operands, ''))) return false
     const safeDivisor = /^\s*(?:NULLIF\s*\(\s*\{[^{}]+\}\s*,\s*0(?:\.0+)?\s*\)|[1-9]\d*(?:\.\d+)?|0\.\d*[1-9])/i
     for (let slash = calculatedSql.indexOf('/'); slash !== -1; slash = calculatedSql.indexOf('/', slash + 1)) {
       if (!safeDivisor.test(calculatedSql.slice(slash + 1))) return false

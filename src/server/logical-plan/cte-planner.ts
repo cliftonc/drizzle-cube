@@ -469,10 +469,13 @@ export class CTEPlanner {
     if (key.as || primaryKeys.length !== 1) return false
     const primaryKeyColumn = primaryKeys[0][1].sql
     if (key.source !== primaryKeyColumn && key.target !== primaryKeyColumn) return false
-    // In SQLite a reversed join compares with the child's collation. Even a
-    // unique text key can then match twice. The CTE compares from the parent.
-    if (join.joinDef.relationship === 'belongsTo' && is(primaryKeyColumn, SQLiteColumn) &&
-        (key.source.dataType !== 'number' || key.target.dataType !== 'number')) return false
+    if (is(primaryKeyColumn, SQLiteColumn)) {
+      // SQLite can match more than one unique parent key after affinity
+      // coercion, or when a reversed comparison uses the child's collation.
+      if (key.source.getSQLType() !== key.target.getSQLType()) return false
+      if (join.joinDef.relationship === 'belongsTo' &&
+          (key.source.dataType !== 'number' || key.target.dataType !== 'number')) return false
+    }
     const primaryKeyMember = `${primaryCube.name}.${primaryKeys[0][0]}`
 
     const cube = join.target.cube
@@ -489,7 +492,7 @@ export class CTEPlanner {
       const [cubeName, field] = member.split('.')
       const measure = cubeName === cube.name ? cube.measures?.[field] : undefined
       if (measure?.type === 'calculated') return !!measure.calculatedSql && CalculatedMeasureResolver.dividesOnlyBySafeDivisors(measure.calculatedSql)
-      if (!measure) return false
+      if (!measure || (measure.type === 'number' && measure.filters?.length)) return false
       const column = getCountColumn(measure.type, measure.sql)
       return column !== undefined && column.table !== primaryDefinition.from && tables.includes(column.table)
     })) return false

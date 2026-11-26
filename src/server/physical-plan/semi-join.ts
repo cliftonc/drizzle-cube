@@ -25,7 +25,7 @@ export interface SemiJoinKeyPair {
 
 /** How a semi-join compares its keys. */
 export interface SemiJoinOptions {
-  /** Compare a single key in the order the join declares it, as composite keys always are */
+  /** Compare keys in the order the join declares them. */
   inDeclaredOrder?: boolean
 }
 
@@ -72,11 +72,10 @@ export function applyBaseJoins(
  * or, for composite keys, `EXISTS` over a derived table of the matching rows'
  * keys, compared with the outer keys outside it (portable across all engines).
  * The outer keys stay outside the subquery's own tables, so they refer to the
- * outer row even when both sides read the same table. Composite keys compare
- * in the order the join declares them, as the row-level join does, because
- * SQLite takes a comparison's collation from its left column. `IN` compares
- * with the outer column on the left, so with `inDeclaredOrder` a single key
- * that the join declares inner column first takes the `EXISTS` form too.
+ * outer row even when both sides read the same table. Composite comparisons
+ * use the inner key first by default. `inDeclaredOrder` makes comparisons
+ * follow the row-level join, including which collation SQLite uses. A reversed
+ * single key then uses `EXISTS` too, since `IN` puts the outer key first.
  */
 export function buildSemiJoinCondition(
   context: QueryContext,
@@ -110,7 +109,7 @@ export function buildSemiJoinCondition(
     .select({ one: sql`1` })
     .from(keys)
     .where(and(...keyPairs.map(({ outer, reversed }, index) =>
-      reversed ? eq(keys[`key${index}`], outer) : eq(outer, keys[`key${index}`])
+      !inDeclaredOrder || reversed ? eq(keys[`key${index}`], outer) : eq(outer, keys[`key${index}`])
     )))
   return sql`EXISTS ${correlated}`
 }

@@ -10,6 +10,47 @@ import { onRowLevelJoin } from './helpers/row-level-filter'
 
 type KeyCount = 'one key' | 'two keys'
 
+it('should keep pre-aggregation when SQLite join key affinities differ', async () => {
+  const parents = sqliteTable('parents', { code: text('code').primaryKey(), name: text('name').notNull() })
+  const children = sqliteTable('children', { id: integer('id').primaryKey(), parentCode: integer('parent_code').notNull() })
+  const client = new Database(':memory:')
+  try {
+    client.exec(`
+      CREATE TABLE parents (code TEXT PRIMARY KEY, name TEXT NOT NULL);
+      CREATE TABLE children (id INTEGER PRIMARY KEY, parent_code INTEGER NOT NULL);
+      INSERT INTO parents VALUES ('1', 'group'), ('01', 'group');
+      INSERT INTO children VALUES (1, 1);
+    `)
+    const parent = defineCube('Parents', {
+      sql: () => ({ from: parents }),
+      joins: {
+        Children: { targetCube: () => child, relationship: 'hasMany', on: [{ source: parents.code, target: children.parentCode }] }
+      },
+      dimensions: {
+        code: { name: 'code', type: 'string', sql: parents.code, primaryKey: true },
+        name: { name: 'name', type: 'string', sql: parents.name }
+      },
+      measures: {}
+    })
+    const child = defineCube('Children', {
+      sql: () => ({ from: children }),
+      dimensions: {},
+      measures: { count: { name: 'count', type: 'number', sql: sql`COUNT(${children.id})` } }
+    })
+    const layer = new SemanticLayerCompiler({ drizzle: drizzle(client), engineType: 'sqlite' })
+    layer.registerCube(parent)
+    layer.registerCube(child)
+
+    const { data } = await layer.execute({
+      dimensions: ['Parents.name'],
+      measures: ['Children.count']
+    }, { organisationId: 1 })
+    expect(data).toEqual([{ 'Parents.name': 'group', 'Children.count': 1 }])
+  } finally {
+    client.close()
+  }
+})
+
 it('should aggregate a reversed child join with the parent key collation on SQLite', async () => {
   const parents = sqliteTable('parents', { code: text('code').primaryKey() })
   const children = sqliteTable('children', { id: integer('id').primaryKey(), parentCode: text('parent_code').notNull() })
@@ -137,7 +178,7 @@ describe('Filters on cubes used only for filtering, joined on keys with differen
           }
         : {},
       dimensions: { flag: { name: 'flag', type: 'number', sql: children.flag } },
-      measures: {}
+      measures: { count: { name: 'count', type: 'count', sql: children.flag } }
     })
     const layer = new SemanticLayerCompiler({ drizzle: db, engineType: 'sqlite' })
     layer.registerCube(parentCube)
@@ -149,6 +190,17 @@ describe('Filters on cubes used only for filtering, joined on keys with differen
     const result = await layer.execute({ dimensions: ['Parents.name'], filters, order: { 'Parents.name': 'asc' } }, securityContext)
     return result.data.map(row => row['Parents.name'])
   }
+
+  it('should keep the inner key collation for an existing cross-cube OR on composite keys', async () => {
+    const layer = layerWithJoinDeclaredOn('Parents', 'two keys')
+    const { data } = await layer.execute({
+      dimensions: ['Parents.name'],
+      measures: ['Children.count'],
+      filters: [{ or: [{ member: 'Parents.name', operator: 'equals', values: ['Other'] }, flagged] }]
+    }, securityContext)
+
+    expect(data).toEqual([{ 'Parents.name': 'Upper', 'Children.count': 1 }])
+  })
 
   it.each(keyCounts)('should match the parents that the row-level join matches when the parent cube declares the join on %s', async keyCount => {
     const layer = layerWithJoinDeclaredOn('Parents', keyCount)
