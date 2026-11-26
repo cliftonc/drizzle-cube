@@ -14,6 +14,7 @@ import type {
   QueryContext,
   SemanticQuery
 } from '../../types/index.js'
+import { coalesceEmptyCount } from '../../builders/measure-builder.js'
 import { applyPostAggregationWindows } from './window-processor.js'
 import type { PhysicalBuildDependencies, SelectionMap } from './shared.js'
 
@@ -89,7 +90,8 @@ function rewriteCteMeasures(
         context
       )
     } else {
-      aggregatedExpr = buildCteMeasureAggregate(measure, cteColumn, cteInfo, query, allCubes, deps)
+      const aggregate = buildCteMeasureAggregate(measure, cteColumn, cteInfo, query, allCubes, deps)
+      aggregatedExpr = coalesceEmptyCount(measure.type, aggregate)
     }
 
     modifiedSelections[measureName] = sql`${aggregatedExpr}`.as(measureName) as unknown as SQL

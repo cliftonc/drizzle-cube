@@ -181,6 +181,28 @@ describe('Measures of a lone hasMany cube joined without a pre-aggregation CTE',
     }
   })
 
+  it('should retain departments with zero pre-aggregated counts when filtering for zero', async () => {
+    const emptyIds = departments.filter(department => !employeeDepartments.includes(department.id))
+      .map(department => department.id).sort((a, b) => a - b)
+    expect(emptyIds.length).toBeGreaterThan(0)
+
+    const query: SemanticQuery = {
+      dimensions: ['Departments.id'],
+      measures: ['Employees.count', 'Employees.organisations', 'Employees.totalSalary'],
+      filters: [{ member: 'Employees.count', operator: 'equals', values: [0] }],
+      order: { 'Departments.id': 'asc' }
+    }
+    const { data } = await testExecutor.executeQuery(query)
+    expect(data.map(row => Number(row['Departments.id']))).toEqual(emptyIds)
+    for (const row of data) {
+      expect(row['Employees.count']).not.toBeNull()
+      expect(Number(row['Employees.count'])).toBe(0)
+      expect(row['Employees.organisations']).not.toBeNull()
+      expect(Number(row['Employees.organisations'])).toBe(0)
+      expect(row['Employees.totalSalary']).toBeNull()
+    }
+  })
+
   it('should count only the employees of departments that a primary-key filter keeps', async () => {
     const kept = departments.filter(department => employeeDepartments.includes(department.id)).slice(0, 3)
 

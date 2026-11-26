@@ -22,6 +22,7 @@ import {
 
 import type {
   Cube,
+  MeasureType,
   QueryContext,
   PhysicalQueryPlan
 } from '../types/index.js'
@@ -40,6 +41,11 @@ import {
 import { CalculatedMeasureResolver } from '../resolvers/calculated-measure-resolver.js'
 import { substituteTemplate, getMemberReferences, type ResolvedMeasures } from '../template-substitution.js'
 import { getCubesFromPlan } from '../physical-plan/processors/shared.js'
+
+/** A left join can leave a group with no pre-aggregated count to roll up. */
+export function coalesceEmptyCount(type: MeasureType, aggregate: SQL): SQL {
+  return type === 'count' || type === 'countDistinct' ? sql`COALESCE(${aggregate}, 0)` : aggregate
+}
 
 export class MeasureBuilder {
   constructor(private databaseAdapter: DatabaseAdapter) {}
@@ -388,7 +394,7 @@ export class MeasureBuilder {
 
     // For non-calculated measures, aggregate the CTE column directly
     const cteColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldKey)}`
-    return this.reAggregateCteColumn(measure.type, cteColumn)
+    return coalesceEmptyCount(measure.type, this.reAggregateCteColumn(measure.type, cteColumn))
   }
 
   /**
