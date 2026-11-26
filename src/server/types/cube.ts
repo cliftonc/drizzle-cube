@@ -506,12 +506,8 @@ export interface PropagatingFilter {
 export interface IntermediateJoinInfo {
   /** The intermediate cube that's being absorbed into the CTE */
   cube: Cube
-  /** The join definition from the intermediate cube to this CTE cube */
+  /** The join definition linking the intermediate cube to the next cube on the path, declared on either cube */
   joinDef: CubeJoin
-  /** The column on the intermediate table that connects to the primary cube */
-  primaryJoinColumn: AnyColumn
-  /** The column on the intermediate table that connects to the CTE cube */
-  cteJoinColumn: AnyColumn
 }
 
 /**
