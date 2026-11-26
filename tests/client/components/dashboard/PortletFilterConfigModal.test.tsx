@@ -337,6 +337,21 @@ describe('PortletFilterConfigModal', () => {
       expect(onClose).toHaveBeenCalled()
     })
 
+    it('should not close when a drag starts inside the modal and ends on the backdrop', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+
+      render(<PortletFilterConfigModal {...defaultProps} onClose={onClose} />)
+
+      await user.pointer([
+        { keys: '[MouseLeft>]', target: screen.getByText('Available Filters') },
+        { target: screen.getByRole('heading', { name: /configure dashboard filters/i }).closest('.dc\\:fixed')! },
+        { keys: '[/MouseLeft]' },
+      ])
+
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
     it('should not close when clicking inside the modal content', async () => {
       const user = userEvent.setup()
       const onClose = vi.fn()

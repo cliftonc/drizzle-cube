@@ -69,6 +69,25 @@ describe('Modal', () => {
       expect(onClose).toHaveBeenCalled()
     })
 
+    it('should NOT call onClose when a drag starts in the dialog and ends on the overlay', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+
+      render(
+        <Modal isOpen={true} onClose={onClose}>
+          <input aria-label="Title" />
+        </Modal>
+      )
+
+      await user.pointer([
+        { keys: '[MouseLeft>]', target: screen.getByRole('textbox', { name: 'Title' }) },
+        { target: screen.getByRole('dialog').parentElement! },
+        { keys: '[/MouseLeft]' },
+      ])
+
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
     it('should call onClose when Escape key is pressed', async () => {
       const user = userEvent.setup()
       const onClose = vi.fn()

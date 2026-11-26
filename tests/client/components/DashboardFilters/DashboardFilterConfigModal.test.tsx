@@ -586,6 +586,21 @@ describe('DashboardFilterConfigModal', () => {
         expect(props.onClose).toHaveBeenCalled()
       }
     })
+
+    it('should not call onClose when a drag starts in the label input and ends on the overlay', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+
+      render(<DashboardFilterConfigModal {...props} />)
+
+      await user.pointer([
+        { keys: '[MouseLeft>]', target: screen.getByDisplayValue('Status Filter') },
+        { target: document.querySelector('.dc\\:fixed.dc\\:inset-0')! },
+        { keys: '[/MouseLeft]' },
+      ])
+
+      expect(props.onClose).not.toHaveBeenCalled()
+    })
   })
 
   describe('accessibility', () => {
