@@ -14,6 +14,7 @@ import type {
   JoinBuildState,
   PhysicalBuildDependencies
 } from './shared.js'
+import { resolveCubeBase } from '../../cube-utils.js'
 
 /**
  * Applies WHERE/GROUP/HAVING/ORDER/LIMIT phases.
@@ -69,8 +70,8 @@ function collectWhereConditions(
 ): SQL[] {
   const allWhereConditions = [...joinState.allWhereConditions]
 
-  // Add base WHERE conditions from primary cube
-  if (primaryCubeBase.where) {
+  // Add base WHERE conditions from primary cube, unless its relation already applied them
+  if (primaryCubeBase.where && !joinState.cubesWithSecurityInJoin.has(queryPlan.primaryCube.name)) {
     allWhereConditions.push(primaryCubeBase.where)
   }
 
@@ -80,9 +81,9 @@ function collectWhereConditions(
       const cubeName = joinCube.cube.name
 
       // Skip cubes handled by a CTE (WHERE applied within the CTE), cubes
-      // absorbed as intermediates into CTEs, and cubes whose security is
-      // already in the JOIN ON clause (LEFT/RIGHT/FULL joins — avoids
-      // duplicate conditions and preserves NULL rows).
+      // absorbed as intermediates into CTEs, and cubes whose security their
+      // join already applied (a LEFT JOIN's ON clause or a filtered relation —
+      // avoids duplicate conditions and preserves NULL rows).
       if (
         cteState.cteAliasMap.get(cubeName) ||
         joinState.absorbedIntermediateCubes.has(cubeName) ||
@@ -92,7 +93,7 @@ function collectWhereConditions(
       }
 
       // Get the base query definition for this joined cube to access its WHERE
-      const joinCubeBase = joinCube.cube.sql(context)
+      const joinCubeBase = resolveCubeBase(joinCube.cube, context)
       if (joinCubeBase.where) {
         allWhereConditions.push(joinCubeBase.where)
       }

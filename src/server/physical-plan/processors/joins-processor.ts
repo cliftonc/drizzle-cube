@@ -1,17 +1,33 @@
 import {
   and,
+  Column,
   eq,
+  getTableName,
+  getTableUniqueName,
+  is,
+  isNull,
+  isSQLWrapper,
+  or,
+  Param,
+  Placeholder,
   sql,
-  SQL
+  SQL,
+  StringChunk,
+  Subquery,
+  Table,
+  View,
+  ViewBaseConfig
 } from 'drizzle-orm'
 
 import type {
   Cube,
   JoinCubePlanEntry,
   PhysicalQueryPlan,
+  QueryableRelation,
   QueryContext
 } from '../../types/index.js'
 import { applyJoinByType } from './shared.js'
+import { resolveSqlExpression, resolveCubeBase, resolveJunctionSecurity } from '../../cube-utils.js'
 import type {
   CTEBuildState,
   JoinBuildState,
@@ -33,14 +49,16 @@ export function applyJoins(
   // Collect all WHERE conditions (declared early for junction table security)
   const allWhereConditions: SQL[] = []
 
-  let drizzleQuery = startQuery(context, primaryCubeBase, modifiedSelections, cteState)
+  const primaryRelation = filteredRelation(queryPlan, primaryCubeBase)
+
+  let drizzleQuery = startQuery(context, primaryRelation ?? primaryCubeBase.from, modifiedSelections, cteState)
 
   // Add joins from primary cube base (intra-cube joins)
   drizzleQuery = applyBaseJoins(drizzleQuery, primaryCubeBase.joins)
 
-  // Track which cubes have their security handled in JOIN ON clause
+  // Track which cubes have their security applied by their relation or join
   // This prevents duplicate security conditions in WHERE clause
-  const cubesWithSecurityInJoin = new Set<string>()
+  const cubesWithSecurityInJoin = new Set<string>(primaryRelation ? [queryPlan.primaryCube.name] : [])
 
   // Identify cubes that have been absorbed as intermediates into CTEs.
   // These should be SKIPPED in the main join plan because their join logic is
@@ -74,7 +92,8 @@ export function applyJoins(
         cteState,
         context,
         deps,
-        cubesWithSecurityInJoin
+        cubesWithSecurityInJoin,
+        allWhereConditions
       )
     }
   }
@@ -87,10 +106,10 @@ export function applyJoins(
   }
 }
 
-/** Start the query from the primary cube, prepending CTEs when present. */
+/** Start the query from the primary cube's relation, prepending CTEs when present. */
 function startQuery(
   context: QueryContext,
-  primaryCubeBase: ReturnType<Cube['sql']>,
+  primaryRelation: ReturnType<Cube['sql']>['from'],
   modifiedSelections: SelectionMap,
   cteState: CTEBuildState
 ): any {
@@ -99,11 +118,11 @@ function startQuery(
     return context.db
       .with(...cteState.ctes)
       .select(modifiedSelections)
-      .from(primaryCubeBase.from)
+      .from(primaryRelation)
   }
   return context.db
     .select(modifiedSelections)
-    .from(primaryCubeBase.from)
+    .from(primaryRelation)
 }
 
 /** Apply a cube's intra-cube table-level joins (BaseQueryDefinition.joins). */
@@ -139,7 +158,9 @@ function collectAbsorbedIntermediateCubes(queryPlan: PhysicalQueryPlan): Set<str
 /**
  * Apply a belongsToMany junction table join (if present), rebuilding its
  * condition to reference a source CTE alias when the source cube is a CTE.
- * Junction security stays in the WHERE clause (many-to-many semantics).
+ * Junction security stays in the WHERE clause (many-to-many semantics), except
+ * in a plan with a RIGHT or FULL join, where the junction is joined as a
+ * filtered relation (see filteredRelation).
  */
 function applyJunctionTable(
   drizzleQuery: any,
@@ -162,31 +183,29 @@ function applyJunctionTable(
   )
 
   // Collect junction WHERE conditions including security context
-  const junctionWhereConditions: SQL[] = []
-  if (junctionTable.securitySql) {
-    const junctionSecurity = junctionTable.securitySql(context.securityContext)
-    if (Array.isArray(junctionSecurity)) {
-      junctionWhereConditions.push(...junctionSecurity)
-    } else {
-      junctionWhereConditions.push(junctionSecurity)
-    }
-  }
+  const junctionWhereConditions: SQL[] = junctionTable.securitySql
+    ? resolveJunctionSecurity(junctionTable.securitySql, context)
+    : []
 
   // Add junction table join (source -> junction).
-  // NOTE: For junction tables (belongsToMany), security filters STAY in WHERE
-  // because many-to-many semantics require filtering out non-matching records
-  // rather than returning them as NULLs. The security-in-JOIN-ON logic only
-  // applies to regular LEFT JOINs (hasMany/hasOne).
+  // NOTE: For junction tables (belongsToMany), security filters go in WHERE,
+  // not in the join's ON, because many-to-many semantics require filtering out
+  // non-matching records rather than returning them as NULLs. In a plan with a
+  // RIGHT or FULL join, the junction is joined already filtered instead.
+  const junctionRelation = filteredRelation(
+    queryPlan,
+    { from: junctionTable.table, where: and(...junctionWhereConditions) }
+  )
   try {
     const query = applyJoinByType(
       drizzleQuery,
       junctionTable.joinType ?? 'left',
-      junctionTable.table,
+      junctionRelation ?? junctionTable.table,
       junctionJoinCondition
     )
 
-    // Junction table security goes in WHERE clause to properly filter records
-    if (junctionWhereConditions.length > 0) {
+    // Junction table security goes in WHERE unless the junction is joined already filtered
+    if (!junctionRelation) {
       allWhereConditions.push(...junctionWhereConditions)
     }
     return query
@@ -273,7 +292,7 @@ function joinsThroughDownstreamCTE(
 }
 
 interface CubeJoinTarget {
-  joinTarget: any
+  joinTarget: QueryableRelation
   joinCondition: any
   securityCondition: SQL | undefined
   joinCubeBase: ReturnType<Cube['sql']> | undefined
@@ -283,7 +302,7 @@ interface CubeJoinTarget {
  * Resolve the inter-cube join target/condition. When the cube is a CTE, the
  * CTE already has security applied; otherwise the cube's base table is joined,
  * possibly through a downstream CTE join key, carrying its security WHERE for
- * inclusion in the JOIN ON clause of LEFT/RIGHT/FULL joins.
+ * applyInterCubeJoin to place.
  */
 function resolveCubeJoinTarget(
   joinCube: JoinCubePlanEntry,
@@ -312,7 +331,7 @@ function resolveCubeJoinTarget(
 
   // Regular join to base table. Get the cube's SQL definition ONCE to avoid
   // SQL object mutation issues.
-  const joinCubeBase = joinCube.cube.sql(context)
+  const joinCubeBase = resolveCubeBase(joinCube.cube, context)
 
   let joinCondition: any
   if (downstreamInfo && (!joinCube.junctionTable || joinsThroughDownstreamCTE(joinCube, cteState))) {
@@ -334,7 +353,7 @@ function resolveCubeJoinTarget(
   }
 
   return {
-    joinTarget: joinCubeBase.from,
+    joinTarget: cubeJoinRelation(joinCubeBase),
     joinCondition,
     // Security condition for this cube (for LEFT JOINs, added to ON clause)
     securityCondition: joinCubeBase.where,
@@ -343,10 +362,223 @@ function resolveCubeJoinTarget(
 }
 
 /**
- * Apply a single inter-cube join. Security goes into the JOIN ON clause for
- * LEFT/RIGHT/FULL joins (preserving NULL rows + avoiding duplicate WHERE
- * conditions); for INNER joins it can stay in WHERE. Intra-cube joins of the
- * joined cube are applied afterwards so its base table is in scope.
+ * The relation an inter-cube join targets: the cube's FROM table, or, when the
+ * cube's sql has intra-cube joins (BaseQueryDefinition.joins), the FROM table
+ * and those joins as one parenthesized join group. The outer join then keeps or
+ * drops each row of the cube as a whole: an intra-cube INNER JOIN cannot drop
+ * the outer query's unmatched rows, and the cube's WHERE can reference every
+ * table of the group.
+ */
+export function cubeJoinRelation(cubeBase: ReturnType<Cube['sql']>): QueryableRelation {
+  if (!cubeBase.joins?.length) {
+    return cubeBase.from
+  }
+  const joins = cubeBase.joins.map(join =>
+    sql`${joinKeyword(join.type ?? 'left')} ${fromItem(join.table)} on ${join.on}`
+  )
+  return sql`(${fromItem(cubeBase.from)} ${sql.join(joins, sql` `)})`
+}
+
+/**
+ * Fixed SQL for an intra-cube join type, so nothing from the cube definition is
+ * rendered as raw text. Built fresh on each call: Drizzle SQL objects are
+ * mutable and must not be shared between queries.
+ */
+function joinKeyword(type: 'inner' | 'left' | 'right' | 'full'): SQL {
+  switch (type) {
+    case 'inner':
+      return sql`inner join`
+    case 'right':
+      return sql`right join`
+    case 'full':
+      return sql`full join`
+    case 'left':
+      return sql`left join`
+  }
+}
+
+/**
+ * Render a relation as a FROM item. Drizzle interpolates an aliased table or
+ * view as its alias alone, so this renders its original name and alias the way
+ * Drizzle's own JOIN clauses do.
+ */
+function fromItem(relation: QueryableRelation): SQL {
+  const aliased = aliasedRelationNames(relation)
+  if (!aliased) {
+    return sql`${relation}`
+  }
+  const originalName = sql.identifier(aliased.originalName)
+  const qualifiedName = aliased.schema ? sql`${sql.identifier(aliased.schema)}.${originalName}` : originalName
+  if (aliased.alias === aliased.originalName) {
+    return sql`${qualifiedName}`
+  }
+  return sql`${qualifiedName} ${sql.identifier(aliased.alias)}`
+}
+
+interface AliasedRelationNames {
+  originalName: string
+  schema: string | undefined
+  alias: string
+}
+
+/**
+ * Read Drizzle's runtime alias metadata, which its public typings omit. Table
+ * metadata lives on symbols Drizzle registers globally (`Symbol.for`); a view's
+ * lives on the exported ViewBaseConfig symbol. Every value is checked at
+ * runtime, so an unexpected shape reads as "not aliased" instead of a cast.
+ */
+function aliasedRelationNames(relation: QueryableRelation): AliasedRelationNames | undefined {
+  if (is(relation, Table)) {
+    if (Reflect.get(relation, Symbol.for('drizzle:IsAlias')) !== true) {
+      return undefined
+    }
+    return toAliasedNames(
+      Reflect.get(relation, Symbol.for('drizzle:OriginalName')),
+      Reflect.get(relation, Symbol.for('drizzle:Schema')),
+      Reflect.get(relation, Symbol.for('drizzle:Name'))
+    )
+  }
+  if (is(relation, View)) {
+    const config: unknown = Reflect.get(relation, ViewBaseConfig)
+    if (typeof config !== 'object' || config === null || Reflect.get(config, 'isAlias') !== true) {
+      return undefined
+    }
+    return toAliasedNames(
+      Reflect.get(config, 'originalName'),
+      Reflect.get(config, 'schema'),
+      Reflect.get(config, 'name')
+    )
+  }
+  return undefined
+}
+
+function toAliasedNames(originalName: unknown, schema: unknown, alias: unknown): AliasedRelationNames | undefined {
+  if (typeof originalName !== 'string' || typeof alias !== 'string') {
+    return undefined
+  }
+  return { originalName, schema: typeof schema === 'string' ? schema : undefined, alias }
+}
+
+/**
+ * True when the plan joins a cube with a RIGHT or FULL join. Such a join keeps
+ * the rows of its own cube and NULL-extends every relation joined before it,
+ * the primary cube included, so a security WHERE evaluated after it no longer
+ * sees only its relation's rows. The plan's relations are then joined already
+ * filtered (see filteredRelation).
+ */
+function hasRowPreservingJoin(queryPlan: PhysicalQueryPlan): boolean {
+  return queryPlan.joinCubes.some(joinCube => joinCube.joinType === 'right' || joinCube.joinType === 'full')
+}
+
+/**
+ * In a plan with a right or full cube join, a cube's or junction's FROM
+ * relation with its security WHERE already applied: all of the relation's
+ * columns (`select *`) as a derived table under the relation's own name, so
+ * column references resolve against it as they do against the relation. That
+ * includes columns the Drizzle table doesn't declare and column names that
+ * Drizzle's `casing` option converts. The caller applies the cube's
+ * intra-cube joins to it (see filtersOwnRows). Undefined in any other plan, and
+ * when a derived table can't stand in for the relation: it has no WHERE, its
+ * filter doesn't filter FROM alone, or its FROM is a view, raw SQL, an aliased
+ * table, or a table in a named schema, whose columns render with the schema
+ * prefix.
+ */
+export function filteredRelation(
+  queryPlan: PhysicalQueryPlan,
+  base: ReturnType<Cube['sql']> | undefined
+): SQL | undefined {
+  if (!hasRowPreservingJoin(queryPlan) || !base?.where || !filtersOwnRows(base.where, base)) {
+    return undefined
+  }
+  const { from, where } = base
+  const name = is(from, Subquery) ? from._.alias : is(from, Table) ? getTableName(from) : undefined
+  if (name === undefined || (is(from, Table) && getTableUniqueName(from) !== `public.${name}`)) {
+    return undefined
+  }
+  return sql`(select * from ${from} where ${where}) ${sql.identifier(name)}`
+}
+
+/**
+ * True when filtering FROM alone, before the cube's intra-cube joins, gives the
+ * rows the cube has when queried alone: it has no intra-cube joins, or none of
+ * them is a RIGHT or FULL join and its filter reads nothing but FROM (see
+ * filterReadsOnly).
+ */
+function filtersOwnRows(where: SQL, base: ReturnType<Cube['sql']>): boolean {
+  const joins = base.joins ?? []
+  return joins.length === 0 || (
+    joins.every(join => join.type !== 'right' && join.type !== 'full') &&
+    filterReadsOnly(where, [base.from])
+  )
+}
+
+const OPERATOR_TEXT = /^(?:[\s(),=<>!]|\b(?:and|or|not|is|null|in|like|ilike|between|true|false)\b)*$/i
+
+/**
+ * True only when every part of `filter` is shown to read nothing but
+ * `relations`: a column of one of them, a bound value, or operator text. Raw
+ * SQL text, an identifier, another relation or its column, and anything else
+ * it can't classify make it false, so false means "unknown", not "reads
+ * another relation".
+ */
+export function filterReadsOnly(filter: SQL, relations: readonly QueryableRelation[]): boolean {
+  return filter.queryChunks.every(chunk => chunkReadsOnly(chunk, relations))
+}
+
+function chunkReadsOnly(chunk: unknown, relations: readonly QueryableRelation[]): boolean {
+  if (Array.isArray(chunk)) {
+    return chunk.every(item => chunkReadsOnly(item, relations))
+  }
+  if (is(chunk, SQL)) {
+    return filterReadsOnly(chunk, relations)
+  }
+  if (is(chunk, Column)) {
+    return relations.includes(chunk.table)
+  }
+  if (is(chunk, Param)) {
+    return bindsValue(chunk)
+  }
+  if (is(chunk, StringChunk)) {
+    return chunk.value.every(text => OPERATOR_TEXT.test(text))
+  }
+  return is(chunk, Placeholder) || ['string', 'number', 'boolean', 'bigint'].includes(typeof chunk)
+}
+
+/** True when the parameter's encoder gives a driver value, not SQL of its own. */
+function bindsValue(param: Param): boolean {
+  if (param.value === null) {
+    return true
+  }
+  try {
+    return !isSQLWrapper(param.encoder.mapToDriverValue(param.value))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Apply a single inter-cube join. Intra-cube joins of the joined cube are part
+ * of the join target (see cubeJoinRelation).
+ *
+ * Security placement:
+ * - In a plan with a RIGHT or FULL join, inside the join target (see
+ *   filteredRelation), so the filter applies to the cube's rows before any
+ *   join NULL-extends them. The rules below apply to every other plan, and to
+ *   a cube whose filter can't be applied that way.
+ * - INNER: the joined cube's filter stays in WHERE (added by the predicates
+ *   processor).
+ * - LEFT: the filter goes in the JOIN ON clause. The joined cube is the
+ *   NULL-extended side, so its rows failing ON disappear while the primary's
+ *   unmatched rows are kept.
+ * - RIGHT/FULL: the joined cube is a PRESERVED side, so its rows failing ON
+ *   come back anyway — ON alone filters nothing (GHSA-xv8c-hc26-6cq8). The
+ *   filter stays in ON (so a hidden row never matches a visible one) and is
+ *   enforced again in WHERE; see {@link buildPreservedSideGuard}.
+ * - A joined cube whose own `sql` has an internal RIGHT/FULL join, under a
+ *   RIGHT or FULL cube join: the group keeps rows of the internal join's table
+ *   without a row of the cube's own table, which the guard would take for
+ *   NULL-extended rows, so the cube's filter is applied in WHERE instead,
+ *   exactly as when the cube is queried alone.
  */
 function applyInterCubeJoin(
   drizzleQuery: any,
@@ -355,40 +587,108 @@ function applyInterCubeJoin(
   cteState: CTEBuildState,
   context: QueryContext,
   deps: Pick<PhysicalBuildDependencies, 'cteBuilder'>,
-  cubesWithSecurityInJoin: Set<string>
+  cubesWithSecurityInJoin: Set<string>,
+  allWhereConditions: SQL[]
 ): any {
   const cteAlias = cteState.cteAliasMap.get(joinCube.cube.name)
   const { joinTarget, joinCondition, securityCondition, joinCubeBase } =
     resolveCubeJoinTarget(joinCube, cteAlias, cteState, queryPlan, context, deps)
 
   const cubeJoinType = joinCube.joinType || 'left'
-  // For LEFT/RIGHT/FULL JOINs, include security in ON clause.
-  // For INNER JOINs, security can go in WHERE (no difference in behavior).
-  const effectiveJoinCondition =
+  const cubeRelation = filteredRelation(queryPlan, joinCubeBase)
+  const securityInJoinCondition = !cubeRelation && cubeJoinType !== 'inner' && securityCondition !== undefined
+
+  // Built before the join is applied so a FULL join that cannot be secured
+  // throws instead of being swallowed by the catch below.
+  const securityWhere =
     cubeJoinType !== 'inner' && securityCondition
-      ? and(joinCondition, securityCondition)
-      : joinCondition
+      ? buildJoinedCubeSecurityWhere(joinCube, cubeJoinType, joinCubeBase, context)
+      : undefined
 
   try {
-    let query: any
-    if (cubeJoinType === 'inner') {
-      // Security can go in WHERE for INNER JOINs (no difference)
-      query = drizzleQuery.innerJoin(joinTarget, joinCondition)
-    } else {
-      query = applyJoinByType(drizzleQuery, cubeJoinType, joinTarget, effectiveJoinCondition)
-      if (securityCondition) {
-        cubesWithSecurityInJoin.add(joinCube.cube.name)
-      }
+    const query = applyJoinByType(
+      drizzleQuery,
+      cubeJoinType,
+      cubeRelation ? cubeJoinRelation({ from: cubeRelation, joins: joinCubeBase?.joins }) : joinTarget,
+      securityInJoinCondition ? and(joinCondition, securityCondition) : joinCondition
+    )
+    if (securityInJoinCondition || cubeRelation) {
+      cubesWithSecurityInJoin.add(joinCube.cube.name)
     }
-
-    // Apply the joined cube's intra-cube table-level joins
-    // (BaseQueryDefinition.joins). These must be added AFTER the inter-cube
-    // join above so the cube's base table is in scope for the join ON
-    // conditions. Skipped in the CTE branch (joinCubeBase undefined) because
-    // the CTE definition already contains these joins.
-    return applyBaseJoins(query, joinCubeBase?.joins)
+    if (securityWhere && !cubeRelation) {
+      allWhereConditions.push(securityWhere)
+    }
+    return query
   } catch {
     // If join fails (e.g., duplicate alias), continue
     return drizzleQuery
   }
+}
+
+/**
+ * The WHERE condition (if any) that must accompany a non-INNER join whose
+ * security filter sits in the ON clause, or undefined when ON is enough: a
+ * LEFT join keeps or drops the cube's join group as a whole (see
+ * cubeJoinRelation). Shared with the keys-deduplication CTE, which joins cubes
+ * the same way.
+ */
+export function buildJoinedCubeSecurityWhere(
+  joinCube: JoinCubePlanEntry,
+  cubeJoinType: 'left' | 'right' | 'full',
+  joinCubeBase: ReturnType<Cube['sql']> | undefined,
+  context: QueryContext
+): SQL | undefined {
+  if (cubeJoinType === 'left') {
+    return undefined
+  }
+
+  // A fresh copy of the filter: the one in ON must not be reused (Drizzle SQL
+  // objects are mutable).
+  const where = resolveCubeBase(joinCube.cube, context).where
+  if (!where) {
+    return undefined
+  }
+  const hasInternalOuterJoin = (joinCubeBase?.joins ?? []).some(
+    join => join.type === 'right' || join.type === 'full'
+  )
+  if (hasInternalOuterJoin) {
+    // Same semantics as querying the cube alone: its filter applies to every row.
+    return where
+  }
+  return buildPreservedSideGuard(joinCube.cube, cubeJoinType, where, context)
+}
+
+/**
+ * WHERE guard for a cube on the preserved side of a RIGHT/FULL join:
+ * `(filter OR cube is NULL-extended)`.
+ *
+ * Together with the filter in ON this is equivalent to joining the cube's
+ * pre-filtered rows: a hidden row never matches in ON, so it comes back alone
+ * with its primary key set and the guard drops it; rows where the cube was
+ * NULL-extended by the join carry none of its data and are kept.
+ *
+ * NULL-extension is detected through the primary key. Without one, a RIGHT
+ * join falls back to the plain filter (every row of the joined cube is a real
+ * row there), and a FULL join is refused rather than leaking rows.
+ */
+function buildPreservedSideGuard(
+  cube: Cube,
+  cubeJoinType: 'right' | 'full',
+  where: SQL,
+  context: QueryContext
+): SQL {
+  const primaryKeys = Object.values(cube.dimensions ?? {}).filter(d => d.primaryKey)
+  if (primaryKeys.length === 0) {
+    if (cubeJoinType === 'right') {
+      return where
+    }
+    throw new Error(
+      `Cube '${cube.name}' is joined with a FULL join but has no primaryKey dimension, ` +
+      `so its security filter cannot be enforced. Add a primaryKey dimension to '${cube.name}'.`
+    )
+  }
+  const nullExtended = and(
+    ...primaryKeys.map(dimension => isNull(resolveSqlExpression(dimension.sql, context)))
+  )
+  return or(where, nullExtended)!
 }

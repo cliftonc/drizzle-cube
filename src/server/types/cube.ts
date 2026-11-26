@@ -42,7 +42,10 @@ export type QueryableRelation = Table | View | Subquery | SQL
 export interface BaseQueryDefinition {
   /** Main table to query from */
   from: QueryableRelation
-  /** Optional joins to other tables */
+  /**
+   * Optional joins to other tables. Each join's `on` condition may reference
+   * only `from` and the tables of the joins before it.
+   */
   joins?: Array<{
     table: QueryableRelation
     on: SQL

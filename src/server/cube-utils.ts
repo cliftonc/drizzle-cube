@@ -4,8 +4,9 @@
  */
 
 import type { SQL, AnyColumn } from 'drizzle-orm'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, Column, eq, is, sql } from 'drizzle-orm'
 import type {
+  BaseQueryDefinition,
   Cube,
   CubeJoin,
   Dimension,
@@ -193,6 +194,43 @@ export function resolveFilterFieldExpr(
   return dimension.type === 'time'
     ? resolveSqlExpression(dimension.sql, ctx)
     : (typeof dimension.sql === 'function' ? dimension.sql(ctx) : dimension.sql)
+}
+
+/**
+ * Parenthesize a member's SQL before a filter operator is applied to it.
+ * Drizzle's operators and `and()` don't parenthesize their operands, so a
+ * compound member such as `${salary} > 80000 OR ${active}` would otherwise
+ * bind looser than the cube's security filter it is ANDed with
+ * (GHSA-57v3-9jh5-x27m). A plain column is returned as-is so Drizzle keeps its
+ * type metadata for parameter binding.
+ */
+export function parenthesizeExpression(expr: AnyColumn | SQL): AnyColumn | SQL {
+  return is(expr, Column) ? expr : sql`(${expr})`
+}
+
+/**
+ * A cube's base query for this request, with its security `where`
+ * parenthesized so it stays one predicate wherever it is ANDed into a WHERE or
+ * JOIN ON clause. A raw template such as
+ * sql`${eq(t.org, org)} or ${isNull(t.org)}` would otherwise let the OR bind
+ * loosest and escape the conditions around it (GHSA-57v3-9jh5-x27m). Every
+ * read of a cube's `sql` for query building goes through here.
+ */
+export function resolveCubeBase(cube: Cube, ctx: QueryContext): BaseQueryDefinition {
+  const base = cube.sql(ctx)
+  return base.where ? { ...base, where: sql`(${base.where})` } : base
+}
+
+/**
+ * A junction table's security conditions, each parenthesized for the same
+ * reason as a cube's `where` (see resolveCubeBase).
+ */
+export function resolveJunctionSecurity(
+  securitySql: (securityContext: QueryContext['securityContext']) => SQL | SQL[],
+  ctx: QueryContext
+): SQL[] {
+  const security = securitySql(ctx.securityContext)
+  return (Array.isArray(security) ? security : [security]).map(condition => sql`(${condition})`)
 }
 
 /**
