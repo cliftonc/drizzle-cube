@@ -1231,11 +1231,16 @@ describe('Filters on cubes used only for filtering', () => {
 
   it('should keep the row-level join for a filter on a dimension whose function fails when the planner calls it', async () => {
     const cubes = await staffAndMemberships()
+    const executor = new QueryExecutor(dbExecutor)
     const hasRole: Filter = { member: 'Memberships.role', operator: 'set', values: [] }
-    const memberships = await staffCount(cubes, [onRowLevelJoin(hasRole)])
+    const builtOnce: Filter = { ...hasRole, member: 'Memberships.roleBuiltOnce' }
+    const plan = (filter: Filter) => executor.buildLogicalPlan(
+      cubes, { measures: ['Staff.count'], filters: [filter] }, testSecurityContexts.org1
+    )
 
-    expect(memberships).toBeGreaterThan(await staffCount(cubes, [hasRole]))
-    expect(await staffCount(cubes, [{ member: 'Memberships.roleBuiltOnce', operator: 'set', values: [] }])).toBe(memberships)
+    expect(plan(hasRole).existenceJoins?.map(join => join.cube.name)).toEqual(['Memberships'])
+    expect(plan(builtOnce).existenceJoins ?? []).toHaveLength(0)
+    expect(await staffCount(cubes, [builtOnce])).toBe(await staffCount(cubes, [onRowLevelJoin(hasRole)]))
   })
 
   it('should require one related row to meet a filter on a computed dimension and a filter on a column of its cube', async () => {
