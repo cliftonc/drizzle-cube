@@ -35,6 +35,8 @@ describe('CalculatedMeasureResolver.dividesOnlyBySafeDivisors', () => {
     '{a} % {b}',
     'MOD({a}, {b})',
     'LN({a})',
+    'COALESCE({a}, 0) / 2',
+    'COALESCE(.5, 0)',
     '({activeCount} /* active over all */ / NULLIF({count}, 0)) * 100'
   ])('should refuse %s', calculatedSql => {
     expect(dividesSafely(calculatedSql)).toBe(false)

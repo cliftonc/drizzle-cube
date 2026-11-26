@@ -3,7 +3,7 @@ import { aliasedTable, and, eq, gte, sql } from 'drizzle-orm'
 import { defineCube } from '../src/server/cube-utils'
 import type { BaseQueryDefinition, Cube, CubeJoin, QueryContext, SemanticQuery } from '../src/server/types'
 import { QueryExecutor } from '../src/server/executor'
-import { createTestDatabaseExecutor, getTestSchema } from './helpers/test-database'
+import { createTestDatabaseExecutor, getTestDatabaseType, getTestSchema } from './helpers/test-database'
 import { TestExecutor } from './helpers/test-utilities'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
@@ -84,6 +84,8 @@ async function createCubes(): Promise<Map<string, Cube>> {
       organisations: { name: 'organisations', type: 'countDistinct', sql: employees.organisationId },
       adjustedOrganisations: { name: 'adjustedOrganisations', type: 'calculated', calculatedSql: '{organisations} + .5' },
       coalescedOrganisations: { name: 'coalescedOrganisations', type: 'calculated', calculatedSql: 'COALESCE({organisations}, 0)' },
+      coalescedHalfCount: { name: 'coalescedHalfCount', type: 'calculated', calculatedSql: 'COALESCE({count}, 0) / 2' },
+      constant: { name: 'constant', type: 'calculated', calculatedSql: 'COALESCE(.5, 0)' },
       doubled: { name: 'doubled', type: 'calculated', calculatedSql: '{distinctCount} * 2' },
       quadrupled: { name: 'quadrupled', type: 'calculated', calculatedSql: '{doubled} * 2' },
       withOrganisations: { name: 'withOrganisations', type: 'calculated', calculatedSql: '{count} + {organisations}' },
@@ -134,6 +136,7 @@ async function createCubes(): Promise<Map<string, Cube>> {
 }
 
 describe('Measures of a lone hasMany cube joined without a pre-aggregation CTE', () => {
+  let executor: QueryExecutor
   let testExecutor: TestExecutor
   let close: () => void
   let departments: Array<{ id: number; name: string; size: string }>
@@ -142,7 +145,8 @@ describe('Measures of a lone hasMany cube joined without a pre-aggregation CTE',
   beforeAll(async () => {
     const created = await createTestDatabaseExecutor()
     close = created.close
-    testExecutor = new TestExecutor(new QueryExecutor(created.executor), await createCubes(), testSecurityContexts.org1)
+    executor = new QueryExecutor(created.executor)
+    testExecutor = new TestExecutor(executor, await createCubes(), testSecurityContexts.org1)
     departments = (await testExecutor.executeQuery({ dimensions: ['Departments.id', 'Departments.name', 'Departments.size'] })).data
       .map(row => ({ id: Number(row['Departments.id']), name: String(row['Departments.name']), size: String(row['Departments.size']) }))
     employeeDepartments = (await testExecutor.executeQuery({ dimensions: ['Employees.id', 'Employees.departmentId'] })).data
@@ -247,6 +251,33 @@ describe('Measures of a lone hasMany cube joined without a pre-aggregation CTE',
     expect(result).toEqual(Object.fromEntries(
       Object.entries(expectedCounts).map(([id, count]) => [id, count || null])
     ))
+  })
+
+  it.skipIf(getTestDatabaseType() !== 'postgres')('should keep fractional division of a wrapped count in PostgreSQL', async () => {
+    const counts = expected(department => String(department.id), employees => employees)
+    expect(Object.values(counts).some(count => count % 2 === 1)).toBe(true)
+
+    await expect(rows({
+      dimensions: ['Departments.id'],
+      measures: ['Employees.coalescedHalfCount']
+    }, 'Departments.id')).resolves.toEqual(
+      Object.fromEntries(Object.entries(counts).map(([id, count]) => [id, count / 2]))
+    )
+  })
+
+  it('should return one value for a constant measure at a filtered parent', async () => {
+    const department = departments.find(({ id }) => employeeDepartments.filter(key => key === id).length > 1)!
+    const cubes = await createCubes()
+    const employees = cubes.get('Employees')!
+    cubes.set('Employees', { ...employees, joins: {} })
+    const query: SemanticQuery = {
+      measures: ['Employees.constant'],
+      filters: [{ member: 'Departments.id', operator: 'equals', values: [department.id] }]
+    }
+
+    expect(executor.analyzeQuery(cubes, query, testSecurityContexts.org1).primaryCube.selectedCube).toBe('Departments')
+    const { data } = await executor.execute(cubes, query, testSecurityContexts.org1)
+    expect(data.map(row => Number(row['Employees.constant']))).toEqual([0.5])
   })
 
   it('should group a filtered raw count by its child key before the parent join', async () => {
