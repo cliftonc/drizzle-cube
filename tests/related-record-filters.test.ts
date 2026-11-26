@@ -279,18 +279,21 @@ describe('Filters on cubes used only for filtering', () => {
     expect(await measure('Employees.count', [noTeamNames])).toBe(joined)
   })
 
-  it('should require a membership that meets the junction security for a filter on a belongsToMany cube with no values or only dropped values', async () => {
+  it('should retain junction restrictions when a filter has no effective predicate', async () => {
     const cubes = await staffSquadsAndDays()
     const execute = (query: SemanticQuery) => new QueryExecutor(dbExecutor).execute(cubes, query, testSecurityContexts.org1)
     const staffIds = async (filters: Filter[]) => (await execute({ dimensions: ['Staff.id'], filters, order: { 'Staff.id': 'asc' } })).data
     const everyone = await staffIds([])
 
-    for (const values of [[], [''], ['\x00']]) {
-      const noSquadNames: Filter = { member: 'Squads.name', operator: 'in', values }
-      const joined = await staffIds([{ or: [noSquadNames] }])
+    const filters: Filter[] = [
+      ...[[], [''], ['\x00']].map(values => ({ member: 'Squads.name', operator: 'in' as const, values })),
+      { member: 'Squads.name', operator: 'between', values: ['A', ''] }
+    ]
+    for (const filter of filters) {
+      const joined = await staffIds([{ or: [filter] }])
       expect(joined.length).toBeGreaterThan(0)
       expect(joined.length).toBeLessThan(everyone.length)
-      expect(await staffIds([noSquadNames])).toEqual(joined)
+      expect(await staffIds([filter])).toEqual(joined)
     }
   })
 

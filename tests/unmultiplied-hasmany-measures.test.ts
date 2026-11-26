@@ -71,6 +71,9 @@ async function createCubes(): Promise<Map<string, Cube>> {
     },
     measures: {
       count: { name: 'count', type: 'count', sql: employees.id },
+      countWithDefault: { name: 'countWithDefault', type: 'count', sql: sql`COALESCE(${employees.id}, 0)` },
+      distinctWithDefault: { name: 'distinctWithDefault', type: 'countDistinct', sql: sql`COALESCE(${employees.id}, 0)` },
+      countRows: { name: 'countRows', type: 'number', sql: sql`COUNT(*)` },
       totalSalary: { name: 'totalSalary', type: 'sum', sql: employees.salary },
       distinctCount: { name: 'distinctCount', type: 'number', sql: sql`COUNT(DISTINCT ${employees.id})` },
       organisations: { name: 'organisations', type: 'countDistinct', sql: employees.organisationId },
@@ -201,6 +204,28 @@ describe('Measures of a lone hasMany cube joined without a pre-aggregation CTE',
       expect(Number(row['Employees.organisations'])).toBe(0)
       expect(row['Employees.totalSalary']).toBeNull()
     }
+  })
+
+  it.each(['countWithDefault', 'distinctWithDefault'])('should exclude a missing child from %s', async field => {
+    const expectedCounts = expected(department => String(department.id), employees => employees)
+    expect(Object.values(expectedCounts)).toContain(0)
+
+    await expect(rows({
+      dimensions: ['Departments.id'],
+      measures: [`Employees.${field}`]
+    }, 'Departments.id')).resolves.toEqual(expectedCounts)
+  })
+
+  it('should keep a raw row count inside pre-aggregation', async () => {
+    const expectedCounts = expected(department => String(department.id), employees => employees)
+    const result = await rows({
+      dimensions: ['Departments.id'],
+      measures: ['Employees.countRows']
+    }, 'Departments.id')
+
+    expect(result).toEqual(Object.fromEntries(
+      Object.entries(expectedCounts).map(([id, count]) => [id, count || null])
+    ))
   })
 
   it('should count only the employees of departments that a primary-key filter keeps', async () => {

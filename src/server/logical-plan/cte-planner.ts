@@ -8,7 +8,8 @@
  * expansion. Extracted from LogicalPlanner.
  */
 
-import { Table, getTableName, is } from 'drizzle-orm'
+import { Column, SQL, StringChunk, Table, getTableName, is } from 'drizzle-orm'
+import { SQLiteColumn } from 'drizzle-orm/sqlite-core'
 import type {
   Cube,
   QueryContext,
@@ -432,8 +433,8 @@ export class CTEPlanner {
    *   cube's join, as the CTE applies them inside the CTE. Every relation of
    *   both cubes is a Drizzle table, and their names, aliases included, differ;
    *   a view, subquery or raw SQL relation keeps the CTE;
-   * - every measure is a `count`, `countDistinct` or `number` measure of the
-   *   hasMany cube. The CTE path re-aggregates `countDistinct` and `number` per
+   * - every measure counts a column of the hasMany cube or one of its internal
+   *   joins. The CTE path re-aggregates `countDistinct` and `number` per
    *   join key with SUM and MAX, which is wrong for a group that spans several
    *   keys, and returns null rather than 0 for a primary row with no match.
    *   A `calculated` measure counts when every measure it depends on, directly
@@ -468,6 +469,10 @@ export class CTEPlanner {
     if (key.as || primaryKeys.length !== 1) return false
     const primaryKeyColumn = primaryKeys[0][1].sql
     if (key.source !== primaryKeyColumn && key.target !== primaryKeyColumn) return false
+    // In SQLite a reversed join compares with the child's collation. Even a
+    // unique text key can then match twice. The CTE compares from the parent.
+    if (join.joinDef.relationship === 'belongsTo' && is(primaryKeyColumn, SQLiteColumn) &&
+        (key.source.dataType !== 'number' || key.target.dataType !== 'number')) return false
     const primaryKeyMember = `${primaryCube.name}.${primaryKeys[0][0]}`
 
     const cube = join.target.cube
@@ -484,7 +489,9 @@ export class CTEPlanner {
       const [cubeName, field] = member.split('.')
       const measure = cubeName === cube.name ? cube.measures?.[field] : undefined
       if (measure?.type === 'calculated') return !!measure.calculatedSql && CalculatedMeasureResolver.dividesOnlyBySafeDivisors(measure.calculatedSql)
-      return measure?.type === 'count' || measure?.type === 'countDistinct' || measure?.type === 'number'
+      if (!measure) return false
+      const column = getCountColumn(measure.type, measure.sql)
+      return column !== undefined && column.table !== primaryDefinition.from && tables.includes(column.table)
     })) return false
 
     if (query.timeDimensions?.length || query.ungrouped || query.funnel || query.flow || query.retention) return false
@@ -660,4 +667,15 @@ export class CTEPlanner {
       }
     }
   }
+}
+
+/** A column on the nullable side stays NULL for an unmatched left-join row. */
+function getCountColumn(type: string, expression: unknown): Column | undefined {
+  if (type === 'count' || type === 'countDistinct') {
+    return is(expression, Column) ? expression : undefined
+  }
+  if (type !== 'number' || !is(expression, SQL) || expression.queryChunks.length !== 3) return undefined
+  const [start, column, end] = expression.queryChunks
+  if (is(start, StringChunk) && /^\s*count\s*\(\s*(?:distinct\s+)?$/i.test(start.value.join('')) &&
+      is(column, Column) && is(end, StringChunk) && /^\s*\)\s*$/.test(end.value.join(''))) return column
 }

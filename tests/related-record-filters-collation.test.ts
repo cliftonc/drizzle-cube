@@ -10,6 +10,62 @@ import { onRowLevelJoin } from './helpers/row-level-filter'
 
 type KeyCount = 'one key' | 'two keys'
 
+it('should aggregate a reversed child join with the parent key collation on SQLite', async () => {
+  const parents = sqliteTable('parents', { code: text('code').primaryKey() })
+  const children = sqliteTable('children', { id: integer('id').primaryKey(), parentCode: text('parent_code').notNull() })
+  const client = new Database(':memory:')
+  try {
+    client.exec(`
+      CREATE TABLE parents (code TEXT PRIMARY KEY);
+      CREATE TABLE children (id INTEGER PRIMARY KEY, parent_code TEXT COLLATE NOCASE NOT NULL);
+      INSERT INTO parents VALUES ('A'), ('a');
+      INSERT INTO children VALUES (1, 'A');
+    `)
+    const parent = defineCube('Parents', {
+      sql: () => ({ from: parents }),
+      joins: {
+        Children: { targetCube: () => child, relationship: 'hasMany', on: [{ source: parents.code, target: children.parentCode }] }
+      },
+      dimensions: { code: { name: 'code', type: 'string', sql: parents.code, primaryKey: true } },
+      measures: {}
+    })
+    const child = defineCube('Children', {
+      sql: () => ({ from: children }),
+      joins: {
+        Parents: {
+          targetCube: () => parent,
+          relationship: 'belongsTo',
+          on: [{ source: children.parentCode, target: parents.code }],
+          preferredFor: ['Parents']
+        }
+      },
+      dimensions: {},
+      measures: { count: { name: 'count', type: 'count', sql: children.id } }
+    })
+    const layer = new SemanticLayerCompiler({ drizzle: drizzle(client), engineType: 'sqlite' })
+    layer.registerCube(parent)
+    layer.registerCube(child)
+
+    const query: SemanticQuery = {
+      dimensions: ['Parents.code'],
+      measures: ['Children.count'],
+      order: { 'Parents.code': 'asc' }
+    }
+    const security = { organisationId: 1 }
+    const plan = layer.analyzeQuery(query, security)
+    expect(plan.primaryCube.selectedCube).toBe('Parents')
+    expect(plan.joinPaths[0].path?.[0].reversed).toBe(true)
+    const { data } = await layer.execute(query, security)
+
+    expect(data).toEqual([
+      { 'Parents.code': 'A', 'Children.count': 1 },
+      { 'Parents.code': 'a', 'Children.count': 0 }
+    ])
+  } finally {
+    client.close()
+  }
+})
+
 describe('Filters on cubes used only for filtering, joined on keys with different collations (SQLite)', () => {
   const parents = sqliteTable('collation_parents', {
     organisationId: integer('organisation_id').notNull(),

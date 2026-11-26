@@ -13,7 +13,7 @@ import type {
 import { getMemberReferences } from '../template-substitution.js'
 import { getWindowBaseMeasure } from '../measure-classification.js'
 import { isDiscardedFilterValue, NO_VALUE_FILTER_OPERATORS } from '../filter-values.js'
-import { flattenFilters } from '../filter-cache.js'
+import { flattenFilters, getFilterKey } from '../filter-cache.js'
 import { resolveCubeReference } from '../cube-utils.js'
 import { analyzeCubeUsage } from './planner-utils.js'
 import type { JoinRef, PlannedJoin } from './types.js'
@@ -108,7 +108,7 @@ export function splitExistenceFilters(
 function toCubeFilter(filter: Filter, cubes: Map<string, Cube>, ctx: QueryContext): CubeFilter | null {
   const conditions = flattenFilters([filter])
   const cubeNames = new Set(conditions.map(condition => condition.member.split('.')[0]))
-  if (cubeNames.size !== 1 || conditions.some(condition => staysRowLevel(condition) || filtersComputedDimension(condition, cubes, ctx))) {
+  if (cubeNames.size !== 1 || conditions.some(condition => staysRowLevel(condition) || dimensionNeedsRowLevel(condition, cubes, ctx))) {
     return null
   }
   const [cubeName] = cubeNames
@@ -178,7 +178,8 @@ function staysRowLevel(filter: FilterCondition): boolean {
 }
 
 /**
- * Whether a condition filters a dimension that is not a plain column: its
+ * Keep a dimension filter row-level when preloading produced no predicate or
+ * the dimension is not a plain column: its
  * `sql` is an expression, or a function of the query context that returns
  * one. A column of the cube's table, or of a table the cube joins inside
  * itself, is NULL on a missing related row, so no filter that moves matches
@@ -193,13 +194,16 @@ function staysRowLevel(filter: FilterCondition): boolean {
  * @param condition - Filter condition
  * @param cubes - Every registered cube
  * @param ctx - Query context, for dimensions that are functions of it
- * @returns True for a dimension whose `sql` is not a column or whose function throws; false for a column, a measure and an unknown member
+ * @returns True for a dimension without a cached column predicate.
  */
-function filtersComputedDimension(condition: FilterCondition, cubes: Map<string, Cube>, ctx: QueryContext): boolean {
+function dimensionNeedsRowLevel(condition: FilterCondition, cubes: Map<string, Cube>, ctx: QueryContext): boolean {
   const [cubeName, field] = condition.member.split('.')
   const dimension = cubes.get(cubeName)?.dimensions?.[field]
   if (!dimension) {
     return false
+  }
+  if (!ctx.filterCache?.has(getFilterKey(condition))) {
+    return true
   }
   try {
     return !is(typeof dimension.sql === 'function' ? dimension.sql(ctx) : dimension.sql, Column)
