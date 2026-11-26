@@ -26,10 +26,10 @@ import type {
   PhysicalQueryPlan
 } from '../types/index.js'
 
-import { resolveSqlExpression, resolveCubeReference, resolveCubeBase } from '../cube-utils.js'
+import { resolveSqlExpression, resolveCubeReference } from '../cube-utils.js'
 import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import { getFilterKey, getTimeDimensionFilterKey, flattenFilters } from '../filter-cache.js'
-import { buildSemiJoinCondition, type SemiJoinKeyPair } from './semi-join.js'
+import { buildCubeSemiJoin, toKeyPairs, type SemiJoinKeyPair } from './semi-join.js'
 import { JoinPathResolver, type InternalJoinPathStep } from '../resolvers/join-path-resolver.js'
 import { t } from '../../i18n/runtime.js'
 import { DateTimeBuilder } from '../builders/date-time-builder.js'
@@ -542,14 +542,7 @@ export class DrizzleSqlBuilder {
     let condition: SQL | null = null
     for (let i = hops.length - 1; i >= 0; i--) {
       const { cube, keyPairs } = hops[i]
-      const cubeBase = resolveCubeBase(cube, context)
-      const inner = condition ? [condition] : leafConditions
-      condition = buildSemiJoinCondition(
-        context,
-        cubeBase,
-        keyPairs,
-        cubeBase.where ? [cubeBase.where, ...inner] : inner
-      )
+      condition = buildCubeSemiJoin(context, cube, keyPairs, condition ? [condition] : leafConditions)
     }
     return condition
   }
@@ -587,7 +580,7 @@ export class DrizzleSqlBuilder {
       const keyPairs: SemiJoinKeyPair[] = []
       for (const key of cteInfo.joinKeys) {
         if (key.sourceColumnObj && key.targetColumnObj) {
-          keyPairs.push({ outer: key.sourceColumnObj, inner: key.targetColumnObj })
+          keyPairs.push({ outer: key.sourceColumnObj, inner: key.targetColumnObj, reversed: false })
         }
       }
       if (keyPairs.length > 0 && keyPairs.length === cteInfo.joinKeys.length) {
@@ -614,9 +607,7 @@ export class DrizzleSqlBuilder {
       // A reversed step's join is declared on the far cube, so its source/target swap
       hops.push({
         cube,
-        keyPairs: step.joinDef.on.map(k => step.reversed
-          ? { outer: k.target, inner: k.source }
-          : { outer: k.source, inner: k.target })
+        keyPairs: toKeyPairs(step.joinDef.on, step.reversed)
       })
     }
     return hops

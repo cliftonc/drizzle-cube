@@ -44,6 +44,7 @@ src/server/
 │   └── query-normalizer.ts     granularity-less timeDimensions → inDateRange filters (Cube.js filter-only semantics); drops a dimension that a granular timeDimension repeats
 ├── cube-utils.ts            defineCube, isolateSqlExpression, resolveSqlExpression, buildRegularJoinCondition, expandBelongsToManyJoin
 ├── measure-classification.ts SQL-free measure window-function classification (used by planning)
+├── filter-values.ts         SQL-free filter value rules: no-value operators, dropped values (used by FilterBuilder and planning)
 ├── database-utils.ts        createDatabaseAdapter, getSupportedEngines
 ├── cache-utils.ts           generateCacheKey, normalizeQuery, fnv1aHash
 ├── filter-cache.ts          FilterCacheManager, flattenFilters
