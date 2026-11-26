@@ -32,3 +32,30 @@ describe('TextPortletModal Markdown disclosures', () => {
     })
   })
 })
+
+describe('TextPortletModal backdrop', () => {
+  it('closes when the backdrop is clicked', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    renderWithProviders(<TextPortletModal isOpen onClose={onClose} onSave={vi.fn()} />)
+
+    await user.click(screen.getByPlaceholderText(/^# Welcome/).closest('.dc\\:fixed')!)
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('stays open when a drag starts in the Markdown field and ends on the backdrop', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    renderWithProviders(<TextPortletModal isOpen onClose={onClose} onSave={vi.fn()} />)
+    const markdown = screen.getByPlaceholderText(/^# Welcome/)
+
+    await user.pointer([
+      { keys: '[MouseLeft>]', target: markdown },
+      { target: markdown.closest('.dc\\:fixed')! },
+      { keys: '[/MouseLeft]' },
+    ])
+
+    expect(onClose).not.toHaveBeenCalled()
+  })
+})

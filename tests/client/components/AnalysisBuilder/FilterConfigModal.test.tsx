@@ -390,6 +390,21 @@ describe('FilterConfigModal', () => {
         expect(onCancel).toHaveBeenCalled()
       }
     })
+
+    it('should not close modal when a drag starts inside and ends outside', async () => {
+      const user = userEvent.setup()
+      const onCancel = vi.fn()
+
+      render(<FilterConfigModal {...defaultProps} onCancel={onCancel} />)
+
+      await user.pointer([
+        { keys: '[MouseLeft>]', target: screen.getByText('Operator') },
+        { target: document.querySelector('.dc\\:fixed.dc\\:inset-0')! },
+        { keys: '[/MouseLeft]' },
+      ])
+
+      expect(onCancel).not.toHaveBeenCalled()
+    })
   })
 
   describe('editing existing filter', () => {

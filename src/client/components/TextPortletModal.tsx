@@ -14,6 +14,7 @@ import type { PortletConfig, ChartDisplayConfig } from '../types.js'
 import type { AnalysisConfig } from '../types/analysisConfig.js'
 import type { ColorPalette } from '../utils/colorPalettes.js'
 import { useTranslation } from '../hooks/useTranslation.js'
+import { useBackdropClose } from '../hooks/useBackdropClose.js'
 
 const CloseIcon = getIcon('close')
 
@@ -153,16 +154,15 @@ export default function TextPortletModal({
     setDisplayConfig(prev => ({ ...prev, content }))
   }, [])
 
+  const backdropProps = useBackdropClose(onClose)
+
   if (!isOpen) return null
 
   return (
     <div
-      className="dc:fixed dc:inset-0 dc:z-50 dc:flex dc:items-center dc:justify-center"
-      onClick={onClose}
+      className="dc:fixed dc:inset-0 dc:z-50 dc:flex dc:items-center dc:justify-center dc:bg-black/50"
+      {...backdropProps}
     >
-      {/* Backdrop */}
-      <div className="dc:absolute dc:inset-0 dc:bg-black/50" />
-
       {/* Modal */}
       <div
         className="dc:relative dc:w-full dc:max-w-5xl dc:mx-4 dc:max-h-[85vh] dc:flex dc:flex-col bg-dc-surface dc:rounded-lg dc:border border-dc-border"

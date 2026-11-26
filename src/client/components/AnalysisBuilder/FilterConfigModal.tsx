@@ -31,6 +31,7 @@ import type {
 import { useFilterValues } from '../../hooks/useFilterValues.js'
 import { useDebounce } from '../../hooks/useDebounce.js'
 import { useTranslation } from '../../hooks/useTranslation.js'
+import { useBackdropClose } from '../../hooks/useBackdropClose.js'
 
 const CloseIcon = getIcon('close')
 const ChevronDownIcon = getIcon('chevronDown')
@@ -400,6 +401,8 @@ export default function FilterConfigModal({
     return {}
   }
 
+  const backdropProps = useBackdropClose(onCancel)
+
   const modalClassName = modalPosition
     ? 'bg-dc-surface dc:rounded-lg dc:border border-dc-border'
     : 'bg-dc-surface dc:rounded-lg dc:border border-dc-border dc:max-w-md dc:w-full'
@@ -409,7 +412,7 @@ export default function FilterConfigModal({
       {/* Modal overlay */}
       <div
         className={`dc:fixed dc:inset-0 bg-dc-overlay dc:z-50 ${modalPosition ? '' : 'dc:flex dc:items-center dc:justify-center dc:p-4'}`}
-        onClick={onCancel}
+        {...backdropProps}
       >
         <div
           ref={containerRef}
