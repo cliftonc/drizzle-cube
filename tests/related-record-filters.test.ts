@@ -92,10 +92,43 @@ describe('Filters on cubes used only for filtering', () => {
         Days: { targetCube: () => days, relationship: 'hasMany', on: [{ source: employees.id, target: productivity.employeeId }] }
       },
       dimensions: { id: { name: 'id', type: 'number', sql: employees.id, primaryKey: true } },
-      measures: { totalSalary: { name: 'totalSalary', type: 'sum', sql: employees.salary } }
+      measures: {
+        count: { name: 'count', type: 'count', sql: employees.id },
+        totalSalary: { name: 'totalSalary', type: 'sum', sql: employees.salary }
+      }
     })
     return new Map([['Staff', staff], ['Squads', squads], ['Days', days]])
   }
+
+  it('should exclude staff groups when only repeated filter rows reach the count threshold', async () => {
+    const dayOff: Filter = { member: 'Productivity.isDayOff', operator: 'equals', values: [true] }
+    const { data: dayCounts } = await testExecutor.executeQuery({
+      dimensions: ['Productivity.employeeId'],
+      measures: ['Productivity.recordCount'],
+      filters: [dayOff]
+    })
+    const staffIds = dayCounts
+      .filter(row => Number(row['Productivity.recordCount']) >= 2)
+      .map(row => Number(row['Productivity.employeeId']))
+    expect(staffIds.length).toBeGreaterThan(0)
+
+    const staff = new TestExecutor(new QueryExecutor(dbExecutor), await staffSquadsAndDays(), testSecurityContexts.org1)
+    const queryAtThreshold = (minimum: number) => staff.executeQuery({
+      dimensions: ['Staff.id'],
+      measures: ['Staff.count'],
+      filters: [
+        { member: 'Staff.id', operator: 'in', values: staffIds },
+        { member: 'Days.isDayOff', operator: 'equals', values: [true] },
+        { member: 'Staff.count', operator: 'gte', values: [minimum] }
+      ]
+    })
+
+    expect((await queryAtThreshold(2)).data).toEqual([])
+    const passing = (await queryAtThreshold(1)).data
+    expect(passing).toHaveLength(staffIds.length)
+    expect(new Set(passing.map(row => Number(row['Staff.id'])))).toEqual(new Set(staffIds))
+    expect(passing.map(row => Number(row['Staff.count']))).toEqual(staffIds.map(() => 1))
+  })
 
   it('should count each employee once per team when a hasMany filter and a measure filter apply beside a team dimension', async () => {
     const cubes = await staffSquadsAndDays()
