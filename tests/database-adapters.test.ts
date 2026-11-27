@@ -640,6 +640,17 @@ describe('Database Adapters', () => {
         expect(result).toContain('CAST')
       })
 
+      it('should promote a numerator surrounded by grouping parentheses', () => {
+        expect(adapter.preprocessCalculatedTemplate('1 + (({Sales.total})) / 2'))
+          .toBe('1 + ((CAST({Sales.total} AS REAL))) / 2')
+      })
+
+      it.each(['ABS ({Sales.total}) / 2', '(1 + {Sales.total}) / 2'])(
+        'should leave a compound numerator in %s unchanged', template => {
+          expect(adapter.preprocessCalculatedTemplate(template)).toBe(template)
+        }
+      )
+
       it('should not modify templates without division', () => {
         const template = '{Sales.total} + {Sales.count}'
         const result = adapter.preprocessCalculatedTemplate(template)

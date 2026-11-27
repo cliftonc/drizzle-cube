@@ -437,11 +437,11 @@ export class CTEPlanner {
    *   joins. The CTE path re-aggregates `countDistinct` and `number` per
    *   join key with SUM and MAX, which is wrong for a group that spans several
    *   keys, and returns null rather than 0 for a primary row with no match.
-   *   A `calculated` measure counts when every measure it depends on, directly
-   *   or through other calculated measures, is one of these, and every
-   *   calculated template divides only by `NULLIF({member}, 0)` or a non-zero
-   *   number. The plain join gives a primary row with no match a count of 0,
-   *   which an unguarded division turns into an error on PostgreSQL;
+   *   A selected `calculated` measure must depend on at least one of these
+   *   counts. Its other dependencies may be safe calculated formulas. Every
+   *   template divides only by `NULLIF({member}, 0)` or a non-zero number.
+   *   The plain join gives a primary row with no match a count of 0, which
+   *   an unguarded division turns into an error on PostgreSQL;
    * - every dimension is a dimension of the primary cube, whose rows the left
    *   join never empties, every filter is on the primary key, and the query has
    *   no time dimensions;
@@ -491,14 +491,22 @@ export class CTEPlanner {
     if (tables.length !== relations.length || tableNames.size !== tables.length) return false
 
     const measures = query.measures ?? []
-    if (measures.length === 0 || !this.expandCalculatedMeasureDependencies(cube, measures).every(member => {
+    const countMembers = new Set<string>()
+    for (const member of this.expandCalculatedMeasureDependencies(cube, measures)) {
       const [cubeName, field] = member.split('.')
       const measure = cubeName === cube.name ? cube.measures?.[field] : undefined
-      if (measure?.type === 'calculated') return !!measure.calculatedSql && CalculatedMeasureResolver.dividesOnlyBySafeDivisors(measure.calculatedSql)
+      if (measure?.type === 'calculated') {
+        if (!measure.calculatedSql || !CalculatedMeasureResolver.dividesOnlyBySafeDivisors(measure.calculatedSql)) return false
+        continue
+      }
       if (!measure || (measure.type === 'number' && measure.filters?.length)) return false
       const column = getCountColumn(measure.type, measure.sql)
-      return column !== undefined && column.table !== primaryDefinition.from && tables.includes(column.table)
-    })) return false
+      if (!column || column.table === primaryDefinition.from || !tables.includes(column.table)) return false
+      countMembers.add(member)
+    }
+    if (countMembers.size === 0 || !measures.every(member => countMembers.has(member) ||
+      this.expandCalculatedMeasureDependencies(cube, [member]).some(dependency => countMembers.has(dependency))
+    )) return false
 
     if (query.timeDimensions?.length || query.ungrouped || query.funnel || query.flow || query.retention) return false
     if (!flattenFilters(query.filters ?? []).every(filter => filter.member === primaryKeyMember)) return false

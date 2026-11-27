@@ -18,7 +18,9 @@ describe('CalculatedMeasureResolver.dividesOnlyBySafeDivisors', () => {
     '({a} + {b} + {c}) / 3',
     '{a} / 0.5',
     '{a} / .5',
-    'COALESCE({a}, 0)'
+    'COALESCE({a}, 0)',
+    'COALESCE({a}, 0) + 0',
+    '.5'
   ])('should accept %s', calculatedSql => {
     expect(dividesSafely(calculatedSql)).toBe(true)
   })
@@ -37,6 +39,7 @@ describe('CalculatedMeasureResolver.dividesOnlyBySafeDivisors', () => {
     'LN({a})',
     'COALESCE({a}, 0) / 2',
     'COALESCE(.5, 0)',
+    '1 / 0',
     '({activeCount} /* active over all */ / NULLIF({count}, 0)) * 100'
   ])('should refuse %s', calculatedSql => {
     expect(dividesSafely(calculatedSql)).toBe(false)
