@@ -243,14 +243,6 @@ export function isSupportedFilterOperator(operator: unknown): operator is Filter
 }
 
 /**
- * Operators that test the field itself and take no values (`values` may be
- * omitted or empty).
- */
-export const NO_VALUE_FILTER_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOperator>([
-  'set', 'notSet', 'isEmpty', 'isNotEmpty'
-])
-
-/**
  * Dispatch a single filter operator to its handler. Returns null for any
  * unknown operator (validation rejects those before SQL is built).
  */

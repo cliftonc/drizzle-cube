@@ -30,6 +30,7 @@ import { safeKey, resolveCubeBase } from './cube-utils.js'
 import { FilterCacheManager } from './filter-cache.js'
 import { DrizzleSqlBuilder } from './physical-plan/drizzle-sql-builder.js'
 import { LogicalPlanner } from './logical-plan/logical-planner.js'
+import { listExistenceJoins } from './logical-plan/existence-joins.js'
 import { CTEBuilder } from './builders/cte-builder.js'
 import type { DatabaseAdapter } from './adapters/base-adapter.js'
 import { buildAnnotations } from './execution/annotation-builder.js'
@@ -706,6 +707,10 @@ export class QueryExecutor {
 
     for (const cteInfo of queryPlan.preAggregationCTEs || []) {
       cubesToCheck.push(cteInfo.cube)
+    }
+
+    for (const existenceJoin of listExistenceJoins(queryPlan.existenceJoins ?? [])) {
+      cubesToCheck.push(existenceJoin.cube)
     }
 
     // Track unique cubes to avoid duplicate warnings

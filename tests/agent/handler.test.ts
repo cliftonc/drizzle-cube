@@ -361,6 +361,29 @@ describe('handleAgentChat', () => {
     ).toContain('API rate limit exceeded')
   })
 
+  it('should offer the host chart types of the agent config to the model', async () => {
+    mockMessagesCreate.mockResolvedValue(createTextResponseStream('Hi'))
+
+    await collectEvents(
+      handleAgentChat(createBaseOptions({
+        agentConfig: {
+          chartTypes: [
+            {
+              type: 'hostTable',
+              config: { dropZones: [{ key: 'xAxis', label: 'Columns', acceptTypes: ['dimension'] }] },
+            },
+          ],
+        },
+      }))
+    )
+
+    const [request] = mockMessagesCreate.mock.calls[0] as [
+      { tools: Array<{ name: string; input_schema: { properties: { chartType?: { enum: string[] } } } }> },
+    ]
+    const addPortlet = request.tools.find((tool) => tool.name === 'add_portlet')!
+    expect(addPortlet.input_schema.properties.chartType!.enum).toContain('hostTable')
+  })
+
   it('should use default model claude-sonnet-4-6 when not specified', async () => {
     mockMessagesCreate.mockResolvedValue(
       createTextResponseStream('Hi')

@@ -537,7 +537,7 @@ export class CTEBuilder {
     return buildSemiJoinCondition(
       context,
       cubeBase,
-      propFilter.joinConditions.map(({ source, target }) => ({ outer: target, inner: source })),
+      propFilter.joinConditions.map(({ source, target }) => ({ outer: target, inner: source, reversed: true })),
       filterConditions
     )
   }

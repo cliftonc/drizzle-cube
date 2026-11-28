@@ -7,12 +7,24 @@
  */
 
 import { t, isTranslationKey } from '../../i18n/runtime.js'
-import { chartConfigRegistry, isRecordGrainChart } from '../../client/charts/chartConfigRegistry.js'
+import { chartConfigRegistry } from '../../client/charts/chartConfigRegistry.js'
 import type { ChartTypeConfig } from '../../client/charts/chartConfigs.js'
 
 interface ValidationResult {
   isValid: boolean
   errors: string[]
+}
+
+/** The chart configs of the host chart types (`AgentConfig.chartTypes`), by chart type key. */
+export type HostChartConfigs = Readonly<Record<string, ChartTypeConfig>>
+
+/**
+ * Find the config of a chart type: a host chart type, else a built-in chart.
+ * A host chart type wins over a built-in chart of the same name, because
+ * `chartPluginRegistry.register` on the client replaces that built-in chart.
+ */
+function findChartConfig(chartType: string, hostConfigs?: HostChartConfigs): ChartTypeConfig | undefined {
+  return hostConfigs?.[chartType] ?? (chartConfigRegistry[chartType] as ChartTypeConfig | undefined)
 }
 
 /** True if a chartConfig value is non-empty (array with items, or a truthy scalar). */
@@ -85,24 +97,27 @@ function validateSeriesNotDuplicatingXAxis(
  * totals instead of records.
  */
 function validateRecordGrainQuery(
+  config: ChartTypeConfig,
   chartType: string,
   query: Record<string, unknown>,
   errors: string[]
 ): void {
-  if (!isRecordGrainChart(chartType)) return
+  if (config.recordGrain !== true) return
   if (query.ungrouped === true) return
   errors.push(t('server.validation.chart.recordGrainNeedsUngrouped', { chartType }))
 }
 
 /**
  * Validate chartConfig against the chart type's drop zone requirements.
+ * `hostConfigs` adds the host chart types to the built-in charts.
  */
 export function validateChartConfig(
   chartType: string,
   chartConfig: Record<string, unknown> | undefined,
-  query: Record<string, unknown>
+  query: Record<string, unknown>,
+  hostConfigs?: HostChartConfigs
 ): ValidationResult {
-  const config = chartConfigRegistry[chartType] as ChartTypeConfig | undefined
+  const config = findChartConfig(chartType, hostConfigs)
   if (!config) {
     return { isValid: true, errors: [] } // Unknown chart type — skip validation
   }
@@ -117,7 +132,7 @@ export function validateChartConfig(
   validateMandatoryZones(config, chartType, chartConfig, errors)
 
   // Listing charts need row-level data, not aggregates
-  validateRecordGrainQuery(chartType, query, errors)
+  validateRecordGrainQuery(config, chartType, query, errors)
 
   // Bar charts must have an xAxis dimension
   if (chartType === 'bar') {
@@ -247,9 +262,10 @@ function inferArrayField(
 export function inferChartConfig(
   chartType: string,
   chartConfig: Record<string, unknown> | undefined,
-  query: Record<string, unknown>
+  query: Record<string, unknown>,
+  hostConfigs?: HostChartConfigs
 ): Record<string, unknown> {
-  const config = chartConfigRegistry[chartType] as ChartTypeConfig | undefined
+  const config = findChartConfig(chartType, hostConfigs)
   if (!config) {
     return chartConfig ?? {}
   }
@@ -289,12 +305,16 @@ function resolveConfigText(value: string | undefined): string {
 /**
  * Build per-chart-type requirements text for the agent tool description.
  * Includes description, useCase, and drop zone requirements for each chart type.
+ * `hostConfigs` adds the host chart types to the built-in charts.
  */
-export function buildChartRequirementsDescription(allowedChartTypes: string[]): string {
+export function buildChartRequirementsDescription(
+  allowedChartTypes: string[],
+  hostConfigs?: HostChartConfigs
+): string {
   const lines: string[] = ['\nChart config requirements by type:']
 
   for (const chartType of allowedChartTypes) {
-    const config = chartConfigRegistry[chartType] as ChartTypeConfig | undefined
+    const config = findChartConfig(chartType, hostConfigs)
     if (!config) continue
 
     // Build the description/useCase prefix. Both are i18n keys on the registry
@@ -304,7 +324,7 @@ export function buildChartRequirementsDescription(allowedChartTypes: string[]): 
     const context = [desc, useCase].filter(Boolean).join('. ')
     const contextSuffix = context ? ` — ${context}.` : ''
     // A listing chart is only correct over row-level data.
-    const grainNote = isRecordGrainChart(chartType)
+    const grainNote = config.recordGrain === true
       ? ' Query MUST set "ungrouped": true, which also means one cube plus its to-one joins — an ungrouped query cannot span a hasMany relationship.'
       : ''
 

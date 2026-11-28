@@ -22,6 +22,7 @@ import {
 
 import type {
   Cube,
+  MeasureType,
   QueryContext,
   PhysicalQueryPlan
 } from '../types/index.js'
@@ -39,6 +40,12 @@ import {
 } from '../measure-classification.js'
 import { CalculatedMeasureResolver } from '../resolvers/calculated-measure-resolver.js'
 import { substituteTemplate, getMemberReferences, type ResolvedMeasures } from '../template-substitution.js'
+import { getCubesFromPlan } from '../physical-plan/processors/shared.js'
+
+/** A left join can leave a group with no pre-aggregated count to roll up. */
+export function coalesceEmptyCount(type: MeasureType, aggregate: SQL): SQL {
+  return type === 'count' || type === 'countDistinct' ? sql`COALESCE(${aggregate}, 0)` : aggregate
+}
 
 export class MeasureBuilder {
   constructor(private databaseAdapter: DatabaseAdapter) {}
@@ -224,7 +231,6 @@ export class MeasureBuilder {
       )
     }
 
-    // Preprocess template for database-specific transformations (e.g., SQLite float division)
     const preprocessedSql = this.databaseAdapter.preprocessCalculatedTemplate(measure.calculatedSql)
 
     // Substitute {member} references with resolved SQL
@@ -235,7 +241,7 @@ export class MeasureBuilder {
       queryContext: context
     })
 
-    return substitutedSql
+    return sql`(${substitutedSql})`
   }
 
   /**
@@ -322,6 +328,27 @@ export class MeasureBuilder {
   }
 
   /**
+   * Build one measure's aggregate expression by name, including calculated measures.
+   *
+   * @param measureName - Qualified measure name (e.g., "Employees.activePercentage")
+   * @param cubeMap - Map of the cubes the measure and its dependencies belong to
+   * @param context - Query context with database and security context
+   */
+  buildMeasureByName(
+    measureName: string,
+    cubeMap: Map<string, Cube>,
+    context: QueryContext
+  ): SQL {
+    const [cubeName, fieldName] = measureName.split('.')
+    const cube = cubeMap.get(cubeName)!
+    const measure = cube.measures[fieldName]
+    if (!CalculatedMeasureResolver.isCalculatedMeasure(measure)) {
+      return this.buildMeasureExpression(measure, context, cube)
+    }
+    return this.buildResolvedMeasures([measureName], cubeMap, context).get(measureName)!()
+  }
+
+  /**
    * Build measure expression for HAVING clause, handling CTE references correctly
    */
   buildHavingMeasureExpression(
@@ -337,7 +364,10 @@ export class MeasureBuilder {
       return this.buildHavingCteMeasure(cubeName, fieldKey, measure, context, queryPlan, cteInfo)
     }
 
-    // Not from CTE - use regular measure expression
+    if (queryPlan && CalculatedMeasureResolver.isCalculatedMeasure(measure)) {
+      return this.buildMeasureByName(`${cubeName}.${fieldKey}`, getCubesFromPlan(queryPlan), context)
+    }
+
     return this.buildMeasureExpression(measure, context)
   }
 
@@ -351,21 +381,11 @@ export class MeasureBuilder {
     cteInfo: { cteAlias: string; measures: string[]; cube: Cube }
   ): SQL {
     if (measure.type === 'calculated' && measure.calculatedSql) {
-      // Get the cube for this measure
-      const cube = queryPlan.primaryCube.name === cubeName
-        ? queryPlan.primaryCube
-        : queryPlan.joinCubes?.find(jc => jc.cube.name === cubeName)?.cube
+      const cubeMap = getCubesFromPlan(queryPlan)
+      const cube = cubeMap.get(cubeName)
 
       if (!cube) {
         throw new Error(`Cube ${cubeName} not found in query plan`)
-      }
-
-      // Build a cubeMap for the calculated measure builder
-      const cubeMap = new Map<string, Cube>([[queryPlan.primaryCube.name, queryPlan.primaryCube]])
-      if (queryPlan.joinCubes) {
-        for (const jc of queryPlan.joinCubes) {
-          cubeMap.set(jc.cube.name, jc.cube)
-        }
       }
 
       // Use the shared helper to build calculated measure from CTE columns
@@ -374,7 +394,7 @@ export class MeasureBuilder {
 
     // For non-calculated measures, aggregate the CTE column directly
     const cteColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldKey)}`
-    return this.reAggregateCteColumn(measure.type, cteColumn)
+    return coalesceEmptyCount(measure.type, this.reAggregateCteColumn(measure.type, cteColumn))
   }
 
   /**

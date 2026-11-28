@@ -315,6 +315,32 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   }
 
   /**
+   * Rewrite a direct or parenthesized member used as the numerator of a division.
+   */
+  protected rewriteDivisionNumerators(
+    calculatedSql: string,
+    rewriteNumerator: (numerator: string) => string
+  ): string {
+    if (calculatedSql.length > 1000) return calculatedSql
+    return calculatedSql.replace(
+      /(\{[^}]+\})((?:\s*\))*)\s*\/(?!\*)\s*/g,
+      (match: string, numerator: string, closing: string, offset: number) => {
+        if (closing) {
+          let prefix = calculatedSql.slice(0, offset).trimEnd()
+          for (const character of closing) {
+            if (character !== ')') continue
+            if (!prefix.endsWith('(')) return match
+            prefix = prefix.slice(0, -1).trimEnd()
+          }
+          // A call such as ABS({count}) has the same parentheses as a grouped member.
+          if (prefix && !/[+\-*/%(,]$/.test(prefix)) return match
+        }
+        return `${rewriteNumerator(numerator)}${closing} / `
+      }
+    )
+  }
+
+  /**
    * Wrap an aggregate so NULL (empty set) becomes 0.
    * Default uses COALESCE; engines without COALESCE (MySQL/SQLite) override with IFNULL.
    */

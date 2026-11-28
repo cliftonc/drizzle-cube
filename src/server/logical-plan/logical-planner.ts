@@ -28,7 +28,7 @@ import { JoinPlanner } from './join-planner.js'
 import { CTEPlanner } from './cte-planner.js'
 import { FilterPropagation } from './filter-propagation.js'
 import { PlanAnalysisReporter } from './plan-analysis-reporter.js'
-import type { JoinRef } from './types.js'
+import type { JoinRef, PlannedJoin } from './types.js'
 
 export class LogicalPlanner {
   // Shared resolver cache, reused across all planning phases for a cubes map.
@@ -82,7 +82,7 @@ export class LogicalPlanner {
     cubeNames: string[],
     ctx: QueryContext,
     query: SemanticQuery
-  ): JoinRef[] {
+  ): PlannedJoin[] {
     return this.joinPlanner.buildJoinPlan(cubes, primaryCube, cubeNames, ctx, query)
   }
 

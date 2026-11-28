@@ -28,7 +28,7 @@ import { resolveFilterFieldExpr, resolveCubeBase } from '../cube-utils.js'
 import { hasFunnelMode } from '../query-modes.js'
 import { combineWhere, resolveBindingKeyExpr, bindingKeyErrorsForPrefix, resolveTimeDimensionExpr, asGroupFilter, type GroupFilterParts, type WithSubquery } from './analysis-utils.js'
 import { FilterBuilder } from './filter-builder.js'
-import { NO_VALUE_FILTER_OPERATORS } from './filter-operators.js'
+import { NO_VALUE_FILTER_OPERATORS } from '../filter-values.js'
 import { DateTimeBuilder } from './date-time-builder.js'
 import { JoinPathResolver } from '../resolvers/join-path-resolver.js'
 

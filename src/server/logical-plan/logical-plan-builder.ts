@@ -13,8 +13,8 @@
  * logical plan as the primary planning representation.
  */
 
-import type { Cube, QueryContext, PhysicalQueryPlan, QueryWarning, Measure } from '../types/index.js'
-import type { QueryAnalysis, PreAggregationAnalysis } from '../types/analysis.js'
+import type { Cube, QueryContext, PhysicalQueryPlan, QueryWarning, Measure, ExistenceJoin } from '../types/index.js'
+import type { QueryAnalysis, PreAggregationAnalysis, PrimaryCubeAnalysis, JoinPathAnalysis } from '../types/analysis.js'
 import type { SemanticQuery } from '../types/query.js'
 import type { LogicalPlanner } from './logical-planner.js'
 import { hasPostAggregationWindows } from '../measure-classification.js'
@@ -41,6 +41,7 @@ import type {
   LogicalSchema,
   ColumnRef
 } from './types.js'
+import { splitExistenceFilters, detachExistenceJoins, listExistenceJoins, followPreAggregations, type ExistenceSplit } from './existence-joins.js'
 
 export interface LogicalPlanWithAnalysis {
   plan: QueryNode
@@ -84,6 +85,24 @@ export class LogicalPlanBuilder {
     query: SemanticQuery,
     ctx: QueryContext
   ): LogicalPlanWithAnalysis {
+    const split = splitExistenceFilters(cubes, query, ctx)
+    return (split && this.planWithExistenceJoins(cubes, query, ctx, split)) ?? this.planRowLevel(cubes, query, ctx)
+  }
+
+  /**
+   * Plan a query that joins every cube it names.
+   *
+   * @param cubes - Every registered cube
+   * @param query - Query to plan
+   * @param ctx - Query context
+   * @returns The plan and its decision trace
+   * @throws Error when the query names no cube or the primary cube is missing
+   */
+  private planRowLevel(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    ctx: QueryContext
+  ): LogicalPlanWithAnalysis {
     const cubeNames = Array.from(this.queryPlanner.analyzeCubeUsage(query))
     if (cubeNames.length === 0) {
       throw new Error(t('server.errors.noCubesInQuery'))
@@ -106,6 +125,85 @@ export class LogicalPlanBuilder {
         ? this.queryPlanner.buildJoinPlanForPrimary(cubes, primaryCube, cubeNames, ctx, query)
         : []
 
+    return this.assemblePlan(cubes, query, ctx, { cubeNames, primaryCubeSelection, primaryCube, joinPaths, joinCubes })
+  }
+
+  /**
+   * Plan a query whose filter-only cubes become existence joins: the primary
+   * cube comes from the cubes the query uses and must be the cube the
+   * row-level plan starts from, and the join plan over every cube it names
+   * loses each subtree that reaches only filter-only cubes.
+   *
+   * @param cubes - Every registered cube
+   * @param requestedQuery - Query as the caller sent it
+   * @param ctx - Query context
+   * @param split - Filters on filter-only cubes taken out of the query
+   * @returns The plan and its decision trace, or null when the query names no used cube, the row-level plan starts from another cube, a filter-only cube is unreachable, needs a row-level join or would lose a restriction of a row-level pre-aggregation, or the plan reads a pre-aggregated, keys-deduplicated or multi-fact source
+   */
+  private planWithExistenceJoins(
+    cubes: Map<string, Cube>,
+    requestedQuery: SemanticQuery,
+    ctx: QueryContext,
+    split: ExistenceSplit
+  ): LogicalPlanWithAnalysis | null {
+    const usedCubes = Array.from(this.queryPlanner.analyzeCubeUsage(split.query))
+    if (usedCubes.length === 0) {
+      return null
+    }
+
+    const primaryCubeSelection = this.queryPlanner.analyzePrimaryCube(usedCubes, split.query, cubes)
+    const primaryCubeName = primaryCubeSelection.selectedCube
+    const primaryCube = cubes.get(primaryCubeName)
+    if (!primaryCube) {
+      return null
+    }
+
+    const cubeNames = Array.from(this.queryPlanner.analyzeCubeUsage(requestedQuery))
+    if (this.queryPlanner.analyzePrimaryCube(cubeNames, requestedQuery, cubes).selectedCube !== primaryCubeName) {
+      return null
+    }
+    const joinPaths = cubeNames
+      .filter(name => name !== primaryCubeName)
+      .map(targetCube => this.queryPlanner.analyzeJoinPathForTarget(cubes, primaryCubeName, targetCube, requestedQuery))
+    if (joinPaths.some(path => !path.pathFound)) {
+      return null
+    }
+
+    const plannedJoins = this.queryPlanner.buildJoinPlanForPrimary(cubes, primaryCube, cubeNames, ctx, requestedQuery)
+    const detached = detachExistenceJoins(primaryCubeName, plannedJoins, split.usedCubes, split.filtersByCube)
+    const rowLevelPreAggregations = this.queryPlanner.buildPreAggregationCTEs(cubes, primaryCube, plannedJoins, requestedQuery, ctx) ?? []
+    const existenceJoins = detached && followPreAggregations(cubes, plannedJoins, detached.existenceJoins, rowLevelPreAggregations)
+    if (!detached || !existenceJoins) {
+      return null
+    }
+
+    const query: SemanticQuery = { ...split.query, filters: [...(split.query.filters ?? []), ...detached.rowLevelFilters] }
+    const planned = this.assemblePlan(cubes, query, ctx, {
+      cubeNames,
+      primaryCubeSelection,
+      primaryCube,
+      joinPaths,
+      joinCubes: detached.joins,
+      existenceJoins
+    })
+    const { cteCount, measureStrategy } = planned.analysis.querySummary
+    return cteCount === 0 && (measureStrategy === 'simple' || measureStrategy === 'ctePreAggregateFallback') ? planned : null
+  }
+
+  private assemblePlan(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    ctx: QueryContext,
+    phases: {
+      cubeNames: string[]
+      primaryCubeSelection: PrimaryCubeAnalysis
+      primaryCube: Cube
+      joinPaths: JoinPathAnalysis[]
+      joinCubes: JoinRef[]
+      existenceJoins?: ExistenceJoin[]
+    }
+  ): LogicalPlanWithAnalysis {
+    const { cubeNames, primaryCubeSelection, primaryCube, joinPaths, joinCubes, existenceJoins } = phases
     const preAggregationCTEs: NonNullable<PhysicalQueryPlan['preAggregationCTEs']> =
       cubeNames.length > 1
         ? (this.queryPlanner.buildPreAggregationCTEs(cubes, primaryCube, joinCubes, query, ctx) ?? [])
@@ -123,7 +221,10 @@ export class LogicalPlanBuilder {
     )
     const source = sourceBuild.source
 
-    const plan = this.buildQueryNode(source, query, cubes, warnings)
+    const plan: QueryNode = {
+      ...this.buildQueryNode(source, query, cubes, warnings),
+      ...(existenceJoins && { existenceJoins })
+    }
     const preAggregations = this.buildPreAggregationAnalysis(preAggregationCTEs)
 
     const cubesInQuery = new Map<string, Cube>()
@@ -187,6 +288,7 @@ export class LogicalPlanBuilder {
             details: {
               joinCount: joinCubes.length,
               joinTargets: joinCubes.map(join => join.target.name),
+              existenceJoinTargets: existenceJoins && listExistenceJoins(existenceJoins).map(join => join.cube.name),
               pathSelection: joinPaths.map(path => ({
                 targetCube: path.targetCube,
                 strategy: path.selection?.strategy,

@@ -80,8 +80,8 @@ export async function* handleAgentChat(options: {
   }
 
   // Build tool definitions and executor
-  const tools = getToolDefinitions()
-  const executor = createToolExecutor({ semanticLayer, securityContext })
+  const tools = getToolDefinitions({ chartTypes: agentConfig.chartTypes })
+  const executor = createToolExecutor({ semanticLayer, securityContext, chartTypes: agentConfig.chartTypes })
 
   // Build system prompt from cube metadata + optional per-request context.
   // The metadata is the caller's cube set: the chat handler is always given the
