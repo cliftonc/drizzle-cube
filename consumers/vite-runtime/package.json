@@ -11,7 +11,7 @@
     "react-dom": "^19.0.0",
     "recharts": "^3.5.1",
     "@nivo/heatmap": "^0.99.0",
-    "@xyflow/react": "^12.0.0",
+    "@xyflow/react": "^13.0.0",
     "elkjs": "^0.12.0",
     "exceljs": "^4.4.0",
     "modern-screenshot": "^4.6.0",
