@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useEffect, useState, useRef } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import type { Node, Edge, NodeChange, EdgeChange } from '@xyflow/react'
+import type { Node, Edge, OnNodeDrag } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 import { useCubeContext } from '../../providers/CubeProvider.js'
@@ -72,7 +72,7 @@ export function SchemaVisualization({
     Controls,
     MiniMap,
     Background,
-    applyNodeChanges,
+    useNodesState,
   } = useXyflow()
   const { meta, metaLoading, metaError } = useCubeContext()
 
@@ -233,7 +233,8 @@ export function SchemaVisualization({
   }, [meta, layoutReady, needsAutoLayout, elkEdges, structuralEdges])
 
   // --- Controlled ReactFlow state ---
-  const [rfNodes, setRfNodes] = useState<Node[]>([])
+  // useNodesState applies xyflow's node changes; it has the same shape in v12 and v13
+  const [rfNodes, setRfNodes, handleNodesChange] = useNodesState<Node>([])
   const [rfEdges, setRfEdges] = useState<Edge[]>([])
   const appliedLayoutKeyRef = useRef('')
   const [fitViewToken, setFitViewToken] = useState(0) // increment to request fitView
@@ -254,7 +255,7 @@ export function SchemaVisualization({
     if (isFirstLayout) {
       setFitViewToken(prev => prev + 1)
     }
-  }, [displayNodes, displayEdges])
+  }, [displayNodes, displayEdges, setRfNodes])
 
   // Update presentation data (highlights, search) without resetting positions
   const prevPresentationRef = useRef('')
@@ -270,29 +271,17 @@ export function SchemaVisualization({
       if (!cube) return node
       return { ...node, data: buildNodeData(cube) }
     }))
-  }, [stableHighlightedCubes, stableHighlightedFields, effectiveSearchTerm, onFieldClick, selectedField, rfNodes.length, meta, buildNodeData])
+  }, [stableHighlightedCubes, stableHighlightedFields, effectiveSearchTerm, onFieldClick, selectedField, rfNodes.length, meta, buildNodeData, setRfNodes])
 
-  // Handle node changes (dragging)
-  const handleNodesChange = useCallback((changes: NodeChange[]) => {
-    setRfNodes(nds => applyNodeChanges(changes, nds))
-
-    // Save positions on drag end
-    const dragEnds = changes.filter(
-      (c) => c.type === 'position' && 'dragging' in c && c.dragging === false
-    )
-    if (dragEnds.length > 0) {
-      setRfNodes(currentNodes => {
-        const positions: Record<string, { x: number; y: number }> = {}
-        currentNodes.forEach(n => { if (n.position) positions[n.id] = n.position })
-        try { localStorage.setItem('drizzle-cube-erd-node-positions', JSON.stringify(positions)) } catch { /* ignore */ }
-        setSavedPositions(positions)
-        return currentNodes
-      })
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const handleEdgesChange = useCallback((_changes: EdgeChange[]) => {}, [])
+  // Persist every node position once a drag ends. The dragged nodes' final
+  // positions come from the callback, in case state has not caught up yet.
+  const handleNodeDragStop = useCallback<OnNodeDrag>((_event, _node, draggedNodes) => {
+    const dragged = new Map(draggedNodes.map(n => [n.id, n.position]))
+    const positions: Record<string, { x: number; y: number }> = {}
+    rfNodes.forEach(n => { positions[n.id] = dragged.get(n.id) ?? n.position })
+    try { localStorage.setItem('drizzle-cube-erd-node-positions', JSON.stringify(positions)) } catch { /* ignore */ }
+    setSavedPositions(positions)
+  }, [rfNodes])
 
   const handleContextMenu = useCallback((event: ReactMouseEvent | MouseEvent) => {
     event.preventDefault()
@@ -386,7 +375,7 @@ export function SchemaVisualization({
             nodes={rfNodes}
             edges={rfEdges}
             onNodesChange={handleNodesChange}
-            onEdgesChange={handleEdgesChange}
+            onNodeDragStop={handleNodeDragStop}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             connectionMode={'loose' as never}
