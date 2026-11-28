@@ -128,6 +128,8 @@ export type { Step0Result, PromptContext, DimensionValues, Step1Result } from '.
 export { handleAgentChat, getToolDefinitions, createToolExecutor, buildAgentSystemPrompt } from './agent/index.js'
 export type {
   AgentChatRequest,
+  AgentChartType,
+  AgentChartTypeOptions,
   AgentConfig,
   AgentObservabilityHooks,
   AgentSSEEvent,

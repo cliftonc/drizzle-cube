@@ -4,6 +4,7 @@
  */
 
 import type { ChartType, ChartAxisConfig, ChartDisplayConfig, DashboardConfig } from '../../client/types.js'
+import type { ChartTypeConfig } from '../../client/charts/chartConfigs.js'
 
 /**
  * A tool call from a prior conversation turn (for history replay)
@@ -129,6 +130,29 @@ export interface AgentConfig {
    *   `User: ${securityContext.userName}, Role: ${securityContext.role}`
    */
   buildSystemContext?: (securityContext: Record<string, unknown>) => string | undefined
+  /**
+   * Chart types that the host app registers on the client, offered to the agent
+   * after the built-in chart types. The agent tools list them, describe them,
+   * and infer and validate their chart config from their drop zones.
+   *
+   * @example
+   * chartTypes: [{ type: 'serverTable', config: serverTableChartConfig }]
+   */
+  chartTypes?: AgentChartType[]
+}
+
+/**
+ * A chart type that the host app registers on the client (a custom chart), so
+ * the agent can create portlets of it.
+ */
+export interface AgentChartType {
+  /** The chart type key, as the client registers it. */
+  type: string
+  /**
+   * The chart config. The agent reads `description`, `useCase`, `dropZones`,
+   * `recordGrain` and `skipQuery`, the same fields it reads for a built-in chart.
+   */
+  config: ChartTypeConfig
 }
 
 /**

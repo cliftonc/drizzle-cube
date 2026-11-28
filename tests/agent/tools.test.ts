@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getToolDefinitions, createToolExecutor } from '../../src/server/agent/tools'
+import type { AgentChartType } from '../../src/server/agent/types'
 
 // Mock the shared query handlers (used directly by the agent tools)
 vi.mock('../../src/server/query-handlers', async (importOriginal) => {
@@ -1007,6 +1008,199 @@ describe('createToolExecutor', () => {
 
       expect(chart.chartType).toBe('recordsTable')
       expect(chart.chartConfig.columns).toEqual(['Employees.name', 'Employees.salary'])
+    })
+  })
+})
+
+// ============================================================================
+// Host chart types
+// ============================================================================
+
+describe('host chart types', () => {
+  const hostTable = {
+    type: 'hostTable',
+    config: {
+      label: 'Host Table',
+      description: 'Scroll every row of a large result',
+      useCase: 'Use for a long list with one column per field',
+      dropZones: [
+        {
+          key: 'xAxis',
+          label: 'Columns',
+          acceptTypes: ['dimension', 'timeDimension', 'measure'],
+          mandatory: true,
+        },
+      ],
+    },
+  } satisfies AgentChartType
+
+  const hostRecords = {
+    type: 'hostRecords',
+    config: {
+      label: 'Host Records',
+      dropZones: [{ key: 'xAxis', label: 'Columns', acceptTypes: ['dimension'], mandatory: true }],
+      recordGrain: true,
+    },
+  } satisfies AgentChartType
+
+  let semanticLayer: ReturnType<typeof createMockSemanticLayer>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    semanticLayer = createMockSemanticLayer()
+    semanticLayer.validateQuery.mockReturnValue({ isValid: true, errors: [] })
+  })
+
+  const chartTypeEnums = (chartTypes?: AgentChartType[]) => {
+    const tools = getToolDefinitions(chartTypes ? { chartTypes } : undefined)
+    const tool = (name: string) => tools.find((t) => t.name === name)!
+    const saveItems = tool('save_as_dashboard').parameters.properties.portlets as {
+      items: { properties: { chartType: { enum: string[] } } }
+    }
+    return [
+      (tool('add_portlet').parameters.properties.chartType as { enum: string[] }).enum,
+      (tool('update_portlet').parameters.properties.chartType as { enum: string[] }).enum,
+      saveItems.items.properties.chartType.enum,
+    ]
+  }
+
+  it('should offer a host chart type after the built-in chart types in every chart type enum', () => {
+    const builtIn = chartTypeEnums()[0]
+
+    expect(chartTypeEnums([hostTable])).toEqual([
+      [...builtIn, 'hostTable'],
+      [...builtIn, 'hostTable'],
+      [...builtIn, 'hostTable'],
+    ])
+  })
+
+  it('should not offer a host chart type that the host does not pass', () => {
+    expect(chartTypeEnums()[0]).not.toContain('hostTable')
+  })
+
+  it('should offer a host chart type with the name of a built-in chart type only once', () => {
+    const builtIn = chartTypeEnums()[0]
+
+    expect(chartTypeEnums([{ ...hostTable, type: 'table' }])[0]).toEqual(builtIn)
+  })
+
+  it('should validate a host chart type with the name of a built-in chart type against the host config', async () => {
+    const executor = createToolExecutor({
+      semanticLayer,
+      securityContext: mockSecurityContext,
+      chartTypes: [{ ...hostTable, type: 'recordsTable' }],
+    })
+    const result = await executor.get('add_portlet')!({
+      title: 'Employees',
+      query: JSON.stringify({ measures: ['Employees.count'], dimensions: ['Employees.name'] }),
+      chartType: 'recordsTable',
+    })
+
+    expect(result.isError).toBeUndefined()
+    const data = result.sideEffect!.data as Record<string, any>
+    expect(data.chartConfig).toEqual({ xAxis: ['Employees.name', 'Employees.count'] })
+  })
+
+  it('should describe a host chart type and its required drop zones in add_portlet', () => {
+    const tools = getToolDefinitions({ chartTypes: [hostTable, hostRecords] })
+    const addPortlet = tools.find((t) => t.name === 'add_portlet')!
+
+    expect(addPortlet.description).toContain(
+      '  hostTable — Scroll every row of a large result. Use for a long list with one column per field. '
+        + 'Requires xAxis=[dimension/timeDimension/measure].'
+    )
+    expect(addPortlet.description).toContain(
+      '  hostRecords Query MUST set "ungrouped": true'
+    )
+  })
+
+  it('should infer the chart config of a host chart type from its drop zones in add_portlet', async () => {
+    const executor = createToolExecutor({
+      semanticLayer,
+      securityContext: mockSecurityContext,
+      chartTypes: [hostTable],
+    })
+    const result = await executor.get('add_portlet')!({
+      title: 'Employees',
+      query: JSON.stringify({ measures: ['Employees.count'], dimensions: ['Employees.name'] }),
+      chartType: 'hostTable',
+    })
+
+    expect(result.isError).toBeUndefined()
+    const data = result.sideEffect!.data as Record<string, any>
+    expect(data.chartType).toBe('hostTable')
+    expect(data.chartConfig).toEqual({ xAxis: ['Employees.name', 'Employees.count'] })
+  })
+
+  it('should return an error when a required drop zone of a host chart type stays empty in add_portlet', async () => {
+    const executor = createToolExecutor({
+      semanticLayer,
+      securityContext: mockSecurityContext,
+      chartTypes: [hostRecords],
+    })
+    const result = await executor.get('add_portlet')!({
+      title: 'Employees',
+      query: JSON.stringify({ measures: ['Employees.count'], ungrouped: true }),
+      chartType: 'hostRecords',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.result).toContain('chartConfig.xAxis is required for hostRecords chart (Columns)')
+  })
+
+  it('should return an error for a grouped query of a record-grain host chart type in save_as_dashboard', async () => {
+    const executor = createToolExecutor({
+      semanticLayer,
+      securityContext: mockSecurityContext,
+      chartTypes: [hostRecords],
+    })
+    const result = await executor.get('save_as_dashboard')!({
+      title: 'People',
+      portlets: [
+        {
+          id: 'portlet-1',
+          title: 'Employee list',
+          chartType: 'hostRecords',
+          query: JSON.stringify({ dimensions: ['Employees.name'] }),
+          w: 12,
+          h: 5,
+          x: 0,
+          y: 0,
+        },
+      ],
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.result).toContain('hostRecords lists one row per record, so its query must set "ungrouped": true')
+  })
+
+  it('should save a host chart type portlet with the chart config inferred from its drop zones', async () => {
+    const executor = createToolExecutor({
+      semanticLayer,
+      securityContext: mockSecurityContext,
+      chartTypes: [hostTable],
+    })
+    const result = await executor.get('save_as_dashboard')!({
+      title: 'People',
+      portlets: [
+        {
+          id: 'portlet-1',
+          title: 'Employees',
+          chartType: 'hostTable',
+          query: JSON.stringify({ measures: ['Employees.count'], dimensions: ['Employees.name'] }),
+          w: 12,
+          h: 5,
+          x: 0,
+          y: 0,
+        },
+      ],
+    })
+
+    expect(result.isError).toBeUndefined()
+    const data = result.sideEffect!.data as Record<string, any>
+    expect(data.dashboardConfig.portlets[0].analysisConfig.charts.query).toMatchObject({
+      chartType: 'hostTable',
+      chartConfig: { xAxis: ['Employees.name', 'Employees.count'] },
     })
   })
 })

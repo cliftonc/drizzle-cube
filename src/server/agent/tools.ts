@@ -7,10 +7,11 @@
 import type { BuiltInChartType } from '../../client/types.js'
 import type { SemanticLayerCompiler } from '../compiler.js'
 import type { SecurityContext } from '../types/index.js'
-import type { AgentSSEEvent } from './types.js'
+import type { AgentChartType, AgentSSEEvent } from './types.js'
 import type { ToolDefinition } from './providers/types.js'
 import { handleDiscover, handleLoad, normalizeQueryFields } from '../query-handlers.js'
 import { validateChartConfig, inferChartConfig, resolveChartTypeFallback, buildChartRequirementsDescription } from './chart-validation.js'
+import type { HostChartConfigs } from './chart-validation.js'
 import { summariseDataShape, AGENT_RESULT_ROW_LIMIT } from './data-shape.js'
 import {
   RECORDS_TABLE_CHART_CONFIG_SCHEMA,
@@ -75,11 +76,36 @@ export const AGENT_ALLOWED_CHART_TYPES: BuiltInChartType[] = [
   'measureProfile', 'activityGrid', 'gauge', 'candlestick'
 ]
 
+/** The host chart type options of the agent tools. */
+export interface AgentChartTypeOptions {
+  /** Chart types that the host app registers on the client. See `AgentConfig.chartTypes`. */
+  chartTypes?: AgentChartType[]
+}
+
+/**
+ * The chart types that the tools offer: the built-in ones, then the host chart
+ * types. A host chart type with the name of a built-in chart is offered once,
+ * with the host config.
+ */
+function offeredChartTypes(chartTypes: AgentChartType[] = []): string[] {
+  return [...new Set<string>([...AGENT_ALLOWED_CHART_TYPES, ...chartTypes.map(chart => chart.type)])]
+}
+
+/** The configs of the host chart types, by chart type key. */
+function hostChartConfigs(chartTypes: AgentChartType[] = []): HostChartConfigs {
+  return Object.fromEntries(chartTypes.map(chart => [chart.type, chart.config]))
+}
+
 /**
  * Returns the array of tool definitions for the Anthropic Messages API.
  * Plain JSON schema — no Zod dependency.
+ *
+ * `options.chartTypes` adds the host chart types to the chart types that
+ * `add_portlet`, `update_portlet` and `save_as_dashboard` accept.
  */
-export function getToolDefinitions(): ToolDefinition[] {
+export function getToolDefinitions(options: AgentChartTypeOptions = {}): ToolDefinition[] {
+  const chartTypeEnum = offeredChartTypes(options.chartTypes)
+  const hostConfigs = hostChartConfigs(options.chartTypes)
   return [
     // Tool 1: discover_cubes
     {
@@ -124,7 +150,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       name: 'add_portlet',
       description:
         'Add a chart visualization to the notebook.\n'
-        + buildChartRequirementsDescription(AGENT_ALLOWED_CHART_TYPES)
+        + buildChartRequirementsDescription(chartTypeEnum, hostConfigs)
         + '\nThe query is validated before adding. The portlet fetches its own data.',
       parameters: {
         type: 'object',
@@ -136,7 +162,7 @@ export function getToolDefinitions(): ToolDefinition[] {
           },
           chartType: {
             type: 'string',
-            enum: AGENT_ALLOWED_CHART_TYPES,
+            enum: chartTypeEnum,
             description: 'Chart type to render'
           },
           chartConfig: {
@@ -195,7 +221,7 @@ export function getToolDefinitions(): ToolDefinition[] {
           query: { type: 'string', description: 'Replacement query, as a JSON string (same shape as add_portlet)' },
           chartType: {
             type: 'string',
-            enum: AGENT_ALLOWED_CHART_TYPES,
+            enum: chartTypeEnum,
             description: 'Replacement chart type'
           },
           chartConfig: { type: 'object', description: 'Replacement chart axis configuration (replaces, does not merge)' },
@@ -241,7 +267,7 @@ export function getToolDefinitions(): ToolDefinition[] {
                 title: { type: 'string', description: 'Portlet title' },
                 chartType: {
                   type: 'string',
-                  enum: AGENT_ALLOWED_CHART_TYPES,
+                  enum: chartTypeEnum,
                   description: 'Chart type. Use "markdown" for section headers.'
                 },
                 query: {
@@ -346,8 +372,11 @@ interface PreparedPortlet {
 export function createToolExecutor(options: {
   semanticLayer: SemanticLayerCompiler
   securityContext: SecurityContext
+  /** Chart types that the host app registers on the client. See `AgentConfig.chartTypes`. */
+  chartTypes?: AgentChartType[]
 }): Map<string, (input: Record<string, unknown>) => Promise<ToolExecutionResult>> {
   const { semanticLayer, securityContext } = options
+  const hostConfigs = hostChartConfigs(options.chartTypes)
 
   const executors = new Map<string, (input: Record<string, unknown>) => Promise<ToolExecutionResult>>()
 
@@ -552,8 +581,8 @@ export function createToolExecutor(options: {
       const fallback = resolveChartTypeFallback(resolvedChartType, fields.chartConfig, parsedQuery)
       effectiveChartType = fallback.chartType
       fallbackNote = fallback.note
-      const inferredConfig = inferChartConfig(effectiveChartType, fields.chartConfig, parsedQuery)
-      const configValidation = validateChartConfig(effectiveChartType, inferredConfig, parsedQuery)
+      const inferredConfig = inferChartConfig(effectiveChartType, fields.chartConfig, parsedQuery, hostConfigs)
+      const configValidation = validateChartConfig(effectiveChartType, inferredConfig, parsedQuery, hostConfigs)
       if (!configValidation.isValid) {
         return {
           error: `Chart config invalid — fix these errors and retry:\n${configValidation.errors.join('\n')}\n\n`
@@ -739,9 +768,10 @@ export function createToolExecutor(options: {
         const inferredConfig = inferChartConfig(
           chartType,
           portlet.chartConfig as Record<string, unknown> | undefined,
-          parsedQuery
+          parsedQuery,
+          hostConfigs
         )
-        const configValidation = validateChartConfig(chartType, inferredConfig, parsedQuery)
+        const configValidation = validateChartConfig(chartType, inferredConfig, parsedQuery, hostConfigs)
         if (!configValidation.isValid) {
           errors.push(`Portlet "${portlet.title}": ${configValidation.errors.join(', ')}`)
           continue
