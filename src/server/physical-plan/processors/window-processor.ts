@@ -55,8 +55,6 @@ export function applyPostAggregationWindows(
       continue
     }
 
-    const baseMeasure = baseCube.measures[baseFieldName]
-
     // Check if the base measure is from a CTE cube (hasMany relationship)
     // If so, we should reference the CTE column with re-aggregation
     // because the main query has its own GROUP BY
@@ -73,8 +71,7 @@ export function applyPostAggregationWindows(
       // Apply sum() to the CTE column to re-aggregate for the main query's GROUP BY
       baseMeasureExpr = sql`sum(${cteColumn})`
     } else {
-      // Not from a CTE - build the raw aggregation expression (e.g., SUM(column))
-      baseMeasureExpr = deps.queryBuilder.buildMeasureExpression(baseMeasure, context, baseCube)
+      baseMeasureExpr = deps.queryBuilder.buildMeasureByName(baseMeasureName, allCubes, context)
     }
 
     // Ensure the base measure is also in the selections (for display)

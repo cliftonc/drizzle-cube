@@ -275,18 +275,7 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
    * @returns Preprocessed template with CAST for division operations
    */
   preprocessCalculatedTemplate(calculatedSql: string): string {
-    // Guard against excessive input length to prevent ReDoS
-    if (calculatedSql.length > 1000) return calculatedSql
-    // Match division patterns: {anything} / {anything} or {anything} / NULLIF(...)
-    // We need to cast the numerator to REAL to ensure float division
-    // Pattern: captures the opening brace and content before division operator
-    const divisionPattern = /(\{[^}]+\})\s*\/\s*/g
-
-    return calculatedSql.replace(divisionPattern, (_match, numerator) => {
-      // Replace {measure} with CAST({measure} AS REAL)
-      const castNumerator = numerator.replace(/\{([^}]+)\}/, 'CAST({$1} AS REAL)')
-      return `${castNumerator} / `
-    })
+    return this.rewriteDivisionNumerators(calculatedSql, numerator => `CAST(${numerator} AS REAL)`)
   }
 
   /**

@@ -12,7 +12,7 @@ import type {
   DimensionType,
   TimeGranularity
 } from './core.js'
-import type { SemanticQuery } from './query.js'
+import type { SemanticQuery, Filter } from './query.js'
 
 /**
  * Filter SQL cache used for parameter deduplication across CTEs and the main
@@ -613,12 +613,30 @@ export interface JoinCubePlanEntry {
 }
 
 /**
+ * A join that a query tests for a matching row instead of joining, because it
+ * leads only to cubes the query uses for filtering.
+ */
+export interface ExistenceJoin {
+  cube: Cube
+  /** Join definition, declared on the cube before `cube` or, when `reversed`, on `cube` */
+  joinDef: CubeJoin
+  /** True when the join is declared on `cube` and points back */
+  reversed: boolean
+  /** Join type the row-level plan would use, after defaults for the relationship */
+  joinType: 'inner' | 'left' | 'right' | 'full'
+  filters: Filter[]
+  joins: ExistenceJoin[]
+}
+
+/**
  * Runtime physical-plan context used by query execution builders.
  * This is the only runtime plan context consumed by SQL builders.
  */
 export interface PhysicalQueryPlan {
   /** Primary cube that drives the query */
   primaryCube: Cube
+  /** Joins to cubes used only for filtering, tested for a matching row */
+  existenceJoins?: ExistenceJoin[]
   /** Additional cubes to join (empty for single-cube queries) */
   joinCubes: JoinCubePlanEntry[]
   /** Pre-aggregation CTEs for hasMany relationships to prevent fan-out */

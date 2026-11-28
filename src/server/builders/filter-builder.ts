@@ -24,7 +24,8 @@ import type {
 import { parenthesizeExpression, resolveFilterFieldExpr } from '../cube-utils.js'
 import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import { DateTimeBuilder } from './date-time-builder.js'
-import { applyFilterOperator, NO_VALUE_FILTER_OPERATORS } from './filter-operators.js'
+import { applyFilterOperator } from './filter-operators.js'
+import { isDiscardedFilterValue, NO_VALUE_FILTER_OPERATORS } from '../filter-values.js'
 import { asGroupFilter } from './analysis-utils.js'
 import { validateInDateRange, dateRangeInputDiagnostic } from './in-date-range-validation.js'
 
@@ -104,12 +105,7 @@ export class FilterBuilder {
 
     // Filter out empty/null values and values containing null bytes for security
     // For date operators, don't convert values yet - we'll normalize to Date first
-    const filteredValues = values.filter(v => {
-      if (v === null || v === undefined || v === '') return false
-      // Reject values containing null bytes for security
-      if (typeof v === 'string' && v.includes('\x00')) return false
-      return true
-    }).map(this.databaseAdapter.convertFilterValue)
+    const filteredValues = values.filter(v => !isDiscardedFilterValue(v)).map(this.databaseAdapter.convertFilterValue)
 
     // Every remaining operator needs at least one non-empty value
     if (filteredValues.length === 0) {

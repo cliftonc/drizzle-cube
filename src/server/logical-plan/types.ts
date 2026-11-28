@@ -19,7 +19,8 @@ import type {
   JoinKeyInfo,
   PropagatingFilter,
   IntermediateJoinInfo,
-  DownstreamJoinKeyInfo
+  DownstreamJoinKeyInfo,
+  ExistenceJoin
 } from '../types/cube.js'
 import type { Filter } from '../types/query.js'
 import type { QueryWarning, TimeGranularity } from '../types/core.js'
@@ -108,6 +109,7 @@ export interface JoinRef {
    * baked security context.
    */
   joinDef: CubeJoin
+  sourceCubeName?: string
   /** Relationship type from the join definition */
   relationship?: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
   /**
@@ -121,6 +123,12 @@ export interface JoinRef {
     joinType: 'inner' | 'left' | 'right' | 'full'
     sourceCubeName?: string
   }
+}
+
+export interface PlannedJoin extends JoinRef {
+  sourceCubeName: string
+  /** True when the join is declared on the target cube and points back */
+  reversed: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -168,6 +176,11 @@ export interface QueryNode extends LogicalNodeBase {
   ungrouped?: boolean
   /** Planning warnings surfaced to the caller */
   warnings: QueryWarning[]
+  /**
+   * Joins to cubes used only for filtering, tested for a matching row instead
+   * of joined. Their filters are not in `filters`.
+   */
+  existenceJoins?: ExistenceJoin[]
 }
 
 // ---- Source nodes ----

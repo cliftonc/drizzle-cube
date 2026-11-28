@@ -139,8 +139,8 @@ describe('CTE Filter-Only Downstream Join', () => {
         .filters([
           {
             member: 'Productivity.happinessIndex',
-            operator: 'gte',
-            values: [1]
+            operator: 'notSet',
+            values: []
           }
         ])
         .build()
@@ -159,7 +159,7 @@ describe('CTE Filter-Only Downstream Join', () => {
     it('should NOT include downstream join key when filter cube is not in query at all', async () => {
       // No Productivity reference at all - downstream join key should not be needed
       const query = TestQueryBuilder.create()
-        .measures(['Employees.count'])
+        .measures(['Employees.count', 'Departments.count'])
         .dimensions(['Departments.name'])
         .build()
 

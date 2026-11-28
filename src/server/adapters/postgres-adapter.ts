@@ -17,6 +17,15 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
     return 'postgres'
   }
 
+  /**
+   * PostgreSQL divides integers as integers, and COUNT returns bigint, so
+   * `{activeCount} / {count}` would truncate. Multiply each division numerator
+   * by 1.0: an integer becomes NUMERIC and a real becomes DOUBLE PRECISION.
+   */
+  preprocessCalculatedTemplate(calculatedSql: string): string {
+    return this.rewriteDivisionNumerators(calculatedSql, numerator => `(${numerator} * 1.0)`)
+  }
+
   // ============================================
   // Funnel Analysis Methods
   // ============================================

@@ -23,13 +23,14 @@ import type {
   Cube,
   CubeJoin,
   QueryContext,
-  PhysicalQueryPlan
+  PhysicalQueryPlan,
+  ExistenceJoin
 } from '../types/index.js'
 
-import { resolveSqlExpression, resolveCubeReference, resolveCubeBase } from '../cube-utils.js'
+import { resolveSqlExpression, resolveCubeReference, resolveJunctionSecurity } from '../cube-utils.js'
 import type { DatabaseAdapter } from '../adapters/base-adapter.js'
 import { getFilterKey, getTimeDimensionFilterKey, flattenFilters } from '../filter-cache.js'
-import { buildSemiJoinCondition, type SemiJoinKeyPair } from './semi-join.js'
+import { buildSemiJoinCondition, buildCubeSemiJoin, toKeyPairs, type SemiJoinKeyPair } from './semi-join.js'
 import { JoinPathResolver, type InternalJoinPathStep } from '../resolvers/join-path-resolver.js'
 import { t } from '../../i18n/runtime.js'
 import { DateTimeBuilder } from '../builders/date-time-builder.js'
@@ -178,6 +179,18 @@ export class DrizzleSqlBuilder {
     queryPlan?: PhysicalQueryPlan
   ): SQL {
     return this.measureBuilder.buildHavingMeasureExpression(cubeName, fieldKey, measure, context, queryPlan)
+  }
+
+  /**
+   * Build one measure's aggregate expression by name, including calculated measures
+   * Delegates to MeasureBuilder
+   */
+  buildMeasureByName(
+    measureName: string,
+    cubeMap: Map<string, Cube>,
+    context: QueryContext
+  ): SQL {
+    return this.measureBuilder.buildMeasureByName(measureName, cubeMap, context)
   }
 
   /**
@@ -530,16 +543,46 @@ export class DrizzleSqlBuilder {
     let condition: SQL | null = null
     for (let i = hops.length - 1; i >= 0; i--) {
       const { cube, keyPairs } = hops[i]
-      const cubeBase = resolveCubeBase(cube, context)
-      const inner = condition ? [condition] : leafConditions
-      condition = buildSemiJoinCondition(
-        context,
-        cubeBase,
-        keyPairs,
-        cubeBase.where ? [cubeBase.where, ...inner] : inner
-      )
+      condition = buildCubeSemiJoin(context, cube, keyPairs, condition ? [condition] : leafConditions)
     }
     return condition
+  }
+
+  /**
+   * Build the condition that tests an existence join: a semi-join on the rows
+   * that the join reaches, nested once per onward join, so one joined row
+   * meets every filter.
+   *
+   * @param join - Join to a cube used only for filtering
+   * @param context - Query context
+   * @returns The condition for the WHERE, or null when its filters build no SQL and no join on its path is an inner join
+   */
+  buildExistenceCondition(join: ExistenceJoin, context: QueryContext): SQL | null {
+    const cubes = new Map([[join.cube.name, join.cube]])
+    const filters = join.filters.flatMap(filter => this.buildWhereConditions(cubes, { filters: [filter] }, context))
+    const onward = join.joins.flatMap(next => this.buildExistenceCondition(next, context) ?? [])
+    if (filters.length === 0 && onward.length === 0 && join.joinType !== 'inner') {
+      return null
+    }
+    return this.buildRelatedRowCondition(join, context, [...filters, ...onward])
+  }
+
+  private buildRelatedRowCondition(
+    join: ExistenceJoin,
+    context: QueryContext,
+    conditions: SQL[]
+  ): SQL {
+    const { joinDef } = join
+    const keyOptions = { inDeclaredOrder: true }
+    if (joinDef.relationship !== 'belongsToMany' || !joinDef.through) {
+      return buildCubeSemiJoin(context, join.cube, toKeyPairs(joinDef.on, join.reversed), conditions, keyOptions)
+    }
+
+    const { table, sourceKey, targetKey, securitySql } = joinDef.through
+    return buildSemiJoinCondition(context, { from: table }, toKeyPairs(sourceKey), [
+      ...(securitySql ? resolveJunctionSecurity(securitySql, context) : []),
+      buildCubeSemiJoin(context, join.cube, toKeyPairs(targetKey), conditions, keyOptions)
+    ], keyOptions)
   }
 
   /** Every cube visible from here: the in-scope map plus the rest of the plan. */
@@ -575,7 +618,7 @@ export class DrizzleSqlBuilder {
       const keyPairs: SemiJoinKeyPair[] = []
       for (const key of cteInfo.joinKeys) {
         if (key.sourceColumnObj && key.targetColumnObj) {
-          keyPairs.push({ outer: key.sourceColumnObj, inner: key.targetColumnObj })
+          keyPairs.push({ outer: key.sourceColumnObj, inner: key.targetColumnObj, reversed: false })
         }
       }
       if (keyPairs.length > 0 && keyPairs.length === cteInfo.joinKeys.length) {
@@ -602,9 +645,7 @@ export class DrizzleSqlBuilder {
       // A reversed step's join is declared on the far cube, so its source/target swap
       hops.push({
         cube,
-        keyPairs: step.joinDef.on.map(k => step.reversed
-          ? { outer: k.target, inner: k.source }
-          : { outer: k.source, inner: k.target })
+        keyPairs: toKeyPairs(step.joinDef.on, step.reversed)
       })
     }
     return hops

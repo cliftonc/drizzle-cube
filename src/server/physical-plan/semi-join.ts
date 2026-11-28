@@ -9,8 +9,9 @@
  * pass the cube's `where` (from `cube.sql(context)`) in `conditions`.
  */
 
-import { and, eq, sql, SQL, type AnyColumn } from 'drizzle-orm'
-import type { BaseQueryDefinition, QueryContext } from '../types/index.js'
+import { and, eq, getTableName, sql, SQL, type AnyColumn } from 'drizzle-orm'
+import { resolveCubeBase } from '../cube-utils.js'
+import type { BaseQueryDefinition, Cube, QueryContext } from '../types/index.js'
 
 /** One key pair linking the outer query's column to the subquery cube's column. */
 export interface SemiJoinKeyPair {
@@ -18,6 +19,23 @@ export interface SemiJoinKeyPair {
   outer: AnyColumn
   /** Column on the subquery cube's table */
   inner: AnyColumn
+  /** True when the join declares the inner column first */
+  reversed: boolean
+}
+
+/** How a semi-join compares its keys. */
+export interface SemiJoinOptions {
+  /** Compare keys in the order the join declares them. */
+  inDeclaredOrder?: boolean
+}
+
+export function toKeyPairs(
+  keys: Array<{ source: AnyColumn; target: AnyColumn }>,
+  reversed = false
+): SemiJoinKeyPair[] {
+  return keys.map(key => reversed
+    ? { outer: key.target, inner: key.source, reversed }
+    : { outer: key.source, inner: key.target, reversed })
 }
 
 /**
@@ -51,16 +69,22 @@ export function applyBaseJoins(
 
 /**
  * Build `outer IN (SELECT inner FROM cube WHERE conditions)` for a single key,
- * or `EXISTS (SELECT 1 FROM cube WHERE inner = outer AND ... AND conditions)`
- * for composite keys (portable across all engines).
+ * or, for composite keys, `EXISTS` over a derived table of the matching rows'
+ * keys, compared with the outer keys outside it (portable across all engines).
+ * The outer keys stay outside the subquery's own tables, so they refer to the
+ * outer row even when both sides read the same table. Composite comparisons
+ * use the inner key first by default. `inDeclaredOrder` makes comparisons
+ * follow the row-level join, including which collation SQLite uses. A reversed
+ * single key then uses `EXISTS` too, since `IN` puts the outer key first.
  */
 export function buildSemiJoinCondition(
   context: QueryContext,
   cubeBase: BaseQueryDefinition,
   keyPairs: SemiJoinKeyPair[],
-  conditions: SQL[]
+  conditions: SQL[],
+  { inDeclaredOrder = false }: SemiJoinOptions = {}
 ): SQL {
-  if (keyPairs.length === 1) {
+  if (keyPairs.length === 1 && !(inDeclaredOrder && keyPairs[0].reversed)) {
     const [{ outer, inner }] = keyPairs
     let subquery: any = context.db.select({ pk: inner }).from(cubeBase.from)
     subquery = applyBaseJoins(subquery, cubeBase)
@@ -70,12 +94,44 @@ export function buildSemiJoinCondition(
     return sql`${outer} IN ${subquery}`
   }
 
-  const existsWhere = and(
-    ...keyPairs.map(({ outer, inner }) => eq(inner, outer)),
-    ...conditions
-  )
-  let existsSubquery: any = context.db.select({ one: sql`1` }).from(cubeBase.from)
-  existsSubquery = applyBaseJoins(existsSubquery, cubeBase)
-  existsSubquery = existsSubquery.where(existsWhere)
-  return sql`EXISTS ${existsSubquery}`
+  let keys: any = context.db
+    .select(Object.fromEntries(keyPairs.map(({ inner }, index) => [`key${index}`, sql`${inner}`.as(`key${index}`)])))
+    .from(cubeBase.from)
+  keys = applyBaseJoins(keys, cubeBase)
+  if (conditions.length > 0) {
+    keys = keys.where(and(...conditions))
+  }
+  const outerNames = new Set(keyPairs.map(({ outer }) => getTableName(outer.table).toLowerCase()))
+  let alias = 'semi_join_keys'
+  for (let suffix = 1; outerNames.has(alias); suffix++) alias = `semi_join_keys_${suffix}`
+  keys = keys.as(alias)
+  const correlated = context.db
+    .select({ one: sql`1` })
+    .from(keys)
+    .where(and(...keyPairs.map(({ outer, reversed }, index) =>
+      !inDeclaredOrder || reversed ? eq(keys[`key${index}`], outer) : eq(outer, keys[`key${index}`])
+    )))
+  return sql`EXISTS ${correlated}`
+}
+
+/**
+ * Link the outer row to a cube's rows that meet `conditions` and the cube's
+ * security condition.
+ *
+ * @param context - Query context that supplies the database and security context
+ * @param cube - Cube whose rows the subquery reads
+ * @param keyPairs - Columns that link the subquery to the outer row
+ * @param conditions - Conditions on the cube's rows
+ * @param options - How to compare the keys
+ * @returns The condition
+ */
+export function buildCubeSemiJoin(
+  context: QueryContext,
+  cube: Cube,
+  keyPairs: SemiJoinKeyPair[],
+  conditions: SQL[],
+  options?: SemiJoinOptions
+): SQL {
+  const cubeBase = resolveCubeBase(cube, context)
+  return buildSemiJoinCondition(context, cubeBase, keyPairs, cubeBase.where ? [cubeBase.where, ...conditions] : conditions, options)
 }

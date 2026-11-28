@@ -396,4 +396,28 @@ export class CalculatedMeasureResolver {
   static isCalculatedMeasure(measure: Measure): boolean {
     return measure.type === 'calculated' && !!measure.calculatedSql
   }
+
+  /**
+   * Recognize arithmetic that can evaluate with zero counts on an empty group.
+   * Operands can use member references, decimal literals and
+   * `NULLIF({member}, 0)`. Arithmetic without division can also use
+   * `COALESCE` of a member and a numeric fallback.
+   * Division must use a guarded member or a non-zero literal. Callers check
+   * each calculated dependency separately.
+   *
+   * @param calculatedSql - Template string with {member} references
+   */
+  static dividesOnlyBySafeDivisors(calculatedSql: string): boolean {
+    if (calculatedSql.length > 1000 || /--|\/\*/.test(calculatedSql)) return false
+    const coalesce = /COALESCE\s*\(\s*\{[^{}]+\}\s*,\s*[+-]?(?:\d+(?:\.\d*)?|\.\d+)\s*\)/gi
+    const arithmetic = calculatedSql.includes('/') ? calculatedSql : calculatedSql.replace(coalesce, '0')
+    const operands = /NULLIF\s*\(\s*\{[^{}]+\}\s*,\s*0(?:\.0+)?\s*\)|\{[^{}]+\}|\d+(?:\.\d*)?|\.\d+/gi
+    const operators = arithmetic.replace(operands, '')
+    if (operators === arithmetic || /[^+\-*/()\s]/.test(operators)) return false
+    const safeDivisor = /^\s*(?:NULLIF\s*\(\s*\{[^{}]+\}\s*,\s*0(?:\.0+)?\s*\)|[1-9]\d*(?:\.\d*)?|0?\.\d*[1-9])/i
+    for (let slash = calculatedSql.indexOf('/'); slash !== -1; slash = calculatedSql.indexOf('/', slash + 1)) {
+      if (!safeDivisor.test(calculatedSql.slice(slash + 1))) return false
+    }
+    return true
+  }
 }
